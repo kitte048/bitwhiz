@@ -1,2 +1,2 @@
 # main
-This folder contains the executive routines for PixMaths.
+This folder contains the executive routines for bitwhiz.

@@ -1,4 +1,4 @@
-program pixmaths
+program bitwhiz
 use bits, only: int32,dp,kpt6,nline
 implicit none
 integer(kind=int32) :: idx,n,nx,ny
@@ -55,7 +55,7 @@ found_params: if (n>0) then
 else
  ! 1234567890123456789012345678901234567890123456789012345
  write(kpt6,'(1(a49))') &
-  "usage: pixmaths [-grayscale] [-plasma] [-viridis]"
+  "usage: bitwhiz [-grayscale] [-plasma] [-viridis]"
  write(kpt6,'(1(a52))') &
   "  [-inferno] [-blackbody] [-kindlmann] [-ekindlmann]"
  write(kpt6,'(1(a51))') &
@@ -65,4 +65,4 @@ else
 
 end if found_params
 write(*,*) cmap
-end program pixmaths
+end program bitwhiz
