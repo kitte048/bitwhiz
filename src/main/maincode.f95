@@ -54,14 +54,52 @@ found_params: if (n>0) then
 ! No command line arguments were found.
 else
  ! 1234567890123456789012345678901234567890123456789012345
- write(kpt6,'(1(a49))') &
-  "usage: bitwhiz [-grayscale] [-plasma] [-viridis]"
- write(kpt6,'(1(a52))') &
-  "  [-inferno] [-blackbody] [-kindlmann] [-ekindlmann]"
- write(kpt6,'(1(a51))') &
-  "  [-smoothcw] [-bentcw] [-123] [-132] [-213] [-231]"
- write(kpt6,'(1(a49))') &
-  "  [-312] [-321]                                  "
+ write(kpt6,'(1(a55))') &
+  "usage: bitwhiz [-colormap] [-RGB_flip]                 "
+ write(kpt6,'(1(a55))') &
+  "                                                       "
+ write(kpt6,'(1(a55))') &
+  "  [-colormap]  is a named color map, lowercase:        "
+ write(kpt6,'(1(a55))') &
+  "                                                       "
+ write(kpt6,'(1(a55))') &
+  "    -bentcw       BLUE-WHITE-RED, BENT COOLWARM        "
+ write(kpt6,'(1(a55))') &
+  "    -blackbody    BLACK-RED-ORANGE-YELLOW-WHITE        "
+ write(kpt6,'(1(a55))') &
+  "    -ekindlmann   BLACK-BLUE-GREEN-YELLOW-PEACH-PINK-W "
+ write(kpt6,'(1(a55))') &
+  "    -grayscale    BLACK-WHITE, MATHEMATICALLY LINEAR   "
+ write(kpt6,'(1(a55))') &
+  "    -inferno      BLACK-PURPLE-PINK-ORANGE-YELLOW      "
+ write(kpt6,'(1(a55))') &
+  "    -kindlmann    BLACK-BLUE-GREEN-YELLOW-PALE         "
+ write(kpt6,'(1(a55))') &
+  "    -plasma       BLUE-PURPLE-PEACH-ORANGE-YELLOW      "
+ write(kpt6,'(1(a55))') &
+  "    -smoothcw     BLUE-WHITE-RED, SMOOTH COOLWARM      "
+ write(kpt6,'(1(a55))') &
+  "    -viridis      PURPLE-BLUE-GREEN-YELLOW             "
+ write(kpt6,'(1(a55))') &
+  "                                                       "
+ write(kpt6,'(1(a55))') &
+  "  [-RGB_flip]  allows you to do a permutation on RGB   "
+ write(kpt6,'(1(a55))') &
+  "               vals in a color map to see what happens:"
+ write(kpt6,'(1(a55))') &
+  "                                                       "
+ write(kpt6,'(1(a55))') &
+  "    -123          DEFAULT if none specified; i.e., RGB "
+ write(kpt6,'(1(a55))') &
+  "    -132            permutation that takes RGB --> GRB "
+ write(kpt6,'(1(a55))') &
+  "    -213            permutation that takes RGB --> RBG "
+ write(kpt6,'(1(a55))') &
+  "    -231            permutation that takes RGB --> BRG "
+ write(kpt6,'(1(a55))') &
+  "    -312            permutation that takes RGB --> GBR "
+ write(kpt6,'(1(a55))') &
+  "    -321            permutation that takes RGB --> BGR "
 
 end if found_params
 write(*,*) cmap
