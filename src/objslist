@@ -1,0 +1,36 @@
+  MOD_OBJS = \
+	src/modules/bit_mod.o \
+	src/modules/plas_mod.o \
+	src/modules/viri_mod.o \
+	src/modules/infr_mod.o \
+	src/modules/bbdy_mod.o \
+	src/modules/kndl_mod.o \
+	src/modules/ekdl_mod.o \
+	src/modules/smcw_mod.o \
+	src/modules/btcw_mod.o
+  MOD_FILS = \
+	src/modules/bits.mod \
+	src/modules/plasma.mod \
+	src/modules/viridis.mod \
+	src/modules/inferno.mod \
+	src/modules/blackbody.mod \
+	src/modules/kindlmann.mod \
+	src/modules/extendedkindlmann.mod \
+	src/modules/smoothcoolwarm.mod \
+	src/modules/bentcoolwarm.mod
+  LIB_OBJS = \
+	src/colormaps/cmap_grayscale.o \
+	src/colormaps/cmap_plasma.o \
+	src/colormaps/cmap_viridis.o \
+	src/colormaps/cmap_inferno.o \
+	src/colormaps/cmap_blackbody.o \
+	src/colormaps/cmap_kindlmann.o \
+	src/colormaps/cmap_extendedkindlmann.o \
+	src/colormaps/cmap_smoothcoolwarm.o \
+	src/colormaps/cmap_bentcoolwarm.o \
+	src/main/bmpmaker.o \
+	src/main/bmpreader.o \
+	src/utils/random.o \
+	src/utils/timestamp.o
+  BIN = \
+	src/main/maincode.o
