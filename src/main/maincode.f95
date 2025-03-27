@@ -1,7 +1,8 @@
 program bitwhiz
-use bits, only: int32,dp,kpt6,nline
+use bits, only: int16,int32,dp,kpt6,nline
 implicit none
 integer(kind=int32) :: idx,n,nx,ny
+integer(kind=int16) :: npr=1                           ! permutation
 real(kind=dp) :: cpu1,cpu2
 character(len=nline) :: aname,f
 character(len=80) :: cmap
@@ -13,7 +14,9 @@ cmap = ' ' ! default
 ! Command Line Execution.
 n = command_argument_count()
 
-! Loop over the execution line parameters.
+!==========================================!
+! Loop over the execution line parameters. !
+!==========================================!
 found_params: if (n>0) then
 
  call timestamp( cpu1 ) !~ save for reference.
@@ -25,31 +28,38 @@ found_params: if (n>0) then
   select_params: select case(adjustl(aname))
 
    ! ...
-   case("-grayscale")
-    cmap = "grayscale"
-   case("-plasma")
-    cmap = "plasma"
-   case("-viridis")
-    cmap = "viridis"
-   case("-inferno")
-    cmap = "inferno"
-   case("-blackbody")
-    nx = 1
-   case("-kindlmann")
-    nx = 1
-   case("-ekindlmann")
-    nx = 1
-   case("-smoothcw")
-    nx = 1
    case("-bentcw")
-    ny = 1
-
+      cmap(1:17)='bentcoolwarm1,2,3'
+   case("-blackbody")
+      cmap(1:14)='blackbody1,2,3'
+   case("-ekindlmann")
+      cmap(1:22)='extendedkindlmann1,2,3'
+   case("-grayscale")
+      cmap(1:9)='grayscale'
+   case("-inferno")
+      cmap(1:12)='inferno1,2,3'
+   case("-kindlmann")
+      cmap(1:14)='kindlmann1,2,3'
+   case("-plasma")
+      cmap(1:11)='plasma1,2,3'
+   case("-smoothcw")
+      cmap(1:19)='smoothcoolwarm1,2,3'
+   case("-viridis")
+      cmap(1:12)='viridis1,2,3'
+   case("-123")
+      npr=1
+   case("-132")
+      npr=2
+   case("-213")
+      npr=3
+   case("-231")
+      npr=4
+   case("-312")
+      npr=5
+   case("-321")
+      npr=6
   end select select_params
  end do loop_params
-
- call timestamp( cpu2 ) !~ save for reference
-
- write( kpt6, 201 ) cpu2-cpu1 !~ save for reference
 
 ! No command line arguments were found.
 else
@@ -58,49 +68,98 @@ else
   "usage: bitwhiz [-colormap] [-RGB_flip]                 "
  write(kpt6,'(1(a55))') &
   "                                                       "
+!=========================================!
+! Help menu for the different color maps. !
+!=========================================!
  write(kpt6,'(1(a55))') &
   "  [-colormap]  is a named color map, lowercase:        "
  write(kpt6,'(1(a55))') &
   "                                                       "
  write(kpt6,'(1(a55))') &
-  "    -bentcw       BLUE-WHITE-RED, BENT COOLWARM        "
+  "    -bentcw      **BLUE-WHITE-RED, BENT                "
  write(kpt6,'(1(a55))') &
-  "    -blackbody    BLACK-RED-ORANGE-YELLOW-WHITE        "
+  "    -blackbody   **BLACK-RED-ORANGE-YELLOW-WHITE       "
  write(kpt6,'(1(a55))') &
-  "    -ekindlmann   BLACK-BLUE-GREEN-YELLOW-PEACH-PINK-W "
+  "    -ekindlmann  **BLACK-BLUE-GREEN-YELLOW-PEACH-PINK-W"
  write(kpt6,'(1(a55))') &
-  "    -grayscale    BLACK-WHITE, MATHEMATICALLY LINEAR   "
+  "    -grayscale   ^^BLACK-WHITE, LINEAR                 "
  write(kpt6,'(1(a55))') &
-  "    -inferno      BLACK-PURPLE-PINK-ORANGE-YELLOW      "
+  "    -inferno     **BLACK-PURPLE-PINK-ORANGE-YELLOW     "
  write(kpt6,'(1(a55))') &
-  "    -kindlmann    BLACK-BLUE-GREEN-YELLOW-PALE         "
+  "    -kindlmann   **BLACK-BLUE-GREEN-YELLOW-PALE        "
  write(kpt6,'(1(a55))') &
-  "    -plasma       BLUE-PURPLE-PEACH-ORANGE-YELLOW      "
+  "    -plasma      **BLUE-PURPLE-PEACH-ORANGE-YELLOW     "
  write(kpt6,'(1(a55))') &
-  "    -smoothcw     BLUE-WHITE-RED, SMOOTH COOLWARM      "
+  "    -smoothcw    **BLUE-WHITE-RED, SMOOTH              "
  write(kpt6,'(1(a55))') &
-  "    -viridis      PURPLE-BLUE-GREEN-YELLOW             "
+  "    -viridis     **PURPLE-BLUE-GREEN-YELLOW            "
  write(kpt6,'(1(a55))') &
   "                                                       "
  write(kpt6,'(1(a55))') &
+  "     key:                                              "
+ write(kpt6,'(1(a55))') &
+  "                                                       "
+ write(kpt6,'(1(a55))') &
+  "       **RGB Values are 64-bit (8 byte), 1024 colors   "
+ write(kpt6,'(1(a55))') &
+  "       ^^RGB Values are integers (R=G=B), 256 colors   "
+ write(kpt6,'(1(a55))') &
+  "                                                       "
+!=====================================!
+! Help menu for the RGB permutations. !
+!=====================================!
+ write(kpt6,'(1(a55))') &
   "  [-RGB_flip]  allows you to do a permutation on RGB   "
  write(kpt6,'(1(a55))') &
-  "               vals in a color map to see what happens:"
+  "               in a color map to see what happens:     "
  write(kpt6,'(1(a55))') &
   "                                                       "
  write(kpt6,'(1(a55))') &
   "    -123          DEFAULT if none specified; i.e., RGB "
  write(kpt6,'(1(a55))') &
-  "    -132            permutation that takes RGB --> GRB "
+  "    -132          permutation....................(GR)B "
  write(kpt6,'(1(a55))') &
-  "    -213            permutation that takes RGB --> RBG "
+  "    -213          permutation....................(RB)G "
  write(kpt6,'(1(a55))') &
-  "    -231            permutation that takes RGB --> BRG "
+  "    -231          permutation....................(BR)G "
  write(kpt6,'(1(a55))') &
-  "    -312            permutation that takes RGB --> GBR "
+  "    -312          permutation....................(GB)R "
  write(kpt6,'(1(a55))') &
-  "    -321            permutation that takes RGB --> BGR "
+  "    -321          permutation....................(BG)R "
 
 end if found_params
+
+!====================================!
+! Run a program based on user input. !
+!====================================!
+run_program: if (n>0) then
+
+   ! Apply color map permutations.
+   if (npr>1.and.cmap(1:9).ne.'grayscale') then
+      do idx=1,70,1
+         if (cmap(idx:idx+4).eq.'1,2,3') then
+            if (npr.eq.2) then
+               cmap(idx:idx+4)='1,3,2'
+            else if (npr.eq.3) then
+               cmap(idx:idx+4)='2,1,3'
+            else if (npr.eq.4) then
+               cmap(idx:idx+4)='2,3,1'
+            else if (npr.eq.5) then
+               cmap(idx:idx+4)='3,1,2'
+            else if (npr.eq.6) then
+               cmap(idx:idx+4)='3,2,1'
+            end if
+         end if
+      end do
+   end if
+
+   ! Compute CPU time and write to screen.
+   call timestamp( cpu2 )
+
+   write( kpt6, 201 ) cpu2-cpu1
+
+end if run_program
+
+
 write(*,*) cmap
 end program bitwhiz
