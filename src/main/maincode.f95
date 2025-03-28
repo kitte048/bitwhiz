@@ -25,9 +25,12 @@ found_params: if (n>0) then
 
   call get_command_argument(idx,aname)
 
+  !======================================================!
+  ! Loop over cases that are INDEPENDENT of other cases. !
+  !======================================================!
   select_params: select case(adjustl(aname))
 
-   ! ...
+   ! ... Under Construction ...
    case("-bentcw")
       cmap(1:17)='bentcoolwarm1,2,3'
    case("-blackbody")
@@ -58,14 +61,25 @@ found_params: if (n>0) then
       npr=5
    case("-321")
       npr=6
+
+   ! Draw color maps.
+   case("-allmaps")
+    call draw_colormaps()
+
   end select select_params
  end do loop_params
 
-! No command line arguments were found.
+!=======================================!
+! No command line arguments were found. !
+!=======================================!
+!
+! Put the help menu here.
 else
  ! 1234567890123456789012345678901234567890123456789012345
  write(kpt6,'(1(a55))') &
-  "usage: bitwhiz [-colormap] [-RGB_flip]                 "
+  "usage: bitwhiz [-colormap] [-RGB_flip] [-allmaps]      "
+ write(kpt6,'(1(a55))') &
+  "          [-showmap]                                   "
  write(kpt6,'(1(a55))') &
   "                                                       "
 !=========================================!
@@ -76,23 +90,23 @@ else
  write(kpt6,'(1(a55))') &
   "                                                       "
  write(kpt6,'(1(a55))') &
-  "    -bentcw      **BLUE-WHITE-RED, BENT                "
+  "   -bentcw       BLUE-WHITE-RED, BENT*                 "
  write(kpt6,'(1(a55))') &
-  "    -blackbody   **BLACK-RED-ORANGE-YELLOW-WHITE       "
+  "   -blackbody    BLACK-RED-ORANGE-YELLOW-WHITE*        "
  write(kpt6,'(1(a55))') &
-  "    -ekindlmann  **BLACK-BLUE-GREEN-YELLOW-PEACH-PINK-W"
+  "   -ekindlmann   BLACK-BLUE-GREEN-YELLOW-PEACH-PINK-W* "
  write(kpt6,'(1(a55))') &
-  "    -grayscale   ^^BLACK-WHITE, LINEAR                 "
+  "   -grayscale    BLACK-WHITE, LINEAR^^                 "
  write(kpt6,'(1(a55))') &
-  "    -inferno     **BLACK-PURPLE-PINK-ORANGE-YELLOW     "
+  "   -inferno      BLACK-PURPLE-PINK-ORANGE-YELLOW*      "
  write(kpt6,'(1(a55))') &
-  "    -kindlmann   **BLACK-BLUE-GREEN-YELLOW-PALE        "
+  "   -kindlmann    BLACK-BLUE-GREEN-YELLOW-PALE*         "
  write(kpt6,'(1(a55))') &
-  "    -plasma      **BLUE-PURPLE-PEACH-ORANGE-YELLOW     "
+  "   -plasma       BLUE-PURPLE-PEACH-ORANGE-YELLOW*      "
  write(kpt6,'(1(a55))') &
-  "    -smoothcw    **BLUE-WHITE-RED, SMOOTH              "
+  "   -smoothcw     BLUE-WHITE-RED, SMOOTH*               "
  write(kpt6,'(1(a55))') &
-  "    -viridis     **PURPLE-BLUE-GREEN-YELLOW            "
+  "   -viridis      PURPLE-BLUE-GREEN-YELLOW*             "
  write(kpt6,'(1(a55))') &
   "                                                       "
  write(kpt6,'(1(a55))') &
@@ -100,9 +114,9 @@ else
  write(kpt6,'(1(a55))') &
   "                                                       "
  write(kpt6,'(1(a55))') &
-  "       **RGB Values are 64-bit (8 byte), 1024 colors   "
+  "      * RGB Values are 64-bit (8 byte), 1024 colors    "
  write(kpt6,'(1(a55))') &
-  "       ^^RGB Values are integers (R=G=B), 256 colors   "
+  "      ^^ RGB Values are integers (R=G=B), 256 colors   "
  write(kpt6,'(1(a55))') &
   "                                                       "
 !=====================================!
@@ -115,17 +129,30 @@ else
  write(kpt6,'(1(a55))') &
   "                                                       "
  write(kpt6,'(1(a55))') &
-  "    -123          DEFAULT if none specified; i.e., RGB "
+  "   -123          DEFAULT if none specified; i.e., RGB  "
  write(kpt6,'(1(a55))') &
-  "    -132          permutation....................(GR)B "
+  "   -132          permutation....................(GR)B  "
  write(kpt6,'(1(a55))') &
-  "    -213          permutation....................(RB)G "
+  "   -213          permutation....................(RB)G  "
  write(kpt6,'(1(a55))') &
-  "    -231          permutation....................(BR)G "
+  "   -231          permutation....................(BR)G  "
  write(kpt6,'(1(a55))') &
-  "    -312          permutation....................(GB)R "
+  "   -312          permutation....................(GB)R  "
  write(kpt6,'(1(a55))') &
-  "    -321          permutation....................(BG)R "
+  "   -321          permutation....................(BG)R  "
+ write(kpt6,'(1(a55))') &
+  "                                                       "
+! ...
+ write(kpt6,'(1(a55))') &
+  "  [-allmaps]   draws every available color map in the  "
+ write(kpt6,'(1(a55))') &
+  "               bitwhiz code, including permutations    "
+ write(kpt6,'(1(a55))') &
+  "                                                       "
+ write(kpt6,'(1(a55))') &
+  "  [-showmap]   draws current color map, if specified   "
+ write(kpt6,'(1(a55))') &
+  "                                                       "
 
 end if found_params
 
@@ -153,7 +180,26 @@ run_program: if (n>0) then
       end do
    end if
 
-   ! Compute CPU time and write to screen.
+   loop_params_2: do idx=1,n,1
+
+    call get_command_argument(idx,aname)
+
+    !=============================================!
+    ! Loop over cases that DEPEND on other cases. !
+    !=============================================!
+    select_params_2: select case(adjustl(aname))
+
+     ! Draw current color map.
+     case("-showmap")
+      call draw_singlemap(cmap)
+
+    end select select_params_2
+
+   end do loop_params_2
+
+   !=======================================!
+   ! Compute CPU time and write to screen. !
+   !=======================================!
    call timestamp( cpu2 )
 
    write( kpt6, 201 ) cpu2-cpu1
@@ -161,5 +207,4 @@ run_program: if (n>0) then
 end if run_program
 
 
-write(*,*) cmap
 end program bitwhiz

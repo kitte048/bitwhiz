@@ -28,6 +28,8 @@
 	src/colormaps/cmap_extendedkindlmann.o \
 	src/colormaps/cmap_smoothcoolwarm.o \
 	src/colormaps/cmap_bentcoolwarm.o \
+	src/drawings/draw_colormaps.o \
+	src/drawings/draw_singlemap.o \
 	src/main/bmpmaker.o \
 	src/main/bmpreader.o \
 	src/utils/random.o \
