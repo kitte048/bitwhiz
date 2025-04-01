@@ -9,7 +9,7 @@ FC = gfortran
 FCFLAGS = -O3
 
 # Start of the makefile (make object files only and do not link them)
-SRCS = draw_colormaps.f95 draw_singlemap.f95
+SRCS = draw_colormaps.f95 draw_singlemap.f95 draw_blobs.f95
 OBJS = $(SRCS:.f95=.o)
 EXECS = server
 
@@ -20,6 +20,8 @@ draw_colormaps.o: draw_colormaps.f95
 	$(FC) $(INCLUDES) -c $(FCFLAGS) draw_colormaps.f95
 draw_singlemap.o: draw_singlemap.f95
 	$(FC) $(INCLUDES) -c $(FCFLAGS) draw_singlemap.f95
+draw_blobs.o: draw_blobs.f95
+	$(FC) $(INCLUDES) -c $(FCFLAGS) draw_blobs.f95
 
 # Extra targets.
 clean:

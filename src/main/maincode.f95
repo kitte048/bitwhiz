@@ -193,6 +193,10 @@ run_program: if (n>0) then
      case("-showmap")
       call draw_singlemap(cmap)
 
+     ! Draw the blobs demo code.
+     case("-draw_blobs")
+      call draw_blobs(cmap)
+
     end select select_params_2
 
    end do loop_params_2

@@ -7,12 +7,14 @@ FCFLAGS = -O3
 # Start of the makefile.
 SRCS = bit_mod.f95 plas_mod.f95 viri_mod.f95 \
 	kndl_mod.f95 infr_mod.f95 bbdy_mod.f95 \
-	ekdl_mod.f95 smcw_mod.f95 btcw_mod.f95
+	ekdl_mod.f95 smcw_mod.f95 btcw_mod.f95 \
+	rand_mod.f95
 OBJS = $(SRCS:.f95=.o)
 MOD_OBJS = bits.mod plasma.mod viridis.mod \
 	kindlmann.mod inferno.mod blackbody.mod \
 	extendedkindlmann.mod \
-	smoothcoolwarm.mod bentcoolwarm.mod
+	smoothcoolwarm.mod bentcoolwarm.mod \
+	random.mod
 
 server: $(OBJS)
 
@@ -35,6 +37,8 @@ smcw_mod.o: smcw_mod.f95
 	$(FC) -c $(FCFLAGS) smcw_mod.f95
 btcw_mod.o: btcw_mod.f95
 	$(FC) -c $(FCFLAGS) btcw_mod.f95
+rand_mod.o: rand_mod.f95
+	$(FC) -c $(FCFLAGS) rand_mod.f95
 
 # Extra targets.
 clean:
