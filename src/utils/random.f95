@@ -2,7 +2,7 @@ subroutine r8_uniform_01 ( scalar )
 !**********************************************************************!
 !  About:                                                              !
 !    This code is random number generator that I made myself. It uses  !
-!    the random module, which contains 10,000 random numbers based on  !
+!    the random module, which contains >10k random numbers based on    !
 !    atmospheric noise. Then, using the bootstrap sampling method, it  !
 !    returns one of these values at random.                            !
 !                                                                      !

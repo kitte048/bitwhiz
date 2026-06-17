@@ -33,8 +33,10 @@
 	src/drawings/draw_colormaps.o \
 	src/drawings/draw_singlemap.o \
 	src/drawings/draw_blobs.o \
+	src/drawings/draw_cylflow.o \
 	src/main/bmpmaker.o \
 	src/main/bmpreader.o \
+	src/main/recolor.o \
 	src/utils/random.o \
 	src/utils/timestamp.o
   BIN = \

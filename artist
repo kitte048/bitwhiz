@@ -1,0 +1,33 @@
+#!/bin/bash -f
+#######
+#
+#   -bentcw       BLUE-WHITE-RED, BENT*                 
+#   -blackbody    BLACK-RED-ORANGE-YELLOW-WHITE*        
+#   -ekindlmann   BLACK-BLUE-GREEN-YELLOW-PEACH-PINK-W* 
+#   -grayscale    BLACK-WHITE, LINEAR^^                 
+#   -inferno      BLACK-PURPLE-PINK-ORANGE-YELLOW*      
+#   -kindlmann    BLACK-BLUE-GREEN-YELLOW-PALE*         
+#   -plasma       BLUE-PURPLE-PEACH-ORANGE-YELLOW*      
+#   -smoothcw     BLUE-WHITE-RED, SMOOTH*               
+#   -viridis      PURPLE-BLUE-GREEN-YELLOW*
+#
+#   -123          DEFAULT if none specified; i.e., RGB  
+#   -132          permutation....................(GR)B  
+#   -213          permutation....................(RB)G  
+#   -231          permutation....................(BR)G  
+#   -312          permutation....................(GB)R  
+#   -321          permutation....................(BG)R
+#
+#######
+
+count=0
+for cmap in "-bentcw" "-blackbody" "-ekindlmann" "-inferno" \
+	"-kindlmann" "-plasma" "-smoothcw" "-viridis"; do
+  for rgb in "-123" "-132" "-213" "-231" "-312" "-321"; do
+    ((count++))
+    echo " running: bitwhiz -recolor $cmap $rgb"
+    ./bin/bitwhiz -recolor $cmap $rgb
+    mv Testing.bmp Testing-$count.bmp
+  done
+done
+

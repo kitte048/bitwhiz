@@ -197,6 +197,14 @@ run_program: if (n>0) then
      case("-draw_blobs")
       call draw_blobs(cmap)
 
+     ! Draws the potential flow around a cylinder (Under Construction).
+     case("-draw_cylflow")
+      call draw_cylflow(cmap)
+
+     ! Recolor Image (Under Construction).
+     case("-recolor")
+       call recolor(cmap)
+
     end select select_params_2
 
    end do loop_params_2
