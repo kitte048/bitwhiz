@@ -25,7 +25,7 @@ real(kind=dp), intent(out) :: scalar
 ! Data dictionary: Subroutine Internal Variables.                      !
 !**********************************************************************!
 real(kind=dp) :: u               ! Resampled dataset
-integer(kind=int64) :: i, rand_index
+integer(kind=int64) :: rand_index
 
 ! Bootstrap method.
 call random_number(u)            ! Generate a random number in (0,1)

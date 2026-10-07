@@ -40,14 +40,12 @@ integer, parameter :: i32 = selected_int_kind(9)       ! 4 byte signed int
 !    :%s/_dp/_dp,/g
 !
 integer(kind=i32), parameter :: ncls=1024
-real(kind=z), dimension(ncls,3) :: ctable
-real(kind=z), dimension(ncls) :: scalar
-
-contains
-
-   subroutine init_ctable()
-
-      ctable(   1:254,:) = reshape([ &
+!
+!  Fortran allows at most 255 continuation lines per statement, so the
+!  data are declared as private pieces of at most 254 lines and joined
+!  into the public parameter(s) at the end of this module.
+!
+real(kind=z), parameter, private :: ctab1(762) = [ &
          ! first 254 RGB triples
 0.0_z,                 0.0_z,                  0.0_z,                 &
 0.004388333464672307_z,0.0002510598005583307_z,0.003886323543093129_z,&
@@ -303,9 +301,9 @@ contains
 0.013009583039065102_z,0.25570652421902196_z,  0.2666790310018627_z,  &
 0.012798369738844455_z,0.25690463532323354_z,  0.26551483548768867_z, &
 0.012603825019058908_z,0.25809850661948847_z,  0.2643620811011754_z   &
-      ], [254,3], order=[2,1])
+]
 
-      ctable(255:508,:) = reshape([ &
+real(kind=z), parameter, private :: ctab2(762) = [ &
          ! next 254 RGB triples
 0.01275991596150379_z, 0.2592724949336677_z,   0.2631995679966178_z,  &
 0.012600555514774391_z,0.2604579872820769_z,   0.26207095816475595_z, &
@@ -561,9 +559,9 @@ contains
 0.45886863228073865_z, 0.4829961367581194_z,   0.02306132093356727_z, &
 0.46293729554488233_z, 0.48314353932436965_z,  0.023364396584410575_z,&
 0.46697827360629224_z, 0.4832945140153991_z,   0.023200768267367798_z &
-      ], [254,3], order=[2,1])
+]
 
-      ctable(509:762,:) = reshape([ &
+real(kind=z), parameter, private :: ctab3(762) = [ &
          ! next 254 RGB triples
 0.47101528077827254_z, 0.48343822863164104_z,  0.023023662809603933_z,&
 0.47506694539099653_z, 0.4835649769147183_z,   0.02329220699407061_z, &
@@ -819,9 +817,9 @@ contains
 0.9796117542850992_z,  0.5735813839082803_z,   0.9231834388423696_z,  &
 0.9797080863092907_z,  0.5745777754858128_z,   0.9275516446108367_z,  &
 0.9796986511933835_z,  0.5756564184633255_z,   0.9318031746870723_z   &
-      ], [254,3], order=[2,1])
+]
 
-      ctable(763:1016,:) = reshape([ &
+real(kind=z), parameter, private :: ctab4(762) = [ &
          ! final 254 RGB triples
 0.9798043280961165_z,  0.5766481086773544_z,   0.9361331391307149_z,  &
 0.9798048968108731_z,  0.5777223470259705_z,   0.9403432618796511_z,  &
@@ -1077,9 +1075,9 @@ contains
 0.9657381692836499_z,  0.9944967216719461_z,   0.998355608455732_z,   &
 0.9682016858576009_z,  0.9953353998528524_z,   0.9984596262347013_z,  &
 0.9708006361572853_z,  0.9961334233781528_z,   0.9985794526038344_z   &
-      ], [254,3], order=[2,1])
+]
 
-      ctable(1017:1024,:) = reshape([ &
+real(kind=z), parameter, private :: ctab5(24) = [ &
          ! remainder has 8 RGB triples
 0.9735371205743796_z,  0.9968893889902878_z,   0.9987199039838791_z,  &
 0.9765162736400778_z,  0.9975763014333853_z,   0.9988519534347854_z,  &
@@ -1089,9 +1087,9 @@ contains
 0.9910484728803649_z,  0.9995463829504981_z,   0.9994618848738758_z,  &
 0.9955150748529783_z,  0.9997862270371457_z,   0.9996467170920046_z,  &
 1.0_z,                 1.0_z,                  1.0_z                 &
-      ], [8,3], order=[2,1])
+]
 
-      scalar(   1:254) = [ &
+real(kind=z), parameter, private :: scal1(254) = [ &
          ! first 254 scalar values
 0.0_z, &                    
 0.0009775171065493646_z, &  
@@ -1347,9 +1345,9 @@ contains
 0.24535679374389052_z, &    
 0.24633431085043989_z, &    
 0.24731182795698925_z  &    
-      ]    
+]
 
-      scalar( 255:508) = [ &
+real(kind=z), parameter, private :: scal2(254) = [ &
          ! next 254 scalar values
 0.2482893450635386_z, &     
 0.24926686217008798_z, &    
@@ -1605,9 +1603,9 @@ contains
 0.49364613880742914_z, &    
 0.4946236559139785_z, &     
 0.49560117302052786_z  &    
-      ]
+]
 
-      scalar( 509:762) = [ &
+real(kind=z), parameter, private :: scal3(254) = [ &
          ! next 254 scalar values
 0.4965786901270772_z, &     
 0.4975562072336266_z, &     
@@ -1863,9 +1861,9 @@ contains
 0.7419354838709677_z, &     
 0.7429130009775171_z, &     
 0.7438905180840665_z  &     
-      ]
+]
 
-      scalar( 763:1016) = [ &
+real(kind=z), parameter, private :: scal4(254) = [ &
          ! final 254 scalar values
 0.7448680351906158_z, &     
 0.7458455522971652_z, &     
@@ -2121,9 +2119,9 @@ contains
 0.9902248289345064_z, &     
 0.9912023460410557_z, &     
 0.9921798631476051_z  &     
-      ]
+]
 
-      scalar(1017:1024) = [ &
+real(kind=z), parameter, private :: scal5(8) = [ &
          ! remainder has 8 scalar values
 0.9931573802541545_z, &     
 0.9941348973607038_z, &     
@@ -2133,8 +2131,11 @@ contains
 0.9980449657869013_z, &     
 0.9990224828934506_z, &     
 1.0_z &
-      ]
+]
 
-   end subroutine init_ctable
+real(kind=z), parameter, dimension(ncls,3) :: ctable = &
+   reshape([ctab1, ctab2, ctab3, ctab4, ctab5], [ncls,3], order=[2,1])
+real(kind=z), parameter, dimension(ncls) :: scalar = &
+   [scal1, scal2, scal3, scal4, scal5]
 
 end module extendedkindlmann

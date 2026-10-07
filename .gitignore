@@ -1,36 +1,53 @@
-# Prerequisites
-*.d
+#**********************************************************************#
+#  .gitignore for bitwhiz (Fortran, gfortran, make, macOS)             #
+#                                                                      #
+#  Rule of thumb: commit what a person writes; ignore what the build   #
+#  or a run writes. Anything below can be regenerated with 'make' or   #
+#  by re-running the code.                                             #
+#                                                                      #
+#  NOTE: .gitignore only affects files git is NOT already tracking.    #
+#  To stop tracking a file that was committed earlier:                 #
+#     git rm --cached <file>      (keeps your local copy)              #
+#**********************************************************************#
 
-# Compiled Object files
-*.slo
-*.lo
+# ---- Fortran build products ------------------------------------------
 *.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
 *.mod
 *.smod
-
-# Compiled Static libraries
-*.lai
-*.la
 *.a
-*.lib
+*.so
+*.dylib
+*.d
 
-# Executables
-*.exe
+# ---- Executables -----------------------------------------------------
+# bin/ holds the built program(s); keep only its README.
+bin/*
+!bin/README.md
 *.out
-*.app
-bin/bitwhiz
+*.exe
+*.dSYM/
 
-# Output images
-Testing-*.bmp
+# ---- Out-of-tree build and run directories (if used) ----------------
+build/
+runs/
+
+# ---- Generated images ------------------------------------------------
+# Bitmaps are outputs; they can be recreated from the code. To commit
+# a specific one on purpose (e.g. a README figure), whitelist it:
+#     !docs/example.bmp
+*.bmp
+
+# ---- macOS -----------------------------------------------------------
+.DS_Store
+._*
+
+# ---- Editors (vi/vim, emacs, VS Code) -------------------------------
+*.swp
+*.swo
+*~
+\#*\#
+.vscode/
+
+# ---- Python helper scripts -------------------------------------------
+__pycache__/
+*.pyc
