@@ -3,15 +3,29 @@ subroutine draw_colormaps()
 !  About:                                                              !
 !    Single routine to draw all pre-programmed color maps.             !
 !                                                                      !
+!    Each map is drawn on a square image. The scalar runs 0 -> 1 from  !
+!    the lower-left corner to the upper-right corner. With ipat=2, a   !
+!    small sine ripple rides on that ramp: zero amplitude along the    !
+!    upper-left edge, growing toward the lower-right corner. Equal     !
+!    ripples should look equally visible all along the diagonal; where !
+!    they fade, the color map is perceptually flat. After P. Kovesi,   !
+!    "Good Colour Maps: How to Design Them", arXiv:1509.03700 (2015).  !
+!                                                                      !
+!    With anoise > 0, a per-pixel grain of +/- anoise is added, drawn  !
+!    from the atmospheric-noise list via r8_uniform_01 (utils).        !
+!                                                                      !
 !  Record of revisions:                                                !
 !      Date       Programmer        Description of change              !
 !      ====       ==========        =====================              !
 !    11/25/23    D. E. Kittell      Original code                      !
 !    10/06/26    Claude (for DEK)   F2018 clean: character(len=),      !
 !                                   allocatable fcn/RGB, drop int64    !
+!    10/06/26    Claude (for DEK)   Square image, diagonal ramp, and   !
+!                                   Kovesi-style sine-ramp test (ipat) !
+!    10/06/26    Claude (for DEK)   Atmospheric-noise grain (anoise)   !
 !                                                                      !
 !**********************************************************************!
-use bits, only: int32,dp,kpt6,one
+use bits, only: int32,dp,kpt6,zero,half,one,two,pi
 implicit none
 
 !**********************************************************************!
@@ -19,8 +33,16 @@ implicit none
 !**********************************************************************!
 integer(kind=int32) :: i,j,k
 integer(kind=int32) :: istat            ! allocation status
-integer(kind=int32), parameter :: nx=768
-integer(kind=int32), parameter :: ny=96
+integer(kind=int32), parameter :: n=512       ! square image, n x n pixels
+integer(kind=int32), parameter :: nx=n
+integer(kind=int32), parameter :: ny=n
+integer(kind=int32), parameter :: ipat=2      ! 1 = diagonal ramp
+                                              ! 2 = ramp + sine ripple test
+real(kind=dp), parameter :: amax=0.05_dp      ! max ripple amplitude
+real(kind=dp), parameter :: ncyc=60.0_dp      ! ripple cycles along diagonal
+real(kind=dp), parameter :: anoise=0.02_dp    ! grain amplitude (0 = off)
+real(kind=dp) :: r                            ! atmospheric noise in [0,1)
+real(kind=dp) :: x,y,t,u,amp                  ! image coordinates
 real(kind=dp), dimension(:,:), allocatable :: fcn       ! real vals [0,1]
 character(len=1), dimension(:,:,:), allocatable :: RGB  ! RGB (optional)
 character(len=80) :: bout
@@ -35,10 +57,33 @@ if (istat /= 0) then
    return
 end if
 
+!*** Same grain every run (set repeatable=.false. for fresh grain).
+call random_init( repeatable=.true., image_distinct=.false. )
+
 !*** Make the image and write to file.
+!    bmpmaker writes row j=ny first, which is the BOTTOM of the image,
+!    so x runs left -> right and y runs bottom -> top, both on [0,1].
+!    t is the diagonal coordinate (0 lower-left, 1 upper-right) and
+!    u the cross-diagonal one (0 upper-left, 1 lower-right).
 do i=1,nx,1
    do j=1,ny,1
-      fcn( i, j ) = ( i - one ) / ( nx - one )
+      x = ( i - one ) / ( nx - one )
+      y = ( ny - j ) / ( ny - one )
+      t = half * ( x + y )
+      u = half * ( x - y + one )
+      pattern_if: if (ipat == 1) then
+         fcn( i, j ) = t
+      else
+         ! Ramp scaled into [amax, 1-amax] so the ripple stays in [0,1].
+         amp = amax * u**2
+         fcn( i, j ) = amax + ( one - two * amax ) * t &
+                     + amp * sin( two * real(pi, kind=dp) * ncyc * t )
+      end if pattern_if
+      if (anoise > zero) then
+         call r8_uniform_01( r )
+         fcn( i, j ) = fcn( i, j ) + anoise * ( two * r - one )
+      end if
+      fcn( i, j ) = min( max( fcn( i, j ), zero ), one )
    end do
 end do
 
