@@ -11,6 +11,9 @@ subroutine bmpmaker(nx,ny,fcn,RGB,bout,cmap)
 !      Date       Programmer        Description of change              !
 !      ====       ==========        =====================              !
 !    11/19/23    D. E. Kittell      Started over from bitart project.  !
+!    10/06/26    Claude (for DEK)   F2018 clean: character(len=1),     !
+!                                   explicit int16 for ilast, set the  !
+!                                   row padding bytes to zero          !
 !                                                                      !
 !**********************************************************************!
 use bits, only: dp,int8,int16,int32,j,i,k,istat,one,thr,for,eig,ten, &
@@ -26,7 +29,7 @@ implicit none
 character(len=80), intent(in) :: bout,cmap             ! string params
 integer(kind=int32), intent(in) :: nx,ny               ! dimensions
 real(kind=dp), dimension(nx,ny), intent(in) :: fcn     ! values [0,1]
-character*1, dimension(nx,ny,3), intent(inout) :: RGB  ! (optional)
+character(len=1), dimension(nx,ny,3), intent(inout) :: RGB  ! (optional)
 
 !**********************************************************************!
 ! Data dictionary: Subroutine Internal Variables.
@@ -60,7 +63,7 @@ else
    do i=ibeg,iend,1
       if ( ((bout(i:i).eq.' ') .or. (bout(i:i).eq.'')) .and. &
              ilast .lt. 0 ) then
-         ilast = i - 1
+         ilast = int( i - 1, int16 )
       end if
    end do
    bfile = trim(adjustl(bout(1:ilast)))//".bmp"
@@ -186,6 +189,7 @@ else
             "   Zero padding is required to make bitmap image."
          write(kpt6,*) "    bytes = ",nzp
          allocate(zpad(nzp))
+         zpad = 0_int8
 
          ! Lines (bottom to top).
          do j=ny,1,-1

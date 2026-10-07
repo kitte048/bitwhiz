@@ -6,7 +6,11 @@ INCLUDES = -I$(INCLUDE_PATH)
 FC = gfortran
 
 # The flags
-FCFLAGS = -O3
+FCFLAGS = -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising \
+	-Waliasing -Wampersand -Wconversion -Wcharacter-truncation \
+	-Wline-truncation -fcheck=all -fbacktrace -g -O0 \
+	-ffpe-trap=invalid,zero,overflow -finit-real=snan \
+	-finit-integer=-999999 -fconvert=little-endian -fimplicit-none
 
 # Start of the makefile (make object files only and do not link them)
 SRCS = cmap_grayscale.f95 cmap_plasma.f95 cmap_viridis.f95 \

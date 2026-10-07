@@ -1,6 +1,7 @@
 #Date: 11-25-23
 #Author: David Kittell
-#Revision: 1.0
+#Revision: 1.1  (10-06-26, with Claude: module dependencies, -J, safe
+#                link and clean; see the NOTES blocks below)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -12,39 +13,60 @@ include ./src/objslist
 FC = gfortran
 
 # The flags
-FCFLAGS = -O3
+FCFLAGS = -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising \
+	-Waliasing -Wampersand -Wconversion -Wcharacter-truncation \
+	-Wline-truncation -fcheck=all -fbacktrace -g -O0 \
+	-ffpe-trap=invalid,zero,overflow -finit-real=snan \
+	-finit-integer=-999999 -fconvert=little-endian -fimplicit-none
 
 # Set up path to Fortran module files.
+############################################################
+###  NOTES: -J writes every .mod straight into src/modules,
+###  so no loose .mod files land in the top folder and the
+###  old 'mv *.mod' clean-up step is no longer needed.
+############################################################
 INCLUDE_PATH = ./src/modules
-INCLUDES = -I$(INCLUDE_PATH)
+INCLUDES = -I$(INCLUDE_PATH) -J$(INCLUDE_PATH)
 
 .SUFFIXES: .o .mod .f95
 
 EXECS = ./bin/bitwhiz
 
-############################################################
-###  NOTES: this simple target works, because the modules
-###  are compiled first. I.E., MOD_OBJS is the first set
-###  of objects to appear in the target.
-############################################################
-
 # Targets
-bitwhiz: $(MOD_OBJS) $(LIB_OBJS) $(BIN)
-	$(FC) $(INCLUDES) -o bitwhiz $(BIN) $(MOD_OBJS) \
-		$(LIB_OBJS); \
-	mv bitwhiz ./bin/bitwhiz ; \
-	if [ -f bits.mod ]; then \
-	 echo "cleaning up loose module files..."; \
-	 mv *.mod $(INCLUDE_PATH)/; \
-	fi;
+############################################################
+###  NOTES: the target is the real file ./bin/bitwhiz, so
+###  'make' with nothing changed does nothing. The link
+###  writes straight into ./bin, and if it fails, make
+###  stops with an error (no stale executable left behind).
+############################################################
+bitwhiz: $(EXECS)
+
+$(EXECS): $(MOD_OBJS) $(LIB_OBJS) $(BIN)
+	@mkdir -p ./bin
+	$(FC) $(INCLUDES) -o $(EXECS) $(BIN) $(MOD_OBJS) $(LIB_OBJS)
+
+############################################################
+###  NOTES: every non-module object depends on the module
+###  objects. Fortran copies parameter values into each file
+###  that uses them, so editing a module must recompile its
+###  users. This one line also makes 'make -j' safe.
+############################################################
+$(LIB_OBJS) $(BIN): $(MOD_OBJS)
 
 clean:
-	rm $(EXECS) $(MOD_OBJS) $(LIB_OBJS) $(BIN) ; \
-	rm $(MOD_FILS) ; \
-	rm bitwhiz *.mod *.bmp;
+	rm -f $(EXECS) $(MOD_OBJS) $(LIB_OBJS) $(BIN) $(MOD_FILS)
+	rm -f bitwhiz *.mod
+
+############################################################
+###  NOTES: images are outputs, not build products, so they
+###  have their own target ('make cleanbmp'); 'make clean'
+###  no longer deletes every .bmp in the top folder.
+############################################################
+cleanbmp:
+	rm -f *.bmp
 
 .f95.o:
 	$(FC) $(INCLUDES) -c $(FCFLAGS) $< -o $@
 
-.PHONY : bitwhiz
+.PHONY : bitwhiz clean cleanbmp
 # End of the makefile

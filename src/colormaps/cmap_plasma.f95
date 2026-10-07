@@ -16,6 +16,12 @@ subroutine cmap_plasma(nx,ny,fcn,RGB,npr)
 !      Date       Programmer        Description of change              !
 !      ====       ==========        =====================              !
 !    11/26/23    D. E. Kittell      Original code.                     !
+!    10/06/26    Claude (for DEK)   F2018 clean: character(len=), int32 !
+!                                   locals, explicit int() truncation  !
+!    10/06/26    Claude (for DEK)   Blend real channel values, then    !
+!                                   truncate once (was int, then blend)!
+!    10/06/26    Claude (for DEK)   Round to nearest, nint() (was int  !
+!                                   truncation) for the 0-255 channels !
 !                                                                      !
 !**********************************************************************!
 use bits, only: int16,int32,dp,zero,one,i,j,k
@@ -28,14 +34,15 @@ implicit none
 integer(kind=int32), intent(in) :: nx,ny               ! pixel size
 integer(kind=int16), intent(in) :: npr                 ! permutation
 real(kind=dp), dimension(nx,ny), intent(in) :: fcn     ! real vals [0,1]
-character*1, dimension(nx,ny,3), intent(out) :: RGB    ! RGB values
+character(len=1), dimension(nx,ny,3), intent(out) :: RGB    ! RGB values
 
 !**********************************************************************!
 ! Data dictionary: Subroutine Internal Variables.
 !**********************************************************************!
-integer(kind=int32) :: i1,i2,a,b                       ! color indices
-integer(kind=int16) :: ch1,ch2,ch3      ! 0-255 channel value
-integer(kind=int16), dimension(3) :: id ! column ID for permutation
+integer(kind=int32) :: i1,i2                           ! color indices
+real(kind=dp) :: a,b                                   ! channel ends [0,255]
+integer(kind=int32) :: ch1,ch2,ch3      ! 0-255 channel value
+integer(kind=int32), dimension(3) :: id ! column ID for permutation
 real(kind=dp) :: val                    ! original values check if [0,1]
 real(kind=dp) :: x1,x2,w1,w2            ! constants for interpolation
 
@@ -97,17 +104,17 @@ do i=1,nx,1
       ! Ch1 - Blending Analysis.
       a = ctable( i1, id(1) ) * 255.0_dp
       b = ctable( i2, id(1) ) * 255.0_dp
-      ch1 = min(max(int( w1 * a + w2 * b ),0),255)
+      ch1 = min(max(nint( w1 * a + w2 * b ),0),255)
 
       ! Ch2 - Blending Analysis.
       a = ctable( i1, id(2) ) * 255.0_dp
       b = ctable( i2, id(2) ) * 255.0_dp
-      ch2 = min(max(int( w1 * a + w2 * b ),0),255)
+      ch2 = min(max(nint( w1 * a + w2 * b ),0),255)
 
       ! Ch3 - Blending Analysis.
       a = ctable( i1, id(3) ) * 255.0_dp
       b = ctable( i2, id(3) ) * 255.0_dp
-      ch3 = min(max(int( w1 * a + w2 * b ),0),255)
+      ch3 = min(max(nint( w1 * a + w2 * b ),0),255)
 
       ! Package the results.
       RGB(i,j,1) = achar(ch3)
