@@ -4,15 +4,19 @@ subroutine draw_colormaps()
 !    Single routine to draw all pre-programmed color maps.             !
 !                                                                      !
 !    Each map is drawn on a square image. The scalar runs 0 -> 1 from  !
-!    the lower-left corner to the upper-right corner. With ipat=2, a   !
-!    small sine ripple rides on that ramp: zero amplitude along the    !
-!    upper-left edge, growing toward the lower-right corner. Equal     !
-!    ripples should look equally visible all along the diagonal; where !
-!    they fade, the color map is perceptually flat. After P. Kovesi,   !
-!    "Good Colour Maps: How to Design Them", arXiv:1509.03700 (2015).  !
+!    the lower-left corner to the upper-right corner. With ipat=2 the  !
+!    line y=x splits the image: the upper-left triangle shows the      !
+!    straight ramp, and in the lower-right triangle a small sine       !
+!    ripple rides on the same ramp, growing toward the lower-right     !
+!    corner.                                                           !
+!    Equal ripples should look equally visible all along the diagonal; !
+!    where they fade, the color map is perceptually flat. After        !
+!    P. Kovesi, "Good Colour Maps: How to Design Them",                !
+!    arXiv:1509.03700 (2015).                                          !
 !                                                                      !
-!    With anoise > 0, a per-pixel grain of +/- anoise is added, drawn  !
-!    from the atmospheric-noise list via r8_uniform_01 (utils).        !
+!    With anoise > 0, a per-pixel grain of +/- anoise is added (only   !
+!    in the lower-right triangle when ipat=2), drawn from the          !
+!    atmospheric-noise list via r8_uniform_01 (utils).                 !
 !                                                                      !
 !  Record of revisions:                                                !
 !      Date       Programmer        Description of change              !
@@ -23,6 +27,8 @@ subroutine draw_colormaps()
 !    10/06/26    Claude (for DEK)   Square image, diagonal ramp, and   !
 !                                   Kovesi-style sine-ramp test (ipat) !
 !    10/06/26    Claude (for DEK)   Atmospheric-noise grain (anoise)   !
+!    10/08/26    Claude (for DEK)   ipat=2: plain ramp above y=x,      !
+!                                   ripple + grain below it            !
 !                                                                      !
 !**********************************************************************!
 use bits, only: int32,dp,kpt6,zero,half,one,two,pi
@@ -43,6 +49,7 @@ real(kind=dp), parameter :: ncyc=60.0_dp      ! ripple cycles along diagonal
 real(kind=dp), parameter :: anoise=0.02_dp    ! grain amplitude (0 = off)
 real(kind=dp) :: r                            ! atmospheric noise in [0,1)
 real(kind=dp) :: x,y,t,u,amp                  ! image coordinates
+logical :: textured                           ! ripple/grain at this pixel?
 real(kind=dp), dimension(:,:), allocatable :: fcn       ! real vals [0,1]
 character(len=1), dimension(:,:,:), allocatable :: RGB  ! RGB (optional)
 character(len=80) :: bout
@@ -65,21 +72,29 @@ call random_init( repeatable=.true., image_distinct=.false. )
 !    so x runs left -> right and y runs bottom -> top, both on [0,1].
 !    t is the diagonal coordinate (0 lower-left, 1 upper-right) and
 !    u the cross-diagonal one (0 upper-left, 1 lower-right).
+!    With ipat=2 the line y=x splits the image: the upper-left triangle
+!    (y > x) gets the straight ramp only, the lower-right triangle
+!    (y <= x) gets the ripple and grain. Both use the same base ramp,
+!    so the color is continuous across the diagonal.
 do i=1,nx,1
    do j=1,ny,1
       x = ( i - one ) / ( nx - one )
       y = ( ny - j ) / ( ny - one )
       t = half * ( x + y )
       u = half * ( x - y + one )
+      textured = ( ipat == 1 ) .or. ( y <= x )
       pattern_if: if (ipat == 1) then
          fcn( i, j ) = t
+      else if (.not. textured) then
+         ! Upper-left triangle: the straight ramp alone.
+         fcn( i, j ) = amax + ( one - two * amax ) * t
       else
          ! Ramp scaled into [amax, 1-amax] so the ripple stays in [0,1].
          amp = amax * u**2
          fcn( i, j ) = amax + ( one - two * amax ) * t &
                      + amp * sin( two * real(pi, kind=dp) * ncyc * t )
       end if pattern_if
-      if (anoise > zero) then
+      if (textured .and. anoise > zero) then
          call r8_uniform_01( r )
          fcn( i, j ) = fcn( i, j ) + anoise * ( two * r - one )
       end if
