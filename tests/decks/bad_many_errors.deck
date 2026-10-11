@@ -1,0 +1,104 @@
+# expect: unknown key "bogus0" in the Run block
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00
+ Begin Run
+  t_end = 5.0
+  bogus0 = 1
+  bogus1 = 1
+  bogus2 = 1
+  bogus3 = 1
+  bogus4 = 1
+  bogus5 = 1
+  bogus6 = 1
+  bogus7 = 1
+  bogus8 = 1
+  bogus9 = 1
+  bogus10 = 1
+  bogus11 = 1
+  bogus12 = 1
+  bogus13 = 1
+  bogus14 = 1
+  bogus15 = 1
+  bogus16 = 1
+  bogus17 = 1
+  bogus18 = 1
+  bogus19 = 1
+  bogus20 = 1
+  bogus21 = 1
+  bogus22 = 1
+  bogus23 = 1
+  bogus24 = 1
+  bogus25 = 1
+  bogus26 = 1
+  bogus27 = 1
+  bogus28 = 1
+  bogus29 = 1
+  bogus30 = 1
+  bogus31 = 1
+  bogus32 = 1
+  bogus33 = 1
+  bogus34 = 1
+  bogus35 = 1
+  bogus36 = 1
+  bogus37 = 1
+  bogus38 = 1
+  bogus39 = 1
+  bogus40 = 1
+  bogus41 = 1
+  bogus42 = 1
+  bogus43 = 1
+  bogus44 = 1
+  bogus45 = 1
+  bogus46 = 1
+  bogus47 = 1
+  bogus48 = 1
+  bogus49 = 1
+  bogus50 = 1
+  bogus51 = 1
+  bogus52 = 1
+  bogus53 = 1
+  bogus54 = 1
+  bogus55 = 1
+  bogus56 = 1
+  bogus57 = 1
+  bogus58 = 1
+  bogus59 = 1
+  tracer = pdv MatX:PMMA
+ End Run
+ Begin Material Al
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ End Material
+ Begin Material MatX
+  R0 = 1.60
+  C0 = 2.50
+  S1 = 1.80
+  S2 = -0.10
+  G0 = 1.20
+ End Material
+ Begin Material PMMA
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90
+ End Material
+ Begin Stack
+  resolution = 10
+  Begin Layer
+   material = Al
+   width = 4.0
+   xvel = u_fly
+  End Layer
+  Begin Layer
+   material = MatX
+   width = 10.0
+  End Layer
+  Begin Layer
+   material = PMMA
+   width = 10.0
+  End Layer
+ End Stack
+End bitwhiz

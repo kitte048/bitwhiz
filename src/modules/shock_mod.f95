@@ -15,6 +15,8 @@ module shock
 !                (with Claude)        layer table and index functions
 !    10/10/26    D. E. Kittell        OpenMP settings
 !                (with Claude)
+!    10/11/26    D. E. Kittell        Input deck tables: run, solver,
+!                (with Claude)        material, layer, tracer
 !
 !**********************************************************************!
 !
@@ -164,14 +166,16 @@ integer(kind=int32), parameter :: ns = 2
 !**********************************************************************!
 ! Data dictionary: mesh sizes.
 !**********************************************************************!
+integer(kind=int32) :: nmat = 0  ! number of Material blocks in the deck
 integer(kind=int32) :: nlay = 0  ! number of layers in the deck's Stack
+integer(kind=int32) :: ntrc = 0  ! number of tracers in the deck's Run
 integer(kind=int32) :: kmax = 0  ! number of real cells (all layers)
 integer(kind=int32) :: imax = 0  ! last database index, 2*kmax+3
 
 !**********************************************************************!
 ! Data dictionary: OpenMP settings.
 !
-!  These are set ONCE, in maincode section 4, before the time loop.
+!  These are set ONCE, in maincode section 5, before the time loop.
 !  Module variables are shared by every thread, so they must only be
 !  written outside a parallel region, or inside an OMP SINGLE block
 !  (one thread writes, the rest wait). Never write them inside an
@@ -182,7 +186,8 @@ integer(kind=int32) :: imax = 0  ! last database index, 2*kmax+3
 !**********************************************************************!
 logical :: omp_on = .false.            ! true only in an -fopenmp build
 integer(kind=int32) :: nproc       = 1 ! threads requested by the user
-                                       ! (-np now, the deck later)
+                                       ! (deck: Run num_threads;
+                                       ! 0 means all processors)
 integer(kind=int32) :: num_procs   = 1 ! processors the system reports
 integer(kind=int32) :: max_threads = 1 ! threads the team will use,
                                        ! min(nproc,num_procs)
@@ -193,36 +198,129 @@ integer(kind=int32) :: nalive      = 0 ! threads that actually showed
                                        ! up (each one adds 1)
 
 !**********************************************************************!
-! Data dictionary: the layer table (user input, one entry per layer).
+! Data dictionary: the input deck.
 !
-!  One New_Layer block in the deck fills one layer_t. Names match the
-!  deck keys. Required keys start as "unset" (a large negative number)
-!  so the deck reader can tell "never given" from "given as zero".
-!  Optional keys start at their documented defaults.
+!  Everything below is filled by the deck reader (module deck, file
+!  deck_mod.f95) and then left alone. The names match the deck keys
+!  (input/README.md), so "R0 = 16.65" in the deck is R0 in the code.
 !
-!  The table is small (nlay entries) and is NOT used inside the time
-!  loop: setup copies the material constants into the database.
+!  Required values start as "unset" (a large negative number) so the
+!  reader can tell "never given" from "given as zero". Use is_unset()
+!  to test them. Optional values start at their documented defaults.
+!
+!  None of this is used inside the time loop: setup copies what the
+!  solver needs into the database.
 !**********************************************************************!
 real(kind=dp), parameter :: unset = -huge(one) ! "not given in the deck"
 
+!*** Where the deck came from, and its syntax version.
+character(len=256)  :: deck_file    = ' '      ! as given on the command line
+integer(kind=int32) :: deck_version = 0        ! must be 1
+
+!*** Block "Run": time, threads (nproc, above), output.
+character(len=32)   :: title      = ' '        ! names the output folder
+real(kind=dp)       :: t_end      = unset      ! us, termination time
+integer(kind=int32) :: cycle_max  = 1000000    ! backstop on cycles
+integer(kind=int32) :: plot_every = 0          ! snapshot every N cycles
+real(kind=dp)       :: plot_dt    = zero       ! us, snapshot interval
+
+!*** Block "Solver".
+character(len=8)    :: method     = 'AV'       ! only AV on this branch
+real(kind=dp)       :: BL         = 0.3_dp     ! linear viscosity coef.
+real(kind=dp)       :: BQ         = 2.2_dp     ! quadratic viscosity coef.
+real(kind=dp)       :: CFL        = 0.6_dp     ! Courant safety factor
+
+!*** Block "Stack" (the keys that are not inside a Layer).
+real(kind=dp)       :: stack_resolution = zero ! zones/mm, 0 = not given
+character(len=72)   :: origin     = ' '        ! location text, ' ' = none
+real(kind=dp)       :: x_left     = zero       ! mm, x of the left face
+logical             :: have_x_left = .false.   ! x_left given in the deck
+
+!**********************************************************************!
+! Data dictionary: the material table (one entry per Material block).
+!
+!  Mie-Gruneisen referenced to the principal Hugoniot (project rev-0,
+!  Eq. 4), with Us = C0 + S1*up + (S2/C0)*up**2 and rho*Gamma = R0*G0.
+!**********************************************************************!
+type :: material_t
+   character(len=32)   :: name   = ' '    ! from "Begin Material <name>"
+   real(kind=dp)       :: R0     = unset  ! g/cm^3            REQUIRED
+   real(kind=dp)       :: C0     = unset  ! km/s              REQUIRED
+   real(kind=dp)       :: S1     = unset  ! -                 REQUIRED
+   real(kind=dp)       :: S2     = zero   ! -                 optional
+   real(kind=dp)       :: G0     = unset  ! -                 REQUIRED
+   integer(kind=int32) :: nused  = 0      ! layers that use it
+   integer(kind=int32) :: line   = 0      ! deck line of its Begin
+end type material_t
+
+type(material_t), allocatable :: material(:)  ! material(1:nmat)
+
+!**********************************************************************!
+! Data dictionary: the layer table (one entry per Layer block).
+!
+!  Layers are listed left to right, all in contact. The deck gives the
+!  geometry and the initial velocity; the material constants are copied
+!  in from the material table once the deck is read (option 6(a): every
+!  cell later carries its own copy).
+!**********************************************************************!
 type :: layer_t
-   character(len=32)   :: name       = ' '    ! optional label
+   character(len=32)   :: name       = ' '    ! defaults to the material
+   character(len=32)   :: matname    = ' '    ! "material =" as written
+   integer(kind=int32) :: imat       = 0      ! index into material(:)
    real(kind=dp)       :: width      = unset  ! mm               REQUIRED
    real(kind=dp)       :: xvel       = zero   ! km/s, initial u  optional
-   real(kind=dp)       :: resolution = zero   ! zones per mm  } one of
-   integer(kind=int32) :: zones      = 0      ! zone count    } these two
-   real(kind=dp)       :: R0         = unset  ! g/cm^3           REQUIRED
-   real(kind=dp)       :: C0         = unset  ! km/s             REQUIRED
-   real(kind=dp)       :: S1         = unset  ! -                REQUIRED
-   real(kind=dp)       :: S2         = zero   ! s/km             optional
-   real(kind=dp)       :: G0         = unset  ! -                REQUIRED
-   ! Filled in by setup, not by the deck:
+   character(len=32)   :: xvel_from  = ' '    ! define name, if one used
+   real(kind=dp)       :: resolution = zero   ! zones/mm, 0 = not given
+   integer(kind=int32) :: zones      = 0      ! zone count, 0 = not given
+   ! Copied from the material table:
+   real(kind=dp)       :: R0         = unset  ! g/cm^3
+   real(kind=dp)       :: C0         = unset  ! km/s
+   real(kind=dp)       :: S1         = unset  ! -
+   real(kind=dp)       :: S2         = zero   ! -
+   real(kind=dp)       :: G0         = unset  ! -
+   ! Filled in once the whole deck is read:
    real(kind=dp)       :: xleft      = zero   ! mm, left face position
    integer(kind=int32) :: kfirst     = 0      ! first cell k of layer
    integer(kind=int32) :: klast      = 0      ! last cell k of layer
+   integer(kind=int32) :: line       = 0      ! deck line of its Begin
 end type layer_t
 
 type(layer_t), allocatable :: layer(:)        ! layer(1:nlay)
+
+!**********************************************************************!
+! Data dictionary: the tracer table (one entry per "tracer =" line).
+!
+!  A tracer follows one material point. Its position is stored as the
+!  face (node) just to its left plus a weight toward the next face:
+!
+!     u_tracer = (1-w)*u(face kface) + w*u(face kface+1)
+!
+!  where face "k" means face k+1/2 (database index iface(k)). A tracer
+!  that sits exactly on a node has w = 0. Because the initial mesh is
+!  uniform inside each layer, the length fraction equals the mass
+!  fraction, so w never changes as the mesh moves. That keeps the same
+!  material point at every resolution (needed for the convergence
+!  study). Cell values (p, rho, e, q) come from cell kcell; kcell = 0
+!  for a tracer on an interface, which has a cell on each side.
+!**********************************************************************!
+integer(kind=int32), parameter :: loc_interface = 1  ! "A:B"
+integer(kind=int32), parameter :: loc_fraction  = 2  ! "A@f"
+integer(kind=int32), parameter :: loc_x         = 3  ! a number
+
+type :: tracer_t
+   character(len=32)   :: name   = ' '    ! heads its output columns
+   character(len=72)   :: at     = ' '    ! the location as written
+   integer(kind=int32) :: kind   = 0      ! loc_interface, _fraction, _x
+   integer(kind=int32) :: lay    = 0      ! layer it is in (left layer
+                                          ! for an interface)
+   real(kind=dp)       :: x0     = zero   ! mm, initial position
+   integer(kind=int32) :: kface  = 0      ! face just left (face k+1/2)
+   real(kind=dp)       :: w      = zero   ! weight toward kface+1
+   integer(kind=int32) :: kcell  = 0      ! cell that holds it, or 0
+   integer(kind=int32) :: line   = 0      ! deck line
+end type tracer_t
+
+type(tracer_t), allocatable :: tracer(:)      ! tracer(1:ntrc)
 
 !**********************************************************************!
 ! Data dictionary: the database and its integer companion.
@@ -352,6 +450,98 @@ contains
 
    return
    end subroutine dealloc_layers
+
+   !**********************************************!
+   ! Allocate the Material Table (nmat entries).  !
+   ! Every entry starts at the material_t defaults. !
+   !**********************************************!
+   subroutine alloc_materials(n,kerr)
+   implicit none
+   integer(kind=int32), intent(in) :: n       ! number of materials
+   integer(kind=int32), intent(inout) :: kerr ! increment on failure
+   integer(kind=int32) :: status
+
+   if (allocated(material)) return
+   if (n < 1) then
+      kerr = kerr+1                           ! a deck needs a material
+      return
+   end if
+
+   allocate( material(n), stat=status )
+   mem_fail: if (status /= 0) then
+      kerr = kerr+1
+   else
+      nmat = n
+   end if mem_fail
+
+   return
+   end subroutine alloc_materials
+
+   !*******************************!
+   ! Deallocate the Material Table. !
+   !*******************************!
+   subroutine dealloc_materials(kerr)
+   implicit none
+   integer(kind=int32), intent(inout) :: kerr
+   integer(kind=int32) :: status
+
+   if (allocated(material)) then
+      deallocate(material,stat=status)
+      mem_fail: if (status /= 0) then
+         kerr = kerr+1
+      else
+         nmat = 0
+      end if mem_fail
+   end if
+
+   return
+   end subroutine dealloc_materials
+
+   !*********************************************!
+   ! Allocate the Tracer Table (ntrc entries).   !
+   ! Zero tracers is allowed (a size-0 table).   !
+   !*********************************************!
+   subroutine alloc_tracers(n,kerr)
+   implicit none
+   integer(kind=int32), intent(in) :: n       ! number of tracers
+   integer(kind=int32), intent(inout) :: kerr ! increment on failure
+   integer(kind=int32) :: status
+
+   if (allocated(tracer)) return
+   if (n < 0) then
+      kerr = kerr+1
+      return
+   end if
+
+   allocate( tracer(n), stat=status )
+   mem_fail: if (status /= 0) then
+      kerr = kerr+1
+   else
+      ntrc = n
+   end if mem_fail
+
+   return
+   end subroutine alloc_tracers
+
+   !*****************************!
+   ! Deallocate the Tracer Table. !
+   !*****************************!
+   subroutine dealloc_tracers(kerr)
+   implicit none
+   integer(kind=int32), intent(inout) :: kerr
+   integer(kind=int32) :: status
+
+   if (allocated(tracer)) then
+      deallocate(tracer,stat=status)
+      mem_fail: if (status /= 0) then
+         kerr = kerr+1
+      else
+         ntrc = 0
+      end if mem_fail
+   end if
+
+   return
+   end subroutine dealloc_tracers
 
    !**********************************************************!
    ! Allocate the Database for kmax real cells, and fill it   !

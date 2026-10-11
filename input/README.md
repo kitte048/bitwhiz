@@ -3,7 +3,8 @@ This folder contains the input decks for bitwhiz, and this file is the deck
 syntax specification (deck_version 1). The parser is written to this page; if
 the two ever disagree, fix one of them on purpose.
 
-**Status:** specification only. Today the code reads `-np N` and nothing else.
+**Status:** implemented by `src/modules/deck_mod.f95` (module `deck`).
+`tests/run_deck_tests.sh` checks it against about 90 test decks.
 
 ---
 
@@ -37,6 +38,7 @@ Anything after "End bitwhiz" is ignored: free space for notes.
   left to right.
 - `Material` blocks carry a name on the `Begin` line: `Begin Material Ta`.
 - Every `End` must name the block it closes (`End Layer`, not just `End`).
+  `End Material` may also repeat the material's name (`End Material Ta`).
 
 ---
 
@@ -213,7 +215,9 @@ tracer = quarter  MatX@0.25
   resolution.
 - **The resolved deck is echoed to the log:** every key with its final value
   (defaults filled in, defines substituted), and every tracer's resolved x.
-  Re-running the echo reproduces the run.
+  Re-running the echo reproduces the run. Until the run log exists, it is
+  printed to the terminal.
+- **Notes** (not warnings) say when `zones` overrides a resolution.
 
 ---
 
@@ -223,3 +227,18 @@ tracer = quarter  MatX@0.25
 | `Layer` keys `width`, `xvel`, `zones`, `resolution`, `name` | `layer(l)%...` (same names) |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
 | `num_threads` | `nproc` |
+| `Run`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `CFL`, `stack_resolution`, ...) |
+| `tracer` | `tracer(n)%...`: name, location, `x0`, `kface`, `w`, `kcell` |
+
+---
+
+## 11. Tests
+```
+make
+./tests/run_deck_tests.sh
+```
+Each deck in `tests/decks/` begins with `# expect: ok` (it must read cleanly)
+or `# expect: <part of the message>` (it must fail with that message). Clean
+decks, and every deck in this folder, are also round-tripped: the resolved
+deck must read back to the same statements. To add a case, drop in a deck
+with an `# expect:` line.

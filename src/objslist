@@ -9,7 +9,8 @@
 	src/modules/smcw_mod.o \
 	src/modules/btcw_mod.o \
 	src/modules/rand_mod.o \
-	src/modules/shock_mod.o
+	src/modules/shock_mod.o \
+	src/modules/deck_mod.o
   MOD_FILS = \
 	src/modules/bits.mod \
 	src/modules/plasma.mod \
@@ -21,7 +22,8 @@
 	src/modules/smoothcoolwarm.mod \
 	src/modules/bentcoolwarm.mod \
 	src/modules/random.mod \
-	src/modules/shock.mod
+	src/modules/shock.mod \
+	src/modules/deck.mod
   LIB_OBJS = \
 	src/colormaps/cmap_grayscale.o \
 	src/colormaps/cmap_plasma.o \

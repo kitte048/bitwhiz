@@ -1,0 +1,44 @@
+# expect: only one "=" is allowed on a line
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00
+ Begin Run
+  t_end = 5.0
+  tracer = pdv MatX:PMMA
+ End Run
+ Begin Material Al
+  R0 = 1 = 2
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ End Material
+ Begin Material MatX
+  R0 = 1.60
+  C0 = 2.50
+  S1 = 1.80
+  S2 = -0.10
+  G0 = 1.20
+ End Material
+ Begin Material PMMA
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90
+ End Material
+ Begin Stack
+  resolution = 10
+  Begin Layer
+   material = Al
+   width = 4.0
+   xvel = u_fly
+  End Layer
+  Begin Layer
+   material = MatX
+   width = 10.0
+  End Layer
+  Begin Layer
+   material = PMMA
+   width = 10.0
+  End Layer
+ End Stack
+End bitwhiz

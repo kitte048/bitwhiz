@@ -2,13 +2,16 @@ program bitwhiz
 use bits, only: dp,int32,kpt6
 use shock, only: omp_on,nproc,num_procs,max_threads,num_threads, &
    thread_num,nalive
+use deck, only: read_deck,write_resolved_deck
 !$ use omp_lib, only: omp_get_num_procs,omp_set_num_threads, &
 !$    omp_get_num_threads,omp_get_thread_num
 implicit none
 real(kind=dp) :: cpu1,cpu2
 character(len=80) :: cmap
-integer(kind=int32) :: nargs,iarg       ! command line bookkeeping
-character(len=32) :: arg,val            ! one command line word
+integer(kind=int32) :: nargs            ! command line word count
+integer(kind=int32) :: kerr             ! errors found in the deck
+character(len=256) :: deckname          ! the deck file, from the
+                                        ! command line
 cmap = ' ' ! default
 
 201 format("CPU Elapsed Time = ",1(1f15.3)," seconds")
@@ -32,33 +35,24 @@ call timestamp( cpu1 ) !~ save for reference.
 ! 1. Read execution line parameters. !
 !====================================!
 
-! Usage:  bitwhiz [-np N]
+! Usage:  bitwhiz <deck>
 !
-!   -np N   number of OpenMP threads to use (default 1). It is capped
-!           at the number of processors in section 4.
-!
-! The input deck will add '-i deck' here later; for now -np is the
-! only option. Anything else stops the run with a short message.
+! The command line takes only the input deck's file name. Everything
+! else about a run (threads, solver, materials, geometry, tracers,
+! output) is in the deck, so the deck is the complete record of what
+! was run (input/README.md).
 nargs = command_argument_count()
-iarg = 1
-read_args: do while ( iarg <= nargs )
-   call get_command_argument( iarg, arg )
-   select case ( trim(arg) )
-   case ( '-np' )
-      if ( iarg == nargs ) call usage( '-np needs a number, e.g. -np 4' )
-      call get_command_argument( iarg+1, val )
-      ! Digits only, so "4" passes but "4.0", "-2", "/" and "four"
-      ! do not (a bare read would quietly accept some of those).
-      if ( len_trim(val) == 0 .or. len_trim(val) > 6 .or. &
-           verify(trim(val),'0123456789') /= 0 ) &
-         call usage( '-np "'//trim(val)//'" is not a positive whole number' )
-      read( val, * ) nproc
-      if ( nproc < 1 ) call usage( '-np must be at least 1' )
-      iarg = iarg + 2
-   case default
-      call usage( 'unknown argument "'//trim(arg)//'"' )
-   end select
-end do read_args
+if ( nargs == 0 ) call usage( 'no input deck given' )
+call get_command_argument( 1, deckname )
+if ( deckname(1:1) == '-' ) then
+   if ( trim(deckname) == '-np' ) then
+      call usage( '-np is gone: set num_threads in the deck''s Run block' )
+   else
+      call usage( 'options like "'//trim(deckname)//'" are not used; '// &
+         'give the deck file' )
+   end if
+end if
+if ( nargs > 1 ) call usage( 'only one argument (the deck) is allowed' )
 
 !====================!
 ! 2. Initialization. !
@@ -72,8 +66,31 @@ end do read_args
 
 ! TODO / called 'heartbeat' updated every cycle
 
+!=========================!
+! 4. Read the input deck. !
+!=========================!
+
+! The deck reader (module deck, src/modules/deck_mod.f95) checks every
+! line against input/README.md and fills the input tables in the shock
+! module. It lists ALL the problems it finds before giving up, each
+! with the deck's file name and line number, so one run shows every
+! mistake. If the deck is clean, the "resolved deck" is printed: the
+! same run with every default filled in and every define substituted.
+! It is the record of what this run actually used, and reading it
+! back in gives exactly the same run.
+call read_deck( trim(deckname), kerr )
+if ( kerr > 0 ) then
+   write( kpt6, 202 ) repeat('-',56)
+   write( kpt6, '(1x,i0,a)' ) kerr, ' error(s) in the input deck; stopping.'
+   stop 1, quiet=.true.                 ! exit status 1, no "STOP 1" line
+end if
+write( kpt6, 202 ) repeat('=',56)
+write( kpt6, 202 ) ' 4. Input deck: '//trim(deckname)
+write( kpt6, 202 ) repeat('=',56)
+call write_resolved_deck( int(kpt6) )
+
 !===================================!
-! 4. Test OpenMP settings, if used. !
+! 5. Test OpenMP settings, if used. !
 !===================================!
 
 ! Every line that starts with !$ is compiled ONLY with -fopenmp. In a
@@ -85,7 +102,12 @@ end do read_args
 !*** NOTES_bitwhiz_Performance_IO_v1.md section 2).
 !$ omp_on    = .true.
 !$ num_procs = omp_get_num_procs()
-max_threads = min( nproc, num_procs )
+!*** num_threads = 0 in the deck means "use every processor".
+if ( nproc == 0 ) then
+   max_threads = num_procs
+else
+   max_threads = min( nproc, num_procs )
+end if
 !$ call omp_set_num_threads( max_threads )
 
 !*** Open a real parallel region and count who shows up. Each thread
@@ -104,14 +126,18 @@ nalive = nalive + 1
 
 !*** Report.
 write( kpt6, 202 ) repeat('=',56)
-write( kpt6, 202 ) ' 4. OpenMP settings'
+write( kpt6, 202 ) ' 5. OpenMP settings'
 write( kpt6, 202 ) repeat('-',56)
 if ( omp_on ) then
    write( kpt6, 204 ) 'OpenMP compiled in', 'yes'
 else
    write( kpt6, 204 ) 'OpenMP compiled in', 'no (serial build)'
 end if
-write( kpt6, 205 ) 'Threads requested (-np)', nproc
+if ( nproc == 0 ) then
+   write( kpt6, 204 ) 'Threads requested (deck)', '     0  (all processors)'
+else
+   write( kpt6, 205 ) 'Threads requested (deck)', nproc
+end if
 if ( omp_on ) then
    write( kpt6, 205 ) 'Processors available', num_procs
 else
@@ -120,9 +146,9 @@ end if
 if ( nproc > num_procs .and. omp_on ) then
    write( kpt6, 203 ) 'Threads in the team', max_threads, &
       '(capped at processors)'
-else if ( nproc > num_procs ) then
+else if ( nproc /= 1 ) then
    write( kpt6, 203 ) 'Threads in the team', max_threads, &
-      '(-np ignored: serial)'
+      '(serial build: 1 thread)'
 else
    write( kpt6, 205 ) 'Threads in the team', max_threads
 end if
@@ -135,102 +161,6 @@ if ( nalive /= max_threads ) then
    write( kpt6, 202 ) '  requested (check OMP_THREAD_LIMIT / OMP_DYNAMIC).'
 end if
 write( kpt6, 202 ) repeat('=',56)
-
-!=========================!
-! 5. Read the input deck. !
-!=========================!
-
-! TODO / hints:
-! example input deck that I'd like to parse
-!
-!         FORMAT STYLE SUGGESTION
-!
-!*****************************************!
-!Begin bitwhiz
-! # by default hash is for comment lines.
-!
-! Begin Solver
-!  Method = AV # choose AV or ???
-! 
-!  # other settings, like
-!  BL=0.3
-!  BQ=2.2
-!
-! # maybe the safety factor of 0.6 in CFL
-! # should be exposed, as well as the final
-! # simulation time?
-!
-! End Solver
-!
-! Begin Stack
-!  # materials load up from left to right
-!  # along the x-axis. Place x=0 at the start of
-!  # the first layer to be inserted.
-!
-!  Begin New_Layer
-!   width=4.5 # default units are mm (double-check) REQUIRED
-!   xvel=1.55 # initial velocity in mm/us applied
-!             # uniformly across zones OPTIONAL (=0 if absent)
-!  # one of the following MUST be specified. If both
-!  # are specified, use requested number of zones.
-!   resolution=15.  # zones per millimeter REQUIRED if no zones
-!   zones=600       # this is REQUIRED if no resolution
-!   R0=1.65    # grams per cc
-!   C0=4.5     # mm/us
-!   S1=1.3     # [-]
-!   G0=1.1     # [-]
-!  End New_Layer
-!
-!  Begin New_Layer
-!   width=5.0
-!   zones=100
-!   R0=2.7
-!   C0=3.0
-!   S1=1.2
-!   G1=1.0
-!  End New_Layer
-!
-!  Begin New_Layer
-!   width=7.0
-!   zones=200
-!   R0=2.7
-!   C0=3.0
-!   S1=1.1
-!   G1=1.2
-!  End New_Layer
-!
-! End Stack
-!
-!End bitwhiz
-!*****************************************!
-! Notes: the parser should be able to trap
-!        and identify the following:
-!
-!#param=12.0 #nothing
-!param=12.0# something
-!param = 12E+10
-!    param=12.0e10
-!param =-1.234
-!param=1
-!param   = -3.1415e-9
-!param   = +3.1415e9
-!param= +3.1415E-12#this one is very small
-!param = "cat" # oops
-!param=220.9
-!param = +-99 #bogus
-!param = -+99.8 #bogus
-!param = 2323cv5#bogus
-!param = 23..67#bogus
-!param = 23.1.5e5 #bogus
-!param=77.5e+5
-!param=77.5e+-5 #bogus
-!param=12345
-!param=2.22e11e11 #bogus
-!
-!  AND
-!
-!Harden against line return characters.
-!*****************************************!
 
 !==============================!
 ! 6. Allocate the data arrays. !
@@ -331,7 +261,7 @@ contains
    !*****************************************************!
    ! Print what went wrong on the command line, how to   !
    ! run the code, and stop with a nonzero exit status.  !
-   ! (STOP 1, not ERROR STOP: a typo on the command line !
+   ! (STOP, not ERROR STOP: a typo on the command line   !
    ! is the user's slip, not a crash, so no backtrace.)  !
    !*****************************************************!
    subroutine usage( msg )
@@ -339,9 +269,10 @@ contains
    implicit none
    character(len=*), intent(in) :: msg
    write( error_unit, '(a)' ) ' bitwhiz: '//msg
-   write( error_unit, '(a)' ) ' usage:   bitwhiz [-np N]'
-   write( error_unit, '(a)' ) '          N = OpenMP threads (default 1)'
-   stop 1
+   write( error_unit, '(a)' ) ' usage:   bitwhiz <deck>'
+   write( error_unit, '(a)' ) '          e.g. bitwhiz input/'// &
+      'me697_double_shock_2p00.deck'
+   stop 1, quiet=.true.
    end subroutine usage
 
 end program bitwhiz

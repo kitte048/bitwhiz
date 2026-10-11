@@ -54,6 +54,14 @@ $(EXECS): $(MOD_OBJS) $(LIB_OBJS) $(BIN)
 ############################################################
 $(LIB_OBJS) $(BIN): $(MOD_OBJS)
 
+############################################################
+###  NOTES: modules that USE other modules must be built
+###  after them. Plain 'make' already follows the order in
+###  objslist; these lines make 'make -j' safe too.
+############################################################
+src/modules/shock_mod.o: src/modules/bit_mod.o
+src/modules/deck_mod.o:  src/modules/shock_mod.o src/modules/bit_mod.o
+
 clean:
 	rm -f $(EXECS) $(MOD_OBJS) $(LIB_OBJS) $(BIN) $(MOD_FILS)
 	rm -f bitwhiz *.mod

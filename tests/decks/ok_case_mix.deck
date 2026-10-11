@@ -1,0 +1,44 @@
+# expect: ok
+bEgIn bitwhiz
+ deck_version = 1
+ define u_fly = 2.00
+ bEgIn Run
+  t_end = 5.0
+  tracer = pdv matx:pmma
+ END Run
+ bEgIn Material Al
+  r0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ END Material
+ bEgIn Material MatX
+  r0 = 1.60
+  C0 = 2.50
+  S1 = 1.80
+  S2 = -0.10
+  G0 = 1.20
+ END Material
+ bEgIn Material PMMA
+  r0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90
+ END Material
+ bEgIn Stack
+  resolution = 10
+  bEgIn Layer
+   material = Al
+   width = 4.0
+   xvel = u_fly
+  END Layer
+  bEgIn Layer
+   material = MatX
+   width = 10.0
+  END Layer
+  bEgIn Layer
+   material = PMMA
+   width = 10.0
+  END Layer
+ END Stack
+END bitwhiz
