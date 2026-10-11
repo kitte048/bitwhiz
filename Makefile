@@ -18,6 +18,7 @@ FCFLAGS = -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising \
 	-Wline-truncation -fcheck=all -fbacktrace -g -O0 \
 	-ffpe-trap=invalid,zero,overflow -finit-real=snan \
 	-finit-integer=-999999 -fconvert=little-endian -fimplicit-none
+OMPFLAGS = -fopenmp
 
 # Set up path to Fortran module files.
 ############################################################
@@ -43,7 +44,7 @@ bitwhiz: $(EXECS)
 
 $(EXECS): $(MOD_OBJS) $(LIB_OBJS) $(BIN)
 	@mkdir -p ./bin
-	$(FC) $(INCLUDES) -o $(EXECS) $(BIN) $(MOD_OBJS) $(LIB_OBJS)
+	$(FC) $(OMPFLAGS) $(INCLUDES) -o $(EXECS) $(BIN) $(MOD_OBJS) $(LIB_OBJS)
 
 ############################################################
 ###  NOTES: every non-module object depends on the module
@@ -66,7 +67,7 @@ cleanbmp:
 	rm -f *.bmp
 
 .f95.o:
-	$(FC) $(INCLUDES) -c $(FCFLAGS) $< -o $@
+	$(FC) $(INCLUDES) -c $(FCFLAGS) $(OMPFLAGS) $< -o $@
 
 .PHONY : bitwhiz clean cleanbmp
 # End of the makefile

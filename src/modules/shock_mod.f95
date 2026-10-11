@@ -13,6 +13,8 @@ module shock
 !    10/06/26    D. E. Kittell        Original code
 !    10/08/26    D. E. Kittell        Data dictionary for the database,
 !                (with Claude)        layer table and index functions
+!    10/10/26    D. E. Kittell        OpenMP settings
+!                (with Claude)
 !
 !**********************************************************************!
 !
@@ -165,6 +167,30 @@ integer(kind=int32), parameter :: ns = 2
 integer(kind=int32) :: nlay = 0  ! number of layers in the deck's Stack
 integer(kind=int32) :: kmax = 0  ! number of real cells (all layers)
 integer(kind=int32) :: imax = 0  ! last database index, 2*kmax+3
+
+!**********************************************************************!
+! Data dictionary: OpenMP settings.
+!
+!  These are set ONCE, in maincode section 4, before the time loop.
+!  Module variables are shared by every thread, so they must only be
+!  written outside a parallel region, or inside an OMP SINGLE block
+!  (one thread writes, the rest wait). Never write them inside an
+!  OMP DO loop.
+!
+!  The defaults describe a serial run, so a build without -fopenmp
+!  (where every !$ line is just a comment) reports sensible values.
+!**********************************************************************!
+logical :: omp_on = .false.            ! true only in an -fopenmp build
+integer(kind=int32) :: nproc       = 1 ! threads requested by the user
+                                       ! (-np now, the deck later)
+integer(kind=int32) :: num_procs   = 1 ! processors the system reports
+integer(kind=int32) :: max_threads = 1 ! threads the team will use,
+                                       ! min(nproc,num_procs)
+integer(kind=int32) :: num_threads = 1 ! threads counted by OpenMP
+                                       ! inside a parallel region
+integer(kind=int32) :: thread_num  = 0 ! the thread that ran SINGLE
+integer(kind=int32) :: nalive      = 0 ! threads that actually showed
+                                       ! up (each one adds 1)
 
 !**********************************************************************!
 ! Data dictionary: the layer table (user input, one entry per layer).
