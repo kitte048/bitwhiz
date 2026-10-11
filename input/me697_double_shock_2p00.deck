@@ -1,0 +1,104 @@
+#**********************************************************************#
+#  ME 697 class project, assigned double-shock problem (rev-0, Fig. 1) #
+#                                                                      #
+#  Ta-backed Al flyer at u_fly  ->  Material X  ->  PMMA window        #
+#                                                                      #
+#      | Ta 3.0 | Al 4.0 |=> Material X 10.0 | PMMA 10.0 |  PDV ->     #
+#     x=-7.0           x=0 (impact plane)    x=10.0      x=20.0        #
+#                                                                      #
+#  The five cases (1.00, 1.25, 1.50, 1.75, 2.00 km/s) differ only in   #
+#  the "define u_fly" line. Syntax: input/README.md (deck_version 1).  #
+#  EOS data: project rev-0, Table 1. Units: mm, us, g/cc, km/s, GPa.   #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00            # km/s, flyer velocity
+
+ Begin Run
+  title       = double_shock_2p00
+  t_end       = 5.0             # us. Placeholder: the first shock reaches
+                                # PMMA near 2.0 us at 2.00 km/s; set the
+                                # final value from the hand t-x diagram.
+  num_threads = 1
+  plot_dt     = 0.01            # us between snapshots
+
+  tracer = pdv     MatX:PMMA    # the PDV signal
+  tracer = impact  Al:MatX      # impact plane
+  tracer = ta_al   Ta:Al        # where the second shock is born
+  tracer = mid_x   MatX@0.5     # mid-sample
+ End Run
+
+ Begin Solver
+  method = AV
+  BL     = 0.3                  # linear viscosity coefficient
+  BQ     = 2.2                  # quadratic viscosity coefficient
+                                # (BL and BQ are the defaults; leave them
+                                # alone unless you are studying them)
+  CFL    = 0.6
+ End Solver
+
+ # Mie-Gruneisen on the principal Hugoniot (rev-0, Eqs. 4 and 6):
+ #   Us = C0 + S1*up + (S2/C0)*up^2,   rho*Gamma = R0*G0
+ Begin Material Ta              # tantalum, backing plate
+  R0 = 16.65                    # g/cm^3, initial density
+  C0 = 3.40                     # km/s, Hugoniot intercept
+  S1 = 1.20                     # -,    Us-up slope
+  S2 = 0.0                      # -,    Us-up curvature (default 0)
+  G0 = 1.60                     # -,    Gruneisen coefficient
+ End Material
+
+ Begin Material Al              # aluminum, flyer face
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  S2 = 0.0
+  G0 = 2.00
+ End Material
+
+ Begin Material MatX            # notional HE surrogate, inert here
+  R0 = 1.60
+  C0 = 2.50
+  S1 = 1.80
+  S2 = -0.10
+  G0 = 1.20
+ End Material
+
+ Begin Material PMMA            # window; Lacina et al. (2018) linear fit
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  S2 = 0.0
+  G0 = 0.90                     # estimated from Plexiglass (rev-0 Table 1)
+ End Material
+
+ Begin Stack
+  resolution = 35               # zones/mm: 105 + 140 + 350 + 350 = 945
+  origin     = Al:MatX          # x = 0 at the impact plane
+
+  Begin Layer
+   material = Ta
+   width    = 3.0               # mm
+   xvel     = u_fly             # km/s, + is to the right
+  End Layer
+
+  Begin Layer
+   material = Al
+   width    = 4.0
+   xvel     = u_fly
+  End Layer
+
+  Begin Layer
+   material = MatX
+   width    = 10.0
+  End Layer
+
+  Begin Layer
+   material = PMMA
+   width    = 10.0
+  End Layer
+ End Stack
+End bitwhiz
+
+Notes (ignored by the parser):
+- Convergence study: change "resolution = 35" to 17.5 and 8.75.
+- Velocity sweep: change "define u_fly" only.
