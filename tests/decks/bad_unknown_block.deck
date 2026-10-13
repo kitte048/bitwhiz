@@ -1,14 +1,16 @@
-# expect: unknown block "Output" (blocks: Run, Solver, Material, Stack, Layer)
+# expect: unknown block "Plots" (blocks: Run, Output, Solver, Material, Stack, Layer)
 Begin bitwhiz
  deck_version = 1
  define u_fly = 2.00
- Begin Output
+ Begin Plots
   x = 1
- End Output
+ End Plots
  Begin Run
   t_end = 5.0
-  tracer = pdv MatX:PMMA
  End Run
+ Begin Output
+  tracer = pdv MatX:PMMA
+ End Output
  Begin Material Al
   R0 = 2.78
   C0 = 5.30

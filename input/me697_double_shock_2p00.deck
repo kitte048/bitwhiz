@@ -20,20 +20,24 @@ Begin bitwhiz
                                 # PMMA near 2.0 us at 2.00 km/s; set the
                                 # final value from the hand t-x diagram.
   num_threads = 1
+ End Run
+
+ Begin Output                   # nothing listed here = nothing written
   plot_dt     = 0.01            # us between snapshots
+  colormap    = viridis         # for bitmap pictures
 
   tracer = pdv     MatX:PMMA    # the PDV signal
   tracer = impact  Al:MatX      # impact plane
   tracer = ta_al   Ta:Al        # where the second shock is born
   tracer = mid_x   MatX@0.5     # mid-sample
- End Run
+ End Output
 
  Begin Solver
   method = AV
-  BL     = 0.3                  # linear viscosity coefficient
-  BQ     = 2.2                  # quadratic viscosity coefficient
-                                # (BL and BQ are the defaults; leave them
-                                # alone unless you are studying them)
+  BL     = 0.1                  # linear viscosity coefficient
+  BQ     = 2.0                  # quadratic viscosity coefficient
+                                # (the equation sheet's defaults; leave
+                                # them alone unless you are studying q)
   CFL    = 0.6
  End Solver
 

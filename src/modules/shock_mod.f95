@@ -20,6 +20,9 @@ module shock
 !    10/13/26    D. E. Kittell        Stress lives at cell centers only:
 !                (with Claude)        removed the face-stress slot; ns = 2
 !                                     explained by the energy update
+!    10/13/26    D. E. Kittell        Output block (tracers, snapshots,
+!                (with Claude)        colormap); BL, BQ defaults from the
+!                                     equation sheet; heartbeat file
 !
 !**********************************************************************!
 !
@@ -205,7 +208,7 @@ integer(kind=int32) :: imax = 0  ! last database index, 2*kmax+3
 !**********************************************************************!
 ! Data dictionary: OpenMP settings.
 !
-!  These are set ONCE, in maincode section 5, before the time loop.
+!  These are set ONCE, in maincode section 3, before the time loop.
 !  Module variables are shared by every thread, so they must only be
 !  written outside a parallel region, or inside an OMP SINGLE block
 !  (one thread writes, the rest wait). Never write them inside an
@@ -228,6 +231,22 @@ integer(kind=int32) :: nalive      = 0 ! threads that actually showed
                                        ! up (each one adds 1)
 
 !**********************************************************************!
+! Data dictionary: the heartbeat file.
+!
+!  The heartbeat is a small text file, <title>.heartbeat, that gets one
+!  line per cycle while the run goes: cycle, time, time step and the
+!  conservation checks. Watch it with "tail -f" in another terminal.
+!  It is opened once the deck has been read (the title names it) and
+!  closed at the end of the run.
+!
+!***NOTE: open(newunit=) hands out NEGATIVE unit numbers, so "is the
+! file open?" is the logical hb_open, never a test on the unit number.
+!**********************************************************************!
+integer(kind=int32) :: khb      = 0            ! heartbeat unit number
+logical             :: hb_open  = .false.      ! heartbeat file is open
+character(len=64)   :: hb_file  = ' '          ! <title>.heartbeat
+
+!**********************************************************************!
 ! Data dictionary: the input deck.
 !
 !  Everything below is filled by the deck reader (module deck, file
@@ -247,17 +266,28 @@ real(kind=dp), parameter :: unset = -huge(one) ! "not given in the deck"
 character(len=256)  :: deck_file    = ' '      ! as given on the command line
 integer(kind=int32) :: deck_version = 0        ! must be 1
 
-!*** Block "Run": time, threads (nproc, above), output.
-character(len=32)   :: title      = ' '        ! names the output folder
+!*** Block "Run": what to run, for how long, on how many threads.
+character(len=32)   :: title      = ' '        ! names the run's files
 real(kind=dp)       :: t_end      = unset      ! us, termination time
 integer(kind=int32) :: cycle_max  = 1000000    ! backstop on cycles
-integer(kind=int32) :: plot_every = 0          ! snapshot every N cycles
-real(kind=dp)       :: plot_dt    = zero       ! us, snapshot interval
+                                               ! (threads: nproc, above)
 
-!*** Block "Solver".
+!*** Block "Output": what to write. Nothing given means nothing is
+!*** written (except the heartbeat and the run log, which always are).
+integer(kind=int32) :: plot_every = 0          ! snapshot every N cycles,
+                                               ! 0 = off
+real(kind=dp)       :: plot_dt    = zero       ! us, snapshot interval,
+                                               ! 0 = off
+character(len=80)   :: colormap   = 'viridis'  ! for bitmap pictures; a
+                                               ! name bmpmaker knows
+                                               ! (tracers: tracer table)
+
+!*** Block "Solver". The artificial viscosity of the equation sheet,
+!***    q = BL*rho*c*|du| + BQ*rho*du**2   (only while compressing),
+!*** with the sheet's default coefficients.
 character(len=8)    :: method     = 'AV'       ! only AV on this branch
-real(kind=dp)       :: BL         = 0.3_dp     ! linear viscosity coef.
-real(kind=dp)       :: BQ         = 2.2_dp     ! quadratic viscosity coef.
+real(kind=dp)       :: BL         = 0.1_dp     ! linear viscosity coef.
+real(kind=dp)       :: BQ         = 2.0_dp     ! quadratic viscosity coef.
 real(kind=dp)       :: CFL        = 0.6_dp     ! Courant safety factor
 
 !*** Block "Stack" (the keys that are not inside a Layer).

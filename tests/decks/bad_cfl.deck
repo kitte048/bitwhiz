@@ -8,8 +8,10 @@ Begin bitwhiz
  End Solver
  Begin Run
   t_end = 5.0
-  tracer = pdv MatX:PMMA
  End Run
+ Begin Output
+  tracer = pdv MatX:PMMA
+ End Output
  Begin Material Al
   R0 = 2.78
   C0 = 5.30

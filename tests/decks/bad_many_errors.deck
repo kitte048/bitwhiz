@@ -64,8 +64,10 @@ Begin bitwhiz
   bogus57 = 1
   bogus58 = 1
   bogus59 = 1
-  tracer = pdv MatX:PMMA
  End Run
+ Begin Output
+  tracer = pdv MatX:PMMA
+ End Output
  Begin Material Al
   R0 = 2.78
   C0 = 5.30

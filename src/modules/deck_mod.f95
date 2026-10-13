@@ -16,6 +16,9 @@ module deck
 !      ====       ==========          =====================
 !    10/11/26    D. E. Kittell        Original code
 !                (with Claude)
+!    10/13/26    D. E. Kittell        Output block (tracer, plot_every,
+!                (with Claude)        plot_dt, colormap); a key in the
+!                                     wrong block names its home block
 !
 !**********************************************************************!
 !
@@ -85,6 +88,7 @@ integer(kind=int32), parameter :: bk_solver   = 3
 integer(kind=int32), parameter :: bk_material = 4
 integer(kind=int32), parameter :: bk_stack    = 5
 integer(kind=int32), parameter :: bk_layer    = 6
+integer(kind=int32), parameter :: bk_output   = 7
 
 !**********************************************************************!
 ! Data dictionary: the statements kept from the file.
@@ -128,6 +132,7 @@ integer(kind=int32) :: depth = 0
 integer(kind=int32) :: nerr  = 0   ! errors found so far
 integer(kind=int32) :: nwarn = 0   ! warnings found so far
 integer(kind=int32) :: line_run = 0, line_solver = 0, line_stack = 0
+integer(kind=int32) :: line_output = 0
 integer(kind=int32) :: line_version = 0
 integer(kind=int32) :: line_origin  = 0, line_xleft = 0
 integer(kind=int32) :: imat_now = 0, ilay_now = 0  ! block being filled
@@ -394,6 +399,7 @@ contains
    depth = 0
    ndef  = 0
    line_run = 0; line_solver = 0; line_stack = 0; line_version = 0
+   line_output = 0
    line_origin = 0; line_xleft = 0
    imat_now = 0; ilay_now = 0
    tend_given = .false.
@@ -483,12 +489,13 @@ contains
       else
          newkind = bk_bitwhiz
       end if
-   case ('run', 'solver', 'stack')
+   case ('run', 'output', 'solver', 'stack')
       if (parent /= bk_bitwhiz) then
          call deck_error(ln, 'Begin '//trim(words(2))// &
             ' must be at the top level of the deck')
       else
          newkind = bk_run
+         if (bw == 'output') newkind = bk_output
          if (bw == 'solver') newkind = bk_solver
          if (bw == 'stack')  newkind = bk_stack
          call once_only(ln, newkind)
@@ -527,7 +534,7 @@ contains
       end if
    case default
       call deck_error(ln, 'unknown block "'//trim(words(2))// &
-         '" (blocks: Run, Solver, Material, Stack, Layer)')
+         '" (blocks: Run, Output, Solver, Material, Stack, Layer)')
    end select
 
    ! A name on the Begin line is only allowed for Material.
@@ -539,7 +546,7 @@ contains
    end subroutine do_begin
 
    !*******************************************************************!
-   ! Run, Solver and Stack may each appear only once.                  !
+   ! Run, Output, Solver and Stack may each appear only once.          !
    !*******************************************************************!
    subroutine once_only(ln, kind)
    implicit none
@@ -554,6 +561,14 @@ contains
          kind = bk_skip
       else
          line_run = ln
+      end if
+   case (bk_output)
+      if (line_output > 0) then
+         call deck_error(ln, 'a second Output block (the first is on '// &
+            'line '//itoa(line_output)//')')
+         kind = bk_skip
+      else
+         line_output = ln
       end if
    case (bk_solver)
       if (line_solver > 0) then
@@ -779,6 +794,8 @@ contains
       call key_top(ln, k, key, val)
    case (bk_run)
       call key_run(ln, k, key, val)
+   case (bk_output)
+      call key_output(ln, k, key, val)
    case (bk_solver)
       call key_solver(ln, k, key, val)
    case (bk_material)
@@ -812,17 +829,17 @@ contains
       line_version = ln
    case default
       call unknown_key(ln, key, 'at the top level', &
-         'deck_version, define, and the blocks Run, Solver, Material, Stack')
+         'deck_version, define, and the blocks Run, Output, Solver, '// &
+         'Material, Stack')
    end select
    end subroutine key_top
 
-   !*** Block Run.
+   !*** Block Run: what to run, for how long, on how many threads.
    subroutine key_run(ln, k, key, val)
    implicit none
    integer(kind=int32), intent(in) :: ln
    character(len=*), intent(in) :: k, key, val
-   character(len=wordlen) :: words(4)
-   integer(kind=int32) :: iv, nw, it
+   integer(kind=int32) :: iv
    real(kind=dp) :: x
    logical :: ok
 
@@ -840,7 +857,24 @@ contains
       if (ok .and. iv >= 1) cycle_max = iv
    case ('num_threads')
       call get_int(ln, key, val, iv, ok)
-      if (ok) nproc = iv          ! 0 = all processors (section 5)
+      if (ok) nproc = iv          ! 0 = all processors (maincode, OpenMP)
+   case default
+      call unknown_key(ln, key, 'in the Run block', &
+         'title, t_end, cycle_max, num_threads')
+   end select
+   end subroutine key_run
+
+   !*** Block Output: what to write. Nothing given = nothing written.
+   subroutine key_output(ln, k, key, val)
+   implicit none
+   integer(kind=int32), intent(in) :: ln
+   character(len=*), intent(in) :: k, key, val
+   character(len=wordlen) :: words(4)
+   integer(kind=int32) :: iv, nw, it
+   real(kind=dp) :: x
+   logical :: ok
+
+   select case (k)
    case ('plot_every')
       call get_int(ln, key, val, iv, ok)
       if (ok) plot_every = iv
@@ -849,6 +883,19 @@ contains
       if (ok .and. x < zero) call deck_error(ln, 'plot_dt cannot be '// &
          'negative (0 turns it off)')
       if (ok .and. x >= zero) plot_dt = x
+   case ('colormap')
+      ! The colormaps built into bitwhiz (src/colormaps), by the names
+      ! bmpmaker knows them.
+      select case (lower(val))
+      case ('grayscale', 'viridis', 'plasma', 'inferno', 'blackbody', &
+            'kindlmann', 'extendedkindlmann', 'smoothcoolwarm', &
+            'bentcoolwarm')
+         colormap = lower(val)
+      case default
+         call deck_error(ln, 'colormap = '//trim(val)//' is not one of '// &
+            'grayscale, viridis, plasma, inferno, blackbody, kindlmann, '// &
+            'extendedkindlmann, smoothcoolwarm, bentcoolwarm')
+      end select
    case ('tracer')
       call split_words(val, words, nw)
       if (nw /= 2) then
@@ -873,10 +920,10 @@ contains
       tracer(ntrc)%at   = words(2)
       tracer(ntrc)%line = ln
    case default
-      call unknown_key(ln, key, 'in the Run block', 'title, t_end, '// &
-         'cycle_max, num_threads, plot_every, plot_dt, tracer')
+      call unknown_key(ln, key, 'in the Output block', &
+         'tracer, plot_every, plot_dt, colormap')
    end select
-   end subroutine key_run
+   end subroutine key_output
 
    !*** Block Solver.
    subroutine key_solver(ln, k, key, val)
@@ -1060,9 +1107,44 @@ contains
    implicit none
    integer(kind=int32), intent(in) :: ln
    character(len=*), intent(in) :: key, where, allowed
-   call deck_error(ln, 'unknown key "'//trim(key)//'" '//where// &
-      ' (allowed: '//allowed//')')
+   character(len=:), allocatable :: home
+
+   ! A real key in the wrong block is a common slip (e.g. a tracer left
+   ! in the Run block): say where it belongs instead of "unknown".
+   home = home_block(lower(key))
+   if (len(home) > 0) then
+      call deck_error(ln, trim(key)//' belongs in '//home//', not '// &
+         where(4:))
+   else
+      call deck_error(ln, 'unknown key "'//trim(key)//'" '//where// &
+         ' (allowed: '//allowed//')')
+   end if
    end subroutine unknown_key
+
+   !*** The block each key belongs to ('' if it is not a key at all).
+   function home_block(k) result(b)
+   implicit none
+   character(len=*), intent(in) :: k
+   character(len=:), allocatable :: b
+   select case (trim(k))
+   case ('deck_version')
+      b = 'the top level'
+   case ('title', 't_end', 'cycle_max', 'num_threads')
+      b = 'the Run block'
+   case ('tracer', 'plot_every', 'plot_dt', 'colormap')
+      b = 'the Output block'
+   case ('method', 'bl', 'bq', 'cfl')
+      b = 'the Solver block'
+   case ('r0', 'c0', 's1', 's2', 'g0')
+      b = 'a Material block'
+   case ('origin', 'x_left')
+      b = 'the Stack block'
+   case ('material', 'name', 'width', 'xvel', 'zones')
+      b = 'a Layer block'
+   case default
+      b = ''
+   end select
+   end function home_block
 
 !======================================================================!
 !  STAGE 4: RESOLVE                                                    !
@@ -1402,10 +1484,15 @@ contains
    else
       call kv(lu, 2, 'num_threads', itoa(nproc))
    end if
+   write(lu,'(a)') ' End Run'
+
+   write(lu,'(a)') ''
+   write(lu,'(a)') ' Begin Output'
    call kv(lu, 2, 'plot_every',  itoa(plot_every), &
       merge('off       ', 'cycles    ', plot_every == 0))
    call kv(lu, 2, 'plot_dt',     fmt_real(plot_dt), &
       merge('off', 'us ', plot_dt <= zero))
+   call kv(lu, 2, 'colormap',    trim(colormap))
    do it = 1, ntrc
       associate (t => tracer(it))
          where = 'x0 = '//fmt_real(t%x0)//' mm, '
@@ -1420,7 +1507,7 @@ contains
          call kv(lu, 2, 'tracer', trim(t%name)//'  '//trim(t%at), where)
       end associate
    end do
-   write(lu,'(a)') ' End Run'
+   write(lu,'(a)') ' End Output'
 
    write(lu,'(a)') ''
    write(lu,'(a)') ' Begin Solver'

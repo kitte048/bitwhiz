@@ -39,5 +39,4 @@ interpolate on the TIME column). Mixed units, as the code writes them:
   leaves the computational domain (MTOT and ETOT drop).
 - This code allows tension (negative pressures in the Ta and PMMA). bitwhiz
   floors P at 0 (project Sec. 3), so late-time releases will differ.
-- TODO (DK): record the code name/version, EOS options (S2 form; constant
-  Gamma or rho*Gamma), mesh size and artificial viscosity settings.
+- The reference code is deliberately not named here.

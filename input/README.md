@@ -4,7 +4,7 @@ syntax specification (deck_version 1). The parser is written to this page; if
 the two ever disagree, fix one of them on purpose.
 
 **Status:** implemented by `src/modules/deck_mod.f95` (module `deck`).
-`tests/run_deck_tests.sh` checks it against about 90 test decks.
+`tests/run_deck_tests.sh` checks it against about 100 test decks.
 
 ---
 
@@ -24,7 +24,8 @@ Begin bitwhiz
  deck_version = 1
  define u_fly = 2.00
 
- Begin Run       ... End Run          # time, threads, output, tracers
+ Begin Run       ... End Run          # what to run: time, threads
+ Begin Output    ... End Output       # what to write: tracers, snapshots
  Begin Solver    ... End Solver       # method and its knobs
  Begin Material Ta ... End Material   # one block per material
  Begin Stack                          # geometry, left to right
@@ -97,24 +98,37 @@ Units: mm, us, g/cm^3, km/s, GPa. Nothing is converted inside the code.
 ### `Run`
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `title` | name | deck file name | names the run's output folder |
+| `title` | name | deck file name | names the run's files, e.g. `<title>.heartbeat` |
 | `t_end` | number, us | required | termination time |
 | `cycle_max` | integer | 1000000 | backstop against a stalled time step |
 | `num_threads` | integer | 1 | `0` means all processors; capped at the processor count |
+
+### `Output`
+**Nothing given means nothing is written.** The only files every run writes are
+the heartbeat (`<title>.heartbeat`, one line per cycle) and, later, the run log.
+The whole block may be left out.
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `tracer` | name location | none | repeatable; see section 8 |
 | `plot_every` | integer | 0 (off) | write a snapshot every N cycles |
 | `plot_dt` | number, us | 0 (off) | also write a snapshot every plot_dt |
-| `tracer` | name location | none | repeatable; see section 8 |
+| `colormap` | name | `viridis` | for bitmap pictures: `grayscale`, `viridis`, `plasma`, `inferno`, `blackbody`, `kindlmann`, `extendedkindlmann`, `smoothcoolwarm`, `bentcoolwarm` |
 
-The first and last cycles are always written. A snapshot is written whenever
-either `plot_every` or `plot_dt` says so.
+When snapshots are on, a snapshot is written whenever either `plot_every` or
+`plot_dt` says so, and the first and last cycles are always included.
 
 ### `Solver`
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `method` | `AV` | `AV` | other methods arrive on their own branch |
-| `BL` | number | 0.3 | linear viscosity coefficient |
-| `BQ` | number | 2.2 | quadratic viscosity coefficient |
+| `BL` | number | 0.1 | linear viscosity coefficient |
+| `BQ` | number | 2.0 | quadratic viscosity coefficient |
 | `CFL` | number | 0.6 | Courant safety factor, 0 < CFL <= 1 |
+
+The artificial viscosity is the equation sheet's, with its default
+coefficients: q = BL ρ c |Δu| + BQ ρ (Δu)², applied only while the cell is
+being compressed (Δu > 0 and ρ increasing), and q = 0 otherwise.
 
 ### `Material <name>`
 Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
@@ -178,9 +192,12 @@ One grammar, used by `tracer` and `origin`. Locations refer to **layer** names.
 ---
 
 ## 8. Tracers
+Tracers go in the `Output` block:
 ```
-tracer = pdv      MatX:PMMA
-tracer = quarter  MatX@0.25
+Begin Output
+ tracer = pdv      MatX:PMMA
+ tracer = quarter  MatX@0.25
+End Output
 ```
 - **Every tracer has a name,** unique (ignoring case), and the name heads its
   columns in the tracer output: `t, pdv_u, pdv_x, ...`.
@@ -198,7 +215,8 @@ tracer = quarter  MatX@0.25
 
 ## 9. Errors and the log
 - **Fatal, with file name and line number:**
-  - an unknown key or block;
+  - an unknown key or block (a real key in the wrong block says where it
+    belongs, e.g. "tracer belongs in the Output block, not the Run block");
   - a duplicate key, name or define;
   - a bad number, name or location;
   - an `End` that doesn't match its `Begin`, or a missing `End bitwhiz`;
@@ -227,7 +245,7 @@ tracer = quarter  MatX@0.25
 | `Layer` keys `width`, `xvel`, `zones`, `resolution`, `name` | `layer(l)%...` (same names) |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
 | `num_threads` | `nproc` |
-| `Run`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `CFL`, `stack_resolution`, ...) |
+| `Run`, `Output`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `plot_dt`, `colormap`, `CFL`, `stack_resolution`, ...) |
 | `tracer` | `tracer(n)%...`: name, location, `x0`, `kface`, `w`, `kcell` |
 
 ---

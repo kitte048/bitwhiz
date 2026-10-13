@@ -4,8 +4,10 @@ Begin bitwhiz
  define u_fly = 2.00
  Begin Run
   t_end = 23..67
-  tracer = pdv MatX:PMMA
  End Run
+ Begin Output
+  tracer = pdv MatX:PMMA
+ End Output
  Begin Material Al
   R0 = 2.78
   C0 = 5.30

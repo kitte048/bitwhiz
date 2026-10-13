@@ -1,18 +1,38 @@
 program bitwhiz
+!**********************************************************************!
+!
+!  Purpose:
+!    bitwhiz, a one-dimensional Lagrangian hydrocode for the ME 697
+!    class project. Usage:   bitwhiz <deck>
+!
+!    The run goes section by section, top to bottom:
+!      0. Loading screen.            5. Initialization.
+!      1. Read the command line.     6. Allocate the data arrays.
+!      2. Read the input deck.       7. Begin the simulation.
+!      3. Test OpenMP settings.      8. Close the heartbeat file.
+!      4. Open the heartbeat file.
+!
+!  Record of revisions:
+!      Date       Programmer          Description of change
+!      ====       ==========          =====================
+!    03/24/25    D. E. Kittell        Original code; fork of bitmaths
+!    10/13/26    D. E. Kittell        Colormap demo retired; the deck is
+!                (with Claude)        read before OpenMP and heartbeat
+!
+!**********************************************************************!
 use bits, only: dp,int32,kpt6
 use shock, only: omp_on,nproc,num_procs,max_threads,num_threads, &
-   thread_num,nalive
+   thread_num,nalive,title,khb,hb_open,hb_file
 use deck, only: read_deck,write_resolved_deck
 !$ use omp_lib, only: omp_get_num_procs,omp_set_num_threads, &
 !$    omp_get_num_threads,omp_get_thread_num
 implicit none
-real(kind=dp) :: cpu1,cpu2
-character(len=80) :: cmap
+real(kind=dp) :: cpu1,cpu2              ! wall clock at start and end
 integer(kind=int32) :: nargs            ! command line word count
 integer(kind=int32) :: kerr             ! errors found in the deck
+integer(kind=int32) :: ios              ! I/O status from open()
 character(len=256) :: deckname          ! the deck file, from the
                                         ! command line
-cmap = ' ' ! default
 
 201 format("CPU Elapsed Time = ",1(1f15.3)," seconds")
 202 format(1x,a)                        ! a plain line
@@ -22,8 +42,9 @@ cmap = ' ' ! default
 
 call timestamp( cpu1 ) !~ save for reference.
 
-! Testing, testing, 1, 2, 3... 
-!call draw_colormaps() ! whack this, eventually
+! The colormap demo (draw_colormaps) is retired from the run. It stays
+! in the build (src/drawings), and can still be called from here for a
+! quick look at every colormap:   call draw_colormaps()
 
 !====================!
 ! 0. Loading screen. !
@@ -47,9 +68,9 @@ write( kpt6, 202 ) '   "It will not work the first time.'
 write( kpt6, 202 ) '    That is the assignment."                  -- ME 697'
 write( kpt6, 202 ) repeat('=',56)
 
-!====================================!
-! 1. Read execution line parameters. !
-!====================================!
+!=============================!
+! 1. Read the command line.   !
+!=============================!
 
 ! Usage:  bitwhiz <deck>
 !
@@ -70,20 +91,8 @@ if ( deckname(1:1) == '-' ) then
 end if
 if ( nargs > 1 ) call usage( 'only one argument (the deck) is allowed' )
 
-!====================!
-! 2. Initialization. !
-!====================!
-
-! TODO / includes time zero and cycle zero
-
-!===========================!
-! 3. Open a heartbeat file. !
-!===========================!
-
-! TODO / called 'heartbeat' updated every cycle
-
 !=========================!
-! 4. Read the input deck. !
+! 2. Read the input deck. !
 !=========================!
 
 ! The deck reader (module deck, src/modules/deck_mod.f95) checks every
@@ -101,12 +110,12 @@ if ( kerr > 0 ) then
    stop 1, quiet=.true.                 ! exit status 1, no "STOP 1" line
 end if
 write( kpt6, 202 ) repeat('=',56)
-write( kpt6, 202 ) ' 4. Input deck: '//trim(deckname)
+write( kpt6, 202 ) ' 2. Input deck: '//trim(deckname)
 write( kpt6, 202 ) repeat('=',56)
 call write_resolved_deck( int(kpt6) )
 
 !===================================!
-! 5. Test OpenMP settings, if used. !
+! 3. Test OpenMP settings, if used. !
 !===================================!
 
 ! Every line that starts with !$ is compiled ONLY with -fopenmp. In a
@@ -142,7 +151,7 @@ nalive = nalive + 1
 
 !*** Report.
 write( kpt6, 202 ) repeat('=',56)
-write( kpt6, 202 ) ' 5. OpenMP settings'
+write( kpt6, 202 ) ' 3. OpenMP settings'
 write( kpt6, 202 ) repeat('-',56)
 if ( omp_on ) then
    write( kpt6, 204 ) 'OpenMP compiled in', 'yes'
@@ -162,7 +171,7 @@ end if
 if ( nproc > num_procs .and. omp_on ) then
    write( kpt6, 203 ) 'Threads in the team', max_threads, &
       '(capped at processors)'
-else if ( nproc /= 1 ) then
+else if ( nproc /= 1 .and. .not. omp_on ) then
    write( kpt6, 203 ) 'Threads in the team', max_threads, &
       '(serial build: 1 thread)'
 else
@@ -177,6 +186,51 @@ if ( nalive /= max_threads ) then
    write( kpt6, 202 ) '  requested (check OMP_THREAD_LIMIT / OMP_DYNAMIC).'
 end if
 write( kpt6, 202 ) repeat('=',56)
+
+!==============================!
+! 4. Open the heartbeat file.  !
+!==============================!
+
+! The heartbeat gets one line per cycle from section 7, so a long run
+! can be watched from another terminal with
+!
+!     tail -f <title>.heartbeat
+!
+! It is named after the deck's title (which defaults to the deck's
+! file name), so runs with different titles in the same folder keep
+! their own heartbeats. 'replace' starts a fresh file every run.
+hb_file = trim(title)//'.heartbeat'
+open( newunit=khb, file=trim(hb_file), status='replace', &
+      action='write', iostat=ios )
+if ( ios /= 0 ) then
+   write( kpt6, 202 ) 'bitwhiz: cannot open the heartbeat file '// &
+      trim(hb_file)
+   stop 1, quiet=.true.
+end if
+hb_open = .true.
+
+!*** Header: where the run came from, then one name per column. The
+!*** cycle lines that section 7 writes line up under these names.
+write( khb, '(a)' ) '# bitwhiz heartbeat'
+write( khb, '(a)' ) '# deck    : '//trim(deckname)
+write( khb, '(a)' ) '# title   : '//trim(title)
+write( khb, '(a)' ) '# started : '//clock()
+write( khb, '(a)' ) '# units   : us, GPa; errors are relative to t = 0'
+write( khb, '(a)' ) '#   cycle      t (us)     dt (us)  dt cell'// &
+   '   max P (GPa)    mass err  energy err   x-momentum   wall (s)'
+flush( khb )                            ! so tail -f sees it now
+
+write( kpt6, 202 ) repeat('=',56)
+write( kpt6, 202 ) ' 4. Heartbeat'
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 204 ) 'Heartbeat file', trim(hb_file)
+write( kpt6, 202 ) repeat('=',56)
+
+!====================!
+! 5. Initialization. !
+!====================!
+
+! TODO / includes time zero and cycle zero
 
 !==============================!
 ! 6. Allocate the data arrays. !
@@ -202,68 +256,57 @@ write( kpt6, 202 ) repeat('=',56)
 ! 7. Begin the simulation. !
 !==========================!
 
-! TODO / hints:
-!loop_on_cycles: do while (running)
-! ...
-   !***NOTE: the hint directives below are written !!$OMP so that they
-   ! stay comments in an -fopenmp build. A live !$OMP PARALLEL with no
-   ! loop under it would not compile. Drop one "!" when the loop is real.
-   !********************************************!
-   ! If needed, FORWARD TIME INTEGRATION of all
-   ! CELL-CENTERED VARIABLES goes like this:
-   !!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(slice)
-   !!$OMP DO
-   !do i=3,imax-2,2
-   !   slice(1,:) = database(i,:)
-   !   call my_fcn( slice, ... )
-   !   database(i,:) = slice(1,:)
-   !end do
-   !!$OMP END DO
-   !!$OMP END PARALLEL
-   !********************************************!
-! ...
-   !********************************************!
-   ! If needed, RIEMANN PROBLEM solution of all
-   ! FACE-CENTERED VARIABLES goes like this:
-   !!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(chunk)
-   !!$OMP DO
-   !do i=2,imax-1,2
-   !   chunk(1:3,:) = database(i-1:i+1,:)
-   !   call my_fcn( chunk, ... )
-   !   database(i,:) = chunk(2,:)
-   !end do
-   !!$OMP END DO
-   !!$OMP END PARALLEL
-   !********************************************!
-! ...
-   !********************************************!
-   ! If needed, THERMODYNAMIC UPDATE using LEFT
-   ! and RIGHT cell centers goes like this:
-   !!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(chunk)
-   !!$OMP DO
-   !do i=3,imax-2,2
-   !   chunk(1:3,:) = database(i-1:i+1,:)
-   !   call my_fcn( chunk, ... )
-   !   database(i,:) = chunk(2,:)
-   !end do
-   !!$OMP END DO
-   !!$OMP END PARALLEL
-   !********************************************!
-! ...
-
-   ! Conditions to dump the database.
-
-! ...
-
-   ! Conditions to make bitwhiz images on-the-fly.
-
-! ...
-
-   ! Conditions to end the simulation.
-
-! ...
-
+! TODO / hints (equation sheet Steps 1-2; slots and rules: shock_mod)
+!
+! Cells are odd i = 3, 5, ..., imax-2 and faces are even i = 2, ...,
+! imax-1. Every loop copies a private chunk of the database, works on
+! the chunk, and writes back ONLY the slots it changed (the write-back
+! rule in shock_mod keeps neighboring threads from tripping over each
+! other). The hint directives are written !!$OMP so they stay comments
+! in an -fopenmp build; drop one "!" when a loop is real.
+!
+!loop_on_cycles: do while ( running )
+!
+!   !*** FACE loop: momentum and position (Step 1).
+!   !!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(i,chunk)
+!   !do i = 2, imax-1, 2
+!   !   chunk = database(:,i-ns:i+ns)
+!   !   call face_update( chunk, ... )
+!   !   database(ju,i) = chunk(ju,0)          ! only what changed
+!   !   database(jx,i) = chunk(jx,0)
+!   !end do
+!   !!$OMP END PARALLEL DO
+!
+!   !*** CELL loop: density, energy, EOS, sound speed, q (Step 2).
+!   !!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(i,chunk)
+!   !do i = 3, imax-2, 2
+!   !   chunk = database(:,i-ns:i+ns)
+!   !   call cell_update( chunk, ... )
+!   !   database(jrho,i) = chunk(jrho,0)      ! only what changed
+!   !   database(je,i)   = chunk(je,0)
+!   !   ...
+!   !end do
+!   !!$OMP END PARALLEL DO
+!
+!   !*** Time step: a cell loop with REDUCTION(MIN:dtmin) for the CFL
+!   !*** limit, and the first tensile cell (flag it, set P = 0).
+!
+!   ! One heartbeat line for this cycle: write( khb, ... ), then flush.
+!
+!   ! Conditions to write tracers and snapshots (Output block).
+!
+!   ! Conditions to end the simulation: t >= t_end or cycle = cycle_max.
+!
 !end do loop_on_cycles
+
+!===============================!
+! 8. Close the heartbeat file.  !
+!===============================!
+if ( hb_open ) then
+   write( khb, '(a)' ) '# ended   : '//clock()//'  (normal end)'
+   close( khb )
+   hb_open = .false.
+end if
 
 !=======================================!
 ! Compute CPU time and write to screen. !
@@ -290,5 +333,19 @@ contains
       'me697_double_shock_2p00.deck'
    stop 1, quiet=.true.
    end subroutine usage
+
+   !*****************************************************!
+   ! The date and time as text, "2026-10-13 21:41:07",   !
+   ! for the heartbeat (and later the run log).          !
+   !*****************************************************!
+   function clock() result(stamp)
+   implicit none
+   character(len=19) :: stamp
+   character(len=8)  :: ymd
+   character(len=10) :: hms
+   call date_and_time( ymd, hms )
+   stamp = ymd(1:4)//'-'//ymd(5:6)//'-'//ymd(7:8)//' '// &
+           hms(1:2)//':'//hms(3:4)//':'//hms(5:6)
+   end function clock
 
 end program bitwhiz

@@ -4,8 +4,10 @@ bEgIn bitwhiz
  define u_fly = 2.00
  bEgIn Run
   t_end = 5.0
-  tracer = pdv matx:pmma
  END Run
+ Begin Output
+  tracer = pdv matx:pmma
+ End Output
  bEgIn Material Al
   r0 = 2.78
   C0 = 5.30

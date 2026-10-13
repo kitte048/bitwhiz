@@ -31,6 +31,10 @@ bin/*
 build/
 runs/
 
+# ---- Run outputs ------------------------------------------------------
+# Every run writes <title>.heartbeat in the folder it runs from.
+*.heartbeat
+
 # ---- Generated images ------------------------------------------------
 # Bitmaps are outputs; they can be recreated from the code. To commit
 # a specific one on purpose (e.g. a README figure), whitelist it:
