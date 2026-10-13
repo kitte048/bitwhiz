@@ -11,8 +11,9 @@
 #**********************************************************************#
 out=${1:-src/modules/build_mod.f95}
 
-# When: local date and time of the build.
-when=$(date '+%Y-%m-%d %H:%M:%S')
+# When: local date, time and time zone of the build, e.g.
+#    2026-10-13 21:41:07 -0400
+when=$(date '+%Y-%m-%d %H:%M:%S %z')
 
 # What: the nearest git tag, commits since it, and the commit hash, plus
 # "-dirty" if tracked files have uncommitted changes, e.g.

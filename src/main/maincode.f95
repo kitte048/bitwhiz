@@ -20,6 +20,9 @@ program bitwhiz
 !                (with Claude)        read before OpenMP and heartbeat
 !    10/13/26    D. E. Kittell        Banner shows version, build date,
 !                (with Claude)        compiler and build type
+!    10/13/26    D. E. Kittell        Hardening: deck path checked for
+!                (with Claude)        length and blanks; time stamps
+!                                     carry the time zone
 !
 !**********************************************************************!
 use bits, only: dp,int32,kpt6
@@ -35,6 +38,7 @@ real(kind=dp) :: cpu1,cpu2              ! wall clock at start and end
 integer(kind=int32) :: nargs            ! command line word count
 integer(kind=int32) :: kerr             ! errors found in the deck
 integer(kind=int32) :: ios              ! I/O status from open()
+integer(kind=int32) :: nlen             ! full length of the deck path
 character(len=256) :: deckname          ! the deck file, from the
                                         ! command line
 
@@ -91,7 +95,13 @@ write( kpt6, 202 ) repeat('=',56)
 ! was run (input/README.md).
 nargs = command_argument_count()
 if ( nargs == 0 ) call usage( 'no input deck given' )
-call get_command_argument( 1, deckname )
+call get_command_argument( 1, deckname, length=nlen )
+
+! A path longer than deckname would be cut short without a word and
+! could open the wrong file (or a folder), so it is refused instead.
+if ( nlen > len(deckname) ) call usage( 'the deck path is longer '// &
+   'than 256 characters; run from a folder closer to the deck' )
+if ( len_trim(deckname) == 0 ) call usage( 'no input deck given' )
 if ( deckname(1:1) == '-' ) then
    if ( trim(deckname) == '-np' ) then
       call usage( '-np is gone: set num_threads in the deck''s Run block' )
@@ -316,11 +326,7 @@ write( kpt6, 202 ) repeat('=',56)
 !===============================!
 ! 8. Close the heartbeat file.  !
 !===============================!
-if ( hb_open ) then
-   write( khb, '(a)' ) '# ended   : '//clock()//'  (normal end)'
-   close( khb )
-   hb_open = .false.
-end if
+call close_heartbeat( 'normal end' )
 
 !=======================================!
 ! Compute CPU time and write to screen. !
@@ -386,17 +392,37 @@ contains
    end function build_kind
 
    !*****************************************************!
-   ! The date and time as text, "2026-10-13 21:41:07",   !
-   ! for the heartbeat (and later the run log).          !
+   ! Write the last line of the heartbeat and close it.  !
+   ! Every way out of a run after section 4 should come  !
+   ! through here, with a word on how the run ended      !
+   ! ('normal end', or the reason for stopping), so the  !
+   ! heartbeat never just stops without saying why.      !
+   !*****************************************************!
+   subroutine close_heartbeat( how )
+   implicit none
+   character(len=*), intent(in) :: how
+   if ( .not. hb_open ) return
+   write( khb, '(a)' ) '# ended   : '//clock()//'  ('//how//')'
+   close( khb )
+   hb_open = .false.
+   end subroutine close_heartbeat
+
+   !*****************************************************!
+   ! The date, time and time zone as text, for the       !
+   ! banner and the heartbeat:                           !
+   !     "2026-10-13 21:41:07 -0400"                     !
+   ! The zone keeps runs on different machines (laptop,  !
+   ! cluster) comparable.                                !
    !*****************************************************!
    function clock() result(stamp)
    implicit none
-   character(len=19) :: stamp
+   character(len=25) :: stamp
    character(len=8)  :: ymd
    character(len=10) :: hms
-   call date_and_time( ymd, hms )
+   character(len=5)  :: zone
+   call date_and_time( ymd, hms, zone )
    stamp = ymd(1:4)//'-'//ymd(5:6)//'-'//ymd(7:8)//' '// &
-           hms(1:2)//':'//hms(3:4)//':'//hms(5:6)
+           hms(1:2)//':'//hms(3:4)//':'//hms(5:6)//' '//zone
    end function clock
 
 end program bitwhiz

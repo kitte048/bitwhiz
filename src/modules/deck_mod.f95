@@ -19,6 +19,9 @@ module deck
 !    10/13/26    D. E. Kittell        Output block (tracer, plot_every,
 !                (with Claude)        plot_dt, colormap); a key in the
 !                                     wrong block names its home block
+!    10/13/26    D. E. Kittell        Hardening: a folder, an empty
+!                (with Claude)        file or an unreadable file each
+!                                     says so; maintainer notes added
 !
 !**********************************************************************!
 !
@@ -51,13 +54,30 @@ module deck
 !
 !     input/foo.deck:23: error: R0 = "abc" is not a number
 !
-!  WHY NOT THE OLD PARSER?
-!  =======================
-!  The old style matched keys by their first few letters ("ng" also
-!  matched "ngrains"), silently ignored unknown lines, and kept every
-!  value in one ui(100) array addressed by number. Here, a key matches
-!  only itself, anything unknown is an error, and values land in named
-!  variables and tables.
+!  DESIGN RULES (keep these when changing the reader)
+!  ==================================================
+!   - A key matches only itself: no matching on the first few letters,
+!     which once let "ng" also match "ngrains" in an older reader.
+!   - Anything the reader does not recognize is an error, never
+!     silently skipped. A typo must stop the run, not change it.
+!   - Values land in named variables and tables in the shock module,
+!     never in a numbered ui(:) array.
+!   - Every message carries the deck file name and line number.
+!
+!  MAINTAINER NOTES: adding a new deck key
+!  =======================================
+!  A new key touches six places. Miss one and either the key is
+!  rejected, or it works but is lost from the resolved deck.
+!   1. shock_mod: a variable with the key's name and its default,
+!      with units in the comment.
+!   2. key_<block> (below): a case that checks and stores the value.
+!   3. The "allowed:" list in that routine's unknown_key call.
+!   4. home_block: the key's block, so a misplaced key says where it
+!      belongs.
+!   5. write_resolved_deck: echo it, so the resolved deck still
+!      reproduces the run (tests/run_deck_tests.sh checks this).
+!   6. input/README.md: the key's row in its block's table. Then add a
+!      test deck or two in tests/decks/ (an "# expect:" line on top).
 !
 !**********************************************************************!
 use bits,  only: dp, int32, int64, zero, one, kpt6, nline
@@ -210,11 +230,21 @@ contains
    character(len=:), allocatable :: raw
    character(len=nline) :: text
    integer(kind=int32) :: lu, ios, n, ic, k
-   logical :: started, ended, eof
+   logical :: started, ended, eof, bad, isdir
 
    nstmt = 0
    if (allocated(stmt)) deallocate(stmt)
    allocate(stmt(64))
+
+   ! A folder is not a deck. Standard Fortran cannot ask "is this a
+   ! folder?", so we use the usual POSIX trick: "name/." exists only
+   ! when name is a folder. (gfortran on a folder happily opens it and
+   ! then reports end-of-file, which would look like an empty deck.)
+   inquire(file=trim(fname)//'/.', exist=isdir)
+   if (isdir) then
+      call deck_error(0, '"'//trim(fname)//'" is a folder, not a deck file')
+      return
+   end if
 
    open(newunit=lu, file=fname, status='old', action='read', &
         iostat=ios)
@@ -227,7 +257,13 @@ contains
    ended   = .false.
    n = 0
    read_loop: do
-      call get_line(lu, raw, eof)
+      call get_line(lu, raw, eof, bad)
+      if (bad) then
+         call deck_error(n+1, 'cannot read the deck file (is it a '// &
+            'folder, or not a text file?)')
+         close(lu)
+         return
+      end if
       if (eof) exit read_loop
       n = n + 1
 
@@ -281,7 +317,9 @@ contains
    end do read_loop
    close(lu)
 
-   if (.not. started) then
+   if (n == 0) then
+      call deck_error(0, 'the deck file is empty')
+   else if (.not. started) then
       call deck_error(0, 'no "Begin bitwhiz" line found')
    else if (.not. ended) then
       call deck_error(n, 'the deck ends without "End bitwhiz"')
@@ -292,17 +330,21 @@ contains
 
    !*******************************************************************!
    ! Read one line of any length (non-advancing reads, in pieces).     !
+   ! eof is set at the end of the file. bad is set if the file cannot  !
+   ! be read at all (e.g. the "deck" is a folder); the caller reports  !
+   ! it, so a bad file is never mistaken for an empty one.             !
    !*******************************************************************!
-   subroutine get_line(lu, line, eof)
+   subroutine get_line(lu, line, eof, bad)
    implicit none
    integer(kind=int32), intent(in) :: lu
    character(len=:), allocatable, intent(out) :: line
-   logical, intent(out) :: eof
+   logical, intent(out) :: eof, bad
    character(len=256) :: piece
    integer(kind=int32) :: ios, nread
 
    line = ''
    eof  = .false.
+   bad  = .false.
    do
       read(lu, '(a)', advance='no', iostat=ios, size=nread) piece
       if (is_iostat_end(ios)) then
@@ -311,8 +353,9 @@ contains
       end if
       line = line // piece(1:nread)
       if (is_iostat_eor(ios)) return
-      if (ios /= 0) then
+      if (ios /= 0) then          ! a read error, not the end of the file
          eof = .true.
+         bad = .true.
          return
       end if
    end do

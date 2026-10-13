@@ -58,5 +58,21 @@ for deck in input/*.deck; do
    roundtrip "$deck" && npass=$((npass+1))
 done
 
+# Command-line cases: no file to read, or a bad thing in place of a deck.
+# Each must stop cleanly (exit code not 0) with the message shown.
+: > "$TMP/empty.deck"
+cmdline() {   # $1 = the argument, $2 = part of the expected message
+   out=$("$BIN" "$1" 2>&1); rc=$?
+   if [ $rc -eq 0 ] || ! echo "$out" | grep -qF -- "$2"; then
+      fail "bitwhiz '$1'" "expected \"$2\""
+   else
+      npass=$((npass+1))
+   fi
+}
+cmdline ""                   "usage"
+cmdline "no_such_file.deck"  "cannot open the deck file"
+cmdline "tests"              "is a folder, not a deck file"
+cmdline "$TMP/empty.deck"    "the deck file is empty"
+
 echo "deck tests: $npass passed, $nfail failed"
 [ $nfail -eq 0 ]
