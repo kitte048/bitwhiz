@@ -17,6 +17,9 @@ module shock
 !                (with Claude)
 !    10/11/26    D. E. Kittell        Input deck tables: run, solver,
 !                (with Claude)        material, layer, tracer
+!    10/13/26    D. E. Kittell        Stress lives at cell centers only:
+!                (with Claude)        removed the face-stress slot; ns = 2
+!                                     explained by the energy update
 !
 !**********************************************************************!
 !
@@ -91,6 +94,14 @@ public
 !  (1 km/s = 1 mm/us, and GPa*cm^3/g = kJ/g = (km/s)^2.)
 !  Masses are per unit cross-sectional area (planar 1-D), so a mass
 !  is a density times a length: (g/cm^3)*mm.
+!
+!  RULE: stress (p, q, and any stress added later) lives ONLY at the
+!  cell centers, for every solution method. A face never stores a
+!  stress. When an update needs the stress acting across a face (the
+!  mass-weighted p plus the averaged q in the energy update), it is
+!  computed on the spot from the two cells on either side of that
+!  face. That keeps one copy of every stress, so it can never go
+!  stale, and the code reads term for term like the equation sheet.
 !**********************************************************************!
 
 !*** FACE slots (even i). Kinematics live on the faces.
@@ -98,22 +109,20 @@ integer(kind=int32), parameter :: jx      =  1 ! position x, mm
 integer(kind=int32), parameter :: ju      =  2 ! velocity u, km/s
 integer(kind=int32), parameter :: jx_old  =  3 ! x at the old time level
 integer(kind=int32), parameter :: ju_old  =  4 ! u at the old time level
-integer(kind=int32), parameter :: jsf     =  5 ! face stress sigma_f, GPa
-                                               ! (mass-weighted p, plus q)
-integer(kind=int32), parameter :: jmf     =  6 ! face (nodal) mass, half
+integer(kind=int32), parameter :: jmf     =  5 ! face (nodal) mass, half
                                                ! of each neighbor cell
 
 !*** CELL slots (odd i). Thermodynamics live at the cell centers.
-integer(kind=int32), parameter :: jm      =  7 ! cell mass (fixed, it is
+integer(kind=int32), parameter :: jm      =  6 ! cell mass (fixed, it is
                                                ! a Lagrangian code)
-integer(kind=int32), parameter :: jrho    =  8 ! density, g/cm^3
-integer(kind=int32), parameter :: je      =  9 ! specific internal
+integer(kind=int32), parameter :: jrho    =  7 ! density, g/cm^3
+integer(kind=int32), parameter :: je      =  8 ! specific internal
                                                ! energy, kJ/g
-integer(kind=int32), parameter :: jp      = 10 ! pressure, GPa
-integer(kind=int32), parameter :: jq      = 11 ! artificial viscosity, GPa
-integer(kind=int32), parameter :: jc      = 12 ! sound speed, km/s
-integer(kind=int32), parameter :: jrho_old= 13 ! rho at the old time level
-integer(kind=int32), parameter :: je_old  = 14 ! e at the old time level
+integer(kind=int32), parameter :: jp      =  9 ! pressure, GPa
+integer(kind=int32), parameter :: jq      = 10 ! artificial viscosity, GPa
+integer(kind=int32), parameter :: jc      = 11 ! sound speed, km/s
+integer(kind=int32), parameter :: jrho_old= 12 ! rho at the old time level
+integer(kind=int32), parameter :: je_old  = 13 ! e at the old time level
                                                ! (add more _old slots
                                                ! here as the method
                                                ! needs them)
@@ -122,24 +131,24 @@ integer(kind=int32), parameter :: je_old  = 14 ! e at the old time level
 !*** copy of its layer's Mie-Gruneisen constants, so a slice or a
 !*** chunk is self-contained and my_fcn() never has to look anything
 !*** up in the layer table. The names match the input deck keys.
-integer(kind=int32), parameter :: jr0     = 15 ! R0, reference density
-integer(kind=int32), parameter :: jc0     = 16 ! C0, bulk sound speed
-integer(kind=int32), parameter :: js1     = 17 ! S1, Us-up slope
-integer(kind=int32), parameter :: js2     = 18 ! S2, Us-up curvature
-integer(kind=int32), parameter :: jg0     = 19 ! G0, Gruneisen gamma
+integer(kind=int32), parameter :: jr0     = 14 ! R0, reference density
+integer(kind=int32), parameter :: jc0     = 15 ! C0, bulk sound speed
+integer(kind=int32), parameter :: js1     = 16 ! S1, Us-up slope
+integer(kind=int32), parameter :: js2     = 17 ! S2, Us-up curvature
+integer(kind=int32), parameter :: jg0     = 18 ! G0, Gruneisen gamma
 
 !*** Total number of variables (rows of the database). If you add a
 !*** slot above, give it the next number, bump nvar, and add its name
 !*** to dbname below. The compiler checks that dbname has nvar items.
-integer(kind=int32), parameter :: nvar    = 19
+integer(kind=int32), parameter :: nvar    = 18
 
 !*** Short names for each slot, in slot order. Used for output file
 !*** headers, plot labels and the XDMF sidecar.
 character(len=8), parameter, dimension(nvar) :: dbname = (/ &
-   'x       ', 'u       ', 'x_old   ', 'u_old   ', 'sf      ', &
-   'mf      ', 'm       ', 'rho     ', 'e       ', 'p       ', &
-   'q       ', 'c       ', 'rho_old ', 'e_old   ', 'R0      ', &
-   'C0      ', 'S1      ', 'S2      ', 'G0      ' /)
+   'x       ', 'u       ', 'x_old   ', 'u_old   ', 'mf      ', &
+   'm       ', 'rho     ', 'e       ', 'p       ', 'q       ', &
+   'c       ', 'rho_old ', 'e_old   ', 'R0      ', 'C0      ', &
+   'S1      ', 'S2      ', 'G0      ' /)
 
 !**********************************************************************!
 ! Data dictionary: stencil half-width for a chunk.
@@ -150,8 +159,29 @@ character(len=8), parameter, dimension(nvar) :: dbname = (/ &
 !
 !  so chunk(:,0) is the center, chunk(:,-1) the left neighbor and
 !  chunk(:,+1) the right neighbor. ns = 2 because the energy update
-!  at a cell needs the NEXT cells over (i-2 and i+2), not just the
-!  faces on either side (i-1 and i+1).
+!  (equation sheet, Step 2) for cell k uses p, q and M in cells k-1,
+!  k and k+1 to build the stress across each face, plus the velocity
+!  of the faces k-1/2 and k+1/2. In the interleaved database the next
+!  cells over are i-2 and i+2:
+!
+!     i-2    i-1      i     i+1    i+2
+!     k-1   k-1/2     k    k+1/2   k+1
+!     cell  face    cell   face   cell
+!
+!  The two extra columns cost almost nothing: a chunk is 5 x nvar
+!  doubles, tiny next to one equation-of-state call.
+!
+!***NOTE: the WRITE-BACK RULE that keeps a 5-wide chunk thread safe.
+! Neighboring threads read the same places this thread is updating,
+! so a loop must:
+!   (1) write back ONLY the slots it updates, e.g. for the energy loop
+!          database(je,i) = chunk(je,0)
+!       and never the whole column, database(:,i) = chunk(:,0), which
+!       would also rewrite the p and q that neighbors are reading; and
+!   (2) never read a neighbor's copy of a slot that the same loop
+!       writes (the energy loop writes e, so it must not use e from
+!       chunk(:,-2) or chunk(:,+2)).
+! Then every value a thread reads is one that no thread is changing.
 !
 !***NOTE: slice and chunk are NOT declared in this module on purpose.
 ! Module variables are shared by every OpenMP thread. Declare them
@@ -332,7 +362,7 @@ type(tracer_t), allocatable :: tracer(:)      ! tracer(1:ntrc)
 !                        the layer on its LEFT; an interface is where
 !                        ilay(i-1) /= ilay(i+1).
 !
-!  Memory: 8*nvar bytes per place, so about 300 KB for the 945-zone
+!  Memory: 8*nvar bytes per place, so about 270 KB for the 945-zone
 !  class problem. It does not depend on nlay at all.
 !
 !***NOTE: a burn model can later get its own array with the SAME
