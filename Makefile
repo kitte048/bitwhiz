@@ -62,14 +62,31 @@ $(LIB_OBJS) $(BIN): $(MOD_OBJS)
 src/modules/shock_mod.o: src/modules/bit_mod.o
 src/modules/deck_mod.o:  src/modules/shock_mod.o src/modules/bit_mod.o
 
-clean:
+############################################################
+###  NOTES: files a RUN leaves behind (not build products).
+###  'make cleanrun' removes only these and keeps the objects
+###  and bin/bitwhiz, so the next run needs no rebuild.
+###  Add each new output type here as bitwhiz learns to
+###  write it (tracers, snapshots, run log, ...).
+###  The decks and README in input/ are never touched.
+############################################################
+RUN_FILES = *.heartbeat input/*.heartbeat input/*.bmp
+
+cleanrun:
+	rm -f $(RUN_FILES)
+
+############################################################
+###  NOTES: 'make clean' removes the build products AND the
+###  run outputs, for a fresh start.
+############################################################
+clean: cleanrun
 	rm -f $(EXECS) $(MOD_OBJS) $(LIB_OBJS) $(BIN) $(MOD_FILS)
 	rm -f bitwhiz *.mod
 
 ############################################################
-###  NOTES: images are outputs, not build products, so they
-###  have their own target ('make cleanbmp'); 'make clean'
-###  no longer deletes every .bmp in the top folder.
+###  NOTES: bitmaps in the top folder are kept by both
+###  targets above (e.g. a figure you want to keep); remove
+###  them on purpose with 'make cleanbmp'.
 ############################################################
 cleanbmp:
 	rm -f *.bmp
@@ -77,5 +94,5 @@ cleanbmp:
 .f95.o:
 	$(FC) $(INCLUDES) -c $(FCFLAGS) $(OMPFLAGS) $< -o $@
 
-.PHONY : bitwhiz clean cleanbmp
+.PHONY : bitwhiz clean cleanrun cleanbmp
 # End of the makefile
