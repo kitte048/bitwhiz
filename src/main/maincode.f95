@@ -28,8 +28,24 @@ call timestamp( cpu1 ) !~ save for reference.
 !====================!
 ! 0. Loading screen. !
 !====================!
-
-! TODO / something cool to look at on the terminal
+write( kpt6, 202 ) repeat('=',56)
+write( kpt6, 202 ) '       ---==>>    __    _ __           __    _'
+write( kpt6, 202 ) '        --==>>   / /_  (_) /__      __/ /_  (_)___'
+write( kpt6, 202 ) '         -==>>  / __ \/ / __/ | /| / / __ \/ /_  /'
+write( kpt6, 202 ) '        --==>> / /_/ / / /_ | |/ |/ / / / / / / /_'
+write( kpt6, 202 ) '       ---==>>/_.___/_/\__/ |__/|__/_/ /_/_/ /___/'
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 202 ) '        a one-dimensional Lagrangian hydrocode'
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 202 ) '   u |                         _______________________'
+write( kpt6, 202 ) '     |                ________/    second shock'
+write( kpt6, 202 ) '     |               /'
+write( kpt6, 202 ) '     |   ___________/   first shock'
+write( kpt6, 202 ) '     |__/____________________________________________ t'
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 202 ) '   "It will not work the first time.'
+write( kpt6, 202 ) '    That is the assignment."                  -- ME 697'
+write( kpt6, 202 ) repeat('=',56)
 
 !====================================!
 ! 1. Read execution line parameters. !
