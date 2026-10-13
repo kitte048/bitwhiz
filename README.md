@@ -24,6 +24,12 @@ make OMPFLAGS=  # a serial build from the same source
 ```
 After changing compiler flags, run `make clean` first.
 
+Every `make` also writes `src/modules/build_mod.f95` (generated, not in git):
+the build date and the git version from `git describe --tags --always --dirty`,
+e.g. `v0.3-12-g9f2c1ab-dirty`. The banner and the heartbeat print it, so every
+run records which build made it. Tag releases (`git tag v0.3`) to give the
+version a readable name; `-dirty` marks a build with uncommitted changes.
+
 ## Run
 ```
 ./bin/bitwhiz input/me697_double_shock_2p00.deck

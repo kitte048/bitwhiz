@@ -18,12 +18,16 @@ program bitwhiz
 !    03/24/25    D. E. Kittell        Original code; fork of bitmaths
 !    10/13/26    D. E. Kittell        Colormap demo retired; the deck is
 !                (with Claude)        read before OpenMP and heartbeat
+!    10/13/26    D. E. Kittell        Banner shows version, build date,
+!                (with Claude)        compiler and build type
 !
 !**********************************************************************!
 use bits, only: dp,int32,kpt6
 use shock, only: omp_on,nproc,num_procs,max_threads,num_threads, &
    thread_num,nalive,title,khb,hb_open,hb_file
 use deck, only: read_deck,write_resolved_deck
+use build, only: build_date,build_version       ! written by 'make'
+use, intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 !$ use omp_lib, only: omp_get_num_procs,omp_set_num_threads, &
 !$    omp_get_num_threads,omp_get_thread_num
 implicit none
@@ -39,6 +43,7 @@ character(len=256) :: deckname          ! the deck file, from the
 203 format(3x,a,t40,': ',i6,2x,a)       ! label : integer  note
 204 format(3x,a,t40,': ',a)             ! label : text
 205 format(3x,a,t40,': ',i6)            ! label : integer
+206 format(3x,a,t15,': ',a)             ! banner label : text
 
 call timestamp( cpu1 ) !~ save for reference.
 
@@ -64,8 +69,14 @@ write( kpt6, 202 ) '     |               /'
 write( kpt6, 202 ) '     |   ___________/   first shock'
 write( kpt6, 202 ) '     |__/____________________________________________ t'
 write( kpt6, 202 ) repeat('-',56)
-write( kpt6, 202 ) '   "It will not work the first time.'
-write( kpt6, 202 ) '    That is the assignment."                  -- ME 697'
+!*** Which code this is: the git version and build date come from
+!*** src/modules/build_mod.f95, which 'make' writes on every build; the
+!*** compiler and its options are recorded by the compiler itself.
+write( kpt6, 206 ) 'version',   build_version()
+write( kpt6, 206 ) 'built',     build_date()
+write( kpt6, 206 ) 'compiler',  compiler_version()
+write( kpt6, 206 ) 'build',     build_kind()
+write( kpt6, 206 ) 'run start', clock()
 write( kpt6, 202 ) repeat('=',56)
 
 !=============================!
@@ -215,6 +226,9 @@ write( khb, '(a)' ) '# bitwhiz heartbeat'
 write( khb, '(a)' ) '# deck    : '//trim(deckname)
 write( khb, '(a)' ) '# title   : '//trim(title)
 write( khb, '(a)' ) '# started : '//clock()
+write( khb, '(a)' ) '# version : '//build_version()
+write( khb, '(a)' ) '# built   : '//build_date()//', '//compiler_version()
+write( khb, '(a)' ) '# flags   : '//compiler_options()
 write( khb, '(a)' ) '# units   : us, GPa; errors are relative to t = 0'
 write( khb, '(a)' ) '#   cycle      t (us)     dt (us)  dt cell'// &
    '   max P (GPa)    mass err  energy err   x-momentum   wall (s)'
@@ -333,6 +347,43 @@ contains
       'me697_double_shock_2p00.deck'
    stop 1, quiet=.true.
    end subroutine usage
+
+   !*****************************************************!
+   ! A one-line summary of how this executable was       !
+   ! compiled, from the compiler's own record of its     !
+   ! options, e.g. "debug (-O0, -fcheck), OpenMP".       !
+   ! "debug" means unoptimized or with run-time checks.  !
+   !*****************************************************!
+   function build_kind() result(s)
+   implicit none
+   character(len=:), allocatable :: s, opts, olevel
+   logical :: checks, openmp
+   integer(kind=int32) :: k
+
+   opts = ' '//compiler_options()//' '
+
+   ! Optimization level: the last -O option wins, as in gfortran.
+   olevel = '-O0'
+   k = index(opts, ' -O', back=.true.)
+   if ( k > 0 ) olevel = opts(k+1:k-1+index(opts(k+1:), ' '))
+
+   checks = ( index(opts, ' -fcheck') > 0 )
+   openmp = .false.
+   !$ openmp = .true.
+
+   if ( olevel == '-O0' .or. olevel == '-Og' .or. checks ) then
+      s = 'debug ('//olevel
+   else
+      s = 'optimized ('//olevel
+   end if
+   if ( checks ) s = s//', -fcheck'
+   s = s//')'
+   if ( openmp ) then
+      s = s//', OpenMP'
+   else
+      s = s//', serial'
+   end if
+   end function build_kind
 
    !*****************************************************!
    ! The date and time as text, "2026-10-13 21:41:07",   !

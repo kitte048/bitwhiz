@@ -2,6 +2,8 @@
 #Author: David Kittell
 #Revision: 1.1  (10-06-26, with Claude: module dependencies, -J, safe
 #                link and clean; see the NOTES blocks below)
+#Revision: 1.2  (10-13-26, with Claude: build date and git version
+#                recorded in src/modules/build_mod.f95)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -33,18 +35,44 @@ INCLUDES = -I$(INCLUDE_PATH) -J$(INCLUDE_PATH)
 
 EXECS = ./bin/bitwhiz
 
+# The build record (when, and from which git version); see the NOTES
+# at the BUILD_SRC rule. Defined here, before any rule that uses it.
+BUILD_SRC = src/modules/build_mod.f95
+BUILD_OBJ = src/modules/build_mod.o
+
 # Targets
 ############################################################
-###  NOTES: the target is the real file ./bin/bitwhiz, so
-###  'make' with nothing changed does nothing. The link
-###  writes straight into ./bin, and if it fails, make
+###  NOTES: the target is the real file ./bin/bitwhiz. The
+###  link writes straight into ./bin, and if it fails, make
 ###  stops with an error (no stale executable left behind).
+###  With nothing changed, 'make' only refreshes the build
+###  record (see BUILD_SRC below) and relinks.
 ############################################################
 bitwhiz: $(EXECS)
 
-$(EXECS): $(MOD_OBJS) $(LIB_OBJS) $(BIN)
+$(EXECS): $(MOD_OBJS) $(LIB_OBJS) $(BIN) $(BUILD_OBJ)
 	@mkdir -p ./bin
-	$(FC) $(OMPFLAGS) $(INCLUDES) -o $(EXECS) $(BIN) $(MOD_OBJS) $(LIB_OBJS)
+	$(FC) $(OMPFLAGS) $(INCLUDES) -o $(EXECS) $(BIN) $(MOD_OBJS) \
+		$(LIB_OBJS) $(BUILD_OBJ)
+
+############################################################
+###  NOTES: build_mod.f95 records WHEN and FROM WHICH git
+###  version bin/bitwhiz was built; the banner and the
+###  heartbeat print it. It is rewritten on every 'make'
+###  (FORCE), so 'make' always recompiles this one small
+###  file and relinks, about a second. It is NOT in
+###  MOD_OBJS, so nothing else recompiles because of it;
+###  maincode only needs it to exist first, which is what
+###  the order-only rule ('|') says.
+############################################################
+$(BUILD_SRC): FORCE
+	@sh src/utils/make_build_info.sh $(BUILD_SRC)
+
+$(BUILD_OBJ): $(BUILD_SRC)
+
+$(BIN): | $(BUILD_OBJ)
+
+FORCE:
 
 ############################################################
 ###  NOTES: every non-module object depends on the module
@@ -81,6 +109,7 @@ cleanrun:
 ############################################################
 clean: cleanrun
 	rm -f $(EXECS) $(MOD_OBJS) $(LIB_OBJS) $(BIN) $(MOD_FILS)
+	rm -f $(BUILD_SRC) $(BUILD_OBJ) src/modules/build.mod
 	rm -f bitwhiz *.mod
 
 ############################################################
@@ -94,5 +123,5 @@ cleanbmp:
 .f95.o:
 	$(FC) $(INCLUDES) -c $(FCFLAGS) $(OMPFLAGS) $< -o $@
 
-.PHONY : bitwhiz clean cleanrun cleanbmp
+.PHONY : bitwhiz clean cleanrun cleanbmp FORCE
 # End of the makefile

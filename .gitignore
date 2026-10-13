@@ -31,6 +31,10 @@ bin/*
 build/
 runs/
 
+# ---- Generated source --------------------------------------------------
+# Written by src/utils/make_build_info.sh on every 'make'.
+src/modules/build_mod.f95
+
 # ---- Run outputs ------------------------------------------------------
 # Every run writes <title>.heartbeat in the folder it runs from.
 *.heartbeat
