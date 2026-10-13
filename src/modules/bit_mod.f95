@@ -8,6 +8,9 @@ module bits
 !      Date       Programmer          Description of change
 !      ====       ==========          =====================
 !    04/04/20    D. E. Kittell        Original code
+!    10/13/26    D. E. Kittell        Shared loop counters i,j,k,ii,jj,kk
+!                (with Claude)        and istat removed: every routine
+!                                     declares its own (see the RULE)
 !
 !**********************************************************************!
 implicit none
@@ -33,7 +36,30 @@ integer(kind=int16), parameter :: kpt5=5,kpt6=6         ! File I/O
 !**********************************************************************!
 ! Data dictionary: declare variables for mathematical function eval.
 !**********************************************************************!
-integer(kind=int32) :: i,j,k,ii,jj,kk,istat
+!
+!  RULE: loop indices and status flags are LOCAL variables.
+!  ========================================================
+!  This module used to hold shared counters (i,j,k,ii,jj,kk,istat)
+!  for every routine to borrow. They are gone, on purpose. Declare
+!  them in each routine that uses them:
+!
+!     integer(kind=int32) :: i,k      ! loop indices
+!
+!  Why:
+!   - A module variable is ONE copy shared by the whole program. A
+!     routine that borrows "i" changes the caller's "i" too, so a
+!     call inside a loop can silently wreck the loop.
+!   - With OpenMP it is ONE copy shared by ALL threads. A loop index
+!     in the parallel loop itself is made private automatically, but
+!     a module "k" used inside a CALLED routine is not: every thread
+!     writes the same k at once, and the answer changes run to run
+!     (a race condition) with no error message.
+!   - Local variables are private to each call, and to each thread.
+!
+!  What belongs here instead: kinds, named constants (parameters),
+!  and data that really is shared and read-only during a parallel
+!  loop.
+!
 real(kind=dp), parameter :: zero=0.0_dp,half=0.5_dp,one=1.0_dp, &
    two=2.0_dp,thr=3.0_dp,for=4.0_dp,fiv=5.0_dp,six=6.0_dp, &
    sev=7.0_dp, eig=8.0_dp, nin=9.0_dp, ten=10.0_dp

@@ -23,9 +23,13 @@ program bitwhiz
 !    10/13/26    D. E. Kittell        Hardening: deck path checked for
 !                (with Claude)        length and blanks; time stamps
 !                                     carry the time zone
+!    10/13/26    D. E. Kittell        Run time from system_clock (wall)
+!                (with Claude)        and cpu_time (all threads), shown
+!                                     in a closing block; the old
+!                                     timestamp lines are gone
 !
 !**********************************************************************!
-use bits, only: dp,int32,kpt6
+use bits, only: dp,int32,int64,kpt6
 use shock, only: omp_on,nproc,num_procs,max_threads,num_threads, &
    thread_num,nalive,title,khb,hb_open,hb_file
 use deck, only: read_deck,write_resolved_deck
@@ -34,7 +38,9 @@ use, intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 !$ use omp_lib, only: omp_get_num_procs,omp_set_num_threads, &
 !$    omp_get_num_threads,omp_get_thread_num
 implicit none
-real(kind=dp) :: cpu1,cpu2              ! wall clock at start and end
+integer(kind=int64) :: tick0,tick1     ! wall clock ticks, start and end
+integer(kind=int64) :: rate             ! wall clock ticks per second
+real(kind=dp) :: cpu0,cpu1              ! CPU seconds, start and end
 integer(kind=int32) :: nargs            ! command line word count
 integer(kind=int32) :: kerr             ! errors found in the deck
 integer(kind=int32) :: ios              ! I/O status from open()
@@ -42,14 +48,24 @@ integer(kind=int32) :: nlen             ! full length of the deck path
 character(len=256) :: deckname          ! the deck file, from the
                                         ! command line
 
-201 format("CPU Elapsed Time = ",1(1f15.3)," seconds")
 202 format(1x,a)                        ! a plain line
 203 format(3x,a,t40,': ',i6,2x,a)       ! label : integer  note
 204 format(3x,a,t40,': ',a)             ! label : text
 205 format(3x,a,t40,': ',i6)            ! label : integer
 206 format(3x,a,t15,': ',a)             ! banner label : text
+207 format(3x,a,t15,': ',f10.3,a)       ! banner label : seconds  note
 
-call timestamp( cpu1 ) !~ save for reference.
+!*** Start the clocks. Two different times are kept, because with
+!*** OpenMP they tell different stories:
+!***   wall clock - real time that passes, what you wait for. It comes
+!***                from system_clock, a tick counter that does not
+!***                care about midnight or the date.
+!***   CPU time   - processor time spent, summed over ALL threads. With
+!***                4 busy threads it grows about 4 times faster than
+!***                the wall clock; CPU / (wall x threads) near 1 means
+!***                the threads were kept busy.
+call system_clock( tick0, rate )
+call cpu_time( cpu0 )
 
 ! The colormap demo (draw_colormaps) is retired from the run. It stays
 ! in the build (src/drawings), and can still be called from here for a
@@ -328,12 +344,19 @@ write( kpt6, 202 ) repeat('=',56)
 !===============================!
 call close_heartbeat( 'normal end' )
 
-!=======================================!
-! Compute CPU time and write to screen. !
-!=======================================!
-call timestamp( cpu2 )
+!=================================!
+! End of run: how long it took.   !
+!=================================!
 
-write( kpt6, 201 ) cpu2-cpu1
+! Same layout as the banner, so a run's screen output opens and closes
+! the same way. (See the start of the program for wall vs. CPU time.)
+call system_clock( tick1 )
+call cpu_time( cpu1 )
+write( kpt6, 202 ) repeat('=',56)
+write( kpt6, 206 ) 'run end',    clock()
+write( kpt6, 207 ) 'wall clock', real(tick1-tick0,dp)/real(rate,dp), ' s'
+write( kpt6, 207 ) 'CPU time',   cpu1-cpu0, ' s (all threads)'
+write( kpt6, 202 ) repeat('=',56)
 
 contains
 

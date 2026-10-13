@@ -22,9 +22,11 @@ subroutine cmap_bentcoolwarm(nx,ny,fcn,RGB,npr)
 !                                   truncate once (was int, then blend)!
 !    10/06/26    Claude (for DEK)   Round to nearest, nint() (was int  !
 !                                   truncation) for the 0-255 channels !
+!    10/13/26    Claude (for DEK)   Loop indices are local variables   !
+!                                   (were shared in module bits)       !
 !                                                                      !
 !**********************************************************************!
-use bits, only: int16,int32,dp,zero,one,i,j,k
+use bits, only: int16,int32,dp,zero,one
 use bentcoolwarm, only: ncls,ctable,scalar
 implicit none
 
@@ -39,6 +41,8 @@ character(len=1), dimension(nx,ny,3), intent(out) :: RGB    ! RGB values
 !**********************************************************************!
 ! Data dictionary: Subroutine Internal Variables.
 !**********************************************************************!
+integer(kind=int32) :: i,j                             ! pixel loop indices
+integer(kind=int32) :: k                               ! table loop index
 integer(kind=int32) :: i1,i2                           ! color indices
 real(kind=dp) :: a,b                                   ! channel ends [0,255]
 integer(kind=int32) :: ch1,ch2,ch3      ! 0-255 channel value

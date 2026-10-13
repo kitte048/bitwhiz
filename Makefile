@@ -4,6 +4,7 @@
 #                link and clean; see the NOTES blocks below)
 #Revision: 1.2  (10-13-26, with Claude: build date and git version
 #                recorded in src/modules/build_mod.f95)
+#Revision: 1.3  (10-13-26, with Claude: 'make test')
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -91,6 +92,15 @@ src/modules/shock_mod.o: src/modules/bit_mod.o
 src/modules/deck_mod.o:  src/modules/shock_mod.o src/modules/bit_mod.o
 
 ############################################################
+###  NOTES: 'make test' builds bitwhiz if needed, then runs
+###  the deck reader tests (tests/run_deck_tests.sh). Every
+###  check must pass; make stops with an error if one fails.
+###  Run it before every commit that touches the reader.
+############################################################
+test: $(EXECS)
+	BIN=$(EXECS) ./tests/run_deck_tests.sh
+
+############################################################
 ###  NOTES: files a RUN leaves behind (not build products).
 ###  'make cleanrun' removes only these and keeps the objects
 ###  and bin/bitwhiz, so the next run needs no rebuild.
@@ -123,5 +133,5 @@ cleanbmp:
 .f95.o:
 	$(FC) $(INCLUDES) -c $(FCFLAGS) $(OMPFLAGS) $< -o $@
 
-.PHONY : bitwhiz clean cleanrun cleanbmp FORCE
+.PHONY : bitwhiz test clean cleanrun cleanbmp FORCE
 # End of the makefile

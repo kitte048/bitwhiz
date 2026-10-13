@@ -14,9 +14,11 @@ subroutine cmap_grayscale(nx,ny,fcn,RGB)
 !                                   locals, explicit int() truncation  !
 !    10/06/26    Claude (for DEK)   Round to nearest, nint() (was int  !
 !                                   truncation) for the 0-255 channels !
+!    10/13/26    Claude (for DEK)   Loop indices are local variables   !
+!                                   (were shared in module bits)       !
 !                                                                      !
 !**********************************************************************!
-use bits, only: int32,dp,i,j,zero,one
+use bits, only: int32,dp,zero,one
 implicit none
 
 !**********************************************************************!
@@ -29,6 +31,7 @@ character(len=1), dimension(nx,ny,3), intent(out) :: RGB    ! RGB values
 !**********************************************************************!
 ! Data dictionary: Subroutine Internal Variables.
 !**********************************************************************!
+integer(kind=int32) :: i,j           ! pixel loop indices
 integer(kind=int32) :: ch1           ! 0-255 channel value
 real(kind=dp) :: val                 ! original values check if [0,1]
 

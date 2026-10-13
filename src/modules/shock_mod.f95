@@ -68,12 +68,13 @@ module shock
 !  WHY "use bits, only: ..." AND NOT "use bits"
 !  ============================================
 !  We take only the kind parameters and a few named constants from
-!  bits, so there is exactly one definition of dp in the code. We do
-!  NOT take the rest of bits, because it declares module-level loop
-!  counters (i, j, k, ii, jj, kk). Module variables are SHARED between
-!  OpenMP threads, so a solver loop that silently used bits' "i"
-!  would be a race condition. Every loop index in the solver must be
-!  a local variable of the routine that runs the loop.
+!  bits, so there is exactly one definition of dp in the code, and it
+!  is plain at the top of every file what it borrows. (bits once held
+!  shared loop counters i, j, k, ...; they are gone. Module variables
+!  are SHARED between OpenMP threads, so a solver loop that used a
+!  module "i" would be a race condition.) Every loop index in the
+!  solver is a local variable of the routine that runs the loop; see
+!  the RULE in bit_mod.f95.
 !
 !**********************************************************************!
 use bits, only: dp, int32, zero, one

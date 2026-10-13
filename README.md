@@ -19,9 +19,13 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 Needs gfortran and make.
 ```
 make            # bin/bitwhiz, debug build with strict flags and -fopenmp
-make clean      # remove objects, module files and the executable
+make test       # build if needed, then run the deck tests (see Test)
+make cleanrun   # remove run outputs (heartbeats, bitmaps in input/); keep the build
+make clean      # cleanrun, plus objects, module files and the executable
+make cleanbmp   # remove bitmaps in this folder (kept by the two above)
 make OMPFLAGS=  # a serial build from the same source
 ```
+The root `Makefile` is the only build; there are no Makefiles under `src/`.
 After changing compiler flags, run `make clean` first.
 
 Every `make` also writes `src/modules/build_mod.f95` (generated, not in git):
@@ -40,18 +44,22 @@ writes `<title>.heartbeat` in the current folder; watch it with `tail -f`.
 
 ## Test
 ```
-./tests/run_deck_tests.sh
+make test
 ```
+(or `./tests/run_deck_tests.sh` on an existing build)
+
 Reads every deck in `tests/decks/` and checks that it is accepted, or rejected
-with the expected message, and that every accepted deck round-trips.
+with the expected message, and that every accepted deck round-trips; then
+checks that bad command lines (no deck, a missing file, a folder, an empty
+file) stop cleanly. Run it before every commit that touches the reader.
 
 ## Layout
 | Folder | What |
 |---|---|
 | `src/main` | `maincode.f95` (the run, section by section), `bmpmaker.f95` |
-| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `bit_mod`, colormap data |
+| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `bit_mod` (kinds and constants), colormap data |
 | `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_colormaps` (demo, kept in the build) |
-| `src/utils` | `timestamp`, `random` |
+| `src/utils` | `make_build_info.sh` (writes the build record), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |
 | `tests` | deck tests; `verification/` reference tracer data |
 | `bin` | the executable |

@@ -14,9 +14,13 @@ subroutine bmpmaker(nx,ny,fcn,RGB,bout,cmap)
 !    10/06/26    Claude (for DEK)   F2018 clean: character(len=1),     !
 !                                   explicit int16 for ilast, set the  !
 !                                   row padding bytes to zero          !
+!    10/13/26    Claude (for DEK)   Loop indices and istat are local   !
+!                                   (were shared in module bits); the  !
+!                                   channel order npr is int16, as the !
+!                                   colormap routines expect           !
 !                                                                      !
 !**********************************************************************!
-use bits, only: dp,int8,int16,int32,j,i,k,istat,one,thr,for,eig,ten, &
+use bits, only: dp,int8,int16,int32,one,thr,for,eig,ten, &
                 bfType,bfSize,bfReserved1,bfReserved2,bfOffBits, &
                 biSize,biWidth,biHeight,biPlanes,biBitCount, &
                 biCompression,biSizeImage,biXPelsPerMeter, &
@@ -42,6 +46,9 @@ integer(kind=int16) :: ilast                           ! string parse
 integer(kind=int32) :: BitsPerPixel, &
    RowSize1,RowSize2,nzp                               ! integers
 integer(kind=int8), dimension(:), allocatable :: zpad  ! zero pad
+integer(kind=int32) :: i,j                             ! loop indices
+integer(kind=int32) :: istat                           ! open() status
+integer(kind=int16) :: npr                             ! channel order
 
 ! Set image dimensions.
 biWidth=nx
@@ -95,91 +102,91 @@ else
 
       ! Smooth Cool-Warm Color Maps.
       else if (cmap(1:14)=='smoothcoolwarm') then
-         k=1
-         if (cmap(15:19)=='1,2,3') k=1
-         if (cmap(15:19)=='1,3,2') k=2
-         if (cmap(15:19)=='2,1,3') k=3
-         if (cmap(15:19)=='2,3,1') k=4
-         if (cmap(15:19)=='3,1,2') k=5
-         if (cmap(15:19)=='3,2,1') k=6
-         call cmap_smoothcoolwarm( nx, ny, fcn, RGB, k )
+         npr=1
+         if (cmap(15:19)=='1,2,3') npr=1
+         if (cmap(15:19)=='1,3,2') npr=2
+         if (cmap(15:19)=='2,1,3') npr=3
+         if (cmap(15:19)=='2,3,1') npr=4
+         if (cmap(15:19)=='3,1,2') npr=5
+         if (cmap(15:19)=='3,2,1') npr=6
+         call cmap_smoothcoolwarm( nx, ny, fcn, RGB, npr )
 
       ! Bent Cool-Warm Color Maps.
       else if (cmap(1:12)=='bentcoolwarm') then
-         k=1
-         if (cmap(13:17)=='1,2,3') k=1
-         if (cmap(13:17)=='1,3,2') k=2
-         if (cmap(13:17)=='2,1,3') k=3
-         if (cmap(13:17)=='2,3,1') k=4
-         if (cmap(13:17)=='3,1,2') k=5
-         if (cmap(13:17)=='3,2,1') k=6
-         call cmap_bentcoolwarm( nx, ny, fcn, RGB, k )
+         npr=1
+         if (cmap(13:17)=='1,2,3') npr=1
+         if (cmap(13:17)=='1,3,2') npr=2
+         if (cmap(13:17)=='2,1,3') npr=3
+         if (cmap(13:17)=='2,3,1') npr=4
+         if (cmap(13:17)=='3,1,2') npr=5
+         if (cmap(13:17)=='3,2,1') npr=6
+         call cmap_bentcoolwarm( nx, ny, fcn, RGB, npr )
 
       ! Viridis Color Maps.
       else if (cmap(1:7)=='viridis') then
-         k=1
-         if (cmap(8:12)=='1,2,3') k=1
-         if (cmap(8:12)=='1,3,2') k=2
-         if (cmap(8:12)=='2,1,3') k=3
-         if (cmap(8:12)=='2,3,1') k=4
-         if (cmap(8:12)=='3,1,2') k=5
-         if (cmap(8:12)=='3,2,1') k=6
-         call cmap_viridis( nx, ny, fcn, RGB, k )
+         npr=1
+         if (cmap(8:12)=='1,2,3') npr=1
+         if (cmap(8:12)=='1,3,2') npr=2
+         if (cmap(8:12)=='2,1,3') npr=3
+         if (cmap(8:12)=='2,3,1') npr=4
+         if (cmap(8:12)=='3,1,2') npr=5
+         if (cmap(8:12)=='3,2,1') npr=6
+         call cmap_viridis( nx, ny, fcn, RGB, npr )
 
       ! Plasma Color Maps.
       else if (cmap(1:6)=='plasma') then
-         k=1
-         if (cmap(7:11)=='1,2,3') k=1
-         if (cmap(7:11)=='1,3,2') k=2
-         if (cmap(7:11)=='2,1,3') k=3
-         if (cmap(7:11)=='2,3,1') k=4
-         if (cmap(7:11)=='3,1,2') k=5
-         if (cmap(7:11)=='3,2,1') k=6
-         call cmap_plasma( nx, ny, fcn, RGB, k )
+         npr=1
+         if (cmap(7:11)=='1,2,3') npr=1
+         if (cmap(7:11)=='1,3,2') npr=2
+         if (cmap(7:11)=='2,1,3') npr=3
+         if (cmap(7:11)=='2,3,1') npr=4
+         if (cmap(7:11)=='3,1,2') npr=5
+         if (cmap(7:11)=='3,2,1') npr=6
+         call cmap_plasma( nx, ny, fcn, RGB, npr )
 
       ! Black Body Color Maps.
       else if (cmap(1:9)=='blackbody') then
-         k=1
-         if (cmap(10:14)=='1,2,3') k=1
-         if (cmap(10:14)=='1,3,2') k=2
-         if (cmap(10:14)=='2,1,3') k=3
-         if (cmap(10:14)=='2,3,1') k=4
-         if (cmap(10:14)=='3,1,2') k=5
-         if (cmap(10:14)=='3,2,1') k=6
-         call cmap_blackbody( nx, ny, fcn, RGB, k )
+         npr=1
+         if (cmap(10:14)=='1,2,3') npr=1
+         if (cmap(10:14)=='1,3,2') npr=2
+         if (cmap(10:14)=='2,1,3') npr=3
+         if (cmap(10:14)=='2,3,1') npr=4
+         if (cmap(10:14)=='3,1,2') npr=5
+         if (cmap(10:14)=='3,2,1') npr=6
+         call cmap_blackbody( nx, ny, fcn, RGB, npr )
 
       ! Inferno Color Maps.
       else if (cmap(1:7)=='inferno') then
-         k=1
-         if (cmap(8:12)=='1,2,3') k=1
-         if (cmap(8:12)=='1,3,2') k=2
-         if (cmap(8:12)=='2,1,3') k=3
-         if (cmap(8:12)=='2,3,1') k=4
-         if (cmap(8:12)=='3,1,2') k=5
-         if (cmap(8:12)=='3,2,1') k=6
-         call cmap_inferno( nx, ny, fcn, RGB, k )
+         npr=1
+         if (cmap(8:12)=='1,2,3') npr=1
+         if (cmap(8:12)=='1,3,2') npr=2
+         if (cmap(8:12)=='2,1,3') npr=3
+         if (cmap(8:12)=='2,3,1') npr=4
+         if (cmap(8:12)=='3,1,2') npr=5
+         if (cmap(8:12)=='3,2,1') npr=6
+         call cmap_inferno( nx, ny, fcn, RGB, npr )
 
       ! Kindlmann Color Maps.
       else if (cmap(1:9)=='kindlmann') then
-         k=1
-         if (cmap(10:14)=='1,2,3') k=1
-         if (cmap(10:14)=='1,3,2') k=2
-         if (cmap(10:14)=='2,1,3') k=3
-         if (cmap(10:14)=='2,3,1') k=4
-         if (cmap(10:14)=='3,1,2') k=5
-         if (cmap(10:14)=='3,2,1') k=6
-         call cmap_kindlmann( nx, ny, fcn, RGB, k )
+         npr=1
+         if (cmap(10:14)=='1,2,3') npr=1
+         if (cmap(10:14)=='1,3,2') npr=2
+         if (cmap(10:14)=='2,1,3') npr=3
+         if (cmap(10:14)=='2,3,1') npr=4
+         if (cmap(10:14)=='3,1,2') npr=5
+         if (cmap(10:14)=='3,2,1') npr=6
+         call cmap_kindlmann( nx, ny, fcn, RGB, npr )
 
       ! Extended Kindlmann Color Maps.
       else if (cmap(1:17)=='extendedkindlmann') then
-         k=1
-         if (cmap(18:22)=='1,2,3') k=1
-         if (cmap(18:22)=='1,3,2') k=2
-         if (cmap(18:22)=='2,1,3') k=3
-         if (cmap(18:22)=='2,3,1') k=4
-         if (cmap(18:22)=='3,1,2') k=5
-         if (cmap(18:22)=='3,2,1') k=6
-         call cmap_extendedkindlmann( nx, ny, fcn, RGB, k )
+         npr=1
+         if (cmap(18:22)=='1,2,3') npr=1
+         if (cmap(18:22)=='1,3,2') npr=2
+         if (cmap(18:22)=='2,1,3') npr=3
+         if (cmap(18:22)=='2,3,1') npr=4
+         if (cmap(18:22)=='3,1,2') npr=5
+         if (cmap(18:22)=='3,2,1') npr=6
+         call cmap_extendedkindlmann( nx, ny, fcn, RGB, npr )
 
       end if colormap_if
 
