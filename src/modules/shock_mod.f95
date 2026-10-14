@@ -23,6 +23,8 @@ module shock
 !    10/13/26    D. E. Kittell        Output block (tracers, snapshots,
 !                (with Claude)        colormap); BL, BQ defaults from the
 !                                     equation sheet; heartbeat file
+!    10/14/26    D. E. Kittell        face_slots and cell_slots lists;
+!                (with Claude)        not_finite() for the setup audit
 !
 !**********************************************************************!
 !
@@ -142,9 +144,19 @@ integer(kind=int32), parameter :: js2     = 17 ! S2, Us-up curvature
 integer(kind=int32), parameter :: jg0     = 18 ! G0, Gruneisen gamma
 
 !*** Total number of variables (rows of the database). If you add a
-!*** slot above, give it the next number, bump nvar, and add its name
-!*** to dbname below. The compiler checks that dbname has nvar items.
+!*** slot above, give it the next number, bump nvar, add its name to
+!*** dbname below, and add it to face_slots or cell_slots. The compiler
+!*** checks that dbname has nvar items; the setup audit in maincode
+!*** checks that the two lists add up to nvar.
 integer(kind=int32), parameter :: nvar    = 18
+
+!*** Which slots a face fills, and which a real cell fills. The setup
+!*** audit (maincode section 6) uses these to check that every slot a
+!*** place should have was actually set.
+integer(kind=int32), parameter, dimension(5)  :: face_slots = (/ &
+   jx, ju, jx_old, ju_old, jmf /)
+integer(kind=int32), parameter, dimension(13) :: cell_slots = (/ &
+   jm, jrho, je, jp, jq, jc, jrho_old, je_old, jr0, jc0, js1, js2, jg0 /)
 
 !*** Short names for each slot, in slot order. Used for output file
 !*** headers, plot labels and the XDMF sidecar.
@@ -465,6 +477,30 @@ contains
    logical :: yes
    yes = ( x < 0.5_dp*unset )
    end function is_unset
+
+   !*****************************************************!
+   ! True if x is NOT an ordinary finite number: a NaN   !
+   ! (signaling or quiet) or an infinity. Used to check  !
+   ! that setup left no slot at its signaling-NaN fill.  !
+   !                                                     !
+   ! Why not ieee_is_nan()? Asking a signaling NaN ANY   !
+   ! question with floating-point hardware (a compare,   !
+   ! ieee_is_nan, ieee_is_finite) raises "invalid", and  !
+   ! -ffpe-trap=invalid then stops the run: the very     !
+   ! thing we are trying to report. So we look at the    !
+   ! bits instead, which is integer work and can never   !
+   ! trap. In an IEEE double, NaN and infinity are the   !
+   ! only values whose 11 exponent bits are all ones.    !
+   !*****************************************************!
+   elemental function not_finite(x) result(bad)
+   use, intrinsic :: iso_fortran_env, only: int64
+   implicit none
+   real(kind=dp), intent(in) :: x
+   logical :: bad
+   integer(kind=int64) :: bits
+   bits = transfer(x, bits)                    ! same 64 bits, as an integer
+   bad  = ( iand(shiftr(bits, 52), 2047_int64) == 2047_int64 )
+   end function not_finite
 
    !********************************************!
    ! Allocate the Layer Table (nlay entries).   !

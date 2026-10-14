@@ -6,11 +6,11 @@ program bitwhiz
 !    class project. Usage:   bitwhiz <deck>
 !
 !    The run goes section by section, top to bottom:
-!      0. Loading screen.            5. Initialization.
-!      1. Read the command line.     6. Allocate the data arrays.
+!      0. Loading screen.            5. Allocate the data arrays.
+!      1. Read the command line.     6. Initialization (t = 0).
 !      2. Read the input deck.       7. Begin the simulation.
-!      3. Test OpenMP settings.      8. Close the heartbeat file.
-!      4. Open the heartbeat file.
+!      3. Test OpenMP settings.      8. Close the heartbeat file,
+!      4. Open the heartbeat file.      free the memory.
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -27,11 +27,21 @@ program bitwhiz
 !                (with Claude)        and cpu_time (all threads), shown
 !                                     in a closing block; the old
 !                                     timestamp lines are gone
+!    10/14/26    D. E. Kittell        Sections 5 and 6 swapped. 5 sizes
+!                (with Claude)        and fills the database (t = 0
+!                                     state, mass-weighted impact face);
+!                                     6 starts the clock, audits the
+!                                     setup, records the t = 0 totals
 !
 !**********************************************************************!
-use bits, only: dp,int32,int64,kpt6
+use bits, only: dp,int32,int64,kpt6,zero,half,one
 use shock, only: omp_on,nproc,num_procs,max_threads,num_threads, &
-   thread_num,nalive,title,khb,hb_open,hb_file
+   thread_num,nalive,title,khb,hb_open,hb_file, &
+   kmax,imax,nvar,nlay,layer,database,ilay,icell,iface, &
+   jx,ju,jx_old,ju_old,jmf,jm,jrho,je,jp,jq,jc,jrho_old,je_old, &
+   jr0,jc0,js1,js2,jg0,face_slots,cell_slots,dbname,not_finite, &
+   alloc_database,dealloc_database,dealloc_layers, &
+   dealloc_materials,dealloc_tracers
 use deck, only: read_deck,write_resolved_deck
 use build, only: build_date,build_version       ! written by 'make'
 use, intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
@@ -47,13 +57,31 @@ integer(kind=int32) :: ios              ! I/O status from open()
 integer(kind=int32) :: nlen             ! full length of the deck path
 character(len=256) :: deckname          ! the deck file, from the
                                         ! command line
+!*** Setup (sections 5 and 6). All local: see the RULE in bit_mod.
+integer(kind=int32) :: i,j,k            ! database index, counter, cell
+integer(kind=int32) :: l,ll,lr          ! layer; layers left/right of a face
+integer(kind=int32) :: nz               ! zones in one layer
+integer(kind=int32) :: nimpact          ! impact faces found
+integer(kind=int32) :: nbad             ! setup checks that failed
+integer(kind=int32) :: ncycle           ! cycle number, n
+real(kind=dp) :: time                   ! problem time, us
+real(kind=dp) :: ml,mr                  ! cell masses left/right of a face
+real(kind=dp) :: ubar                   ! cell-average velocity, km/s
+real(kind=dp) :: mass0,xmom0,etot0      ! t = 0 totals (per unit area)
+real(kind=dp) :: mdeck,pdeck            ! the same, straight from the deck
+real(kind=dp) :: tol                    ! round-off allowance, relative
+character(len=16) :: buf                ! scratch text for a number
 
 202 format(1x,a)                        ! a plain line
-203 format(3x,a,t40,': ',i6,2x,a)       ! label : integer  note
+203 format(3x,a,t40,': ',i8,2x,a)       ! label : integer  note
 204 format(3x,a,t40,': ',a)             ! label : text
-205 format(3x,a,t40,': ',i6)            ! label : integer
+205 format(3x,a,t40,': ',i8)            ! label : integer
 206 format(3x,a,t15,': ',a)             ! banner label : text
 207 format(3x,a,t15,': ',f10.3,a)       ! banner label : seconds  note
+208 format(3x,a10,i9,es11.4,f13.6,f10.4) ! layer table row
+209 format(3x,a,f10.6,a)                ! label number unit
+210 format(5x,a,f8.4,a,f8.4,a,f8.4)     ! impact face velocities
+211 format(3x,a,t40,': ',es15.8)        ! label : real
 
 !*** Start the clocks. Two different times are kept, because with
 !*** OpenMP they tell different stories:
@@ -196,7 +224,7 @@ else
    write( kpt6, 204 ) 'OpenMP compiled in', 'no (serial build)'
 end if
 if ( nproc == 0 ) then
-   write( kpt6, 204 ) 'Threads requested (deck)', '     0  (all processors)'
+   write( kpt6, 204 ) 'Threads requested (deck)', '       0  (all processors)'
 else
    write( kpt6, 205 ) 'Threads requested (deck)', nproc
 end if
@@ -246,8 +274,9 @@ if ( ios /= 0 ) then
 end if
 hb_open = .true.
 
-!*** Header: where the run came from, then one name per column. The
-!*** cycle lines that section 7 writes line up under these names.
+!*** Header: where the run came from. Section 6 adds the t = 0
+!*** totals and then the column names; the cycle lines that section 7
+!*** writes line up under those names.
 write( khb, '(a)' ) '# bitwhiz heartbeat'
 write( khb, '(a)' ) '# deck    : '//trim(deckname)
 write( khb, '(a)' ) '# title   : '//trim(title)
@@ -256,8 +285,6 @@ write( khb, '(a)' ) '# version : '//build_version()
 write( khb, '(a)' ) '# built   : '//build_date()//', '//compiler_version()
 write( khb, '(a)' ) '# flags   : '//compiler_options()
 write( khb, '(a)' ) '# units   : us, GPa; errors are relative to t = 0'
-write( khb, '(a)' ) '#   cycle      t (us)     dt (us)  dt cell'// &
-   '   max P (GPa)    mass err  energy err   x-momentum   wall (s)'
 flush( khb )                            ! so tail -f sees it now
 
 write( kpt6, 202 ) repeat('=',56)
@@ -266,31 +293,319 @@ write( kpt6, 202 ) repeat('-',56)
 write( kpt6, 204 ) 'Heartbeat file', trim(hb_file)
 write( kpt6, 202 ) repeat('=',56)
 
-!====================!
-! 5. Initialization. !
-!====================!
-
-! TODO / includes time zero and cycle zero
-
 !==============================!
-! 6. Allocate the data arrays. !
+! 5. Allocate the data arrays. !
 !==============================!
 
-! TODO / hints:
-!*****************************************!
-! FORTRAN ARRAY INDEX SUMMARY
-! differs from numerical method idex, "k"
+! The deck reader has already done the zone bookkeeping. Each layer
+! knows its zone count, its first and last cell (kfirst, klast), the
+! x of its left face (xleft, after the origin shift) and its own copy
+! of the material constants; kmax is the total. Here the database is
+! sized to fit and every face and cell gets the t = 0 state of
+! equation sheet Step 0.
 !
-! i= 1   2   3   4   5      imax-1 imax
-!  +---+---+---+---+---+-   -+---+---+
-!  | G | F | C | F | C | ... | F | G |
-!  +---+---+---+---+---+-   -+---+---+
-!      even odd              even odd
+! These are plain serial loops, on purpose. They run once: about a
+! millisecond for the class problem, under a second for a million
+! cells in the debug build. The chunk-and-write-back machinery
+! (shock_mod) is for the time loop, not for setup.
 !
-!  G = Ghost Cell
-!  F = Face
-!  C = Center
-!*****************************************!
+! FORTRAN ARRAY INDEX SUMMARY (shock_mod has the full picture)
+!
+!  i= 1   2   3   4   5      imax-1 imax
+!   +---+---+---+---+---+-   -+---+---+
+!   | G | F | C | F | C | ... | F | G |
+!   +---+---+---+---+---+-   -+---+---+
+!
+!   cell k     at  i = icell(k) = 2k+1    (ghosts are k = 0, kmax+1)
+!   face k+1/2 at  i = iface(k) = 2k+2    (k = 0 .. kmax)
+!
+! alloc_database first fills EVERY slot with a signaling NaN, so a
+! slot that the loops below forget to set stops the run the first
+! time any arithmetic touches it, instead of quietly reading as zero.
+! Section 6 checks that every slot that should be set, was.
+call alloc_database( kmax, kerr )
+if ( kerr > 0 ) then
+   write( kpt6, 202 ) 'bitwhiz: cannot allocate the database '// &
+      '(out of memory?)'
+   call close_heartbeat( 'could not allocate the database' )
+   stop 1, quiet=.true.
+end if
+
+!*** 5a. Face positions, layer by layer. Faces are evenly spaced
+!*** inside a layer, and the layer's left face sits exactly at xleft,
+!*** so every material interface lands on a face (Step 0). Face j of
+!*** a layer is written as xleft + width*(j/nz), not by adding dx over
+!*** and over, so round-off cannot pile up across a layer.
+!***
+!*** ilay on a face: a face between two layers belongs to the layer
+!*** on its LEFT (shock_mod). The very first face has only void on its
+!*** left, so it belongs to layer 1.
+layer_faces: do l = 1, nlay
+   nz = layer(l)%zones
+   do j = 0, nz-1
+      i = iface( layer(l)%kfirst - 1 + j )
+      database(jx,i) = layer(l)%xleft + &
+         layer(l)%width*( real(j,dp)/real(nz,dp) )
+      if ( j == 0 ) then
+         ilay(i) = max( l-1, 1 )          ! left face: the layer to its left
+      else
+         ilay(i) = l
+      end if
+   end do
+end do layer_faces
+i = iface( kmax )                         ! the right edge of the stack
+database(jx,i) = layer(nlay)%xleft + layer(nlay)%width
+ilay(i) = nlay
+
+!*** 5b. Cells. The material constants are copied in from the layer
+!*** (option 6(a): each cell carries its own, so a chunk is complete),
+!*** then the cell mass, fixed for all time,
+!***
+!***    M_k = R0 * ( x(k+1/2) - x(k-1/2) )          [g/cm^3 * mm]
+!***
+!*** and the reference state: rho = R0, e = 0, P = 0, q = 0, c = C0.
+!*** (At rho = R0 and e = 0 the Mie-Gruneisen EOS gives exactly P = 0
+!*** and c = C0, so no EOS call is needed yet.)
+layer_cells: do l = 1, nlay
+   do k = layer(l)%kfirst, layer(l)%klast
+      i = icell( k )
+      ilay(i) = l
+      database(jr0,i) = layer(l)%R0
+      database(jc0,i) = layer(l)%C0
+      database(js1,i) = layer(l)%S1
+      database(js2,i) = layer(l)%S2
+      database(jg0,i) = layer(l)%G0
+      database(jm,i)       = layer(l)%R0*( database(jx,i+1) - database(jx,i-1) )
+      database(jrho,i)     = layer(l)%R0
+      database(je,i)       = zero
+      database(jp,i)       = zero
+      database(jq,i)       = zero
+      database(jc,i)       = layer(l)%C0
+      database(jrho_old,i) = layer(l)%R0
+      database(je_old,i)   = zero
+   end do
+end do layer_cells
+
+!*** 5c. The two ghost cells: void on both ends, M = P = q = 0
+!*** (equation sheet, Boundary Conditions). With a zero mass the
+!*** Step 1 and Step 2 formulas need nothing special at the ends: the
+!*** end face gets half a real cell's mass and zero stress, which is
+!*** a free surface. Every OTHER ghost slot stays a signaling NaN, so
+!*** a loop that reads, say, the density of a ghost stops on the spot.
+database( (/jm,jp,jq/), 1    ) = zero    ! left ghost,  i = 1
+database( (/jm,jp,jq/), imax ) = zero    ! right ghost, i = imax
+
+!*** 5d. Faces: node mass and velocity. The node mass is half of each
+!*** neighbor cell, mf = (M_k + M_k+1)/2 (a ghost adds 0). The velocity
+!*** belongs to time level n = -1/2 (leapfrog, equation sheet Step 1),
+!*** and is the layer's xvel, except on an IMPACT face, where the two
+!*** layers meet with different velocities. There we use the momentum-
+!*** weighted value of equation sheet Step 0,
+!***
+!***    u = ( M_k*u_k + M_k+1*u_k+1 ) / ( M_k + M_k+1 )
+!***
+!*** so the face carries exactly the momentum of the two half-cells it
+!*** stands for, and the total momentum at t = 0 matches the deck.
+nimpact = 0
+face_loop: do k = 0, kmax
+   i  = iface( k )
+   ml = database(jm,i-1)                  ! cell on the left  (0 if ghost)
+   mr = database(jm,i+1)                  ! cell on the right (0 if ghost)
+   database(jmf,i) = half*( ml + mr )
+
+   ll = ilay(i-1)                         ! layer on the left  (0 if ghost)
+   lr = ilay(i+1)                         ! layer on the right (0 if ghost)
+   if ( ll == 0 ) then                    ! left free surface
+      database(ju,i) = layer(lr)%xvel
+   else if ( lr == 0 ) then               ! right free surface
+      database(ju,i) = layer(ll)%xvel
+   else if ( abs( layer(ll)%xvel - layer(lr)%xvel ) > zero ) then
+      database(ju,i) = ( ml*layer(ll)%xvel + mr*layer(lr)%xvel )/( ml + mr )
+      nimpact = nimpact + 1               ! an impact face
+   else
+      database(ju,i) = layer(ll)%xvel     ! same velocity on both sides
+   end if
+
+   database(jx_old,i) = database(jx,i)
+   database(ju_old,i) = database(ju,i)
+end do face_loop
+
+!*** Report.
+write( kpt6, 202 ) repeat('=',56)
+write( kpt6, 202 ) ' 5. Data arrays'
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 205 ) 'Real cells (kmax)', kmax
+write( kpt6, 205 ) 'Database places (imax)', imax
+!*** Memory, in MB. Done in real arithmetic on purpose: 8*nvar*imax
+!*** passes the largest 4-byte integer (about 2.1 billion) near 15
+!*** million cells, and Fortran integers wrap around without a word.
+write( buf, '(f12.1)' ) 8.0_dp*real(nvar,dp)*real(imax,dp)/1024.0_dp**2
+write( kpt6, 203 ) 'Database slots (nvar)', nvar, &
+   '('//trim(adjustl(buf))//' MB)'
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 202 ) '  layer     '//'    zones'//'    dx (mm)'// &
+   '  x left (mm)'//'  u (km/s)'
+do l = 1, nlay
+   write( kpt6, 208 ) layer(l)%name(1:10), layer(l)%zones, &
+      layer(l)%width/real(layer(l)%zones,dp), layer(l)%xleft, &
+      layer(l)%xvel
+end do
+if ( nimpact > 0 ) then
+   write( kpt6, 202 ) repeat('-',56)
+   do k = 0, kmax
+      i  = iface( k )
+      ll = ilay(i-1)
+      lr = ilay(i+1)
+      if ( ll == 0 .or. lr == 0 ) cycle
+      if ( abs( layer(ll)%xvel - layer(lr)%xvel ) > zero ) then
+         write( kpt6, 209 ) 'Impact face '//trim(layer(ll)%name)//':'// &
+            trim(layer(lr)%name)//' at x =', database(jx,i), ' mm'
+         write( kpt6, 210 ) 'u =', database(ju,i), &
+            ' km/s, weighted from', layer(ll)%xvel, ' |', layer(lr)%xvel
+      end if
+   end do
+end if
+write( kpt6, 202 ) repeat('=',56)
+
+!===================================================!
+! 6. Initialization: time zero and cycle zero.      !
+!===================================================!
+
+! Start the clock at t = 0, cycle 0 (the moment of impact), check the
+! setup, and record the t = 0 totals that the heartbeat measures every
+! later cycle against.
+time   = zero
+ncycle = 0
+
+!*** 6a. The t = 0 totals (per unit area), equation sheet notation:
+!***
+!***    mass       sum_k  M_k
+!***    momentum   sum_k  M_k * ubar_k,   ubar_k = (u(k-1/2) + u(k+1/2))/2
+!***    energy     sum_k  M_k * ( e_k + ubar_k**2/2 )
+!***
+!*** Summing M_k*ubar_k over cells is the same as summing mf*u over
+!*** faces, which is what the momentum update conserves exactly.
+!*** Units: mass g/cm^3*mm; momentum that times km/s; energy that
+!*** times (km/s)^2, which is GPa*mm.
+mass0 = zero
+xmom0 = zero
+etot0 = zero
+do k = 1, kmax
+   i = icell( k )
+   ubar  = half*( database(ju,i-1) + database(ju,i+1) )
+   mass0 = mass0 + database(jm,i)
+   xmom0 = xmom0 + database(jm,i)*ubar
+   etot0 = etot0 + database(jm,i)*( database(je,i) + half*ubar**2 )
+end do
+
+!*** 6b. Setup audit. Each check below is cheap and is run every time,
+!*** because every one of them guards against a slip in the index
+!*** bookkeeping above, the part of a hydrocode that is easiest to get
+!*** wrong and hardest to see in the results.
+nbad = 0
+
+! (1) The slot lists cover every slot exactly once (shock_mod).
+if ( size(face_slots) + size(cell_slots) /= nvar ) then
+   call setup_fail( 'face_slots and cell_slots do not add up to nvar' )
+end if
+
+! (2) Every slot a face or real cell should have is a real number,
+!     i.e. nothing was left at its signaling-NaN fill. Checked one
+!     slot at a time, so a forgotten slot is reported once, by name
+!     (dbname), with how many places missed it.
+!     (Even i from 2 to imax-1 are the faces; odd i from 3 to imax-2
+!     are the real cells.)
+do j = 1, size(face_slots)
+   nz = count( not_finite( database(face_slots(j), 2:imax-1:2) ) )
+   if ( nz > 0 ) call setup_fail( 'face slot '// &
+      trim(dbname(face_slots(j)))//' was never set ('//itoa(nz)// &
+      ' of '//itoa(kmax+1)//' faces)' )
+end do
+do j = 1, size(cell_slots)
+   nz = count( not_finite( database(cell_slots(j), 3:imax-2:2) ) )
+   if ( nz > 0 ) call setup_fail( 'cell slot '// &
+      trim(dbname(cell_slots(j)))//' was never set ('//itoa(nz)// &
+      ' of '//itoa(kmax)//' cells)' )
+end do
+
+! (3) Every place knows its layer. The cells of layer l are exactly
+!     kfirst..klast; face k+1/2 belongs to cell k's layer (the layer on
+!     its left), except the first face, which belongs to layer 1.
+do l = 1, nlay
+   if ( any( ilay( icell( (/ (k, k = layer(l)%kfirst, layer(l)%klast) /) ) ) &
+        /= l ) ) then
+      call setup_fail( 'layer '//trim(layer(l)%name)//': ilay is wrong '// &
+         'on its cells' )
+   end if
+end do
+nz = 0
+do k = 1, kmax
+   if ( ilay(iface(k)) /= ilay(icell(k)) ) nz = nz + 1
+end do
+if ( ilay(iface(0)) /= 1 ) nz = nz + 1
+if ( nz > 0 ) call setup_fail( 'ilay is wrong on '//itoa(nz)//' faces' )
+
+! (4) Material interfaces sit exactly on faces, where the deck put them.
+do l = 1, nlay
+   if ( abs( database(jx, iface(layer(l)%kfirst-1)) - layer(l)%xleft ) &
+        > zero ) then
+      call setup_fail( 'layer '//trim(layer(l)%name)//': left face is '// &
+         'not at xleft' )
+   end if
+end do
+
+! (5) Mass and momentum match the deck, layer by layer: sum of
+!     R0*width and of R0*width*xvel. The impact faces are weighted so
+!     that momentum comes out exact (to round-off).
+!
+!     How close is "exact to round-off"? Adding up kmax numbers one
+!     after another can lose up to about kmax*epsilon (relative), and
+!     that is what we allow. Measured on the class deck: 3e-15 at 945
+!     cells, growing to 4e-11 at 9.45 million cells, always below
+!     kmax*epsilon (2e-13 and 2e-9). A real setup slip is far bigger:
+!     one wrong cell mass, or a plain average at the impact face, is
+!     off by 1e-5 or more.
+mdeck = zero
+pdeck = zero
+do l = 1, nlay
+   mdeck = mdeck + layer(l)%R0*layer(l)%width
+   pdeck = pdeck + layer(l)%R0*layer(l)%width*layer(l)%xvel
+end do
+tol = real(kmax,dp)*epsilon(one)
+if ( abs( mass0 - mdeck ) > tol*mdeck ) then
+   call setup_fail( 'total mass does not match the deck' )
+end if
+if ( abs( xmom0 - pdeck ) > tol*max( abs(pdeck), abs(xmom0) ) ) then
+   call setup_fail( 'total momentum does not match the deck' )
+end if
+
+if ( nbad > 0 ) then
+   write( kpt6, '(1x,i0,a)' ) nbad, ' setup check(s) failed; stopping. '// &
+      'This is a bug in bitwhiz, not in the deck.'
+   call close_heartbeat( 'setup check failed' )
+   stop 1, quiet=.true.
+end if
+
+!*** The t = 0 totals also go into the heartbeat header, so the file
+!*** that reports relative errors also says what they are relative to.
+write( khb, '(a,es16.9,a)' ) '# mass0   : ', mass0, '  g/cm^3*mm'
+write( khb, '(a,es16.9,a)' ) '# xmom0   : ', xmom0, '  g/cm^3*mm*km/s'
+write( khb, '(a,es16.9,a)' ) '# etot0   : ', etot0, '  GPa*mm'
+write( khb, '(a)' ) '#   cycle      t (us)     dt (us)  dt cell'// &
+   '   max P (GPa)    mass err  energy err   x-momentum   wall (s)'
+flush( khb )
+
+!*** Report.
+write( kpt6, 202 ) repeat('=',56)
+write( kpt6, 202 ) ' 6. Initialization'
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 211 ) 'Time (us)', time
+write( kpt6, 205 ) 'Cycle', ncycle
+write( kpt6, 211 ) 'Total mass (g/cm^3*mm)', mass0
+write( kpt6, 211 ) 'x-momentum (g/cm^3*mm*km/s)', xmom0
+write( kpt6, 211 ) 'Total energy (GPa*mm)', etot0
+write( kpt6, 204 ) 'Setup checks', 'all passed'
+write( kpt6, 202 ) repeat('=',56)
 
 !==========================!
 ! 7. Begin the simulation. !
@@ -339,10 +654,20 @@ write( kpt6, 202 ) repeat('=',56)
 !
 !end do loop_on_cycles
 
-!===============================!
-! 8. Close the heartbeat file.  !
-!===============================!
+!===============================================!
+! 8. Close the heartbeat file, free the memory. !
+!===============================================!
 call close_heartbeat( 'normal end' )
+
+! Every alloc_ in shock_mod has its dealloc_ (bits RULE). kerr only
+! counts; a failure here at the very end is reported, not fatal.
+kerr = 0
+call dealloc_database( kerr )
+call dealloc_tracers( kerr )
+call dealloc_layers( kerr )
+call dealloc_materials( kerr )
+if ( kerr > 0 ) write( kpt6, 202 ) 'bitwhiz: warning: could not free '// &
+   'all memory at the end of the run'
 
 !=================================!
 ! End of run: how long it took.   !
@@ -413,6 +738,30 @@ contains
       s = s//', serial'
    end if
    end function build_kind
+
+   !*****************************************************!
+   ! One failed setup check (section 6): say what, and   !
+   ! count it. All the checks run, so one run lists      !
+   ! every problem, the same way the deck reader does.   !
+   !*****************************************************!
+   subroutine setup_fail( msg )
+   implicit none
+   character(len=*), intent(in) :: msg
+   write( kpt6, '(1x,a)' ) 'bitwhiz: setup check failed: '//msg
+   nbad = nbad + 1
+   end subroutine setup_fail
+
+   !*****************************************************!
+   ! An integer as text, without padding: 945 -> "945".  !
+   !*****************************************************!
+   function itoa( n ) result(s)
+   implicit none
+   integer(kind=int32), intent(in) :: n
+   character(len=:), allocatable :: s
+   character(len=12) :: buf
+   write( buf, '(i0)' ) n
+   s = trim(buf)
+   end function itoa
 
    !*****************************************************!
    ! Write the last line of the heartbeat and close it.  !

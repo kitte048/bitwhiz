@@ -1,0 +1,44 @@
+# expect: ok
+# Setup: three layers with three different velocities, so two impact
+# faces (Al1:PMMA and PMMA:Al2), one of them counter-moving. Zone sizes
+# differ per layer. Total momentum must still match the deck exactly:
+# 2.78*2*1.5 + 1.187*3*0 + 2.78*1*(-0.5) = 6.95 (g/cm^3*mm*km/s).
+Begin bitwhiz
+ deck_version = 1
+ Begin Run
+  t_end = 1.0
+ End Run
+ Begin Material Al
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ End Material
+ Begin Material PMMA
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90
+ End Material
+ Begin Stack
+  Begin Layer
+   name = Al1
+   material = Al
+   width = 2.0
+   xvel = 1.5
+   zones = 20
+  End Layer
+  Begin Layer
+   material = PMMA
+   width = 3.0
+   zones = 45
+  End Layer
+  Begin Layer
+   name = Al2
+   material = Al
+   width = 1.0
+   xvel = -0.5
+   zones = 7
+  End Layer
+ End Stack
+End bitwhiz
