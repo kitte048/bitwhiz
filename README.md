@@ -52,7 +52,7 @@ to go tensile, the first cell to break (spall: its pressure fell below
 ```
 make test
 ```
-Two kinds of test, both run by `make test`, which stops at the first failure:
+Three kinds of test, all run by `make test`, which stops at the first failure:
 
 - **Unit tests**, one program each, `tests/test_*.f95`, exit status 0 = pass.
   `test_eos` checks the equation of state against 45 states computed
@@ -61,6 +61,12 @@ Two kinds of test, both run by `make test`, which stops at the first failure:
   deck in `tests/decks/` is accepted, or rejected with the expected message,
   and every accepted deck round-trips and passes the setup audit; bad command
   lines (no deck, a missing file, a folder, an empty file) stop cleanly.
+- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and two test decks
+  (two impact faces; a plate that spalls) run on 1 thread and on 2, 3, 4 and 8
+  threads, as many as the machine has processors for. Everything printed from
+  t = 0 on, and every heartbeat line, must be identical to the 1-thread run
+  (clock times aside). Any difference means a race condition. A serial build
+  (`make OMPFLAGS=`) skips them.
 
 Run it before every commit.
 
