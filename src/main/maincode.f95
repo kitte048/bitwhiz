@@ -34,6 +34,9 @@ program bitwhiz
 !                                     setup, records the t = 0 totals
 !    10/14/26    D. E. Kittell        P and c at t = 0 from the EOS
 !                (with Claude)        (module eos), checked in the audit
+!    10/15/26    D. E. Kittell        Section 7: the time loop (module
+!                (with Claude)        av), OpenMP style 2, heartbeat
+!                                     line every cycle; first dt in 6
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -42,10 +45,12 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads, &
    kmax,imax,nvar,nlay,layer,database,ilay,icell,iface, &
    jx,ju,jx_old,ju_old,jmf,jm,jrho,je,jp,jq,jc,jrho_old,je_old, &
    jr0,jc0,js1,js2,jg0,face_slots,cell_slots,dbname,not_finite, &
+   kcell,t_end,cycle_max,CFL,BL,BQ,omp_min_zones, &
    alloc_database,dealloc_database,dealloc_layers, &
    dealloc_materials,dealloc_tracers
 use deck, only: read_deck,write_resolved_deck
 use eos, only: mg_eos,eos_message,eos_ok
+use av, only: face_step,cell_step,cell_state,cell_dt
 use build, only: build_date,build_version       ! written by 'make'
 use, intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 !$ use omp_lib, only: omp_get_num_procs,omp_set_num_threads, &
@@ -76,6 +81,39 @@ real(kind=dp) :: mass0,xmom0,etot0      ! t = 0 totals (per unit area)
 real(kind=dp) :: mdeck,pdeck            ! the same, straight from the deck
 real(kind=dp) :: tol                    ! round-off allowance, relative
 character(len=16) :: buf                ! scratch text for a number
+!*** The time loop (section 7). All local; the ones a thread changes
+!*** are PRIVATE in the parallel region.
+real(kind=dp) :: dt                     ! us, this cycle's step, dt(n)
+real(kind=dp) :: dt_prev                ! us, last cycle's step, dt(n-1)
+real(kind=dp) :: dth                    ! us, (dt_prev + dt)/2, for u
+real(kind=dp) :: dt_used                ! us, the step just taken
+real(kind=dp) :: dtcfl                  ! us, smallest cell dt_k
+real(kind=dp) :: dtl                    ! us, one thread's smallest dt_k
+real(kind=dp) :: dtk                    ! us, one cell's dt_k
+real(kind=dp) :: unew,xnew              ! a face's new u and x
+real(kind=dp) :: rnew,enew              ! a cell's new rho and e
+real(kind=dp) :: pnew,cnew,qnew         ! a cell's new P, c and q
+real(kind=dp) :: pmax                   ! GPa, largest P this cycle
+real(kind=dp) :: tnext                  ! us, next screen progress line
+real(kind=dp) :: merr,eerr,xmom         ! heartbeat: errors, momentum
+real(kind=dp) :: tens_time,tens_x       ! first tensile cell: t, x
+integer(kind=int32) :: kdt,kdt_used     ! cell that set dt (0 = t_end)
+integer(kind=int32) :: kl               ! one thread's dt cell
+integer(kind=int32) :: ktens,kbad       ! first tensile / EOS-failed cell
+integer(kind=int32) :: tens_k           ! first tensile cell, 0 = none
+integer(kind=int32) :: tens_cycle       ! ... and its cycle
+integer(kind=int32) :: nloop            ! threads in the time loop
+logical :: last                         ! this step lands on t_end
+logical :: use_team                     ! kmax >= omp_min_zones
+logical :: tens                         ! a cell's P was floored (tension)
+logical :: isvoid                       ! a cell was treated as void
+integer(kind=int32) :: kvoid,nvoid      ! first void cell, void count
+integer(kind=int32) :: void_k,void_cycle ! first void cell ever, its cycle
+integer(kind=int32) :: nvoid_max        ! most void cells at one time
+real(kind=dp) :: void_time              ! us, when the first one appeared
+logical :: done                         ! leave the time loop
+logical :: stopped                      ! left at cycle_max, not t_end
+character(len=64) :: endhow             ! how the run ended (heartbeat)
 
 202 format(1x,a)                        ! a plain line
 203 format(3x,a,t40,': ',i8,2x,a)       ! label : integer  note
@@ -87,6 +125,7 @@ character(len=16) :: buf                ! scratch text for a number
 209 format(3x,a,f10.6,a)                ! label number unit
 210 format(5x,a,f8.4,a,f8.4,a,f8.4)     ! impact face velocities
 211 format(3x,a,t40,': ',es15.8)        ! label : real
+212 format(3x,a,t40,': ',i0,' (',a,'), t =',f9.4,' us') ! tensile event
 
 !*** Start the clocks. Two different times are kept, because with
 !*** OpenMP they tell different stories:
@@ -618,6 +657,29 @@ if ( nbad > 0 ) then
    stop 1, quiet=.true.
 end if
 
+!*** 6c. The first time step, dt(0), from the t = 0 state (c = C0 and
+!*** the initial face velocities), with dt(-1) = dt(0), so the first
+!*** velocity half step spans exactly dt(0), as in the sheet's fixed-dt
+!*** case. (Commercial codes let the user set the cycle-0 step and limit
+!*** how fast dt may grow; those may become Solver keys one day. For
+!*** now bitwhiz does exactly what the equation sheet says.)
+dtcfl = huge(one)
+kdt   = 0
+do k = 1, kmax
+   i   = icell( k )
+   dtk = cell_dt( database(:,i-2:i+2), database(jc,i) )
+   if ( dtk < dtcfl ) then
+      dtcfl = dtk
+      kdt   = k
+   end if
+end do
+dt      = CFL*dtcfl
+dt_prev = dt
+merr    = zero
+eerr    = zero
+xmom    = xmom0
+endhow  = 'normal end'
+
 !*** The t = 0 totals also go into the heartbeat header, so the file
 !*** that reports relative errors also says what they are relative to.
 write( khb, '(a,es16.9,a)' ) '# mass0   : ', mass0, '  g/cm^3*mm'
@@ -625,7 +687,7 @@ write( khb, '(a,es16.9,a)' ) '# xmom0   : ', xmom0, '  g/cm^3*mm*km/s'
 write( khb, '(a,es16.9,a)' ) '# etot0   : ', etot0, '  GPa*mm'
 write( khb, '(a)' ) '#   cycle      t (us)     dt (us)  dt cell'// &
    '   max P (GPa)    mass err  energy err   x-momentum   wall (s)'
-flush( khb )
+call heartbeat_line( dt, kdt, zero )      ! cycle 0: the first dt(0)
 
 !*** Report.
 write( kpt6, 202 ) repeat('=',56)
@@ -636,6 +698,8 @@ write( kpt6, 205 ) 'Cycle', ncycle
 write( kpt6, 211 ) 'Total mass (g/cm^3*mm)', mass0
 write( kpt6, 211 ) 'x-momentum (g/cm^3*mm*km/s)', xmom0
 write( kpt6, 211 ) 'Total energy (GPa*mm)', etot0
+write( kpt6, 211 ) 'First time step (us)', dt
+write( kpt6, 205 ) '... set by cell', kdt
 write( kpt6, 204 ) 'Setup checks', 'all passed'
 write( kpt6, 202 ) repeat('=',56)
 
@@ -643,53 +707,273 @@ write( kpt6, 202 ) repeat('=',56)
 ! 7. Begin the simulation. !
 !==========================!
 
-! TODO / hints (equation sheet Steps 1-2; slots and rules: shock_mod)
+! One cycle, in the order of the equation sheet ("One Cycle"):
 !
-! Cells are odd i = 3, 5, ..., imax-2 and faces are even i = 2, ...,
-! imax-1. Every loop copies a private chunk of the database, works on
-! the chunk, and writes back ONLY the slots it changed (the write-back
-! rule in shock_mod keeps neighboring threads from tripping over each
-! other). The hint directives are written !!$OMP so they stay comments
-! in an -fopenmp build; drop one "!" when a loop is real.
+!   a. velocity u(n+1/2) on every face, from P(n), q(n)       loop 1
+!   b. positions x(n+1), then densities rho(n+1)              loops 1, 2
+!   c. energies e(n+1), from P(n), q(n), u(n-1/2), u(n+1/2)   loop 2
+!   d. pressures P(n+1) (kept >= 0), then sound speeds c      loop 3
+!   e. viscosities q(n+1), then the next time step dt(n+1)    loop 3
+!   f. the heartbeat line; n <- n+1; repeat until t_end
 !
-!loop_on_cycles: do while ( running )
+! Why three loops and not one: each loop must FINISH before the next
+! one starts. Loop 2 needs the new x and u of every face from loop 1,
+! and the energy of cell k needs the OLD P and q of cells k-1 and k+1,
+! which loop 3 overwrites. Inside a loop every place is independent:
+! it reads its chunk and writes back only its own new values (the
+! WRITE-BACK RULE in shock_mod), so the places can be done in any
+! order, by any thread. The physics itself is in module av
+! (src/modules/av_mod.f95), one small routine per loop.
 !
-!   !*** FACE loop: momentum and position (Step 1).
-!   !!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(i,chunk)
-!   !do i = 2, imax-1, 2
-!   !   chunk = database(:,i-ns:i+ns)
-!   !   call face_update( chunk, ... )
-!   !   database(ju,i) = chunk(ju,0)          ! only what changed
-!   !   database(jx,i) = chunk(jx,0)
-!   !end do
-!   !!$OMP END PARALLEL DO
+! OPENMP, "style 2" of the timing study (NOTES_bitwhiz_Performance_
+! IO_v1.md, section 2): ONE parallel region per cycle, with an OMP DO
+! on each loop inside it. Each END DO makes every thread wait for the
+! rest, which is the "must finish" above. The region runs on a single
+! thread when the mesh has fewer than omp_min_zones cells (deck: Run
+! block), where threads only slow things down. DEFAULT(NONE) makes the
+! compiler insist that every variable used inside is declared SHARED
+! or PRIVATE: a forgotten one is a compile error, not a race.
 !
-!   !*** CELL loop: density, energy, EOS, sound speed, q (Step 2).
-!   !!$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(i,chunk)
-!   !do i = 3, imax-2, 2
-!   !   chunk = database(:,i-ns:i+ns)
-!   !   call cell_update( chunk, ... )
-!   !   database(jrho,i) = chunk(jrho,0)      ! only what changed
-!   !   database(je,i)   = chunk(je,0)
-!   !   ...
-!   !end do
-!   !!$OMP END PARALLEL DO
-!
-!   !*** Time step: a cell loop with REDUCTION(MIN:dtmin) for the CFL
-!   !*** limit, and the first tensile cell (flag it, set P = 0).
-!
-!   ! One heartbeat line for this cycle: write( khb, ... ), then flush.
-!
-!   ! Conditions to write tracers and snapshots (Output block).
-!
-!   ! Conditions to end the simulation: t >= t_end or cycle = cycle_max.
-!
-!end do loop_on_cycles
+! Threads give the serial answer BIT FOR BIT (checked: the whole final
+! database is identical at 1, 2, 3, 4 and 8 threads). Every place gets
+! the same arithmetic either way, and what the loops reduce does not
+! depend on the order: minimums (the smallest time step, the first
+! tensile, void or EOS-failed cell; ties go to the lowest cell number),
+! a maximum (the largest P) and an integer count (void cells). The
+! heartbeat sums are done serially, after the region, for the same
+! reason.
+
+use_team = ( kmax >= omp_min_zones )      ! big enough to pay for threads
+nloop = 1                                 ! threads the loop will use
+!$ if ( use_team ) nloop = max_threads
+
+write( kpt6, 202 ) repeat('=',56)
+write( kpt6, 202 ) ' 7. Simulation'
+write( kpt6, 202 ) repeat('-',56)
+if ( .not. use_team .and. max_threads > 1 ) then
+   write( kpt6, 203 ) 'Threads in the time loop', nloop, &
+      '(kmax < omp_min_zones)'
+else
+   write( kpt6, 205 ) 'Threads in the time loop', nloop
+end if
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 202 ) '        cycle      t (us)     dt (us)    max P (GPa)'
+
+tnext   = 0.1_dp*t_end                    ! next progress line on screen
+done    = .false.
+stopped = .false.
+tens_k  = 0                               ! first tensile cell, 0 = none
+void_k  = 0                               ! first void cell, 0 = none
+nvoid_max = 0                             ! most void cells at one time
+
+time_loop: do while ( .not. done )
+
+   !*** This cycle's step: dt from the CFL limit found last cycle (or
+   !*** in 6c), shortened if need be to land exactly on t_end. dth is
+   !*** the time between the velocity half steps (equation sheet,
+   !*** Step 1 note), time-centered as dt changes.
+   kdt_used = kdt
+   last = .not. ( time + dt < t_end )
+   if ( last ) then
+      dt = t_end - time
+      kdt_used = 0                        ! set by t_end, not by a cell
+   end if
+   dth = half*( dt_prev + dt )
+
+   dtcfl = huge(one)                      ! smallest dt_k this cycle
+   kdt   = 0                              ! ... and the cell that has it
+   pmax  = zero
+   ktens = huge(ktens)                    ! first cell with P < 0
+   kvoid = huge(kvoid)                    ! first void cell
+   nvoid = 0                              ! void cells this cycle
+   kbad  = huge(kbad)                     ! first cell the EOS rejects
+
+   !$OMP PARALLEL IF( use_team ) DEFAULT(NONE) &
+   !$OMP    SHARED( database, imax, dt, dth, BL, BQ, dtcfl, kdt, &
+   !$OMP            pmax, ktens, kbad, kvoid, nvoid ) &
+   !$OMP    PRIVATE( i, unew, xnew, rnew, enew, pnew, cnew, qnew, &
+   !$OMP             dtk, tens, isvoid, ierr, dtl, kl )
+
+   !*** Loop 1, faces (even i): u(n+1/2), then x(n+1). Steps a, b.
+   !$OMP DO
+   step_faces: do i = 2, imax-1, 2
+      call face_step( database(:,i-1:i+1), dth, dt, unew, xnew )
+      database(ju_old,i) = database(ju,i)
+      database(ju,i)     = unew
+      database(jx_old,i) = database(jx,i)
+      database(jx,i)     = xnew
+   end do step_faces
+   !$OMP END DO
+
+   !*** Loop 2, cells (odd i): rho(n+1) and e(n+1). Steps b, c.
+   !$OMP DO
+   step_cells: do i = 3, imax-2, 2
+      call cell_step( database(:,i-2:i+2), dt, rnew, enew )
+      database(jrho_old,i) = database(jrho,i)
+      database(jrho,i)     = rnew
+      database(je_old,i)   = database(je,i)
+      database(je,i)       = enew
+   end do step_cells
+   !$OMP END DO
+
+   !*** Loop 3, cells: P (floored at 0), c, q and dt_k. Steps d, e.
+   !*** cell_state applies the floor; the loop records the first cell
+   !*** that was really in tension (see cell_state). Each thread keeps
+   !*** its own smallest dt_k (dtl, cell kl); they are merged below.
+   dtl = huge(one)
+   kl  = 0
+   !$OMP DO REDUCTION(min: ktens, kbad, kvoid) REDUCTION(max: pmax) &
+   !$OMP    REDUCTION(+: nvoid)
+   step_states: do i = 3, imax-2, 2
+      call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
+         dtk, tens, isvoid, ierr )
+      if ( ierr /= eos_ok ) then          ! reported after the region
+         kbad = min( kbad, kcell(i) )
+         cycle step_states
+      end if
+      if ( tens ) ktens = min( ktens, kcell(i) )   ! P was floored
+      if ( isvoid ) then                  ! see cell_state, VOID CELLS
+         nvoid = nvoid + 1
+         kvoid = min( kvoid, kcell(i) )
+      end if
+      database(jp,i) = pnew
+      database(jc,i) = cnew
+      database(jq,i) = qnew
+      pmax = max( pmax, pnew )
+      if ( dtk < dtl ) then               ! strictly less: the lowest
+         dtl = dtk                        ! cell wins a tie
+         kl  = kcell(i)
+      end if
+   end do step_states
+   !$OMP END DO
+
+   !*** Merge each thread's smallest dt_k, one thread at a time; a tie
+   !*** goes to the lower cell number, as in a serial run.
+   !$OMP CRITICAL (cfl_merge)
+   if ( dtl < dtcfl .or. ( .not. ( dtl > dtcfl ) .and. kl < kdt ) ) then
+      dtcfl = dtl
+      kdt   = kl
+   end if
+   !$OMP END CRITICAL (cfl_merge)
+
+   !$OMP END PARALLEL
+
+   !*** An EOS failure stops the run, naming the first cell it hit.
+   if ( kbad < huge(kbad) ) then
+      i = icell( kbad )
+      call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
+         dtk, tens, isvoid, ierr )
+      write( kpt6, '(1x,a,i0,3a,i0,a,es12.5,a)' ) 'bitwhiz: the EOS '// &
+         'failed in cell ', kbad, ' (layer ', trim(layer(ilay(i))%name), &
+         ') on cycle ', ncycle+1, ', t = ', time+dt, ' us:'
+      write( kpt6, '(1x,a)' ) '         '//eos_message(ierr)
+      call close_heartbeat( 'EOS failure in cell '//itoa(kbad)//': '// &
+         eos_message(ierr) )
+      stop 1, quiet=.true.
+   end if
+
+   !*** The first cell to go tensile, recorded once (equation sheet,
+   !*** Step 2; project Sec. 3): cycle, time, cell, layer and x.
+   if ( ktens < huge(ktens) .and. tens_k == 0 ) then
+      tens_k     = ktens
+      tens_cycle = ncycle + 1
+      tens_time  = time + dt
+      i          = icell( ktens )
+      tens_x     = half*( database(jx,i-1) + database(jx,i+1) )
+      write( khb, '(a,i0,a,f0.6,a,i0,3a,f0.6,a)' ) '# tensile : first '// &
+         'P < 0 on cycle ', tens_cycle, ', t = ', tens_time, ' us, cell ', &
+         tens_k, ' (', trim(layer(ilay(i))%name), '), x = ', tens_x, &
+         ' mm; P set to 0'
+   end if
+
+   !*** The first void cell, recorded once, and the most at any time.
+   if ( nvoid > 0 .and. void_k == 0 ) then
+      void_k     = kvoid
+      void_cycle = ncycle + 1
+      void_time  = time + dt
+      i          = icell( kvoid )
+      write( khb, '(a,i0,a,f0.6,a,i0,3a)' ) '# void    : first void '// &
+         'cell on cycle ', void_cycle, ', t = ', void_time, ' us, cell ', &
+         void_k, ' (', trim(layer(ilay(i))%name), '): stretched past '// &
+         'its EOS at P = 0; P = q = c = 0'
+   end if
+   nvoid_max = max( nvoid_max, nvoid )
+
+   !*** Advance the clock: n <- n+1. Then the next step from the CFL
+   !*** limit (equation sheet, Time Step): dt(n+1) = CFL * min dt_k.
+   ncycle = ncycle + 1
+   if ( last ) then
+      time = t_end                        ! exactly, no round-off
+   else
+      time = time + dt
+   end if
+   dt_used = dt
+   dt_prev = dt
+   dt      = CFL*dtcfl
+   if ( .not. ( dt > zero ) ) then        ! can not happen; a backstop
+      write( kpt6, '(1x,a,i0)' ) 'bitwhiz: the time step collapsed '// &
+         'on cycle ', ncycle
+      call close_heartbeat( 'time step collapsed' )
+      stop 1, quiet=.true.
+   end if
+
+   !*** Step f: one heartbeat line per cycle, a screen line every 10%.
+   call heartbeat_line( dt_used, kdt_used, pmax )
+   if ( .not. ( time < tnext ) .or. last ) then
+      write( kpt6, '(3x,i10,f12.6,es12.4,f15.6)' ) ncycle, time, &
+         dt_used, pmax
+      do while ( .not. ( time < tnext ) )
+         tnext = tnext + 0.1_dp*t_end
+      end do
+   end if
+
+   !*** Done? At t_end, or (the backstop) at cycle_max.
+   if ( last ) then
+      done = .true.
+   else if ( ncycle >= cycle_max ) then
+      done    = .true.
+      stopped = .true.
+   end if
+
+end do time_loop
+
+!*** Report.
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 205 ) 'Cycles', ncycle
+write( kpt6, 211 ) 'Final time (us)', time
+write( kpt6, 211 ) 'Mass error (relative)', merr
+if ( etot0 > zero ) then
+   write( kpt6, 211 ) 'Energy error (relative)', eerr
+else
+   write( kpt6, 211 ) 'Energy change (GPa*mm)', eerr
+end if
+write( kpt6, 211 ) 'x-momentum change', xmom - xmom0
+if ( tens_k > 0 ) then
+   write( kpt6, 212 ) 'First tensile cell (P set to 0)', tens_k, &
+      trim(layer(ilay(icell(tens_k)))%name), tens_time
+else
+   write( kpt6, 204 ) 'First tensile cell', 'none'
+end if
+if ( void_k > 0 ) then
+   write( kpt6, 212 ) 'First void cell', void_k, &
+      trim(layer(ilay(icell(void_k)))%name), void_time
+   write( kpt6, 205 ) 'Most void cells at one time', nvoid_max
+end if
+call system_clock( tick1 )
+write( kpt6, 211 ) 'Wall time per cycle (us)', &
+   1.0e6_dp*real(tick1-tick0,dp)/real(rate,dp)/real(max(ncycle,1),dp)
+if ( stopped ) then
+   write( kpt6, 202 ) repeat('-',56)
+   write( kpt6, 202 ) '  WARNING: stopped at cycle_max = '// &
+      itoa(cycle_max)//' before t_end.'
+   endhow = 'cycle_max reached before t_end'
+end if
+write( kpt6, 202 ) repeat('=',56)
 
 !===============================================!
 ! 8. Close the heartbeat file, free the memory. !
 !===============================================!
-call close_heartbeat( 'normal end' )
+call close_heartbeat( trim(endhow) )
 
 ! Every alloc_ in shock_mod has its dealloc_ (bits RULE). kerr only
 ! counts; a failure here at the very end is reported, not fatal.
@@ -770,6 +1054,51 @@ contains
       s = s//', serial'
    end if
    end function build_kind
+
+   !*****************************************************!
+   ! One heartbeat line: cycle, time, the step just      !
+   ! taken and the cell that set it (0 = shortened to    !
+   ! land on t_end), the largest pressure, and the       !
+   ! conservation checks against the t = 0 totals:       !
+   !    mass err    (sum M - mass0)/mass0     exactly 0  !
+   !    energy err  (E - etot0)/etot0, E = sum_k M_k*    !
+   !                (e_k + ubar_k**2/2), ubar at n+1/2   !
+   !    x-momentum  sum_k M_k*ubar_k (constant: the end  !
+   !                faces push on void, P = q = 0)       !
+   ! Summed serially, so the line is the same with or    !
+   ! without threads. Flushed, so tail -f sees it now.   !
+   !*****************************************************!
+   subroutine heartbeat_line( dtu, kdtu, pm )
+   implicit none
+   real(kind=dp), intent(in) :: dtu       ! us, the step just taken
+   integer(kind=int32), intent(in) :: kdtu ! the cell that set it
+   real(kind=dp), intent(in) :: pm        ! GPa, largest pressure
+   integer(kind=int32) :: kk, ii
+   integer(kind=int64) :: tk
+   real(kind=dp) :: ub, ms, et, xm
+   ms = zero
+   et = zero
+   xm = zero
+   do kk = 1, kmax
+      ii = icell( kk )
+      ub = half*( database(ju,ii-1) + database(ju,ii+1) )
+      ms = ms + database(jm,ii)
+      xm = xm + database(jm,ii)*ub
+      et = et + database(jm,ii)*( database(je,ii) + half*ub*ub )
+   end do
+   merr = ( ms - mass0 )/mass0
+   if ( etot0 > zero ) then
+      eerr = ( et - etot0 )/etot0
+   else
+      eerr = et - etot0                   ! nothing moving at t = 0
+   end if
+   xmom = xm
+   call system_clock( tk )
+   write( khb, '(i9,f12.6,es12.4,i9,f14.6,es12.3,es12.3,es13.5,f11.3)' ) &
+      ncycle, time, dtu, kdtu, pm, merr, eerr, xmom, &
+      real(tk-tick0,dp)/real(rate,dp)
+   flush( khb )
+   end subroutine heartbeat_line
 
    !*****************************************************!
    ! One failed setup check (section 6): say what, and   !

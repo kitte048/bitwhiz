@@ -28,6 +28,8 @@ module eos
 !      ====       ==========          =====================
 !    10/14/26    D. E. Kittell        Original code
 !                (with Claude)
+!    10/15/26    D. E. Kittell        mg_pressure and mg_soundspeed, so
+!                (with Claude)        c can follow the P >= 0 floor
 !
 !**********************************************************************!
 !
@@ -100,21 +102,33 @@ module eos
 !                       problem never gets past eta = 0.28. For S2 > 0
 !                       the square root can go negative first. For
 !                       S2 < 0 (MatX) neither happens at any eta.
-!   eos_bad_soundspeed  c**2 <= 0. With e = 0 this needs deep tension,
-!                       eta below -0.32 (Al) to -0.42 (PMMA), at -16
-!                       to -45 GPa: far past anything the P >= 0 floor
-!                       allows. A backstop only.
+!   eos_bad_soundspeed  c**2 <= 0. At the EOS's own pressure (e = 0)
+!                       this needs deep tension, eta below -0.32 (Al)
+!                       to -0.42 (PMMA), at -16 to -45 GPa. At the
+!                       FLOORED pressure P = 0, which is what the time
+!                       loop asks for, Ta and Al keep c**2 > 0 down to
+!                       5% of R0, but MatX and PMMA lose it near 40%
+!                       of R0 (a cell stretched to 2.5 times its size).
 !
 !  The P >= 0 floor and the "first cell to go tensile" flag are NOT
 !  here (equation sheet, Step 2): the EOS reports a negative pressure
-!  honestly, and the time loop decides what to do with it.
+!  honestly, and the time loop decides what to do with it. For that
+!  the EOS comes in three calls:
+!
+!     mg_eos        ( rho, e, ..., p, c, ierr )   both, c at that p
+!     mg_pressure   ( rho, e, ..., p, ierr )      P alone
+!     mg_soundspeed ( rho, p, ..., c, ierr )      c at a GIVEN p
+!
+!  so the loop can do what the sheet says: P, then the floor, then c
+!  at the floored P. All three share one private routine (mg_ref) for
+!  the volume-only part, so they agree to the last bit.
 !
 !**********************************************************************!
 use bits, only: dp, int32, zero, half, one, two
 implicit none
 private
 
-public :: mg_eos, eos_message
+public :: mg_eos, mg_pressure, mg_soundspeed, eos_message
 public :: eos_ok, eos_bad_density, eos_too_compressed, eos_bad_soundspeed
 
 !*** Status codes returned in ierr.
@@ -130,17 +144,13 @@ real(kind=dp), parameter :: dmin = 0.02_dp
 contains
 
    !******************************************************************!
-   ! Mie-Gruneisen pressure and sound speed for one cell. Elemental:  !
-   ! call it with scalars for one cell, or with conforming arrays     !
-   ! (e.g. strided rows of the database) for many cells at once.      !
+   ! Mie-Gruneisen pressure and sound speed for one cell, together:   !
+   ! c is the sound speed at the pressure p returned. Elemental: call !
+   ! it with scalars for one cell, or with conforming arrays (e.g.    !
+   ! strided rows of the database) for many cells at once.            !
    !******************************************************************!
    elemental subroutine mg_eos( rho, e, R0, C0, S1, S2, G0, p, c, ierr )
-   use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_signaling_nan
    implicit none
-
-   !*******************************************************************!
-   ! Data dictionary: Subroutine I/O.
-   !*******************************************************************!
    real(kind=dp), intent(in)  :: rho     ! density, g/cm^3
    real(kind=dp), intent(in)  :: e       ! specific internal energy, (km/s)^2
    real(kind=dp), intent(in)  :: R0      ! reference density, g/cm^3
@@ -151,80 +161,162 @@ contains
    real(kind=dp), intent(out) :: p       ! pressure, GPa
    real(kind=dp), intent(out) :: c       ! isentropic sound speed, km/s
    integer(kind=int32), intent(out) :: ierr ! eos_ok, or why not
+   real(kind=dp) :: v, phi, phip
+
+   call mg_ref( rho, R0, C0, S1, S2, G0, v, phi, phip, ierr )
+   if ( ierr == eos_ok ) then
+      p = R0*G0*e + phi
+      call sound( v, p, R0*G0, phip, c, ierr )
+   end if
+   if ( ierr /= eos_ok ) call unusable( p, c )
+   end subroutine mg_eos
+
+   !******************************************************************!
+   ! The pressure alone, P(rho, e) = R0*G0*e + phi(V). The time loop  !
+   ! uses this, then applies the P >= 0 floor, then asks for c at the !
+   ! floored pressure (equation sheet, Step 2 and One Cycle, d).      !
+   !******************************************************************!
+   elemental subroutine mg_pressure( rho, e, R0, C0, S1, S2, G0, p, ierr )
+   implicit none
+   real(kind=dp), intent(in)  :: rho, e, R0, C0, S1, S2, G0  ! as mg_eos
+   real(kind=dp), intent(out) :: p       ! pressure, GPa
+   integer(kind=int32), intent(out) :: ierr ! eos_ok, or why not
+   real(kind=dp) :: v, phi, phip, unused
+
+   call mg_ref( rho, R0, C0, S1, S2, G0, v, phi, phip, ierr )
+   if ( ierr == eos_ok ) then
+      p = R0*G0*e + phi
+   else
+      call unusable( p, unused )
+   end if
+   end subroutine mg_pressure
+
+   !******************************************************************!
+   ! The sound speed at density rho and a GIVEN pressure p,           !
+   !    c**2 = V**2*( R0*G0*p - phi'(V) ),                            !
+   ! which holds for any p because (dP/de)_V = R0*G0 is a constant.   !
+   ! The time loop calls it with the floored pressure (p = 0 for a    !
+   ! cell the floor reset), as the equation sheet orders it: "P (keep !
+   ! them >= 0), then sound speeds c".                                !
+   !******************************************************************!
+   elemental subroutine mg_soundspeed( rho, p, R0, C0, S1, S2, G0, c, ierr )
+   implicit none
+   real(kind=dp), intent(in)  :: rho     ! density, g/cm^3
+   real(kind=dp), intent(in)  :: p       ! pressure to use, GPa
+   real(kind=dp), intent(in)  :: R0, C0, S1, S2, G0  ! as mg_eos
+   real(kind=dp), intent(out) :: c       ! isentropic sound speed, km/s
+   integer(kind=int32), intent(out) :: ierr ! eos_ok, or why not
+   real(kind=dp) :: v, phi, phip, unused
+
+   call mg_ref( rho, R0, C0, S1, S2, G0, v, phi, phip, ierr )
+   if ( ierr == eos_ok ) call sound( v, p, R0*G0, phip, c, ierr )
+   if ( ierr /= eos_ok ) call unusable( c, unused )
+   end subroutine mg_soundspeed
+
+   !******************************************************************!
+   ! The volume-only part of the EOS: V, phi(V) and phi'(V), from the !
+   ! Hugoniot reference curve, with the guards (see the header).      !
+   !******************************************************************!
+   elemental subroutine mg_ref( rho, R0, C0, S1, S2, G0, v, phi, phip, ierr )
+   implicit none
+
+   !*******************************************************************!
+   ! Data dictionary: Subroutine I/O.
+   !*******************************************************************!
+   real(kind=dp), intent(in)  :: rho     ! density, g/cm^3
+   real(kind=dp), intent(in)  :: R0      ! reference density, g/cm^3
+   real(kind=dp), intent(in)  :: C0      ! Us-up intercept, km/s
+   real(kind=dp), intent(in)  :: S1      ! Us-up slope
+   real(kind=dp), intent(in)  :: S2      ! Us-up curvature
+   real(kind=dp), intent(in)  :: G0      ! reference Gruneisen coefficient
+   real(kind=dp), intent(out) :: v       ! specific volume, cm^3/g
+   real(kind=dp), intent(out) :: phi     ! P_H - R0*G0*e_H, GPa
+   real(kind=dp), intent(out) :: phip    ! phi' = (dP/dV)_e
+   integer(kind=int32), intent(out) :: ierr ! eos_ok, or why not
 
    !*******************************************************************!
    ! Data dictionary: Subroutine Internal Variables.
    !*******************************************************************!
-   real(kind=dp) :: v                    ! specific volume, cm^3/g
    real(kind=dp) :: eta                  ! compression, 1 - V/V0
    real(kind=dp) :: a, disc, xi1, d      ! pieces of the Us root
    real(kind=dp) :: us, dus              ! Us and dUs/deta, km/s
    real(kind=dp) :: ph, eh               ! Hugoniot P_H (GPa), e_H
    real(kind=dp) :: dph_dv, deh_dv       ! Hugoniot slopes in V
    real(kind=dp) :: rg                   ! R0*G0 = (dP/de)_V
-   real(kind=dp) :: phi, phip            ! phi(V) and phi' = (dP/dV)_e
-   real(kind=dp) :: c2                   ! c**2
 
-   !*** Every check below that fails sets ierr and EXITs this block,
-   !*** landing at the bottom, where p and c are made unusable. A good
-   !*** state returns from inside the block.
    ierr = eos_ok
-   eos_body: block
+   v    = zero
+   phi  = zero
+   phip = zero
 
-      !*** A bad density first: everything below divides by rho.
-      if ( .not. ( rho > zero ) ) then
-         ierr = eos_bad_density
-         exit eos_body
-      end if
+   !*** A bad density first: everything below divides by rho.
+   if ( .not. ( rho > zero ) ) then
+      ierr = eos_bad_density
+      return
+   end if
 
-      v   = one/rho
-      eta = one - R0*v
-      rg  = R0*G0
+   v   = one/rho
+   eta = one - R0*v
+   rg  = R0*G0
 
-      !*** The Hugoniot shock speed, guarded BEFORE any division by xi1
-      !*** or D (at the limit both go to zero together).
-      a    = one - S1*eta
-      disc = a*a - 4.0_dp*S2*eta*eta
-      if ( disc <= zero ) then
-         ierr = eos_too_compressed
-         exit eos_body
-      end if
-      xi1 = sqrt( disc )
-      d   = a + xi1
-      if ( d < dmin ) then
-         ierr = eos_too_compressed
-         exit eos_body
-      end if
-      us  = two*C0/d
-      dus = two*C0*( S1 + (S1 - S1*S1*eta + 4.0_dp*S2*eta)/xi1 )/( d*d )
+   !*** The Hugoniot shock speed, guarded BEFORE any division by xi1
+   !*** or D (at the limit both go to zero together).
+   a    = one - S1*eta
+   disc = a*a - 4.0_dp*S2*eta*eta
+   if ( disc <= zero ) then
+      ierr = eos_too_compressed
+      return
+   end if
+   xi1 = sqrt( disc )
+   d   = a + xi1
+   if ( d < dmin ) then
+      ierr = eos_too_compressed
+      return
+   end if
+   us  = two*C0/d
+   dus = two*C0*( S1 + (S1 - S1*S1*eta + 4.0_dp*S2*eta)/xi1 )/( d*d )
 
-      !*** The Hugoniot reference curve (cancelled form, no 0/0).
-      ph = R0*eta*us*us
-      eh = half*(eta*us)**2
+   !*** The Hugoniot reference curve (cancelled form, no 0/0), and phi.
+   ph  = R0*eta*us*us
+   eh  = half*(eta*us)**2
+   phi = ph - rg*eh
 
-      !*** Pressure: thermal part plus the volume-only part phi.
-      phi = ph - rg*eh
-      p   = rg*e + phi
+   !*** Its slope, from the Hugoniot slopes. (V0 - V) = eta*V0 = eta/R0.
+   dph_dv = -R0*R0*( us*us + two*eta*us*dus )
+   deh_dv = half*( (eta/R0)*dph_dv - ph )
+   phip   = dph_dv - rg*deh_dv
+   end subroutine mg_ref
 
-      !*** Sound speed from the Hugoniot slopes. (V0 - V) = eta*V0 = eta/R0.
-      dph_dv = -R0*R0*( us*us + two*eta*us*dus )
-      deh_dv = half*( (eta/R0)*dph_dv - ph )
-      phip   = dph_dv - rg*deh_dv
-      c2     = v*v*( rg*p - phip )
-      if ( c2 <= zero ) then
-         ierr = eos_bad_soundspeed
-         exit eos_body
-      end if
-      c = sqrt( c2 )
-      return                                  ! a good state ends here
+   !******************************************************************!
+   ! c from c**2 = V**2*( R0*G0*p - phi' ), guarded.                  !
+   !******************************************************************!
+   elemental subroutine sound( v, p, rg, phip, c, ierr )
+   implicit none
+   real(kind=dp), intent(in)  :: v, p, rg, phip
+   real(kind=dp), intent(out) :: c
+   integer(kind=int32), intent(out) :: ierr
+   real(kind=dp) :: c2
+   c2 = v*v*( rg*p - phip )
+   if ( c2 > zero ) then
+      c    = sqrt( c2 )
+      ierr = eos_ok
+   else
+      c    = zero
+      ierr = eos_bad_soundspeed
+   end if
+   end subroutine sound
 
-   end block eos_body
-
-   !*** Only a failed check gets here: make p and c unusable.
-   p = ieee_value( p, ieee_signaling_nan )
-   c = ieee_value( c, ieee_signaling_nan )
-
-   end subroutine mg_eos
+   !******************************************************************!
+   ! Make two results unusable: a signaling NaN, so a caller that     !
+   ! ignores ierr stops at the very next arithmetic on them.          !
+   !******************************************************************!
+   elemental subroutine unusable( a, b )
+   use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_signaling_nan
+   implicit none
+   real(kind=dp), intent(out) :: a, b
+   a = ieee_value( a, ieee_signaling_nan )
+   b = ieee_value( b, ieee_signaling_nan )
+   end subroutine unusable
 
    !******************************************************************!
    ! A status code as words, for the caller's error message.          !

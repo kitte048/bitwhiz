@@ -4,6 +4,7 @@ Begin bitwhiz
  define u_fly = 2.00
  Begin Run
   t_end = 12E+10
+  cycle_max = 200        # t_end is huge on purpose; stop early
  End Run
  Begin Output
   plot_dt = .5

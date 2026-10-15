@@ -22,6 +22,8 @@ module deck
 !    10/13/26    D. E. Kittell        Hardening: a folder, an empty
 !                (with Claude)        file or an unreadable file each
 !                                     says so; maintainer notes added
+!    10/15/26    D. E. Kittell        Run block: omp_min_zones
+!                (with Claude)
 !
 !**********************************************************************!
 !
@@ -901,9 +903,14 @@ contains
    case ('num_threads')
       call get_int(ln, key, val, iv, ok)
       if (ok) nproc = iv          ! 0 = all processors (maincode, OpenMP)
+   case ('omp_min_zones')
+      call get_int(ln, key, val, iv, ok)
+      if (ok .and. iv < 0) call deck_error(ln, 'omp_min_zones must be '// &
+         '0 or more')
+      if (ok .and. iv >= 0) omp_min_zones = iv
    case default
       call unknown_key(ln, key, 'in the Run block', &
-         'title, t_end, cycle_max, num_threads')
+         'title, t_end, cycle_max, num_threads, omp_min_zones')
    end select
    end subroutine key_run
 
@@ -1172,7 +1179,7 @@ contains
    select case (trim(k))
    case ('deck_version')
       b = 'the top level'
-   case ('title', 't_end', 'cycle_max', 'num_threads')
+   case ('title', 't_end', 'cycle_max', 'num_threads', 'omp_min_zones')
       b = 'the Run block'
    case ('tracer', 'plot_every', 'plot_dt', 'colormap')
       b = 'the Output block'
@@ -1527,6 +1534,8 @@ contains
    else
       call kv(lu, 2, 'num_threads', itoa(nproc))
    end if
+   call kv(lu, 2, 'omp_min_zones', itoa(omp_min_zones), &
+      'cells; fewer runs on one thread')
    write(lu,'(a)') ' End Run'
 
    write(lu,'(a)') ''

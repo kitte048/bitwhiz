@@ -25,6 +25,8 @@ module shock
 !                                     equation sheet; heartbeat file
 !    10/14/26    D. E. Kittell        face_slots and cell_slots lists;
 !                (with Claude)        not_finite() for the setup audit
+!    10/15/26    D. E. Kittell        omp_min_zones (deck: Run block)
+!                (with Claude)
 !
 !**********************************************************************!
 !
@@ -242,6 +244,15 @@ integer(kind=int32) :: num_threads = 1 ! threads counted by OpenMP
 integer(kind=int32) :: thread_num  = 0 ! the thread that ran SINGLE
 integer(kind=int32) :: nalive      = 0 ! threads that actually showed
                                        ! up (each one adds 1)
+integer(kind=int32) :: omp_min_zones = 2000 ! below this many cells the
+                                       ! time loop runs on ONE thread,
+                                       ! whatever num_threads says
+                                       ! (deck: Run omp_min_zones)
+!***NOTE: why 2000. The OpenMP timing study (NOTES_bitwhiz_Performance_
+! IO_v1.md, section 2) found threads cost more than they save below
+! about 2,000 zones on 4 cores: 945 zones ran at 0.92x of serial speed,
+! 3,000 at 1.4x, 30,000 at 3.1x. Set it to 0 to force threads on any
+! mesh (e.g. to test that threads reproduce the serial answer).
 
 !**********************************************************************!
 ! Data dictionary: the heartbeat file.

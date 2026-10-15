@@ -12,8 +12,8 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Heartbeat file (opened and closed) | done; cycle lines come with the time loop |
 | Mesh setup at t = 0, with a setup audit | done (maincode sections 5-6) |
 | Equation of state (Mie-Gruneisen), with unit test | done (`src/modules/eos_mod.f95`) |
-| Artificial viscosity time loop | next |
-| Tracer and snapshot output | to do |
+| Artificial viscosity time loop, OpenMP (bit-for-bit with serial) | done (`src/modules/av_mod.f95`, maincode section 7) |
+| Tracer and snapshot output | next |
 | Comparison with reference data | data in `tests/verification/` |
 
 ## Build
@@ -41,7 +41,11 @@ version a readable name; `-dirty` marks a build with uncommitted changes.
 ```
 The command line takes only the deck. Everything else (threads, solver,
 materials, geometry, output) is in the deck; see `input/README.md`. A run
-writes `<title>.heartbeat` in the current folder; watch it with `tail -f`.
+writes `<title>.heartbeat` in the current folder, one line per cycle (time
+step and the cell that set it, largest pressure, mass and energy errors, total
+momentum); watch it with `tail -f`. The heartbeat also records the first cell
+to go tensile (its pressure is floored at 0) and the first void cell (a cell
+stretched past where its EOS has a sound speed at P = 0, treated as void).
 
 ## Test
 ```
@@ -63,7 +67,7 @@ Run it before every commit.
 | Folder | What |
 |---|---|
 | `src/main` | `maincode.f95` (the run, section by section), `bmpmaker.f95` |
-| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `bit_mod` (kinds and constants), colormap data |
+| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `av_mod` (the artificial viscosity method, one place at a time), `bit_mod` (kinds and constants), colormap data |
 | `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_colormaps` (demo, kept in the build) |
 | `src/utils` | `make_build_info.sh` (writes the build record), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |

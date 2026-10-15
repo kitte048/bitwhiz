@@ -102,6 +102,7 @@ Units: mm, us, g/cm^3, km/s, GPa. Nothing is converted inside the code.
 | `t_end` | number, us | required | termination time |
 | `cycle_max` | integer | 1000000 | backstop against a stalled time step |
 | `num_threads` | integer | 1 | `0` means all processors; capped at the processor count |
+| `omp_min_zones` | integer | 2000 | a mesh with fewer cells runs the time loop on one thread, whatever `num_threads` says (threads cost more than they save on small 1-D meshes); `0` = always use the threads |
 
 ### `Output`
 **Nothing given means nothing is written.** The only files every run writes are
