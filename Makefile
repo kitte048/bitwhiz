@@ -7,9 +7,10 @@
 #Revision: 1.3  (10-13-26, with Claude: 'make test')
 #Revision: 1.4  (10-14-26, with Claude: eos module, EOS unit test)
 #Revision: 1.5  (10-15-26, with Claude: av module, the time loop)
-#Revision: 1.6  (10-16-26, with Claude: OpenMP tests in 'make test')
-#Revision: 1.7  (10-16-26, with Claude: -ffp-contract=off, same answer
+#Revision: 1.6  (10-15-26, with Claude: OpenMP tests in 'make test')
+#Revision: 1.7  (10-15-26, with Claude: -ffp-contract=off, same answer
 #                on x86 and arm64; see the NOTES at FCFLAGS)
+#Revision: 1.8  (10-15-26, with Claude: trace module, tracer file)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -114,6 +115,7 @@ src/modules/deck_mod.o:  src/modules/shock_mod.o src/modules/bit_mod.o
 src/modules/eos_mod.o:   src/modules/bit_mod.o
 src/modules/av_mod.o:    src/modules/eos_mod.o src/modules/shock_mod.o \
                          src/modules/bit_mod.o
+src/modules/trace_mod.o: src/modules/shock_mod.o src/modules/bit_mod.o
 
 ############################################################
 ###  NOTES: 'make test' builds bitwhiz and the unit tests if
@@ -146,7 +148,8 @@ test: $(EXECS) $(UNIT_TESTS)
 ###  write it (tracers, snapshots, run log, ...).
 ###  The decks and README in input/ are never touched.
 ############################################################
-RUN_FILES = *.heartbeat input/*.heartbeat input/*.bmp
+RUN_FILES = *.heartbeat input/*.heartbeat *.tracers.csv \
+            input/*.tracers.csv input/*.bmp
 
 cleanrun:
 	rm -f $(RUN_FILES)

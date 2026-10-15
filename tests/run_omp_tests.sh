@@ -14,8 +14,11 @@
 #    - everything it prints from section 6 on (t = 0 totals, the       #
 #      progress lines, errors, tension, breaks, ...) and every         #
 #      heartbeat line are IDENTICAL to the 1-thread run, character     #
-#      for character. Only the clock times are left out: wall and     #
-#      CPU time, and the heartbeat's wall column and time stamps.     #
+#      for character, and so is the tracer file (if the deck has     #
+#      tracers), every row to the last digit. Only the clock times    #
+#      are left out: wall and CPU time, the heartbeat's wall column,  #
+#      and the time stamps and wall time in the files' headers and    #
+#      the tracer file's trailer.                                     #
 #                                                                      #
 #  Why identical, not "close": every cell gets the same arithmetic on  #
 #  any thread, and what the threads combine (minimums, maximums,       #
@@ -70,6 +73,13 @@ beats() {     # $1 = heartbeat file
       awk '/^#/ {print; next} {$NF=""; print}'
 }
 
+# The tracer file, without the trailer's time stamps, build lines and
+# wall time (and with no file at all, nothing).
+rows() {      # $1 = folder of one run
+   f=$(ls "$1"/*.tracers.csv 2>/dev/null) || return 0
+   grep -vE '^# (started|ended|version|built|flags|cycles)' "$f"
+}
+
 # Is OpenMP compiled in? (Section 3 of any run says so.)
 probe=$(cd "$TMP" && "$BIN" "$OLDPWD/tests/decks/ok_setup_one_layer.deck" 2>&1)
 if ! echo "$probe" | grep -q 'OpenMP compiled in *: yes'; then
@@ -108,6 +118,10 @@ for deck in $DECKS; do
       if ! diff <(beats "$hb1") <(beats "$hbn") > "$d/diff" ; then
          fail "$deck" "$n threads: the heartbeat differs from 1 thread:"
          head -4 "$d/diff"; continue
+      fi
+      if ! diff <(rows "$ref") <(rows "$d") > "$d/diff" ; then
+         fail "$deck" "$n threads: the tracer file differs from 1 thread:"
+         head -4 "$d/diff" | cut -c1-120; continue
       fi
       npass=$((npass+1))
    done

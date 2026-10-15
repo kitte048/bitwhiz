@@ -27,8 +27,10 @@ module shock
 !                (with Claude)        not_finite() for the setup audit
 !    10/15/26    D. E. Kittell        omp_min_zones (deck: Run block)
 !                (with Claude)
-!    10/16/26    D. E. Kittell        Spall: damage slot D (jdam) and
+!    10/15/26    D. E. Kittell        Spall: damage slot D (jdam) and
 !                (with Claude)        each cell's spall_strength (jsp)
+!    10/15/26    D. E. Kittell        tracer_dt (Output block); which
+!                (with Claude)        cell a tracer on a node reports
 !
 !**********************************************************************!
 !
@@ -314,6 +316,9 @@ integer(kind=int32) :: plot_every = 0          ! snapshot every N cycles,
                                                ! 0 = off
 real(kind=dp)       :: plot_dt    = zero       ! us, snapshot interval,
                                                ! 0 = off
+real(kind=dp)       :: tracer_dt  = zero       ! us, between rows of the
+                                               ! tracer file, 0 = every
+                                               ! cycle
 character(len=80)   :: colormap   = 'viridis'  ! for bitmap pictures; a
                                                ! name bmpmaker knows
                                                ! (tracers: tracer table)
@@ -400,8 +405,18 @@ type(layer_t), allocatable :: layer(:)        ! layer(1:nlay)
 !  uniform inside each layer, the length fraction equals the mass
 !  fraction, so w never changes as the mesh moves. That keeps the same
 !  material point at every resolution (needed for the convergence
-!  study). Cell values (p, rho, e, q) come from cell kcell; kcell = 0
-!  for a tracer on an interface, which has a cell on each side.
+!  study). kcell is the cell that holds the tracer, or 0 for a tracer
+!  exactly on a node, which has a cell on each side.
+!
+!  Cell values (P, rho, e, q, c, D) come from ONE cell, kval: kcell
+!  when the tracer is inside a cell. On a node, it is the cell on the
+!  tracer's own layer's side: the cell to the LEFT of the node (the
+!  same rule as ilay: a face belongs to the layer on its left), except
+!  at its layer's left face ("A@0"), where the cell to the right is the
+!  one in layer A. So "MatX:PMMA" reports MatX's cell, and "PMMA@0"
+!  (the same node) reports PMMA's. No averaging across the node: rho,
+!  e and c jump at an interface, and an average of two materials is
+!  neither one.
 !**********************************************************************!
 integer(kind=int32), parameter :: loc_interface = 1  ! "A:B"
 integer(kind=int32), parameter :: loc_fraction  = 2  ! "A@f"
@@ -417,6 +432,7 @@ type :: tracer_t
    integer(kind=int32) :: kface  = 0      ! face just left (face k+1/2)
    real(kind=dp)       :: w      = zero   ! weight toward kface+1
    integer(kind=int32) :: kcell  = 0      ! cell that holds it, or 0
+   integer(kind=int32) :: kval   = 0      ! cell whose values it reports
    integer(kind=int32) :: line   = 0      ! deck line
 end type tracer_t
 

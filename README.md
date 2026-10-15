@@ -14,7 +14,8 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Equation of state (Mie-Gruneisen), with unit test | done (`src/modules/eos_mod.f95`) |
 | Artificial viscosity time loop, OpenMP (bit-for-bit with serial) | done (`src/modules/av_mod.f95`, maincode section 7) |
 | Expansion EOS (cubic, smooth through V0) and spall (`spall_strength`) | done (`eos_mod`, `av_mod`; see `input/README.md`) |
-| Tracer and snapshot output | next |
+| Tracer file (`<title>.tracers.csv`, `tracer_dt`) | done (`src/modules/trace_mod.f95`; see `input/README.md`) |
+| Snapshot output (bitmaps, t-x diagrams) | next |
 | Comparison with reference data | data in `tests/verification/` |
 
 ## Build
@@ -22,7 +23,7 @@ Needs gfortran and make.
 ```
 make            # bin/bitwhiz, debug build with strict flags and -fopenmp
 make test       # build if needed, then run the unit and deck tests (see Test)
-make cleanrun   # remove run outputs (heartbeats, bitmaps in input/); keep the build
+make cleanrun   # remove run outputs (heartbeats, tracer files, bitmaps); keep the build
 make clean      # cleanrun, plus objects, module files and the executable
 make cleanbmp   # remove bitmaps in this folder (kept by the two above)
 make OMPFLAGS=  # a serial build from the same source
@@ -46,7 +47,9 @@ writes `<title>.heartbeat` in the current folder, one line per cycle (time
 step and the cell that set it, largest pressure, mass and energy errors, total
 momentum); watch it with `tail -f`. The heartbeat also records the first cell
 to go tensile, the first cell to break (spall: its pressure fell below
-`-spall_strength`, set per material), and the first void cell, if any.
+`-spall_strength`, set per material), and the first void cell, if any. A deck
+with tracers also writes `<title>.tracers.csv`: one row per `tracer_dt`, laid
+out like the verification data in `tests/verification/`.
 
 ## Test
 ```
@@ -64,7 +67,7 @@ Three kinds of test, all run by `make test`, which stops at the first failure:
 - **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and two test decks
   (two impact faces; a plate that spalls) run on 1 thread and on 2, 3, 4 and 8
   threads, as many as the machine has processors for. Everything printed from
-  t = 0 on, and every heartbeat line, must be identical to the 1-thread run
+  t = 0 on, every heartbeat line and every tracer row must be identical to the 1-thread run
   (clock times aside). Any difference means a race condition. A serial build
   (`make OMPFLAGS=`) skips them.
 

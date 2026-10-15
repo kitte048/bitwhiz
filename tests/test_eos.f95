@@ -24,10 +24,10 @@ program test_eos
 !      ====       ==========          =====================
 !    10/14/26    D. E. Kittell        Original code
 !                (with Claude)
-!    10/16/26    D. E. Kittell        Expansion cubic: new reference
+!    10/15/26    D. E. Kittell        Expansion cubic: new reference
 !                (with Claude)        states, broken cells at P = 0,
 !                                     smoothness through V0
-!    10/16/26    D. E. Kittell        Reference state for densities
+!    10/15/26    D. E. Kittell        Reference state for densities
 !                (with Claude)        whose R0*(1/R0) is not exactly 1
 !
 !**********************************************************************!

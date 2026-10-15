@@ -30,10 +30,10 @@ module eos
 !                (with Claude)
 !    10/15/26    D. E. Kittell        mg_pressure and mg_soundspeed, so
 !                (with Claude)        c can follow the P >= 0 floor
-!    10/16/26    D. E. Kittell        Expansion branch: a cubic in
+!    10/15/26    D. E. Kittell        Expansion branch: a cubic in
 !                (with Claude)        rho - R0 that continues the
 !                                     Hugoniot form through 3rd order
-!    10/16/26    D. E. Kittell        eta = (rho - R0)/rho, exactly 0 at
+!    10/15/26    D. E. Kittell        eta = (rho - R0)/rho, exactly 0 at
 !                (with Claude)        rho = R0 for every R0 (round-off
 !                                     review)
 !
@@ -80,7 +80,7 @@ module eos
 !
 !  EXPANSION, V > V0 (eta < 0). U_S-u_p data exist only in compression,
 !  so for expansion bitwhiz uses its own rule (D. E. Kittell's cubic,
-!  10/16/26; not from the literature): phi is a cubic in the density
+!  10/15/26; not from the literature): phi is a cubic in the density
 !  change x = rho - R0 = 1/V - 1/V0 (negative in expansion),
 !
 !     phi  = a1*x + a2*x**2/2 + a3*x**3/6

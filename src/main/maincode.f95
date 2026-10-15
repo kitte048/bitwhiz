@@ -9,8 +9,8 @@ program bitwhiz
 !      0. Loading screen.            5. Allocate the data arrays.
 !      1. Read the command line.     6. Initialization (t = 0).
 !      2. Read the input deck.       7. Begin the simulation.
-!      3. Test OpenMP settings.      8. Close the heartbeat file,
-!      4. Open the heartbeat file.      free the memory.
+!      3. Test OpenMP settings.      8. Close the output files,
+!      4. Open the output files.        free the memory.
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -37,12 +37,16 @@ program bitwhiz
 !    10/15/26    D. E. Kittell        Section 7: the time loop (module
 !                (with Claude)        av), OpenMP style 2, heartbeat
 !                                     line every cycle; first dt in 6
-!    10/16/26    D. E. Kittell        Spall: cells hold tension, break
+!    10/15/26    D. E. Kittell        Spall: cells hold tension, break
 !                (with Claude)        at spall_strength; first break,
 !                                     count and most tension reported
-!    10/16/26    D. E. Kittell        Every cycle, check that x, u, rho,
+!    10/15/26    D. E. Kittell        Every cycle, check that x, u, rho,
 !                (with Claude)        e, P, q, c are still numbers (for
 !                                     machines and builds without traps)
+!    10/15/26    D. E. Kittell        Tracer file <title>.tracers.csv
+!                (with Claude)        (module trace): a row at cycle 0,
+!                                     then by tracer_dt; trailer written
+!                                     by close_heartbeat
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -57,6 +61,7 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads, &
 use deck, only: read_deck,write_resolved_deck
 use eos, only: mg_eos,eos_message,eos_ok
 use av, only: face_step,cell_step,cell_state,cell_dt
+use trace, only: open_tracers,tracer_row,close_tracers,trc_open,trc_file
 use build, only: build_date,build_version       ! written by 'make'
 use, intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 !$ use omp_lib, only: omp_get_num_procs,omp_set_num_threads, &
@@ -102,6 +107,7 @@ real(kind=dp) :: pnew,cnew,qnew         ! a cell's new P, c and q
 real(kind=dp) :: pmax                   ! GPa, largest P this cycle
 real(kind=dp) :: tnext                  ! us, next screen progress line
 real(kind=dp) :: merr,eerr,xmom         ! heartbeat: errors, momentum
+real(kind=dp) :: mtot,etot,ekin,eint    ! heartbeat: totals (tracer file)
 real(kind=dp) :: tens_time,tens_x       ! first tensile cell: t, x
 integer(kind=int32) :: kdt,kdt_used     ! cell that set dt (0 = t_end)
 integer(kind=int32) :: kl               ! one thread's dt cell
@@ -132,6 +138,8 @@ real(kind=dp) :: void_time              ! us, when the first one appeared
 logical :: done                         ! leave the time loop
 logical :: stopped                      ! left at cycle_max, not t_end
 character(len=64) :: endhow             ! how the run ended (heartbeat)
+character(len=25) :: started            ! when the run started (clock)
+logical :: running = .false.            ! the time loop has started
 
 202 format(1x,a)                        ! a plain line
 203 format(3x,a,t40,': ',i8,2x,a)       ! label : integer  note
@@ -315,7 +323,7 @@ end if
 write( kpt6, 202 ) repeat('=',56)
 
 !==============================!
-! 4. Open the heartbeat file.  !
+! 4. Open the output files.    !
 !==============================!
 
 ! The heartbeat gets one line per cycle from section 7, so a long run
@@ -342,17 +350,35 @@ hb_open = .true.
 write( khb, '(a)' ) '# bitwhiz heartbeat'
 write( khb, '(a)' ) '# deck    : '//trim(deckname)
 write( khb, '(a)' ) '# title   : '//trim(title)
-write( khb, '(a)' ) '# started : '//clock()
+started = clock()
+write( khb, '(a)' ) '# started : '//started
 write( khb, '(a)' ) '# version : '//build_version()
 write( khb, '(a)' ) '# built   : '//build_date()//', '//compiler_version()
 write( khb, '(a)' ) '# flags   : '//compiler_options()
 write( khb, '(a)' ) '# units   : us, GPa; errors are relative to t = 0'
 flush( khb )                            ! so tail -f sees it now
 
+!*** The tracer file, <title>.tracers.csv (module trace), if the deck
+!*** has tracers: two header lines now, a row at cycle 0 (section 6)
+!*** and then every tracer_dt (section 7), and a trailer when the run
+!*** ends (close_heartbeat), however it ends.
+call open_tracers( title, ios )
+if ( ios /= 0 ) then
+   write( kpt6, 202 ) 'bitwhiz: cannot open the tracer file '// &
+      trim(title)//'.tracers.csv'
+   call close_heartbeat( 'cannot open the tracer file' )
+   stop 1, quiet=.true.
+end if
+
 write( kpt6, 202 ) repeat('=',56)
-write( kpt6, 202 ) ' 4. Heartbeat'
+write( kpt6, 202 ) ' 4. Output files'
 write( kpt6, 202 ) repeat('-',56)
 write( kpt6, 204 ) 'Heartbeat file', trim(hb_file)
+if ( trc_open ) then
+   write( kpt6, 204 ) 'Tracer file', trim(trc_file)
+else
+   write( kpt6, 204 ) 'Tracer file', 'none (no tracers in the deck)'
+end if
 write( kpt6, 202 ) repeat('=',56)
 
 !==============================!
@@ -708,6 +734,8 @@ write( khb, '(a,es16.9,a)' ) '# etot0   : ', etot0, '  GPa*mm'
 write( khb, '(a)' ) '#   cycle      t (us)     dt (us)  dt cell'// &
    '   max P (GPa)    mass err  energy err   x-momentum   wall (s)'
 call heartbeat_line( dt, kdt, zero )      ! cycle 0: the first dt(0)
+call tracer_row( ncycle, time, dt, mtot, etot, ekin, eint, xmom, &
+   .false. )                              ! cycle 0, always written
 
 !*** Report.
 write( kpt6, 202 ) repeat('=',56)
@@ -790,6 +818,7 @@ nbroken = 0                               ! cells broken so far
 pmin_run = zero                           ! most tension held, whole run
 pbreak_run = zero                         ! deepest pull at a break, run
 nvoid_max = 0                             ! most void cells at one time
+running = .true.                          ! (for the tracer trailer)
 
 time_loop: do while ( .not. done )
 
@@ -993,6 +1022,11 @@ time_loop: do while ( .not. done )
       stopped = .true.
    end if
 
+   !*** A tracer row, if this cycle is an output time (tracer_dt), and
+   !*** always on the last cycle.
+   call tracer_row( ncycle, time, dt_used, mtot, etot, ekin, eint, &
+      xmom, done )
+
 end do time_loop
 
 !*** Report.
@@ -1154,7 +1188,7 @@ contains
    real(kind=dp), intent(in) :: pm        ! GPa, largest pressure
    integer(kind=int32) :: kk, ii
    integer(kind=int64) :: tk
-   real(kind=dp) :: ub, ms, et, xm, chk
+   real(kind=dp) :: ub, ms, et, xm, chk, ek, ei
 
    !*** One pass: the conservation sums, and the running sum chk of
    !*** every value that must stay a number (each face's x and u, each
@@ -1162,6 +1196,8 @@ contains
    ms  = zero
    et  = zero
    xm  = zero
+   ek  = zero
+   ei  = zero
    chk = zero
    do kk = 1, kmax
       ii  = icell( kk )
@@ -1169,6 +1205,8 @@ contains
       ms  = ms + database(jm,ii)
       xm  = xm + database(jm,ii)*ub
       et  = et + database(jm,ii)*( database(je,ii) + half*ub*ub )
+      ek  = ek + database(jm,ii)*half*ub*ub
+      ei  = ei + database(jm,ii)*database(je,ii)
       chk = chk + database(jx,ii-1) + database(ju,ii-1) + database(jrho,ii) &
                 + database(je,ii) + database(jp,ii) + database(jq,ii) &
                 + database(jc,ii)
@@ -1183,6 +1221,10 @@ contains
       eerr = et - etot0                   ! nothing moving at t = 0
    end if
    xmom = xm
+   mtot = ms                              ! the totals, for the tracer
+   etot = et                              ! file (EK + EINT = ETOT up
+   ekin = ek                              ! to round-off)
+   eint = ei
    call system_clock( tk )
    write( khb, '(i9,f12.6,es12.4,i9,f14.6,es12.3,es12.3,es13.5,f11.3)' ) &
       ncycle, time, dtu, kdtu, pm, merr, eerr, xmom, &
@@ -1276,11 +1318,51 @@ contains
    subroutine close_heartbeat( how )
    implicit none
    character(len=*), intent(in) :: how
+   call finish_tracers( how )             ! the tracer file's trailer
    if ( .not. hb_open ) return
    write( khb, '(a)' ) '# ended   : '//clock()//'  ('//how//')'
    close( khb )
    hb_open = .false.
    end subroutine close_heartbeat
+
+   !*****************************************************!
+   ! The tracer file's trailer (module trace adds the    !
+   ! rows and where each tracer sits), then close it.    !
+   ! Called by close_heartbeat, so every way out of a    !
+   ! run writes it. The run's results are added only     !
+   ! once the time loop has started.                     !
+   !*****************************************************!
+   subroutine finish_tracers( how )
+   implicit none
+   character(len=*), intent(in) :: how
+   character(len=1024) :: info(13)
+   integer(kind=int32) :: n
+   integer(kind=int64) :: tk
+   if ( .not. trc_open ) return
+   call system_clock( tk )
+   info    = ' '
+   info(1) = 'bitwhiz tracers'
+   info(2) = 'deck     : '//trim(deckname)
+   info(3) = 'title    : '//trim(title)
+   info(4) = 'started  : '//started
+   info(5) = 'ended    : '//clock()//'  ('//how//')'
+   info(6) = 'version  : '//build_version()
+   info(7) = 'built    : '//build_date()//', '//compiler_version()
+   info(8) = 'flags    : '//compiler_options()
+   info(9) = 'units    : us, mm, km/s, GPa, g/cm^3, kJ/g; totals per '// &
+             'unit area (masses in g/cm^3*mm, energies in GPa*mm)'
+   n = 9
+   if ( running ) then
+      write( info(10), '(a,i0,a,f10.6,a,f9.3,a)' ) 'cycles   : ', ncycle, &
+         ', final time ', time, ' us, wall ', &
+         real(tk-tick0,dp)/real(rate,dp), ' s'
+      write( info(11), '(a,es13.5,a,es13.5,a,es13.5)' ) 'errors   : '// &
+         'mass', merr, ', energy', eerr, ', x-momentum change', xmom - xmom0
+      write( info(12), '(a,i0)' ) 'spall    : cells broken ', nbroken
+      n = 12
+   end if
+   call close_tracers( info(1:n) )
+   end subroutine finish_tracers
 
    !*****************************************************!
    ! The date, time and time zone as text, for the       !

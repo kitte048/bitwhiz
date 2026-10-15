@@ -24,7 +24,9 @@ module deck
 !                                     says so; maintainer notes added
 !    10/15/26    D. E. Kittell        Run block: omp_min_zones
 !                (with Claude)
-!    10/16/26    D. E. Kittell        Material block: spall_strength
+!    10/15/26    D. E. Kittell        Material block: spall_strength
+!                (with Claude)
+!    10/15/26    D. E. Kittell        Output block: tracer_dt
 !                (with Claude)
 !
 !**********************************************************************!
@@ -935,6 +937,11 @@ contains
       if (ok .and. x < zero) call deck_error(ln, 'plot_dt cannot be '// &
          'negative (0 turns it off)')
       if (ok .and. x >= zero) plot_dt = x
+   case ('tracer_dt')
+      call get_real(ln, key, val, x, ok)
+      if (ok .and. x < zero) call deck_error(ln, 'tracer_dt cannot be '// &
+         'negative (0 writes a row every cycle)')
+      if (ok .and. x >= zero) tracer_dt = x
    case ('colormap')
       ! The colormaps built into bitwhiz (src/colormaps), by the names
       ! bmpmaker knows them.
@@ -973,7 +980,7 @@ contains
       tracer(ntrc)%line = ln
    case default
       call unknown_key(ln, key, 'in the Output block', &
-         'tracer, plot_every, plot_dt, colormap')
+         'tracer, tracer_dt, plot_every, plot_dt, colormap')
    end select
    end subroutine key_output
 
@@ -1193,7 +1200,7 @@ contains
       b = 'the top level'
    case ('title', 't_end', 'cycle_max', 'num_threads', 'omp_min_zones')
       b = 'the Run block'
-   case ('tracer', 'plot_every', 'plot_dt', 'colormap')
+   case ('tracer', 'tracer_dt', 'plot_every', 'plot_dt', 'colormap')
       b = 'the Output block'
    case ('method', 'bl', 'bq', 'cfl')
       b = 'the Solver block'
@@ -1503,8 +1510,17 @@ contains
    tracer(it)%w     = w
    if (w > zero) then
       tracer(it)%kcell = layer(lay)%kfirst + m   ! inside cell kfirst+m
+      tracer(it)%kval  = tracer(it)%kcell
    else
       tracer(it)%kcell = 0                        ! exactly on a node
+      !*** On a node, report the cell on this layer's side (shock_mod,
+      !*** tracer table): the right cell at the layer's left face,
+      !*** otherwise the left cell.
+      if (m == 0) then
+         tracer(it)%kval = layer(lay)%kfirst
+      else
+         tracer(it)%kval = tracer(it)%kface
+      end if
    end if
    end subroutine locate
 
@@ -1558,6 +1574,8 @@ contains
    call kv(lu, 2, 'plot_dt',     fmt_real(plot_dt), &
       merge('off', 'us ', plot_dt <= zero))
    call kv(lu, 2, 'colormap',    trim(colormap))
+   call kv(lu, 2, 'tracer_dt',   fmt_real(tracer_dt), &
+      merge('us, 0 = every cycle', 'us                 ', tracer_dt <= zero))
    do it = 1, ntrc
       associate (t => tracer(it))
          where = 'x0 = '//fmt_real(t%x0)//' mm, '
@@ -1567,7 +1585,8 @@ contains
                '), cell '//itoa(t%kcell)
          else
             where = where//'face '//itoa(t%kface)//' (i = '// &
-               itoa(iface(t%kface))//')'
+               itoa(iface(t%kface))//'), cell values from cell '// &
+               itoa(t%kval)
          end if
          call kv(lu, 2, 'tracer', trim(t%name)//'  '//trim(t%at), where)
       end associate

@@ -107,11 +107,13 @@ Units: mm, us, g/cm^3, km/s, GPa. Nothing is converted inside the code.
 ### `Output`
 **Nothing given means nothing is written.** The only files every run writes are
 the heartbeat (`<title>.heartbeat`, one line per cycle) and, later, the run log.
-The whole block may be left out.
+A deck with tracers also writes the tracer file, `<title>.tracers.csv`
+(section 8). The whole block may be left out.
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `tracer` | name location | none | repeatable; see section 8 |
+| `tracer_dt` | number, us | 0 (every cycle) | time between rows of the tracer file |
 | `plot_every` | integer | 0 (off) | write a snapshot every N cycles |
 | `plot_dt` | number, us | 0 (off) | also write a snapshot every plot_dt |
 | `colormap` | name | `viridis` | for bitmap pictures: `grayscale`, `viridis`, `plasma`, `inferno`, `blackbody`, `kindlmann`, `extendedkindlmann`, `smoothcoolwarm`, `bentcoolwarm` |
@@ -221,17 +223,59 @@ Begin Output
  tracer = quarter  MatX@0.25
 End Output
 ```
-- **Every tracer has a name,** unique (ignoring case), and the name heads its
-  columns in the tracer output: `t, pdv_u, pdv_x, ...`.
+- **Every tracer has a name,** unique (ignoring case), and the name ends each
+  of its column names in the tracer file: `KMPS.pdv`, `GPA.pdv`, ...
 - Tracers are also numbered 1, 2, 3, ... in deck order, for bookkeeping.
-- The tracer file header lists, for each tracer: number, name, the location as
-  written, the resolved initial x, its layer, and its node or cell index.
 - **A tracer follows a material point.** An interface tracer is an exact node.
   An interior tracer keeps a fixed mass fraction between its two bracketing
-  nodes; u and x are interpolated, and p, rho, e, q come from the cell that
+  nodes; u and x are interpolated, and the cell values come from the cell that
   holds it. That way the same material point is followed at 35, 17.5 and 8.75
-  zones/mm, which the convergence study needs. The log also reports the
-  nearest node.
+  zones/mm, which the convergence study needs.
+- **A tracer on a node reports its own layer's cell.** Cell values are never
+  averaged across a node (density, energy and sound speed jump at an
+  interface). `A:B` reports the cell on A's side, the left one; `A@0` reports
+  the first cell of A; any other node, the cell to its left. So `MatX:PMMA`
+  gives MatX's pressure and density, and `PMMA@0` (the same node) gives
+  PMMA's. The resolved deck says which cell each tracer reports.
+
+### The tracer file, `<title>.tracers.csv`
+Written in the folder the run starts from, laid out like the verification data
+(`tests/verification/`), so one reader handles both:
+- **Line 1:** short column names. **Line 2:** long names with units.
+- **Then one row per output time,** comma-separated, 17 significant digits:
+  - `TIME` (us), `CYCLE`, `DTIME` (the step just taken, us), and the
+    whole-problem totals per unit area: `MTOT` (g/cm^3*mm), `ETOT`, `EK`,
+    `EINT` (GPa*mm), `XMOM` (g/cm^3*mm*km/s);
+  - then, for each tracer in deck order: `XPOS` (mm), `KMPS` (velocity,
+    km/s), `GPA` (pressure), `RHO` (g/cm^3), `SIE` (specific internal energy,
+    kJ/g), `Q` (artificial viscosity, GPa), `CS` (sound speed, km/s), `DMG`
+    (damage: 0 intact, 1 broken).
+- **When:** cycle 0, then the first cycle at or after each multiple of
+  `tracer_dt`, at that cycle's own time (nothing is interpolated), and always
+  the last cycle. `tracer_dt = 0` writes every cycle: about 1 KB per row with
+  five tracers, so about 3.5 MB per run for the class problem; at 10 times the
+  resolution (10 times the cycles too), set `tracer_dt`.
+- `KMPS` is the velocity the method carries, at the half step before `TIME`;
+  everything else is at `TIME`.
+- **The trailer.** After the last row comes `# ===== end of data =====` and
+  then `#` lines: deck, title, start and end times and how the run ended,
+  version, compiler and flags, cycles, conservation errors, cells broken, the
+  output rule, and where each tracer sits on the mesh. numpy (`loadtxt`,
+  `genfromtxt`) and pandas (`comment='#'`) skip those lines. Every way out of
+  a run that bitwhiz controls writes the trailer, so a file without the
+  end-of-data line is from a run that crashed.
+- **Reading it** (Python):
+  ```
+  import numpy as np
+  f = 'double_shock_2p00.tracers.csv'
+  names = [n.strip() for n in open(f).readline().split(',')]
+  d = np.genfromtxt(f, delimiter=',', skip_header=2, comments='#')
+  col = {n: i for i, n in enumerate(names)}
+  t, u = d[:, col['TIME']], d[:, col['KMPS.pdv']]
+  ```
+  Find columns by name, not by number: new columns are only ever added at the
+  end of each tracer's group, but that still moves the columns of the tracers
+  after it.
 
 ---
 

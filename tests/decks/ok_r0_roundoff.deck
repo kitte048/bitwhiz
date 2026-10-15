@@ -1,6 +1,6 @@
 # expect: ok
 # Densities for which R0*(1/R0) is not exactly 1 in floating point
-# (1.74, magnesium; 0.998, water). Before 10/16/26 the EOS formed
+# (1.74, magnesium; 0.998, water). Before 10/15/26 the EOS formed
 # eta = 1 - R0*(1/rho), got 1e-16 at rest instead of 0, and the setup
 # audit stopped the run ("P = 0, c = C0 at the reference state").
 # Values are illustrative, not fitted to any real material.

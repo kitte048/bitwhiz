@@ -33,10 +33,10 @@ module av
 !      ====       ==========          =====================
 !    10/15/26    D. E. Kittell        Original code
 !                (with Claude)
-!    10/16/26    D. E. Kittell        Spall: intact cells hold tension
+!    10/15/26    D. E. Kittell        Spall: intact cells hold tension
 !                (with Claude)        to -spall_strength, then break
 !                                     for good (damage slot D)
-!    10/16/26    D. E. Kittell        Kinetic energy term factored,
+!    10/15/26    D. E. Kittell        Kinetic energy term factored,
 !                (with Claude)        (a-b)(a+b) (round-off review)
 !
 !**********************************************************************!
@@ -145,7 +145,7 @@ contains
    !*** The kinetic energy term, 1/8*(a**2 - b**2), written as
    !*** 1/8*(a - b)*(a + b): the same number, but it never squares two
    !*** nearly equal sums and then subtracts them (round-off review,
-   !*** 10/16/26: measured 2x closer to a quad-precision run).
+   !*** 10/15/26: measured 2x closer to a quad-precision run).
    ua   = c(ju_old,1) + c(ju_old,-1)            ! 2*ubar at n-1/2
    ub   = c(ju,    1) + c(ju,    -1)            ! 2*ubar at n+1/2
    dke  = 0.125_dp*( ua - ub )*( ua + ub )

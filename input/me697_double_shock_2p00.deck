@@ -24,6 +24,8 @@ Begin bitwhiz
 
  Begin Output                   # nothing listed here = nothing written
   plot_dt     = 0.01            # us between snapshots
+  tracer_dt   = 0.005           # us between tracer rows (the
+                                # reference's spacing); 0 = every cycle
   colormap    = viridis         # for bitmap pictures
 
   tracer = pdv     MatX:PMMA    # the PDV signal
