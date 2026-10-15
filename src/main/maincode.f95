@@ -32,6 +32,8 @@ program bitwhiz
 !                                     state, mass-weighted impact face);
 !                                     6 starts the clock, audits the
 !                                     setup, records the t = 0 totals
+!    10/14/26    D. E. Kittell        P and c at t = 0 from the EOS
+!                (with Claude)        (module eos), checked in the audit
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -43,6 +45,7 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads, &
    alloc_database,dealloc_database,dealloc_layers, &
    dealloc_materials,dealloc_tracers
 use deck, only: read_deck,write_resolved_deck
+use eos, only: mg_eos,eos_message,eos_ok
 use build, only: build_date,build_version       ! written by 'make'
 use, intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 !$ use omp_lib, only: omp_get_num_procs,omp_set_num_threads, &
@@ -63,6 +66,8 @@ integer(kind=int32) :: l,ll,lr          ! layer; layers left/right of a face
 integer(kind=int32) :: nz               ! zones in one layer
 integer(kind=int32) :: nimpact          ! impact faces found
 integer(kind=int32) :: nbad             ! setup checks that failed
+integer(kind=int32) :: ierr             ! status from the EOS
+integer(kind=int32) :: neos,ieos        ! EOS failures at setup, last status
 integer(kind=int32) :: ncycle           ! cycle number, n
 real(kind=dp) :: time                   ! problem time, us
 real(kind=dp) :: ml,mr                  ! cell masses left/right of a face
@@ -357,15 +362,19 @@ i = iface( kmax )                         ! the right edge of the stack
 database(jx,i) = layer(nlay)%xleft + layer(nlay)%width
 ilay(i) = nlay
 
+neos = 0                                  ! EOS failures at setup
+ieos = eos_ok                             ! the last failure's status
+
 !*** 5b. Cells. The material constants are copied in from the layer
 !*** (option 6(a): each cell carries its own, so a chunk is complete),
 !*** then the cell mass, fixed for all time,
 !***
 !***    M_k = R0 * ( x(k+1/2) - x(k-1/2) )          [g/cm^3 * mm]
 !***
-!*** and the reference state: rho = R0, e = 0, P = 0, q = 0, c = C0.
-!*** (At rho = R0 and e = 0 the Mie-Gruneisen EOS gives exactly P = 0
-!*** and c = C0, so no EOS call is needed yet.)
+!*** and the reference state: rho = R0, e = 0, q = 0. P and c come
+!*** from the equation of state (module eos), the same call the time
+!*** loop will make. At rho = R0 and e = 0 it must give P = 0 and
+!*** c = C0 (equation sheet Step 0); section 6 checks that it does.
 layer_cells: do l = 1, nlay
    do k = layer(l)%kfirst, layer(l)%klast
       i = icell( k )
@@ -378,11 +387,17 @@ layer_cells: do l = 1, nlay
       database(jm,i)       = layer(l)%R0*( database(jx,i+1) - database(jx,i-1) )
       database(jrho,i)     = layer(l)%R0
       database(je,i)       = zero
-      database(jp,i)       = zero
       database(jq,i)       = zero
-      database(jc,i)       = layer(l)%C0
       database(jrho_old,i) = layer(l)%R0
       database(je_old,i)   = zero
+      call mg_eos( database(jrho,i), database(je,i), &
+         database(jr0,i), database(jc0,i), database(js1,i), &
+         database(js2,i), database(jg0,i), &
+         database(jp,i), database(jc,i), ierr )
+      if ( ierr /= eos_ok ) then          ! counted here, reported in 6
+         neos = neos + 1
+         ieos = ierr
+      end if
    end do
 end do layer_cells
 
@@ -509,7 +524,24 @@ if ( size(face_slots) + size(cell_slots) /= nvar ) then
    call setup_fail( 'face_slots and cell_slots do not add up to nvar' )
 end if
 
-! (2) Every slot a face or real cell should have is a real number,
+! (2) The equation of state: no failures, and at the reference state
+!     exactly P = 0 and c = C0 (to a few units in the last place) in
+!     every cell. This ties the EOS to equation sheet Step 0.
+if ( neos > 0 ) then
+   call setup_fail( 'the EOS failed in '//itoa(neos)//' cells: '// &
+      eos_message(ieos) )
+else
+   nz = 0
+   do k = 1, kmax
+      i = icell( k )
+      if ( abs(database(jp,i)) > zero .or. abs(database(jc,i) - &
+           database(jc0,i)) > 4.0_dp*epsilon(one)*database(jc0,i) ) nz = nz + 1
+   end do
+   if ( nz > 0 ) call setup_fail( 'the EOS does not give P = 0, c = C0 '// &
+      'at the reference state in '//itoa(nz)//' cells' )
+end if
+
+! (3) Every slot a face or real cell should have is a real number,
 !     i.e. nothing was left at its signaling-NaN fill. Checked one
 !     slot at a time, so a forgotten slot is reported once, by name
 !     (dbname), with how many places missed it.
@@ -528,7 +560,7 @@ do j = 1, size(cell_slots)
       ' of '//itoa(kmax)//' cells)' )
 end do
 
-! (3) Every place knows its layer. The cells of layer l are exactly
+! (4) Every place knows its layer. The cells of layer l are exactly
 !     kfirst..klast; face k+1/2 belongs to cell k's layer (the layer on
 !     its left), except the first face, which belongs to layer 1.
 do l = 1, nlay
@@ -545,7 +577,7 @@ end do
 if ( ilay(iface(0)) /= 1 ) nz = nz + 1
 if ( nz > 0 ) call setup_fail( 'ilay is wrong on '//itoa(nz)//' faces' )
 
-! (4) Material interfaces sit exactly on faces, where the deck put them.
+! (5) Material interfaces sit exactly on faces, where the deck put them.
 do l = 1, nlay
    if ( abs( database(jx, iface(layer(l)%kfirst-1)) - layer(l)%xleft ) &
         > zero ) then
@@ -554,7 +586,7 @@ do l = 1, nlay
    end if
 end do
 
-! (5) Mass and momentum match the deck, layer by layer: sum of
+! (6) Mass and momentum match the deck, layer by layer: sum of
 !     R0*width and of R0*width*xvel. The impact faces are weighted so
 !     that momentum comes out exact (to round-off).
 !

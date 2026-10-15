@@ -10,8 +10,9 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Input deck: syntax spec, reader, ~100 test decks | done (`input/README.md`) |
 | Database layout, material/layer/tracer tables | done (`src/modules/shock_mod.f95`) |
 | Heartbeat file (opened and closed) | done; cycle lines come with the time loop |
-| Mesh setup at t = 0 | next |
-| Equation of state, artificial viscosity time loop | to do |
+| Mesh setup at t = 0, with a setup audit | done (maincode sections 5-6) |
+| Equation of state (Mie-Gruneisen), with unit test | done (`src/modules/eos_mod.f95`) |
+| Artificial viscosity time loop | next |
 | Tracer and snapshot output | to do |
 | Comparison with reference data | data in `tests/verification/` |
 
@@ -19,7 +20,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 Needs gfortran and make.
 ```
 make            # bin/bitwhiz, debug build with strict flags and -fopenmp
-make test       # build if needed, then run the deck tests (see Test)
+make test       # build if needed, then run the unit and deck tests (see Test)
 make cleanrun   # remove run outputs (heartbeats, bitmaps in input/); keep the build
 make clean      # cleanrun, plus objects, module files and the executable
 make cleanbmp   # remove bitmaps in this folder (kept by the two above)
@@ -46,20 +47,25 @@ writes `<title>.heartbeat` in the current folder; watch it with `tail -f`.
 ```
 make test
 ```
-(or `./tests/run_deck_tests.sh` on an existing build)
+Two kinds of test, both run by `make test`, which stops at the first failure:
 
-Reads every deck in `tests/decks/` and checks that it is accepted, or rejected
-with the expected message, and that every accepted deck round-trips; then
-checks that bad command lines (no deck, a missing file, a folder, an empty
-file) stop cleanly. Run it before every commit that touches the reader.
+- **Unit tests**, one program each, `tests/test_*.f95`, exit status 0 = pass.
+  `test_eos` checks the equation of state against 45 states computed
+  independently at 50 digits (`tests/eos_reference.py`), plus its error codes.
+- **Deck tests**, `tests/run_deck_tests.sh` (also runnable on its own): every
+  deck in `tests/decks/` is accepted, or rejected with the expected message,
+  and every accepted deck round-trips and passes the setup audit; bad command
+  lines (no deck, a missing file, a folder, an empty file) stop cleanly.
+
+Run it before every commit.
 
 ## Layout
 | Folder | What |
 |---|---|
 | `src/main` | `maincode.f95` (the run, section by section), `bmpmaker.f95` |
-| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `bit_mod` (kinds and constants), colormap data |
+| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `bit_mod` (kinds and constants), colormap data |
 | `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_colormaps` (demo, kept in the build) |
 | `src/utils` | `make_build_info.sh` (writes the build record), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |
-| `tests` | deck tests; `verification/` reference tracer data |
+| `tests` | unit tests (`test_*.f95`), deck tests, `verification/` reference tracer data |
 | `bin` | the executable |

@@ -5,6 +5,7 @@
 #Revision: 1.2  (10-13-26, with Claude: build date and git version
 #                recorded in src/modules/build_mod.f95)
 #Revision: 1.3  (10-13-26, with Claude: 'make test')
+#Revision: 1.4  (10-14-26, with Claude: eos module, EOS unit test)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -90,14 +91,26 @@ $(LIB_OBJS) $(BIN): $(MOD_OBJS)
 ############################################################
 src/modules/shock_mod.o: src/modules/bit_mod.o
 src/modules/deck_mod.o:  src/modules/shock_mod.o src/modules/bit_mod.o
+src/modules/eos_mod.o:   src/modules/bit_mod.o
 
 ############################################################
-###  NOTES: 'make test' builds bitwhiz if needed, then runs
-###  the deck reader tests (tests/run_deck_tests.sh). Every
-###  check must pass; make stops with an error if one fails.
-###  Run it before every commit that touches the reader.
+###  NOTES: 'make test' builds bitwhiz and the unit tests if
+###  needed, then runs the unit tests (one program each in
+###  tests/, exit status 0 = pass) and the deck reader tests
+###  (tests/run_deck_tests.sh). Every check must pass; make
+###  stops with an error at the first one that fails. Run it
+###  before every commit.
+###  A new unit test: add its program to UNIT_TESTS and a
+###  line to the 'test' recipe; the pattern rule builds it.
 ############################################################
-test: $(EXECS)
+UNIT_TESTS = ./bin/test_eos
+
+./bin/test_%: tests/test_%.f95 $(MOD_OBJS)
+	@mkdir -p ./bin
+	$(FC) $(INCLUDES) $(FCFLAGS) $(OMPFLAGS) -o $@ $< $(MOD_OBJS)
+
+test: $(EXECS) $(UNIT_TESTS)
+	./bin/test_eos
 	BIN=$(EXECS) ./tests/run_deck_tests.sh
 
 ############################################################
@@ -120,7 +133,7 @@ cleanrun:
 clean: cleanrun
 	rm -f $(EXECS) $(MOD_OBJS) $(LIB_OBJS) $(BIN) $(MOD_FILS)
 	rm -f $(BUILD_SRC) $(BUILD_OBJ) src/modules/build.mod
-	rm -f bitwhiz *.mod
+	rm -f bitwhiz *.mod $(UNIT_TESTS)
 
 ############################################################
 ###  NOTES: bitmaps in the top folder are kept by both

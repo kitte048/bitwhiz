@@ -10,6 +10,7 @@
 	src/modules/btcw_mod.o \
 	src/modules/rand_mod.o \
 	src/modules/shock_mod.o \
+	src/modules/eos_mod.o \
 	src/modules/deck_mod.o
   MOD_FILS = \
 	src/modules/bits.mod \
@@ -23,6 +24,7 @@
 	src/modules/bentcoolwarm.mod \
 	src/modules/random.mod \
 	src/modules/shock.mod \
+	src/modules/eos.mod \
 	src/modules/deck.mod
   LIB_OBJS = \
 	src/colormaps/cmap_grayscale.o \
