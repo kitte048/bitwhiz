@@ -50,14 +50,18 @@ program bitwhiz
 !    10/15/26    D. E. Kittell        close_heartbeat renamed
 !                (with Claude)        close_outputs: it closes every
 !                                     output file, tracers included
+!    10/15/26    D. E. Kittell        method = RS (Riemann solver) runs
+!                (with Claude)        setup and cycle 0, then stops: the
+!                                     RS time loop is under construction
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
-use shock, only: omp_on,nproc,num_procs,max_threads,num_threads, &
+use shock, only: omp_on,nproc,num_procs,max_threads,num_threads,method, &
    thread_num,nalive,title,khb,hb_open,hb_file, &
    kmax,imax,nvar,nlay,layer,database,ilay,icell,iface, &
    jx,ju,jx_old,ju_old,jmf,jm,jrho,je,jp,jq,jc,jrho_old,je_old, &
-   jr0,jc0,js1,js2,jg0,jdam,jsp,face_slots,cell_slots,dbname,not_finite, &
+   jr0,jc0,js1,js2,jg0,jdam,jsp,ju_star,jp_star,juc, &
+   face_slots,cell_slots,dbname,not_finite, &
    kcell,t_end,cycle_max,CFL,BL,BQ,omp_min_zones, &
    alloc_database,dealloc_database,dealloc_layers, &
    dealloc_materials,dealloc_tracers
@@ -353,6 +357,7 @@ hb_open = .true.
 write( khb, '(a)' ) '# bitwhiz heartbeat'
 write( khb, '(a)' ) '# deck    : '//trim(deckname)
 write( khb, '(a)' ) '# title   : '//trim(title)
+write( khb, '(a)' ) '# method  : '//trim(method)
 started = clock()
 write( khb, '(a)' ) '# started : '//started
 write( khb, '(a)' ) '# version : '//build_version()
@@ -472,6 +477,7 @@ layer_cells: do l = 1, nlay
       database(jg0,i) = layer(l)%G0
       database(jsp,i) = layer(l)%spall_strength
       database(jdam,i) = zero             ! every cell starts intact
+      database(juc,i)  = layer(l)%xvel    ! RS: the cell's velocity
       database(jm,i)       = layer(l)%R0*( database(jx,i+1) - database(jx,i-1) )
       database(jrho,i)     = layer(l)%R0
       database(je,i)       = zero
@@ -531,6 +537,14 @@ face_loop: do k = 0, kmax
 
    database(jx_old,i) = database(jx,i)
    database(ju_old,i) = database(ju,i)
+
+   !*** RS: u* and P* are the Riemann solution, first solved in cycle
+   !*** 1. Until then u* is the face's starting velocity (so x and the
+   !*** cycle-0 tracer row read the same value as AV) and P* is 0, the
+   !*** pressure everywhere at t = 0. Both methods fill both slots, so
+   !*** the setup audit does not depend on the method.
+   database(ju_star,i) = database(ju,i)
+   database(jp_star,i) = zero
 end do face_loop
 
 !*** Report.
@@ -590,12 +604,21 @@ ncycle = 0
 !*** faces, which is what the momentum update conserves exactly.
 !*** Units: mass g/cm^3*mm; momentum that times km/s; energy that
 !*** times (km/s)^2, which is GPa*mm.
+!***
+!*** That is AV, whose velocities live on the faces. RS carries a
+!*** velocity in every cell (uc), and its totals use that instead:
+!*** ubar_k = uc_k. (At t = 0 it is the layer's xvel, so RS's totals
+!*** match the deck exactly, impact face or not.)
 mass0 = zero
 xmom0 = zero
 etot0 = zero
 do k = 1, kmax
    i = icell( k )
-   ubar  = half*( database(ju,i-1) + database(ju,i+1) )
+   if ( method == 'RS' ) then
+      ubar = database(juc,i)
+   else
+      ubar = half*( database(ju,i-1) + database(ju,i+1) )
+   end if
    mass0 = mass0 + database(jm,i)
    xmom0 = xmom0 + database(jm,i)*ubar
    etot0 = etot0 + database(jm,i)*( database(je,i) + half*ubar**2 )
@@ -753,6 +776,22 @@ write( kpt6, 211 ) 'First time step (us)', dt
 write( kpt6, 205 ) '... set by cell', kdt
 write( kpt6, 204 ) 'Setup checks', 'all passed'
 write( kpt6, 202 ) repeat('=',56)
+
+!*** method = RS (Riemann solver) is under construction: everything up
+!*** to here is shared with AV and has run (deck, setup, audit, the
+!*** cycle-0 heartbeat line and tracer row), so it can be tested. Its
+!*** time loop does not exist yet, so the run stops here, closing the
+!*** output files with the reason, and exits with status 1 so that no
+!*** script mistakes it for a finished run.
+if ( method == 'RS' ) then
+   write( kpt6, 202 ) 'bitwhiz: method = RS (Riemann solver) is under '// &
+      'construction.'
+   write( kpt6, 202 ) '         Setup, the audit, and the cycle-0 '// &
+      'heartbeat and tracer rows'
+   write( kpt6, 202 ) '         were written; the time loop is not.'
+   call close_outputs( 'method RS is under construction' )
+   stop 1, quiet=.true.
+end if
 
 !==========================!
 ! 7. Begin the simulation. !
@@ -1183,6 +1222,9 @@ contains
    ! finite sum means every value is finite. That costs  !
    ! one add per value; only when the sum is bad does    !
    ! find_bad search for the place and stop the run.     !
+   ! (These are AV's evolving slots. When RS gets its    !
+   ! time loop, its own, u_star, p_star and uc, join     !
+   ! the sum and find_bad's lists.)                      !
    !*****************************************************!
    subroutine heartbeat_line( dtu, kdtu, pm )
    implicit none
@@ -1204,7 +1246,11 @@ contains
    chk = zero
    do kk = 1, kmax
       ii  = icell( kk )
-      ub  = half*( database(ju,ii-1) + database(ju,ii+1) )
+      if ( method == 'RS' ) then
+         ub = database(juc,ii)            ! RS: the cell's own velocity
+      else
+         ub = half*( database(ju,ii-1) + database(ju,ii+1) )
+      end if
       ms  = ms + database(jm,ii)
       xm  = xm + database(jm,ii)*ub
       et  = et + database(jm,ii)*( database(je,ii) + half*ub*ub )
@@ -1362,22 +1408,23 @@ contains
    info(1) = 'bitwhiz tracers'
    info(2) = 'deck     : '//trim(deckname)
    info(3) = 'title    : '//trim(title)
-   info(4) = 'started  : '//started
-   info(5) = 'ended    : '//clock()//'  ('//how//')'
-   info(6) = 'version  : '//build_version()
-   info(7) = 'built    : '//build_date()//', '//compiler_version()
-   info(8) = 'flags    : '//compiler_options()
-   info(9) = 'units    : us, mm, km/s, GPa, g/cm^3, kJ/g; totals per '// &
-             'unit area (masses in g/cm^3*mm, energies in GPa*mm)'
-   n = 9
+   info(4) = 'method   : '//trim(method)
+   info(5) = 'started  : '//started
+   info(6) = 'ended    : '//clock()//'  ('//how//')'
+   info(7) = 'version  : '//build_version()
+   info(8) = 'built    : '//build_date()//', '//compiler_version()
+   info(9) = 'flags    : '//compiler_options()
+   info(10) = 'units    : us, mm, km/s, GPa, g/cm^3, kJ/g; totals per '// &
+              'unit area (masses in g/cm^3*mm, energies in GPa*mm)'
+   n = 10
    if ( running ) then
-      write( info(10), '(a,i0,a,f10.6,a,f9.3,a)' ) 'cycles   : ', ncycle, &
+      write( info(11), '(a,i0,a,f10.6,a,f9.3,a)' ) 'cycles   : ', ncycle, &
          ', final time ', time, ' us, wall ', &
          real(tk-tick0,dp)/real(rate,dp), ' s'
-      write( info(11), '(a,es13.5,a,es13.5,a,es13.5)' ) 'errors   : '// &
+      write( info(12), '(a,es13.5,a,es13.5,a,es13.5)' ) 'errors   : '// &
          'mass', merr, ', energy', eerr, ', x-momentum change', xmom - xmom0
-      write( info(12), '(a,i0)' ) 'spall    : cells broken ', nbroken
-      n = 12
+      write( info(13), '(a,i0)' ) 'spall    : cells broken ', nbroken
+      n = 13
    end if
    call close_tracers( info(1:n) )
    end subroutine finish_tracers

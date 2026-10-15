@@ -15,6 +15,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Artificial viscosity time loop, OpenMP (bit-for-bit with serial) | done (`src/modules/av_mod.f95`, maincode section 7) |
 | Expansion EOS (cubic, smooth through V0) and spall (`spall_strength`) | done (`eos_mod`, `av_mod`; see `input/README.md`) |
 | Tracer file (`<title>.tracers.csv`, `tracer_dt`) | done (`src/modules/trace_mod.f95`; see `input/README.md`) |
+| Second method, `method = RS` (Riemann solver, Godunov), in the same code | setup and outputs done; time loop under construction (stops with a message) |
 | Snapshot output (bitmaps, t-x diagrams) | next |
 | Comparison with reference data | data in `tests/verification/` |
 

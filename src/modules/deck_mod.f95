@@ -28,6 +28,8 @@ module deck
 !                (with Claude)
 !    10/15/26    D. E. Kittell        Output block: tracer_dt
 !                (with Claude)
+!    10/15/26    D. E. Kittell        Solver block: method = RS (Riemann
+!                (with Claude)        solver, under construction)
 !
 !**********************************************************************!
 !
@@ -994,12 +996,18 @@ contains
 
    select case (k)
    case ('method')
-      if (lower(val) == 'av') then
+      ! The two solution methods: AV (artificial viscosity) and RS
+      ! (Riemann solver, under construction: maincode stops it at the
+      ! start of the time loop).
+      select case (lower(val))
+      case ('av')
          method = 'AV'
-      else
-         call deck_error(ln, 'method = '//trim(val)//' is not available; '// &
-            'this branch has AV only')
-      end if
+      case ('rs')
+         method = 'RS'
+      case default
+         call deck_error(ln, 'method = '//trim(val)//' is not one of '// &
+            'AV (artificial viscosity), RS (Riemann solver)')
+      end select
    case ('bl', 'bq')
       call get_real(ln, key, val, x, ok)
       if (ok .and. x < zero) call deck_error(ln, trim(key)// &
@@ -1596,8 +1604,10 @@ contains
    write(lu,'(a)') ''
    write(lu,'(a)') ' Begin Solver'
    call kv(lu, 2, 'method', trim(method))
-   call kv(lu, 2, 'BL',     fmt_real(BL))
-   call kv(lu, 2, 'BQ',     fmt_real(BQ))
+   call kv(lu, 2, 'BL',     fmt_real(BL), &
+      merge('AV only; RS ignores it', '                      ', method == 'RS'))
+   call kv(lu, 2, 'BQ',     fmt_real(BQ), &
+      merge('AV only; RS ignores it', '                      ', method == 'RS'))
    call kv(lu, 2, 'CFL',    fmt_real(CFL))
    write(lu,'(a)') ' End Solver'
 

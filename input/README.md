@@ -124,9 +124,9 @@ When snapshots are on, a snapshot is written whenever either `plot_every` or
 ### `Solver`
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `method` | `AV` | `AV` | other methods arrive on their own branch |
-| `BL` | number | 0.1 | linear viscosity coefficient |
-| `BQ` | number | 2.0 | quadratic viscosity coefficient |
+| `method` | `AV` or `RS` | `AV` | `AV`: artificial viscosity. `RS`: Riemann solver (Godunov), **under construction**: it reads, sets up and writes cycle 0, then stops with a message |
+| `BL` | number | 0.1 | linear viscosity coefficient (AV only) |
+| `BQ` | number | 2.0 | quadratic viscosity coefficient (AV only) |
 | `CFL` | number | 0.6 | Courant safety factor, 0 < CFL <= 1 |
 
 The artificial viscosity is the equation sheet's, with its default
@@ -257,6 +257,11 @@ Written in the folder the run starts from, laid out like the verification data
   resolution (10 times the cycles too), set `tracer_dt`.
 - `KMPS` is the velocity the method carries, at the half step before `TIME`;
   everything else is at `TIME`.
+- **Both methods write the same columns,** with the same names and meanings,
+  so one script reads either. `KMPS` is the face velocity u for `AV` and the
+  Riemann solution u★ for `RS`. A column a method does not have is written
+  `NaN`: `Q` under `RS`, which has no artificial viscosity (its dissipation is
+  inside the Riemann solution). The trailer names the method.
 - **The trailer.** After the last row comes `# ===== end of data =====` and
   then `#` lines: deck, title, start and end times and how the run ended,
   version, compiler and flags, cycles, conservation errors, cells broken, the

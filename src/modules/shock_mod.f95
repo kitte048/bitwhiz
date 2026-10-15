@@ -31,6 +31,10 @@ module shock
 !                (with Claude)        each cell's spall_strength (jsp)
 !    10/15/26    D. E. Kittell        tracer_dt (Output block); which
 !                (with Claude)        cell a tracer on a node reports
+!    10/15/26    D. E. Kittell        Second method, RS (Riemann solver,
+!                (with Claude)        under construction): slots u_star,
+!                                     p_star (faces) and uc (cells); the
+!                                     stress RULE is now a RECOMMENDATION
 !
 !**********************************************************************!
 !
@@ -107,13 +111,28 @@ public
 !  Masses are per unit cross-sectional area (planar 1-D), so a mass
 !  is a density times a length: (g/cm^3)*mm.
 !
-!  RULE: stress (p, q, and any stress added later) lives ONLY at the
-!  cell centers, for every solution method. A face never stores a
-!  stress. When an update needs the stress acting across a face (the
-!  mass-weighted p plus the averaged q in the energy update), it is
-!  computed on the spot from the two cells on either side of that
-!  face. That keeps one copy of every stress, so it can never go
-!  stale, and the code reads term for term like the equation sheet.
+!  RECOMMENDATION: stress (p, q, and any stress added later) lives at
+!  the cell centers. When an update needs the stress acting across a
+!  face (AV: the mass-weighted p plus the averaged q in the energy
+!  update), compute it on the spot from the two cells on either side
+!  of that face. That keeps one copy of every stress, so it can never
+!  go stale, and the code reads term for term like the equation sheet.
+!
+!  THE ONE EXCEPTION, p_star (method RS). The Riemann solver's P* is
+!  not a copy of a cell's stress: it is the SOLUTION of the Riemann
+!  problem at the face, the pressure on the contact for the whole
+!  step, n to n+1, and it is the momentum flux both neighbor cells
+!  must use. It is stored at the face because
+!    - each face is solved ONCE, so the cell on its left and the cell
+!      on its right are guaranteed the same flux (that is what makes
+!      momentum and energy conserved), and no Riemann solve is done
+!      twice;
+!    - it is written by the face loop every cycle BEFORE any cell
+!      reads it, and nothing reads it after the cycle ends, so it can
+!      not go stale: it is a flux for this step, not part of the state;
+!    - u_star, its partner, must be stored anyway (it moves the face),
+!      and the two belong together.
+!  The cell's own P (from its EOS) still lives at the cell center.
 !**********************************************************************!
 
 !*** FACE slots (even i). Kinematics live on the faces.
@@ -123,6 +142,19 @@ integer(kind=int32), parameter :: jx_old  =  3 ! x at the old time level
 integer(kind=int32), parameter :: ju_old  =  4 ! u at the old time level
 integer(kind=int32), parameter :: jmf     =  5 ! face (nodal) mass, half
                                                ! of each neighbor cell
+                                               ! (jx, ju, jx_old, ju_old
+                                               ! and jmf are AV's; RS
+                                               ! uses jx and the two
+                                               ! _star slots)
+integer(kind=int32), parameter :: ju_star = 21 ! RS: u*, the Riemann
+                                               ! solution's velocity on
+                                               ! the contact, km/s; the
+                                               ! face moves with it
+                                               ! (n+1/2)
+integer(kind=int32), parameter :: jp_star = 22 ! RS: P*, the Riemann
+                                               ! solution's pressure on
+                                               ! the contact, GPa (n+1/2;
+                                               ! the exception above)
 
 !*** CELL slots (odd i). Thermodynamics live at the cell centers.
 integer(kind=int32), parameter :: jm      =  6 ! cell mass (fixed, it is
@@ -138,6 +170,10 @@ integer(kind=int32), parameter :: je_old  = 13 ! e at the old time level
                                                ! (add more _old slots
                                                ! here as the method
                                                ! needs them)
+integer(kind=int32), parameter :: juc     = 23 ! RS: the cell-average
+                                               ! velocity, km/s (RS's
+                                               ! velocity lives in the
+                                               ! cells; AV's on faces)
 
 !*** MATERIAL slots (odd i). Option 6(a): each cell carries its own
 !*** copy of its layer's Mie-Gruneisen constants, so a slice or a
@@ -163,16 +199,19 @@ integer(kind=int32), parameter :: jdam    = 19 ! D, damage, 0 or 1
 !*** dbname below, and add it to face_slots or cell_slots. The compiler
 !*** checks that dbname has nvar items; the setup audit in maincode
 !*** checks that the two lists add up to nvar.
-integer(kind=int32), parameter :: nvar    = 20
+integer(kind=int32), parameter :: nvar    = 23
 
 !*** Which slots a face fills, and which a real cell fills. The setup
 !*** audit (maincode section 6) uses these to check that every slot a
 !*** place should have was actually set.
-integer(kind=int32), parameter, dimension(5)  :: face_slots = (/ &
-   jx, ju, jx_old, ju_old, jmf /)
-integer(kind=int32), parameter, dimension(15) :: cell_slots = (/ &
+!*** Both methods fill every slot at setup (each method then updates
+!*** only its own), so these lists, the audit and the finite check do
+!*** not depend on the method.
+integer(kind=int32), parameter, dimension(7)  :: face_slots = (/ &
+   jx, ju, jx_old, ju_old, jmf, ju_star, jp_star /)
+integer(kind=int32), parameter, dimension(16) :: cell_slots = (/ &
    jm, jrho, je, jp, jq, jc, jrho_old, je_old, jr0, jc0, js1, js2, jg0, &
-   jdam, jsp /)
+   jdam, jsp, juc /)
 
 !*** Short names for each slot, in slot order. Used for output file
 !*** headers, plot labels and the XDMF sidecar.
@@ -180,7 +219,8 @@ character(len=8), parameter, dimension(nvar) :: dbname = (/ &
    'x       ', 'u       ', 'x_old   ', 'u_old   ', 'mf      ', &
    'm       ', 'rho     ', 'e       ', 'p       ', 'q       ', &
    'c       ', 'rho_old ', 'e_old   ', 'R0      ', 'C0      ', &
-   'S1      ', 'S2      ', 'G0      ', 'D       ', 'spall   ' /)
+   'S1      ', 'S2      ', 'G0      ', 'D       ', 'spall   ', &
+   'u_star  ', 'p_star  ', 'uc      ' /)
 
 !**********************************************************************!
 ! Data dictionary: stencil half-width for a chunk.
@@ -323,10 +363,13 @@ character(len=80)   :: colormap   = 'viridis'  ! for bitmap pictures; a
                                                ! name bmpmaker knows
                                                ! (tracers: tracer table)
 
-!*** Block "Solver". The artificial viscosity of the equation sheet,
+!*** Block "Solver". method = AV: the artificial viscosity of the
+!*** equation sheet,
 !***    q = BL*rho*c*|du| + BQ*rho*du**2   (only while compressing),
-!*** with the sheet's default coefficients.
-character(len=8)    :: method     = 'AV'       ! only AV on this branch
+!*** with the sheet's default coefficients. method = RS: Godunov's
+!*** method with a Riemann solver at every face (under construction;
+!*** BL and BQ are AV's and RS ignores them).
+character(len=8)    :: method     = 'AV'       ! 'AV' or 'RS'
 real(kind=dp)       :: BL         = 0.1_dp     ! linear viscosity coef.
 real(kind=dp)       :: BQ         = 2.0_dp     ! quadratic viscosity coef.
 real(kind=dp)       :: CFL        = 0.6_dp     ! Courant safety factor
@@ -448,7 +491,7 @@ type(tracer_t), allocatable :: tracer(:)      ! tracer(1:ntrc)
 !                        the layer on its LEFT; an interface is where
 !                        ilay(i-1) /= ilay(i+1).
 !
-!  Memory: 8*nvar bytes per place, so about 270 KB for the 945-zone
+!  Memory: 8*nvar bytes per place, so about 350 KB for the 945-zone
 !  class problem. It does not depend on nlay at all.
 !
 !***NOTE: a burn model can later get its own array with the SAME

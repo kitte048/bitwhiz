@@ -30,30 +30,45 @@ module trace
 !      ====       ==========          =====================
 !    10/15/26    D. E. Kittell        Original code
 !                (with Claude)
+!    10/15/26    D. E. Kittell        Two methods, one file layout: each
+!                (with Claude)        column names its slot for AV and
+!                                     for RS; a column a method does not
+!                                     have (q under RS) is written NaN
 !
 !**********************************************************************!
 use bits,  only: dp, int32, zero
-use shock, only: jx, ju, jrho, je, jp, jq, jc, jdam, face_slots, &
-   database, iface, icell, ilay, layer, tracer, ntrc, tracer_dt
+use shock, only: jx, ju, jrho, je, jp, jq, jc, jdam, ju_star, face_slots, &
+   database, iface, icell, ilay, layer, tracer, ntrc, tracer_dt, method
+use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
 implicit none
 private
 
 public :: open_tracers, tracer_row, close_tracers, trc_open, trc_file
 
 !**********************************************************************!
-! THE COLUMN TABLE. One row per column of each tracer, in the order
-! they appear in the file. To add a variable, add one row (its slot
-! in the database, a short name and a long name with units) and bump
-! ncol. New columns go at the END, so old columns never move and old
-! plotting scripts, which find columns by name, keep working.
+! THE COLUMN TABLE. One entry per column of each tracer, in the order
+! they appear in the file. To add a variable, add one entry (its slot
+! for AV, its slot for RS, a short name and a long name with units)
+! and bump ncol. New columns go at the END, so old columns never move
+! and old plotting scripts, which find columns by name, keep working.
+!
+! A column has the SAME meaning, name and place for both methods, so
+! one reader and one comparison script serve both; only the slot it
+! is read from may differ. KMPS is "the velocity the point moved with
+! over the last step": AV's face velocity u, RS's Riemann u*. A slot
+! of 0 means the method has no such variable, and the column is NaN
+! (q under RS: Godunov's dissipation is inside the Riemann solution,
+! not a separate q, and writing 0 would say there is none).
 !
 ! A face slot (x, u) is interpolated between the tracer's two faces
 ! with its weight w; a cell slot is read from the tracer's cell kval
 ! (shock_mod, tracer table).
 !**********************************************************************!
 integer(kind=int32), parameter :: ncol = 8
-integer(kind=int32), parameter, dimension(ncol) :: col_slot = (/ &
-   jx, ju, jp, jrho, je, jq, jc, jdam /)
+integer(kind=int32), parameter, dimension(ncol) :: col_av = (/ &   ! AV
+   jx, ju,      jp, jrho, je, jq, jc, jdam /)
+integer(kind=int32), parameter, dimension(ncol) :: col_rs = (/ &   ! RS
+   jx, ju_star, jp, jrho, je, 0,  jc, jdam /)
 character(len=4), parameter, dimension(ncol) :: col_short = (/ &
    'XPOS', 'KMPS', 'GPA ', 'RHO ', 'SIE ', 'Q   ', 'CS  ', 'DMG ' /)
 character(len=34), parameter, dimension(ncol) :: col_long = (/ &
@@ -87,7 +102,10 @@ logical             :: trc_open = .false.      ! the file is open
 character(len=72)   :: trc_file = ' '          ! <title>.tracers.csv
 integer(kind=int32) :: nrows    = 0            ! rows written so far
 real(kind=dp)       :: tnext    = zero         ! us, next output time
+integer(kind=int32) :: col_slot(ncol)          ! this run's slots (the
+                                               ! method's list), 0 = NaN
 logical             :: isface(ncol)            ! column is a face slot
+real(kind=dp)       :: nan                     ! a quiet NaN
 
 !*** One row: 8 totals (CYCLE goes out as an integer) and ncol values
 !*** per tracer. Sized when the file is opened.
@@ -115,9 +133,15 @@ contains
    trc_open = .true.
    nrows    = 0
    tnext    = zero
+   if ( method == 'RS' ) then
+      col_slot = col_rs
+   else
+      col_slot = col_av
+   end if
    do j = 1, ncol
       isface(j) = any( face_slots == col_slot(j) )
    end do
+   nan = ieee_value( 1.0_dp, ieee_quiet_nan )
    allocate( row( ntot - 1 + ncol*ntrc ) )
 
    !*** Line 1, short names: a tracer's columns carry its name, e.g.
@@ -192,7 +216,9 @@ contains
       w  = tracer(it)%w
       do j = 1, ncol
          n = n + 1
-         if ( .not. isface(j) ) then
+         if ( col_slot(j) == 0 ) then
+            row(n) = nan                           ! not in this method
+         else if ( .not. isface(j) ) then
             row(n) = database( col_slot(j), ic )
          else if ( w > zero ) then
             row(n) = (1.0_dp - w)*database( col_slot(j), ia ) + &
@@ -239,6 +265,8 @@ contains
    end if
    write( ktr, '(a)' ) '# columns  : x, P, rho, e, q, c, D at TIME; u at '// &
       'the half step before TIME (n+1/2), as the method carries it'
+   if ( method == 'RS' ) write( ktr, '(a)' ) '# method RS: KMPS is u* '// &
+      '(the Riemann solution at the faces); Q is NaN (RS has no q)'
    do it = 1, ntrc
       associate ( t => tracer(it) )
          write( buf, '(i0)' ) it
