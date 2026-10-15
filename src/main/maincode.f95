@@ -46,7 +46,10 @@ program bitwhiz
 !    10/15/26    D. E. Kittell        Tracer file <title>.tracers.csv
 !                (with Claude)        (module trace): a row at cycle 0,
 !                                     then by tracer_dt; trailer written
-!                                     by close_heartbeat
+!                                     by close_outputs
+!    10/15/26    D. E. Kittell        close_heartbeat renamed
+!                (with Claude)        close_outputs: it closes every
+!                                     output file, tracers included
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -361,12 +364,12 @@ flush( khb )                            ! so tail -f sees it now
 !*** The tracer file, <title>.tracers.csv (module trace), if the deck
 !*** has tracers: two header lines now, a row at cycle 0 (section 6)
 !*** and then every tracer_dt (section 7), and a trailer when the run
-!*** ends (close_heartbeat), however it ends.
+!*** ends (close_outputs), however it ends.
 call open_tracers( title, ios )
 if ( ios /= 0 ) then
    write( kpt6, 202 ) 'bitwhiz: cannot open the tracer file '// &
       trim(title)//'.tracers.csv'
-   call close_heartbeat( 'cannot open the tracer file' )
+   call close_outputs( 'cannot open the tracer file' )
    stop 1, quiet=.true.
 end if
 
@@ -415,7 +418,7 @@ call alloc_database( kmax, kerr )
 if ( kerr > 0 ) then
    write( kpt6, 202 ) 'bitwhiz: cannot allocate the database '// &
       '(out of memory?)'
-   call close_heartbeat( 'could not allocate the database' )
+   call close_outputs( 'could not allocate the database' )
    stop 1, quiet=.true.
 end if
 
@@ -699,7 +702,7 @@ end if
 if ( nbad > 0 ) then
    write( kpt6, '(1x,i0,a)' ) nbad, ' setup check(s) failed; stopping. '// &
       'This is a bug in bitwhiz, not in the deck.'
-   call close_heartbeat( 'setup check failed' )
+   call close_outputs( 'setup check failed' )
    stop 1, quiet=.true.
 end if
 
@@ -934,7 +937,7 @@ time_loop: do while ( .not. done )
          'failed in cell ', kbad, ' (layer ', trim(layer(ilay(i))%name), &
          ') on cycle ', ncycle+1, ', t = ', time+dt, ' us:'
       write( kpt6, '(1x,a)' ) '         '//eos_message(ierr)
-      call close_heartbeat( 'EOS failure in cell '//itoa(kbad)//': '// &
+      call close_outputs( 'EOS failure in cell '//itoa(kbad)//': '// &
          eos_message(ierr) )
       stop 1, quiet=.true.
    end if
@@ -1000,7 +1003,7 @@ time_loop: do while ( .not. done )
    if ( .not. ( dt > zero ) ) then        ! can not happen; a backstop
       write( kpt6, '(1x,a,i0)' ) 'bitwhiz: the time step collapsed '// &
          'on cycle ', ncycle
-      call close_heartbeat( 'time step collapsed' )
+      call close_outputs( 'time step collapsed' )
       stop 1, quiet=.true.
    end if
 
@@ -1072,9 +1075,9 @@ end if
 write( kpt6, 202 ) repeat('=',56)
 
 !===============================================!
-! 8. Close the heartbeat file, free the memory. !
+! 8. Close the output files, free the memory.   !
 !===============================================!
-call close_heartbeat( trim(endhow) )
+call close_outputs( trim(endhow) )
 
 ! Every alloc_ in shock_mod has its dealloc_ (bits RULE). kerr only
 ! counts; a failure here at the very end is reported, not fatal.
@@ -1235,7 +1238,7 @@ contains
    !*****************************************************!
    ! The state has stopped being numbers somewhere: find !
    ! the first face or cell (and which value), say so,   !
-   ! close the heartbeat with the reason, and stop.      !
+   ! close the output files with the reason, and stop.   !
    !*****************************************************!
    subroutine find_bad()
    implicit none
@@ -1267,18 +1270,18 @@ contains
    if ( ibad == 0 ) then                     ! the sum itself overflowed
       write( kpt6, '(1x,a,i0)' ) 'bitwhiz: the state grew too large '// &
          'to add up on cycle ', ncycle
-      call close_heartbeat( 'state too large' )
+      call close_outputs( 'state too large' )
    else if ( mod(ibad,2) == 0 ) then
       write( kpt6, '(1x,a,i0,a,i0,a,es12.5,a)' ) 'bitwhiz: '// &
          trim(dbname(jbad))//' on face ', kcell(ibad), '+1/2 is not a '// &
          'finite number on cycle ', ncycle, ', t = ', time, ' us'
-      call close_heartbeat( trim(dbname(jbad))//' not a finite number' )
+      call close_outputs( trim(dbname(jbad))//' not a finite number' )
    else
       write( kpt6, '(1x,a,i0,3a,i0,a,es12.5,a)' ) 'bitwhiz: '// &
          trim(dbname(jbad))//' in cell ', kcell(ibad), ' (', &
          trim(layer(ilay(ibad))%name), ') is not a finite number on cycle ', &
          ncycle, ', t = ', time, ' us'
-      call close_heartbeat( trim(dbname(jbad))//' not a finite number' )
+      call close_outputs( trim(dbname(jbad))//' not a finite number' )
    end if
    stop 1, quiet=.true.
    end subroutine find_bad
@@ -1309,26 +1312,41 @@ contains
    end function itoa
 
    !*****************************************************!
-   ! Write the last line of the heartbeat and close it.  !
-   ! Every way out of a run after section 4 should come  !
-   ! through here, with a word on how the run ended      !
-   ! ('normal end', or the reason for stopping), so the  !
-   ! heartbeat never just stops without saying why.      !
+   ! Close every output file the run has open, each with !
+   ! a word on how the run ended ('normal end', or the   !
+   ! reason for stopping), so no file just stops without !
+   ! saying why. Every way out of a run after section 4  !
+   ! comes through here. Each file is closed only if it  !
+   ! is open, so this is safe to call from any exit, and !
+   ! twice.                                              !
+   !                                                     !
+   ! A NEW KIND OF OUTPUT FILE (snapshots, a run log,    !
+   ! ...) gets one line below, a call to its own finish  !
+   ! routine, and then every exit closes it too.         !
    !*****************************************************!
-   subroutine close_heartbeat( how )
+   subroutine close_outputs( how )
    implicit none
    character(len=*), intent(in) :: how
-   call finish_tracers( how )             ! the tracer file's trailer
+   call finish_tracers( how )             ! <title>.tracers.csv
+   call finish_heartbeat( how )           ! <title>.heartbeat, last
+   end subroutine close_outputs
+
+   !*****************************************************!
+   ! The heartbeat's last line, then close it.           !
+   !*****************************************************!
+   subroutine finish_heartbeat( how )
+   implicit none
+   character(len=*), intent(in) :: how
    if ( .not. hb_open ) return
    write( khb, '(a)' ) '# ended   : '//clock()//'  ('//how//')'
    close( khb )
    hb_open = .false.
-   end subroutine close_heartbeat
+   end subroutine finish_heartbeat
 
    !*****************************************************!
    ! The tracer file's trailer (module trace adds the    !
    ! rows and where each tracer sits), then close it.    !
-   ! Called by close_heartbeat, so every way out of a    !
+   ! Called by close_outputs, so every way out of a      !
    ! run writes it. The run's results are added only     !
    ! once the time loop has started.                     !
    !*****************************************************!

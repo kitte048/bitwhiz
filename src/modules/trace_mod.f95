@@ -16,7 +16,7 @@ module trace
 !
 !    Every trailer line starts with '#', so numpy (loadtxt, genfromtxt)
 !    and pandas (comment='#') skip it. The trailer is written by every
-!    way out of a run that the code controls (maincode, close_heartbeat),
+!    way out of a run that the code controls (maincode, close_outputs),
 !    so a file WITHOUT the end-of-data line is from a run that crashed.
 !
 !    Called from maincode only, outside the parallel region, so the
