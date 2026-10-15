@@ -14,19 +14,25 @@ program test_eos
 !    with mpmath's own numerical derivatives. So this test checks the
 !    analytic derivatives in mg_eos (dUs/deta, dP_H/dV, phi') against an
 !    independent route to the same numbers (code contract (a) 11.2).
-!    Generator: My_Codes/bitwhiz/tests/eos_reference.py
+!    Generator: My_Codes/bitwhiz/tests/eos_reference.py. In expansion
+!    the expected values come from the cubic, with its coefficients
+!    taken by the generator from the compression form's own numerical
+!    derivatives, not from the formulas in eos_mod.
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
 !      ====       ==========          =====================
 !    10/14/26    D. E. Kittell        Original code
 !                (with Claude)
+!    10/16/26    D. E. Kittell        Expansion cubic: new reference
+!                (with Claude)        states, broken cells at P = 0,
+!                                     smoothness through V0
 !
 !**********************************************************************!
-use bits, only: dp, int32, zero, one
+use bits, only: dp, int32, zero, one, two
 use shock, only: not_finite
-use eos, only: mg_eos, eos_message, eos_ok, eos_bad_density, &
-   eos_too_compressed, eos_bad_soundspeed
+use eos, only: mg_eos, mg_soundspeed, eos_message, eos_ok, &
+   eos_bad_density, eos_too_compressed, eos_bad_soundspeed
 implicit none
 
 !**********************************************************************!
@@ -54,8 +60,8 @@ type :: state_t
    real(kind=dp) :: c                    ! km/s, expected
 end type state_t
 
-! 45 states: material, rho (g/cm^3), e ((km/s)^2), P (GPa), c (km/s)
-type(state_t), parameter, dimension(45) :: ref = (/ &
+! 53 states: material, rho (g/cm^3), e ((km/s)^2), P (GPa), c (km/s)
+type(state_t), parameter, dimension(53) :: ref = (/ &
    state_t( 1, 17.526315789473684211_dp, &
       0.0_dp, &
       10.455808057944771390_dp, &
@@ -94,12 +100,20 @@ type(state_t), parameter, dimension(45) :: ref = (/ &
       4.7751561878200174479_dp ), & ! Ta, eta = 0.25, hot
    state_t( 1, 15.857142857142857143_dp, &
       0.0_dp, &
-      -8.9076610893556425774_dp, &
-      3.1577128583908753522_dp ), & ! Ta, eta = -0.05, cold
+      -8.9077158406219630709_dp, &
+      3.1577555449452785438_dp ), & ! Ta, eta = -0.05, cold
+   state_t( 1, 15.857142857142857143_dp, &
+      0.31286044855820576718_dp, &
+      -0.57311349103136143335_dp, &
+      3.2946073228297379322_dp ), & ! Ta, eta = -0.05, hot
    state_t( 1, 13.875000000000000000_dp, &
       0.0_dp, &
-      -29.041342351716961498_dp, &
-      2.3260689724995144975_dp ), & ! Ta, eta = -0.2, cold
+      -29.049316666666666667_dp, &
+      2.3282760431987727115_dp ), & ! Ta, eta = -0.2, cold
+   state_t( 1, 13.875000000000000000_dp, &
+      0.45036420395421436004_dp, &
+      -17.051614273326396115_dp, &
+      2.6610321183311841323_dp ), & ! Ta, eta = -0.2, hot
    state_t( 2, 2.9263157894736842105_dp, &
       0.0_dp, &
       4.2611503419342461536_dp, &
@@ -138,12 +152,20 @@ type(state_t), parameter, dimension(45) :: ref = (/ &
       7.9626434171651924584_dp ), & ! Al, eta = 0.25, hot
    state_t( 2, 2.6476190476190476190_dp, &
       0.0_dp, &
-      -3.6010321575351189164_dp, &
-      4.8455167860300358886_dp ), & ! Al, eta = -0.05, cold
+      -3.6010940314609653385_dp, &
+      4.8457036778157699179_dp ), & ! Al, eta = -0.05, cold
+   state_t( 2, 2.6476190476190476190_dp, &
+      0.33084131686823500271_dp, &
+      -1.7616163096735787235_dp, &
+      4.9939818122001801373_dp ), & ! Al, eta = -0.05, hot
    state_t( 2, 2.3166666666666666667_dp, &
       0.0_dp, &
-      -11.656529570400740380_dp, &
-      3.2223929500130917129_dp ), & ! Al, eta = -0.2, cold
+      -11.665374376666666667_dp, &
+      3.2326060962222621740_dp ), & ! Al, eta = -0.2, cold
+   state_t( 2, 2.3166666666666666667_dp, &
+      0.64941635402879917205_dp, &
+      -8.0546194482665432701_dp, &
+      3.7670121280053262611_dp ), & ! Al, eta = -0.2, hot
    state_t( 3, 1.6842105263157894737_dp, &
       0.0_dp, &
       0.58532469726059500798_dp, &
@@ -182,12 +204,20 @@ type(state_t), parameter, dimension(45) :: ref = (/ &
       5.0590940652551169486_dp ), & ! MatX, eta = 0.25, hot
    state_t( 3, 1.5238095238095238095_dp, &
       0.0_dp, &
-      -0.43328287294569935300_dp, &
-      2.1900119581925019266_dp ), & ! MatX, eta = -0.05, cold
+      -0.43338732318324155059_dp, &
+      2.1912340821375265464_dp ), & ! MatX, eta = -0.05, cold
+   state_t( 3, 1.5238095238095238095_dp, &
+      0.30657285911628791494_dp, &
+      0.15523256632003124610_dp, &
+      2.2996134183497249565_dp ), & ! MatX, eta = -0.05, hot
    state_t( 3, 1.3333333333333333333_dp, &
       0.0_dp, &
-      -1.2058626111443219969_dp, &
-      1.3410312121282936896_dp ), & ! MatX, eta = -0.2, cold
+      -1.2203703703703703704_dp, &
+      1.4122676800097069417_dp ), & ! MatX, eta = -0.2, cold
+   state_t( 3, 1.3333333333333333333_dp, &
+      0.36729144035403582572_dp, &
+      -0.51517080489062158499_dp, &
+      1.6601552730748195555_dp ), & ! MatX, eta = -0.2, hot
    state_t( 4, 1.2494736842105263158_dp, &
       0.0_dp, &
       0.44280696990300834929_dp, &
@@ -226,16 +256,52 @@ type(state_t), parameter, dimension(45) :: ref = (/ &
       4.5335436340556498211_dp ), & ! PMMA, eta = 0.25, hot
    state_t( 4, 1.1304761904761904762_dp, &
       0.0_dp, &
-      -0.34019896988307042931_dp, &
-      2.2957912288327676930_dp ), & ! PMMA, eta = -0.05, cold
+      -0.34024164885422740525_dp, &
+      2.2964358667546862147_dp ), & ! PMMA, eta = -0.05, cold
+   state_t( 4, 1.1304761904761904762_dp, &
+      0.30700743321358462458_dp, &
+      -0.012265607952154950813_dp, &
+      2.3553732195053310379_dp ), & ! PMMA, eta = -0.05, hot
    state_t( 4, 0.98916666666666666667_dp, &
       0.0_dp, &
-      -0.98349483944954128440_dp, &
-      1.6046418389662524779_dp ), & ! PMMA, eta = -0.2, cold
+      -0.98942177275000000000_dp, &
+      1.6386282275122688732_dp ), & ! PMMA, eta = -0.2, cold
+   state_t( 4, 0.98916666666666666667_dp, &
+      0.37601422439188620486_dp, &
+      -0.58772577683214796734_dp, &
+      1.7673951056090135245_dp ), & ! PMMA, eta = -0.2, hot
    state_t( 3, 2.1108447540380316065_dp, &
       0.55439625545141542951_dp, &
       7.3305679236761677658_dp, &
       4.9072575218937171734_dp ) /) !  MatX, 1.5 km/s first shock, up = 1.053, contract V2: 7.331 GPa
+
+! 12 broken-cell states: material, rho (g/cm^3), c at P = 0 (km/s)
+!*** (p and e are not used here: the call is mg_soundspeed at P = 0.)
+type(state_t), parameter, dimension(12) :: zerop = (/ &
+   state_t( 1, 9.9900000000000000000_dp, 0.0_dp, 0.0_dp, &
+      2.6685126943674073517_dp ), & ! Ta, rho = 0.6*R0, P = 0
+   state_t( 1, 1.6650000000000000000_dp, 0.0_dp, 0.0_dp, &
+      2.1664163958020627942_dp ), & ! Ta, rho = 0.1*R0, P = 0
+   state_t( 1, 0.33300000000000000000_dp, 0.0_dp, 0.0_dp, &
+      2.1509938168204947213_dp ), & ! Ta, rho = 0.02*R0, P = 0
+   state_t( 2, 1.6680000000000000000_dp, 0.0_dp, 0.0_dp, &
+      4.1815085507505541869_dp ), & ! Al, rho = 0.6*R0, P = 0
+   state_t( 2, 0.27800000000000000000_dp, 0.0_dp, 0.0_dp, &
+      4.1689275791263153100_dp ), & ! Al, rho = 0.1*R0, P = 0
+   state_t( 2, 0.055600000000000000000_dp, 0.0_dp, 0.0_dp, &
+      4.3265668253708967762_dp ), & ! Al, rho = 0.02*R0, P = 0
+   state_t( 3, 0.96000000000000000000_dp, 0.0_dp, 0.0_dp, &
+      1.8248287590894659067_dp ), & ! MatX, rho = 0.6*R0, P = 0
+   state_t( 3, 0.16000000000000000000_dp, 0.0_dp, 0.0_dp, &
+      4.4263416045307664437_dp ), & ! MatX, rho = 0.1*R0, P = 0
+   state_t( 3, 0.032000000000000000000_dp, 0.0_dp, 0.0_dp, &
+      4.9241953657425087991_dp ), & ! MatX, rho = 0.02*R0, P = 0
+   state_t( 4, 0.71220000000000000000_dp, 0.0_dp, 0.0_dp, &
+      1.6148246220565253692_dp ), & ! PMMA, rho = 0.6*R0, P = 0
+   state_t( 4, 0.11870000000000000000_dp, 0.0_dp, 0.0_dp, &
+      3.2607949889559141065_dp ), & ! PMMA, rho = 0.1*R0, P = 0
+   state_t( 4, 0.023740000000000000000_dp, 0.0_dp, 0.0_dp, &
+      3.6395446702025790633_dp ) /) !  PMMA, rho = 0.02*R0, P = 0
 
 !*** Tolerances. float64 carries about 16 digits; the arithmetic in
 !*** mg_eos loses at most a few of them (2e-14 measured), so 1e-12 is
@@ -269,10 +335,11 @@ do m = 1, nmat
 end do
 
 !=====================================================================!
-! 2. 45 states against the 50-digit reference: compressed, on and off
-!    the Hugoniot, and in tension, for all four materials, plus the
-!    1.5 km/s first shock in MatX. A wrong derivative (e.g. dP_H/dV
-!    used where phi' belongs) misses c by 5-11% here.
+! 2. The reference states: compressed, on and off the Hugoniot, and
+!    in expansion (V = 1.05 and 1.25 V0, the cubic branch), for all
+!    four materials, plus the 1.5 km/s first shock in MatX. A wrong
+!    derivative (e.g. dP_H/dV used where phi' belongs) misses c by
+!    5-11% here; a wrong cubic coefficient misses in expansion.
 !=====================================================================!
 worst_p = zero
 worst_c = zero
@@ -318,7 +385,37 @@ same_answers: block
 end block same_answers
 
 !=====================================================================!
-! 4. Status codes, and NO floating-point trap on the way. On any status
+! 4. Broken cells: the sound speed at P = 0 (what the time loop uses
+!    once a cell has failed), out to rho = 0.02*R0. The cubic keeps
+!    c**2 > 0 at P = 0 at any expansion for all four materials.
+!=====================================================================!
+worst_c = zero
+do i = 1, size(zerop)
+   m = zerop(i)%m
+   call mg_soundspeed( zerop(i)%rho, zero, mat(1,m), mat(2,m), mat(3,m), &
+      mat(4,m), mat(5,m), c, ierr )
+   if ( ierr /= eos_ok ) then
+      worst_c = huge(one)
+   else
+      worst_c = max( worst_c, abs(c - zerop(i)%c)/zerop(i)%c )
+   end if
+end do
+call check( worst_c <= rtol, itoa(size(zerop))//' broken-cell states '// &
+   '(c at P = 0, down to 0.02*R0) to 1e-12' )
+
+!=====================================================================!
+! 5. Smooth through V0, where compression meets the expansion cubic:
+!    P, c, dc/drho and d2c/drho2 continuous (the cubic matches phi and
+!    its first three derivatives). Checked with one-sided differences
+!    on each side of rho = R0, cold, for all four materials: a jump in
+!    a slope shows up as an O(1) mismatch, smooth agreement as O(h).
+!=====================================================================!
+do m = 1, nmat
+   call smooth_at_v0( m )
+end do
+
+!=====================================================================!
+! 6. Status codes, and NO floating-point trap on the way. On any status
 !    but eos_ok, p and c must come back as NaN (so they can not be used
 !    by mistake). Linear Al (S2 = 0) has its limit at eta = 1/S1.
 !=====================================================================!
@@ -342,9 +439,20 @@ call status_case( mat(1,m)/(one - eta), zero, m, eos_ok, &
 m = 2
 call status_case( zero, zero, m, eos_bad_density, 'rho = 0: bad density' )
 call status_case( -one, zero, m, eos_bad_density, 'rho < 0: bad density' )
-eta = -0.35_dp                                            ! below -0.3209
-call status_case( mat(1,m)/(one - eta), zero, m, eos_bad_soundspeed, &
-   'Al in deep tension, eta = -0.35: c**2 <= 0' )
+m = 1                                                     ! Ta, cold,
+call status_case( 0.1_dp*mat(1,m), zero, m, eos_bad_soundspeed, &   ! P = -44 GPa
+   'Ta cold at rho = 0.1*R0 (P = -44 GPa): c**2 <= 0' )
+
+!*** A made-up material (R0 = C0 = 1, S1 = 1.3, S2 = -0.3, G0 = 0.3)
+!*** whose cubic's slope reaches zero at rho = 0.63*R0: there c -> 0
+!*** even at P = 0, and beyond it c**2 < 0.
+call mg_soundspeed( 0.5_dp, zero, one, one, 1.3_dp, -0.3_dp, 0.3_dp, &
+   c, ierr )
+call check( ierr == eos_bad_soundspeed .and. not_finite(c), &
+   'made-up material past its cubic''s c = 0 point: c**2 <= 0' )
+call mg_soundspeed( 0.7_dp, zero, one, one, 1.3_dp, -0.3_dp, 0.3_dp, &
+   c, ierr )
+call check( ierr == eos_ok, '... and before it (rho = 0.7*R0): ok' )
 
 !*** A made-up material with S2 > 0, where the square root goes
 !*** negative before D reaches zero.
@@ -398,6 +506,57 @@ contains
    end if
    call check( ie == want .and. nan_ok, what )
    end subroutine status_case
+
+   !*** Continuity of P, c, dc/drho and d2c/drho2 through rho = R0.
+   !*** One-sided differences on each side of R0, with step h: the two
+   !*** sides never agree exactly (finite differences are not exact),
+   !*** but if the curve is smooth they disagree by O(h), so HALVING h
+   !*** halves the mismatch. A kink (a derivative that jumps at R0)
+   !*** leaves a mismatch that does not shrink. So: mismatch(h/2) must
+   !*** be at most 0.6 of mismatch(h), for the slope of P, the slope
+   !*** of c and the curvature of c. (Measured ratios: 0.50 to 0.53.)
+   subroutine smooth_at_v0( mm )
+   implicit none
+   integer(kind=int32), intent(in) :: mm
+   real(kind=dp) :: mis(3,2), h
+   integer(kind=int32) :: n
+   logical :: ok
+   ok = .true.
+   do n = 1, 2
+      h = 1.0e-3_dp*mat(1,mm)/real(n,dp)          ! h, then h/2
+      call mismatch( mm, h, mis(:,n), ok )
+   end do
+   if ( ok ) ok = all( mis(:,2) <= 0.6_dp*mis(:,1) )
+   call check( ok, 'smooth through V0, '//trim(mname(mm))// &
+      ': P, c, dc and d2c continuous' )
+   end subroutine smooth_at_v0
+
+   !*** The three left/right mismatches at step h, relative.
+   subroutine mismatch( mm, h, mis, ok )
+   implicit none
+   integer(kind=int32), intent(in) :: mm
+   real(kind=dp), intent(in) :: h
+   real(kind=dp), intent(out) :: mis(3)
+   logical, intent(inout) :: ok
+   real(kind=dp) :: cc(-2:2), pp(-2:2), a, b
+   integer(kind=int32) :: j, ie
+   mis = zero
+   do j = -2, 2
+      call mg_eos( mat(1,mm) + real(j,dp)*h, zero, mat(1,mm), mat(2,mm), &
+         mat(3,mm), mat(4,mm), mat(5,mm), pp(j), cc(j), ie )
+      if ( ie /= eos_ok ) ok = .false.
+   end do
+   if ( .not. ok ) return
+   a = pp(1) - pp(0)                              ! slope of P, right
+   b = pp(0) - pp(-1)                             ! ... and left
+   mis(1) = abs(a - b)/abs(a)
+   a = cc(1) - cc(0)                              ! slope of c
+   b = cc(0) - cc(-1)
+   mis(2) = abs(a - b)/abs(a)
+   a = cc(2) - two*cc(1) + cc(0)                  ! curvature of c
+   b = cc(0) - two*cc(-1) + cc(-2)
+   mis(3) = abs(a - b)/max( abs(a), abs(b) )
+   end subroutine mismatch
 
    !*** An integer as text, without padding.
    function itoa( n ) result(s)

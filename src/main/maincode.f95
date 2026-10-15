@@ -37,6 +37,9 @@ program bitwhiz
 !    10/15/26    D. E. Kittell        Section 7: the time loop (module
 !                (with Claude)        av), OpenMP style 2, heartbeat
 !                                     line every cycle; first dt in 6
+!    10/16/26    D. E. Kittell        Spall: cells hold tension, break
+!                (with Claude)        at spall_strength; first break,
+!                                     count and most tension reported
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -44,7 +47,7 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads, &
    thread_num,nalive,title,khb,hb_open,hb_file, &
    kmax,imax,nvar,nlay,layer,database,ilay,icell,iface, &
    jx,ju,jx_old,ju_old,jmf,jm,jrho,je,jp,jq,jc,jrho_old,je_old, &
-   jr0,jc0,js1,js2,jg0,face_slots,cell_slots,dbname,not_finite, &
+   jr0,jc0,js1,js2,jg0,jdam,jsp,face_slots,cell_slots,dbname,not_finite, &
    kcell,t_end,cycle_max,CFL,BL,BQ,omp_min_zones, &
    alloc_database,dealloc_database,dealloc_layers, &
    dealloc_materials,dealloc_tracers
@@ -107,6 +110,15 @@ logical :: last                         ! this step lands on t_end
 logical :: use_team                     ! kmax >= omp_min_zones
 logical :: tens                         ! a cell's P was floored (tension)
 logical :: isvoid                       ! a cell was treated as void
+logical :: spl                          ! a cell broke (spall) this step
+real(kind=dp) :: dnew                   ! a cell's damage D after the step
+real(kind=dp) :: pmin                   ! GPa, most tension this cycle
+real(kind=dp) :: pmin_run               ! GPa, most tension, whole run
+integer(kind=int32) :: kspall,nspall    ! first cell to break, count
+integer(kind=int32) :: spall_k          ! first cell to break, 0 = none
+integer(kind=int32) :: spall_cycle      ! ... its cycle
+integer(kind=int32) :: nbroken          ! cells broken so far
+real(kind=dp) :: spall_time,spall_x     ! us, mm, of the first break
 integer(kind=int32) :: kvoid,nvoid      ! first void cell, void count
 integer(kind=int32) :: void_k,void_cycle ! first void cell ever, its cycle
 integer(kind=int32) :: nvoid_max        ! most void cells at one time
@@ -423,6 +435,8 @@ layer_cells: do l = 1, nlay
       database(js1,i) = layer(l)%S1
       database(js2,i) = layer(l)%S2
       database(jg0,i) = layer(l)%G0
+      database(jsp,i) = layer(l)%spall_strength
+      database(jdam,i) = zero             ! every cell starts intact
       database(jm,i)       = layer(l)%R0*( database(jx,i+1) - database(jx,i-1) )
       database(jrho,i)     = layer(l)%R0
       database(je,i)       = zero
@@ -712,7 +726,7 @@ write( kpt6, 202 ) repeat('=',56)
 !   a. velocity u(n+1/2) on every face, from P(n), q(n)       loop 1
 !   b. positions x(n+1), then densities rho(n+1)              loops 1, 2
 !   c. energies e(n+1), from P(n), q(n), u(n-1/2), u(n+1/2)   loop 2
-!   d. pressures P(n+1) (kept >= 0), then sound speeds c      loop 3
+!   d. pressures P(n+1) (spall rule), then sound speeds c     loop 3
 !   e. viscosities q(n+1), then the next time step dt(n+1)    loop 3
 !   f. the heartbeat line; n <- n+1; repeat until t_end
 !
@@ -738,8 +752,9 @@ write( kpt6, 202 ) repeat('=',56)
 ! database is identical at 1, 2, 3, 4 and 8 threads). Every place gets
 ! the same arithmetic either way, and what the loops reduce does not
 ! depend on the order: minimums (the smallest time step, the first
-! tensile, void or EOS-failed cell; ties go to the lowest cell number),
-! a maximum (the largest P) and an integer count (void cells). The
+! tensile, broken, void or EOS-failed cell, the most negative P; ties
+! go to the lowest cell number), a maximum (the largest P) and integer
+! counts (broken and void cells). The
 ! heartbeat sums are done serially, after the region, for the same
 ! reason.
 
@@ -764,6 +779,9 @@ done    = .false.
 stopped = .false.
 tens_k  = 0                               ! first tensile cell, 0 = none
 void_k  = 0                               ! first void cell, 0 = none
+spall_k = 0                               ! first cell to break, 0 = none
+nbroken = 0                               ! cells broken so far
+pmin_run = zero                           ! most tension held, whole run
 nvoid_max = 0                             ! most void cells at one time
 
 time_loop: do while ( .not. done )
@@ -783,16 +801,20 @@ time_loop: do while ( .not. done )
    dtcfl = huge(one)                      ! smallest dt_k this cycle
    kdt   = 0                              ! ... and the cell that has it
    pmax  = zero
+   pmin  = zero                           ! most tension this cycle
    ktens = huge(ktens)                    ! first cell with P < 0
    kvoid = huge(kvoid)                    ! first void cell
    nvoid = 0                              ! void cells this cycle
+   kspall = huge(kspall)                  ! first cell to break
+   nspall = 0                             ! cells that broke this cycle
    kbad  = huge(kbad)                     ! first cell the EOS rejects
 
    !$OMP PARALLEL IF( use_team ) DEFAULT(NONE) &
    !$OMP    SHARED( database, imax, dt, dth, BL, BQ, dtcfl, kdt, &
-   !$OMP            pmax, ktens, kbad, kvoid, nvoid ) &
+   !$OMP            pmax, pmin, ktens, kbad, kvoid, nvoid, kspall, &
+   !$OMP            nspall ) &
    !$OMP    PRIVATE( i, unew, xnew, rnew, enew, pnew, cnew, qnew, &
-   !$OMP             dtk, tens, isvoid, ierr, dtl, kl )
+   !$OMP             dtk, dnew, tens, spl, isvoid, ierr, dtl, kl )
 
    !*** Loop 1, faces (even i): u(n+1/2), then x(n+1). Steps a, b.
    !$OMP DO
@@ -816,29 +838,36 @@ time_loop: do while ( .not. done )
    end do step_cells
    !$OMP END DO
 
-   !*** Loop 3, cells: P (floored at 0), c, q and dt_k. Steps d, e.
-   !*** cell_state applies the floor; the loop records the first cell
-   !*** that was really in tension (see cell_state). Each thread keeps
+   !*** Loop 3, cells: P (with the spall rule), c, q, D and dt_k. Steps
+   !*** d, e. cell_state decides whether a cell holds its tension or
+   !*** breaks (see cell_state); the loop records the first tensile and
+   !*** the first broken cell, and counts breaks. Each thread keeps
    !*** its own smallest dt_k (dtl, cell kl); they are merged below.
    dtl = huge(one)
    kl  = 0
-   !$OMP DO REDUCTION(min: ktens, kbad, kvoid) REDUCTION(max: pmax) &
-   !$OMP    REDUCTION(+: nvoid)
+   !$OMP DO REDUCTION(min: ktens, kbad, kvoid, kspall, pmin) &
+   !$OMP    REDUCTION(max: pmax) REDUCTION(+: nvoid, nspall)
    step_states: do i = 3, imax-2, 2
       call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
-         dtk, tens, isvoid, ierr )
+         dtk, dnew, tens, spl, isvoid, ierr )
       if ( ierr /= eos_ok ) then          ! reported after the region
          kbad = min( kbad, kcell(i) )
          cycle step_states
       end if
-      if ( tens ) ktens = min( ktens, kcell(i) )   ! P was floored
+      if ( tens ) ktens = min( ktens, kcell(i) )   ! in tension
+      if ( spl ) then                     ! broke on this step
+         nspall = nspall + 1
+         kspall = min( kspall, kcell(i) )
+      end if
+      pmin = min( pmin, pnew )            ! most tension held
       if ( isvoid ) then                  ! see cell_state, VOID CELLS
          nvoid = nvoid + 1
          kvoid = min( kvoid, kcell(i) )
       end if
-      database(jp,i) = pnew
-      database(jc,i) = cnew
-      database(jq,i) = qnew
+      database(jp,i)   = pnew
+      database(jc,i)   = cnew
+      database(jq,i)   = qnew
+      database(jdam,i) = dnew             ! only this cell's own D
       pmax = max( pmax, pnew )
       if ( dtk < dtl ) then               ! strictly less: the lowest
          dtl = dtk                        ! cell wins a tie
@@ -862,7 +891,7 @@ time_loop: do while ( .not. done )
    if ( kbad < huge(kbad) ) then
       i = icell( kbad )
       call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
-         dtk, tens, isvoid, ierr )
+         dtk, dnew, tens, spl, isvoid, ierr )
       write( kpt6, '(1x,a,i0,3a,i0,a,es12.5,a)' ) 'bitwhiz: the EOS '// &
          'failed in cell ', kbad, ' (layer ', trim(layer(ilay(i))%name), &
          ') on cycle ', ncycle+1, ', t = ', time+dt, ' us:'
@@ -882,9 +911,27 @@ time_loop: do while ( .not. done )
       tens_x     = half*( database(jx,i-1) + database(jx,i+1) )
       write( khb, '(a,i0,a,f0.6,a,i0,3a,f0.6,a)' ) '# tensile : first '// &
          'P < 0 on cycle ', tens_cycle, ', t = ', tens_time, ' us, cell ', &
-         tens_k, ' (', trim(layer(ilay(i))%name), '), x = ', tens_x, &
-         ' mm; P set to 0'
+         tens_k, ' (', trim(layer(ilay(i))%name), '), x = ', tens_x, ' mm'
    end if
+
+   !*** Spall: the first cell to break, recorded once, and a count of
+   !*** every cell that has broken (each breaks only once).
+   if ( nspall > 0 ) then
+      if ( spall_k == 0 ) then
+         spall_k     = kspall
+         spall_cycle = ncycle + 1
+         spall_time  = time + dt
+         i           = icell( kspall )
+         spall_x     = half*( database(jx,i-1) + database(jx,i+1) )
+         write( khb, '(a,i0,a,f0.6,a,i0,3a,f0.6,a,f0.4,a)' ) '# spall   : '// &
+            'first cell breaks on cycle ', spall_cycle, ', t = ', &
+            spall_time, ' us, cell ', spall_k, ' (', &
+            trim(layer(ilay(i))%name), '), x = ', spall_x, &
+            ' mm, spall_strength ', database(jsp,i), ' GPa'
+      end if
+      nbroken = nbroken + nspall
+   end if
+   pmin_run = min( pmin_run, pmin )
 
    !*** The first void cell, recorded once, and the most at any time.
    if ( nvoid > 0 .and. void_k == 0 ) then
@@ -949,10 +996,18 @@ else
 end if
 write( kpt6, 211 ) 'x-momentum change', xmom - xmom0
 if ( tens_k > 0 ) then
-   write( kpt6, 212 ) 'First tensile cell (P set to 0)', tens_k, &
+   write( kpt6, 212 ) 'First tensile cell', tens_k, &
       trim(layer(ilay(icell(tens_k)))%name), tens_time
+   write( kpt6, 211 ) 'Most tension held (GPa)', pmin_run
 else
    write( kpt6, 204 ) 'First tensile cell', 'none'
+end if
+if ( spall_k > 0 ) then
+   write( kpt6, 212 ) 'First cell to break (spall)', spall_k, &
+      trim(layer(ilay(icell(spall_k)))%name), spall_time
+   write( kpt6, 205 ) 'Cells broken by the end', nbroken
+else
+   write( kpt6, 204 ) 'First cell to break (spall)', 'none'
 end if
 if ( void_k > 0 ) then
    write( kpt6, 212 ) 'First void cell', void_k, &

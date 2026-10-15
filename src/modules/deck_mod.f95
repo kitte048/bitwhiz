@@ -24,6 +24,8 @@ module deck
 !                                     says so; maintainer notes added
 !    10/15/26    D. E. Kittell        Run block: omp_min_zones
 !                (with Claude)
+!    10/16/26    D. E. Kittell        Material block: spall_strength
+!                (with Claude)
 !
 !**********************************************************************!
 !
@@ -1037,8 +1039,18 @@ contains
          case ('g0'); m%G0 = x
          end select
       end associate
+   case ('spall_strength')
+      call get_real(ln, key, val, x, ok)
+      if (.not. ok) return
+      if (x < zero) then
+         call deck_error(ln, 'spall_strength is a magnitude in GPa: '// &
+            'give it as 0 or more (the code uses -spall_strength)')
+         return
+      end if
+      material(imat_now)%spall_strength = x
    case default
-      call unknown_key(ln, key, 'in a Material block', 'R0, C0, S1, S2, G0')
+      call unknown_key(ln, key, 'in a Material block', &
+         'R0, C0, S1, S2, G0, spall_strength')
    end select
    end subroutine key_material
 
@@ -1185,7 +1197,7 @@ contains
       b = 'the Output block'
    case ('method', 'bl', 'bq', 'cfl')
       b = 'the Solver block'
-   case ('r0', 'c0', 's1', 's2', 'g0')
+   case ('r0', 'c0', 's1', 's2', 'g0', 'spall_strength')
       b = 'a Material block'
    case ('origin', 'x_left')
       b = 'the Stack block'
@@ -1231,6 +1243,7 @@ contains
       layer(l)%S1 = material(im)%S1
       layer(l)%S2 = material(im)%S2
       layer(l)%G0 = material(im)%G0
+      layer(l)%spall_strength = material(im)%spall_strength
    end do
    if (nerr > 0) return
 
@@ -1579,6 +1592,8 @@ contains
          call kv(lu, 2, 'S1', fmt_real(m%S1))
          call kv(lu, 2, 'S2', fmt_real(m%S2))
          call kv(lu, 2, 'G0', fmt_real(m%G0))
+         call kv(lu, 2, 'spall_strength', fmt_real(m%spall_strength), &
+            'GPa; breaks below -this pressure')
          write(lu,'(a)') ' End Material'
       end associate
    end do

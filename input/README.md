@@ -140,8 +140,22 @@ Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
 | `S1` | - | required |
 | `S2` | - | 0.0 |
 | `G0` | - | required |
+| `spall_strength` | GPa | 0.01 |
 
 A material that no layer uses gets a warning, not an error.
+
+**Expansion and spall (bitwhiz's own rules).** U_S-u_p data exist only in
+compression. For expansion (V > V0) bitwhiz continues the Hugoniot form with a
+cubic in rho - R0, matched to it through the third derivative at V0, so
+pressure and sound speed stay smooth through the initial state; nothing to set.
+`spall_strength` is how much tension the material holds, as a positive number
+in GPa: a cell breaks when its pressure falls below `-spall_strength`, and from
+then on it can not hold tension again (its pressure is floored at 0), though
+it can still be compressed and shocked. Give the **dynamic** spall strength
+(e.g. from a PDV pullback), not the quasi-static ultimate tensile strength,
+which is several times smaller (aluminum: about 0.3 GPa UTS, 1-1.5 GPa spall).
+`spall_strength = 0` breaks a cell at the first sign of tension, the project's
+P >= 0 rule; the default, 0.01 GPa, is that rule with a little room.
 
 ### `Stack`
 | Key | Type | Default | Notes |

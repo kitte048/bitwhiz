@@ -14,7 +14,7 @@ module av
 !       call face_step ( database(:,i-1:i+1), dth, dt, u_new, x_new )
 !       call cell_step ( database(:,i-2:i+2), dt, rho_new, e_new )
 !       call cell_state( database(:,i-2:i+2), BL, BQ, p, c, q, dtk, &
-!                        tensile, void, ierr )
+!                        d, tensile, spalled, void, ierr )
 !
 !    and returns only the new values; the loop in maincode section 7
 !    writes them back (the WRITE-BACK RULE in shock_mod). A routine
@@ -33,6 +33,9 @@ module av
 !      ====       ==========          =====================
 !    10/15/26    D. E. Kittell        Original code
 !                (with Claude)
+!    10/16/26    D. E. Kittell        Spall: intact cells hold tension
+!                (with Claude)        to -spall_strength, then break
+!                                     for good (damage slot D)
 !
 !**********************************************************************!
 !
@@ -60,7 +63,7 @@ module av
 !**********************************************************************!
 use bits,  only: dp, int32, zero, half, one
 use shock, only: nvar, jx, ju, ju_old, jmf, jm, jrho, je, &
-   jp, jq, jrho_old, jr0, jc0, js1, js2, jg0
+   jp, jq, jrho_old, jr0, jc0, js1, js2, jg0, jdam, jsp
 use eos,   only: mg_pressure, mg_soundspeed, eos_ok, eos_bad_soundspeed
 implicit none
 private
@@ -143,61 +146,69 @@ contains
 
    !******************************************************************!
    ! The new state of one cell, after cell_step, in the order of the  !
-   ! equation sheet (One Cycle, d and e):                             !
+   ! equation sheet (One Cycle, d and e), with bitwhiz's spall rule:  !
    !                                                                  !
-   !   1. P(n+1) from the EOS at rho(n+1), e(n+1)                     !
-   !   2. the P >= 0 floor: a cell in tension gets P = 0, and tensile !
-   !      is set so the loop can record the first one                 !
-   !   3. c(n+1) from the EOS at the FLOORED pressure (or a void      !
-   !      cell, below)                                                !
+   !   1. P(n+1) from the EOS at rho(n+1), e(n+1). In expansion this  !
+   !      may be negative: an intact cell holds tension.              !
+   !   2. SPALL. Each cell is intact (D = 0) or broken (D = 1):       !
+   !        intact, P >= -spall_strength : keep P, tension and all    !
+   !        intact, P <  -spall_strength : it BREAKS now (spalled),   !
+   !                                       D = 1 and P = 0            !
+   !        broken                       : P = max(P, 0), forever;    !
+   !                                       it can be squeezed and     !
+   !                                       shocked, never pulled      !
+   !      spall_strength = 0 gives the project's P >= 0 rule.         !
+   !   3. c(n+1) from the EOS at the pressure kept (or a void, below) !
    !   4. q(n+1), only while the cell is being squeezed:              !
    !         du = u(k-1/2) - u(k+1/2)   (n+1/2; > 0 = compressing)    !
    !         q  = BL*rho*c*|du| + BQ*rho*du**2   if du > 0 and rho up !
    !   5. the cell's CFL time step, dt_k                              !
    !                                                                  !
-   ! Why "tensile" needs a threshold. A cell that only translates can !
-   ! come out a hair wider than it started, in the last digit, and    !
-   ! the EOS then gives P of order -1e-13 GPa. Every negative P is    !
-   ! floored, but only P below -1e-9 of the bulk modulus R0*C0**2     !
-   ! (about -2e-7 GPa for Ta) counts as tension. Round-off measured   !
-   ! on the class deck: -3e-12 GPa at worst, 5 orders of magnitude    !
-   ! below that line; real tension there is -0.1 GPa and beyond.      !
+   ! A round-off floor under the spall strength. A cell that only     !
+   ! translates can come out a hair wider than it started, in the     !
+   ! last digit, and the EOS then gives P of order -1e-13 GPa. So a   !
+   ! cell breaks, or counts as "tensile" for the first-tension flag,  !
+   ! only below -1e-9 of its bulk modulus R0*C0**2 (about -2e-7 GPa   !
+   ! for Ta), even with spall_strength = 0. Round-off measured on the !
+   ! class deck: -3e-12 GPa at worst, 5 orders of magnitude below.    !
    !                                                                  !
-   ! VOID CELLS. With the floor (zero tensile strength), the last     !
-   ! cell at a free surface can come loose after the release wave     !
-   ! (the AV overshoots the free face by ~2%), and nothing pulls it   !
-   ! back: it stretches without limit. Past about 2.5 times its size  !
-   ! MatX and PMMA have no real sound speed even at P = 0 (c**2 =     !
-   ! -V**2*phi' < 0 below rho/R0 = 0.40 and 0.39). Such a cell is     !
-   ! treated as VOID: P = q = c = 0, and its time step comes from its !
-   ! speed alone, dx/|ubar|. It carries its mass and momentum like    !
-   ! any other cell, so totals are unchanged, and if it is ever       !
-   ! squeezed back the EOS takes over again. void = .true. reports    !
-   ! it. (Ta and Al keep c**2 > 0 at P = 0 to below 5% of R0.)        !
+   ! VOID CELLS. A broken cell that keeps stretching (e.g. the last   !
+   ! cell at a free surface after the release) has P = 0. For the     !
+   ! class materials the expansion cubic keeps c**2 > 0 there at any  !
+   ! size, but unusual materials can reach a point where c -> 0. Such !
+   ! a cell is treated as VOID: P = q = c = 0, broken, and its time   !
+   ! step comes from its speed alone, dx/|ubar|. It keeps its mass    !
+   ! and momentum, and the EOS takes over again if it is squeezed.    !
    !                                                                  !
    ! If the EOS fails in any other way, ierr says why and the other   !
    ! results are not to be used (signaling NaN); the caller stops.    !
    !******************************************************************!
-   pure subroutine cell_state( c, BL, BQ, p, cs, q, dtk, tensile, void, &
-      ierr )
+   pure subroutine cell_state( c, BL, BQ, p, cs, q, dtk, dnew, tensile, &
+      spalled, void, ierr )
    implicit none
    real(kind=dp), intent(in)  :: c(nvar,-2:2)   ! cell,face,CELL,face,cell
    real(kind=dp), intent(in)  :: BL, BQ         ! viscosity coefficients
-   real(kind=dp), intent(out) :: p              ! GPa, >= 0 (floored)
+   real(kind=dp), intent(out) :: p              ! GPa, >= -spall_strength
    real(kind=dp), intent(out) :: cs             ! km/s, sound speed
    real(kind=dp), intent(out) :: q              ! GPa, artificial viscosity
    real(kind=dp), intent(out) :: dtk            ! us, this cell's CFL limit
-   logical, intent(out)       :: tensile        ! P was below -ptol
+   real(kind=dp), intent(out) :: dnew           ! damage D after this step
+   logical, intent(out)       :: tensile        ! P below the round-off floor
+   logical, intent(out)       :: spalled        ! broke on THIS step
    logical, intent(out)       :: void           ! treated as void (above)
    integer(kind=int32), intent(out) :: ierr     ! from the EOS
-   real(kind=dp), parameter :: ftens = 1.0e-9_dp ! tension threshold / K0
-   real(kind=dp) :: rho, du, ubar
+   real(kind=dp), parameter :: ftens = 1.0e-9_dp ! round-off floor / K0
+   real(kind=dp) :: rho, du, ubar, pfail
+   logical :: broken
 
    tensile = .false.
+   spalled = .false.
    void    = .false.
-   rho = c(jrho,0)
+   rho     = c(jrho,0)
+   broken  = ( c(jdam,0) > half )
+   dnew    = c(jdam,0)
 
-   !*** 1, 2. Pressure, then the floor.
+   !*** 1. Pressure.
    call mg_pressure( rho, c(je,0), c(jr0,0), c(jc0,0), c(js1,0), &
       c(js2,0), c(jg0,0), p, ierr )
    if ( ierr /= eos_ok ) then
@@ -206,18 +217,28 @@ contains
       dtk = p
       return
    end if
-   if ( p < zero ) then
-      tensile = ( p < -ftens*c(jr0,0)*c(jc0,0)**2 )
-      p = zero
-   end if
 
-   !*** 3. Sound speed at the floored pressure.
+   !*** 2. Spall: break an intact cell pulled past its strength, and
+   !***    floor the pressure of any broken cell.
+   pfail   = max( c(jsp,0), ftens*c(jr0,0)*c(jc0,0)**2 )
+   tensile = ( p < -ftens*c(jr0,0)*c(jc0,0)**2 )
+   if ( .not. broken .and. p < -pfail ) then
+      broken  = .true.
+      spalled = .true.
+      dnew    = one
+   end if
+   if ( broken ) p = max( p, zero )
+
+   !*** 3. Sound speed at the pressure kept.
    call mg_soundspeed( rho, p, c(jr0,0), c(jc0,0), c(js1,0), c(js2,0), &
       c(jg0,0), cs, ierr )
    if ( ierr == eos_bad_soundspeed .and. .not. ( p > zero ) .and. &
-        rho < c(jr0,0) ) then                   ! stretched, P floored
+        rho < c(jr0,0) ) then                   ! stretched past c = 0
       void = .true.
+      if ( .not. broken ) spalled = .true.      ! it broke by stretching
+      dnew = one
       ierr = eos_ok
+      p    = zero
       cs   = zero
       q    = zero
       ubar = abs( half*( c(ju,-1) + c(ju,1) ) )

@@ -13,6 +13,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Mesh setup at t = 0, with a setup audit | done (maincode sections 5-6) |
 | Equation of state (Mie-Gruneisen), with unit test | done (`src/modules/eos_mod.f95`) |
 | Artificial viscosity time loop, OpenMP (bit-for-bit with serial) | done (`src/modules/av_mod.f95`, maincode section 7) |
+| Expansion EOS (cubic, smooth through V0) and spall (`spall_strength`) | done (`eos_mod`, `av_mod`; see `input/README.md`) |
 | Tracer and snapshot output | next |
 | Comparison with reference data | data in `tests/verification/` |
 
@@ -44,8 +45,8 @@ materials, geometry, output) is in the deck; see `input/README.md`. A run
 writes `<title>.heartbeat` in the current folder, one line per cycle (time
 step and the cell that set it, largest pressure, mass and energy errors, total
 momentum); watch it with `tail -f`. The heartbeat also records the first cell
-to go tensile (its pressure is floored at 0) and the first void cell (a cell
-stretched past where its EOS has a sound speed at P = 0, treated as void).
+to go tensile, the first cell to break (spall: its pressure fell below
+`-spall_strength`, set per material), and the first void cell, if any.
 
 ## Test
 ```

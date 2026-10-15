@@ -27,6 +27,8 @@ module shock
 !                (with Claude)        not_finite() for the setup audit
 !    10/15/26    D. E. Kittell        omp_min_zones (deck: Run block)
 !                (with Claude)
+!    10/16/26    D. E. Kittell        Spall: damage slot D (jdam) and
+!                (with Claude)        each cell's spall_strength (jsp)
 !
 !**********************************************************************!
 !
@@ -144,21 +146,31 @@ integer(kind=int32), parameter :: jc0     = 15 ! C0, bulk sound speed
 integer(kind=int32), parameter :: js1     = 16 ! S1, Us-up slope
 integer(kind=int32), parameter :: js2     = 17 ! S2, Us-up curvature
 integer(kind=int32), parameter :: jg0     = 18 ! G0, Gruneisen gamma
+integer(kind=int32), parameter :: jsp     = 20 ! spall_strength, GPa (> 0)
+
+!*** DAMAGE slot (odd i). D = 0: intact, the cell holds tension down to
+!*** -spall_strength. D = 1: broken (spalled, or stretched to void); its
+!*** pressure is floored at 0 forever, but it can still be compressed
+!*** and shocked (rubble). Real, not logical, so a gradual damage model
+!*** can use values in between later. Written only by the cell's own
+!*** state update (av_mod, cell_state), which keeps the write-back rule.
+integer(kind=int32), parameter :: jdam    = 19 ! D, damage, 0 or 1
 
 !*** Total number of variables (rows of the database). If you add a
 !*** slot above, give it the next number, bump nvar, add its name to
 !*** dbname below, and add it to face_slots or cell_slots. The compiler
 !*** checks that dbname has nvar items; the setup audit in maincode
 !*** checks that the two lists add up to nvar.
-integer(kind=int32), parameter :: nvar    = 18
+integer(kind=int32), parameter :: nvar    = 20
 
 !*** Which slots a face fills, and which a real cell fills. The setup
 !*** audit (maincode section 6) uses these to check that every slot a
 !*** place should have was actually set.
 integer(kind=int32), parameter, dimension(5)  :: face_slots = (/ &
    jx, ju, jx_old, ju_old, jmf /)
-integer(kind=int32), parameter, dimension(13) :: cell_slots = (/ &
-   jm, jrho, je, jp, jq, jc, jrho_old, je_old, jr0, jc0, js1, js2, jg0 /)
+integer(kind=int32), parameter, dimension(15) :: cell_slots = (/ &
+   jm, jrho, je, jp, jq, jc, jrho_old, je_old, jr0, jc0, js1, js2, jg0, &
+   jdam, jsp /)
 
 !*** Short names for each slot, in slot order. Used for output file
 !*** headers, plot labels and the XDMF sidecar.
@@ -166,7 +178,7 @@ character(len=8), parameter, dimension(nvar) :: dbname = (/ &
    'x       ', 'u       ', 'x_old   ', 'u_old   ', 'mf      ', &
    'm       ', 'rho     ', 'e       ', 'p       ', 'q       ', &
    'c       ', 'rho_old ', 'e_old   ', 'R0      ', 'C0      ', &
-   'S1      ', 'S2      ', 'G0      ' /)
+   'S1      ', 'S2      ', 'G0      ', 'D       ', 'spall   ' /)
 
 !**********************************************************************!
 ! Data dictionary: stencil half-width for a chunk.
@@ -333,6 +345,9 @@ type :: material_t
    real(kind=dp)       :: S1     = unset  ! -                 REQUIRED
    real(kind=dp)       :: S2     = zero   ! -                 optional
    real(kind=dp)       :: G0     = unset  ! -                 REQUIRED
+   real(kind=dp)       :: spall_strength = 0.01_dp ! GPa      optional
+                                          ! tension it holds before
+                                          ! it breaks (a magnitude)
    integer(kind=int32) :: nused  = 0      ! layers that use it
    integer(kind=int32) :: line   = 0      ! deck line of its Begin
 end type material_t
@@ -362,6 +377,7 @@ type :: layer_t
    real(kind=dp)       :: S1         = unset  ! -
    real(kind=dp)       :: S2         = zero   ! -
    real(kind=dp)       :: G0         = unset  ! -
+   real(kind=dp)       :: spall_strength = 0.01_dp ! GPa
    ! Filled in once the whole deck is read:
    real(kind=dp)       :: xleft      = zero   ! mm, left face position
    integer(kind=int32) :: kfirst     = 0      ! first cell k of layer

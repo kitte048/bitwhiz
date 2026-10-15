@@ -30,6 +30,9 @@ module eos
 !                (with Claude)
 !    10/15/26    D. E. Kittell        mg_pressure and mg_soundspeed, so
 !                (with Claude)        c can follow the P >= 0 floor
+!    10/16/26    D. E. Kittell        Expansion branch: a cubic in
+!                (with Claude)        rho - R0 that continues the
+!                                     Hugoniot form through 3rd order
 !
 !**********************************************************************!
 !
@@ -72,6 +75,37 @@ module eos
 !  which is the sheet's c = (1/rho)*sqrt( R0*G0*(P + de_H/dV) - dP_H/dV )
 !  rearranged.
 !
+!  EXPANSION, V > V0 (eta < 0). U_S-u_p data exist only in compression,
+!  so for expansion bitwhiz uses its own rule (D. E. Kittell's cubic,
+!  10/16/26; not from the literature): phi is a cubic in the density
+!  change x = rho - R0 = 1/V - 1/V0 (negative in expansion),
+!
+!     phi  = a1*x + a2*x**2/2 + a3*x**3/6
+!
+!  with the coefficients chosen so that phi and its first three
+!  derivatives match the compression form at V0. Then P, c, and the
+!  first two derivatives of c are all continuous at the initial state:
+!
+!     a1 = C0**2                                     (c continuous)
+!     a2 = (C0**2/R0)*( 4*S1 - 2 - G0 )              (dc continuous)
+!     a3 = (6*C0**2/R0**2)*( 3*S1**2 - 4*S1 - G0*S1 + G0 + 2*S2 + 1 )
+!
+!  (4*S1 - 1, inside a2, is the K0' of a linear Us-up fit.) This is the
+!  Taylor series of the compression form, carried into expansion: it
+!  agrees with simply evaluating the Hugoniot form at eta < 0 to 3-4
+!  digits out to V = 1.1*V0, but it is a polynomial, so it can be
+!  evaluated at ANY expansion (no square root, no division), for any
+!  material that is valid in compression. Its slope, in V:
+!
+!     phi' = dphi/dV = -rho**2 * ( a1 + a2*x + a3*x**2/2 )
+!
+!  and P and c**2 then follow from the same two lines as compression.
+!  For the four class materials c**2 > 0 at P = 0 all the way to
+!  rho -> 0. (Unusual parameters can give a cubic whose slope reaches
+!  zero, a point where c -> 0; see eos_bad_soundspeed below.)
+!  How much tension a material can actually hold is NOT the EOS's
+!  business: that is the spall strength, applied in the time loop.
+!
 !***NOTE: dP_H/dV (the slope ALONG the Hugoniot) is not (dP/dV)_e (the
 ! slope of the EOS surface at fixed e); they differ by R0*G0*de_H/dV.
 ! Using one for the other gives a sound speed 5% high at eta = 0.1 and
@@ -95,33 +129,36 @@ module eos
 !
 !   eos_bad_density     rho <= 0 (a tangled mesh: a cell turned inside
 !                       out). Checked first, before dividing by rho.
-!   eos_too_compressed  past the Hugoniot's reach. For S2 = 0 (Ta, Al,
-!                       PMMA) Us blows up as eta -> 1/S1 (0.833, 0.746,
-!                       0.649) and D -> 0. We stop short of that, when
-!                       Us would pass 100*C0 (D < 0.02); the class
-!                       problem never gets past eta = 0.28. For S2 > 0
-!                       the square root can go negative first. For
-!                       S2 < 0 (MatX) neither happens at any eta.
-!   eos_bad_soundspeed  c**2 <= 0. At the EOS's own pressure (e = 0)
-!                       this needs deep tension, eta below -0.32 (Al)
-!                       to -0.42 (PMMA), at -16 to -45 GPa. At the
-!                       FLOORED pressure P = 0, which is what the time
-!                       loop asks for, Ta and Al keep c**2 > 0 down to
-!                       5% of R0, but MatX and PMMA lose it near 40%
-!                       of R0 (a cell stretched to 2.5 times its size).
+!   eos_too_compressed  past the Hugoniot's reach (compression only).
+!                       For S2 = 0 (Ta, Al, PMMA) Us blows up as
+!                       eta -> 1/S1 (0.833, 0.746, 0.649) and D -> 0.
+!                       We stop short of that, when Us would pass
+!                       100*C0 (D < 0.02); the class problem never gets
+!                       past eta = 0.28. For S2 > 0 the square root can
+!                       go negative first. For S2 < 0 (MatX) neither
+!                       happens at any eta.
+!   eos_bad_soundspeed  c**2 <= 0. Compressed or at P >= 0 this does
+!                       not happen for the class materials. It can in
+!                       expansion for unusual parameters, where the
+!                       cubic's slope reaches zero (in a sweep of 2754
+!                       plausible materials, 11% have such a point,
+!                       the earliest at rho = 0.63*R0), or in deep
+!                       tension at a negative P. The time loop treats
+!                       a cell there as broken (void).
 !
-!  The P >= 0 floor and the "first cell to go tensile" flag are NOT
-!  here (equation sheet, Step 2): the EOS reports a negative pressure
-!  honestly, and the time loop decides what to do with it. For that
-!  the EOS comes in three calls:
+!  Spall (the tension a material can hold, then failure) and the
+!  "first cell to go tensile" flag are NOT here: the EOS reports a
+!  negative pressure honestly, and the time loop decides what to do
+!  with it. For that the EOS comes in three calls:
 !
 !     mg_eos        ( rho, e, ..., p, c, ierr )   both, c at that p
 !     mg_pressure   ( rho, e, ..., p, ierr )      P alone
 !     mg_soundspeed ( rho, p, ..., c, ierr )      c at a GIVEN p
 !
-!  so the loop can do what the sheet says: P, then the floor, then c
-!  at the floored P. All three share one private routine (mg_ref) for
-!  the volume-only part, so they agree to the last bit.
+!  so the loop can do what it needs: P, then (for a broken cell) the
+!  P >= 0 floor, then c at the pressure it kept. All three share one
+!  private routine (mg_ref) for the volume-only part, so they agree to
+!  the last bit.
 !
 !**********************************************************************!
 use bits, only: dp, int32, zero, half, one, two
@@ -243,6 +280,8 @@ contains
    real(kind=dp) :: ph, eh               ! Hugoniot P_H (GPa), e_H
    real(kind=dp) :: dph_dv, deh_dv       ! Hugoniot slopes in V
    real(kind=dp) :: rg                   ! R0*G0 = (dP/de)_V
+   real(kind=dp) :: x                    ! expansion: rho - R0, g/cm^3
+   real(kind=dp) :: a1, a2, a3           ! expansion: the cubic's coef.
 
    ierr = eos_ok
    v    = zero
@@ -259,6 +298,20 @@ contains
    eta = one - R0*v
    rg  = R0*G0
 
+   !*** Expansion: the cubic in x = rho - R0 (see the header). No
+   !*** square root and no division, so it is good at any expansion.
+   if ( eta < zero ) then
+      x     = rho - R0
+      a1    = C0*C0
+      a2    = (C0*C0/R0)*( 4.0_dp*S1 - two - G0 )
+      a3    = (6.0_dp*C0*C0/(R0*R0))*( 3.0_dp*S1*S1 - 4.0_dp*S1 - G0*S1 &
+              + G0 + two*S2 + one )
+      phi   = x*( a1 + x*( half*a2 + x*a3/6.0_dp ) )
+      phip  = -rho*rho*( a1 + x*( a2 + half*a3*x ) )
+      return
+   end if
+
+   !*** Compression (and the reference state itself, eta = 0).
    !*** The Hugoniot shock speed, guarded BEFORE any division by xi1
    !*** or D (at the limit both go to zero together).
    a    = one - S1*eta
@@ -333,7 +386,8 @@ contains
    case ( eos_too_compressed )
       msg = 'compressed past the reach of the Hugoniot (Us > 100*C0)'
    case ( eos_bad_soundspeed )
-      msg = 'sound speed squared is zero or negative (deep tension?)'
+      msg = 'sound speed squared is zero or negative (stretched past '// &
+            'where the material holds together)'
    case default
       msg = 'unknown EOS status'
    end select
