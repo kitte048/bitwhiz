@@ -184,6 +184,13 @@ rounded and the log warns (a silently uneven mesh is worse than a warning).
 The width is always kept exact, so interfaces stay where the deck puts them;
 rounding only changes that layer's dx = width / zones slightly.
 
+**Keep the origin near the problem.** Positions are stored as plain numbers, so
+round-off in x grows with the size of x: a cell's width is the difference of
+its two face positions. With the origin in or near the stack (the usual
+`origin = A:B`), round-off is around 1e-13 mm. Moving the whole problem to
+x = 1000 mm costs about 3 digits (1e-8 km/s in velocities), and to 100 m about
+5 (1e-6 km/s); still small, but for nothing.
+
 ---
 
 ## 7. Locations

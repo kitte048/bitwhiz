@@ -27,6 +27,8 @@ program test_eos
 !    10/16/26    D. E. Kittell        Expansion cubic: new reference
 !                (with Claude)        states, broken cells at P = 0,
 !                                     smoothness through V0
+!    10/16/26    D. E. Kittell        Reference state for densities
+!                (with Claude)        whose R0*(1/R0) is not exactly 1
 !
 !**********************************************************************!
 use bits, only: dp, int32, zero, one, two
@@ -333,6 +335,24 @@ do m = 1, nmat
       abs(c - mat(2,m)) <= 4.0_dp*epsilon(one)*mat(2,m), &
       'reference state, '//trim(mname(m))//': P = 0, c = C0' )
 end do
+
+!*** The same for densities whose R0*(1/R0) is NOT exactly 1 in
+!*** floating point (Mg 1.74, Be 1.85, water 0.998, Sn 7.287): P must
+!*** still be exactly 0 at rho = R0 (eta is formed as (rho - R0)/rho).
+tricky_r0: block
+   real(kind=dp), parameter, dimension(4) :: r0x = &
+      (/ 1.74_dp, 1.85_dp, 0.998_dp, 7.287_dp /)
+   logical :: allzero
+   allzero = .true.
+   do i = 1, size(r0x)
+      call mg_eos( r0x(i), zero, r0x(i), 3.0_dp, 1.3_dp, zero, 1.5_dp, &
+         p, c, ierr )
+      if ( ierr /= eos_ok .or. abs(p) > zero .or. &
+           abs(c - 3.0_dp) > 4.0_dp*epsilon(one)*3.0_dp ) allzero = .false.
+   end do
+   call check( allzero, 'reference state, R0 with R0*(1/R0) /= 1: '// &
+      'P = 0 exactly' )
+end block tricky_r0
 
 !=====================================================================!
 ! 2. The reference states: compressed, on and off the Hugoniot, and

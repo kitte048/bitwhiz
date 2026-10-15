@@ -1,0 +1,36 @@
+# expect: ok
+# Densities for which R0*(1/R0) is not exactly 1 in floating point
+# (1.74, magnesium; 0.998, water). Before 10/16/26 the EOS formed
+# eta = 1 - R0*(1/rho), got 1e-16 at rest instead of 0, and the setup
+# audit stopped the run ("P = 0, c = C0 at the reference state").
+# Values are illustrative, not fitted to any real material.
+Begin bitwhiz
+ deck_version = 1
+ Begin Run
+  t_end = 0.5
+ End Run
+ Begin Material MgLike
+  R0 = 1.74
+  C0 = 4.50
+  S1 = 1.25
+  G0 = 1.50
+ End Material
+ Begin Material WaterLike
+  R0 = 0.998
+  C0 = 1.65
+  S1 = 1.92
+  G0 = 0.90
+ End Material
+ Begin Stack
+  resolution = 20
+  Begin Layer
+   material = MgLike
+   width = 2.0
+   xvel = 1.0
+  End Layer
+  Begin Layer
+   material = WaterLike
+   width = 3.0
+  End Layer
+ End Stack
+End bitwhiz

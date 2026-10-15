@@ -40,6 +40,9 @@ program bitwhiz
 !    10/16/26    D. E. Kittell        Spall: cells hold tension, break
 !                (with Claude)        at spall_strength; first break,
 !                                     count and most tension reported
+!    10/16/26    D. E. Kittell        Every cycle, check that x, u, rho,
+!                (with Claude)        e, P, q, c are still numbers (for
+!                                     machines and builds without traps)
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -1131,6 +1134,18 @@ contains
    !                faces push on void, P = q = 0)       !
    ! Summed serially, so the line is the same with or    !
    ! without threads. Flushed, so tail -f sees it now.   !
+   !                                                     !
+   ! It also checks, every cycle, that the state is      !
+   ! still made of numbers: x, u on every face and rho,  !
+   ! e, P, q, c in every cell. In a debug build a NaN    !
+   ! stops the run on the spot (-ffpe-trap), but not     !
+   ! every machine can trap floating-point errors, and   !
+   ! an optimized build has no traps at all. The check   !
+   ! is one running sum of all those values: a NaN or an !
+   ! infinity anywhere makes the sum one too, so a       !
+   ! finite sum means every value is finite. That costs  !
+   ! one add per value; only when the sum is bad does    !
+   ! find_bad search for the place and stop the run.     !
    !*****************************************************!
    subroutine heartbeat_line( dtu, kdtu, pm )
    implicit none
@@ -1139,17 +1154,28 @@ contains
    real(kind=dp), intent(in) :: pm        ! GPa, largest pressure
    integer(kind=int32) :: kk, ii
    integer(kind=int64) :: tk
-   real(kind=dp) :: ub, ms, et, xm
-   ms = zero
-   et = zero
-   xm = zero
+   real(kind=dp) :: ub, ms, et, xm, chk
+
+   !*** One pass: the conservation sums, and the running sum chk of
+   !*** every value that must stay a number (each face's x and u, each
+   !*** cell's rho, e, P, q, c). Checked once, after the loop.
+   ms  = zero
+   et  = zero
+   xm  = zero
+   chk = zero
    do kk = 1, kmax
-      ii = icell( kk )
-      ub = half*( database(ju,ii-1) + database(ju,ii+1) )
-      ms = ms + database(jm,ii)
-      xm = xm + database(jm,ii)*ub
-      et = et + database(jm,ii)*( database(je,ii) + half*ub*ub )
+      ii  = icell( kk )
+      ub  = half*( database(ju,ii-1) + database(ju,ii+1) )
+      ms  = ms + database(jm,ii)
+      xm  = xm + database(jm,ii)*ub
+      et  = et + database(jm,ii)*( database(je,ii) + half*ub*ub )
+      chk = chk + database(jx,ii-1) + database(ju,ii-1) + database(jrho,ii) &
+                + database(je,ii) + database(jp,ii) + database(jq,ii) &
+                + database(jc,ii)
    end do
+   ii  = iface( kmax )                    ! the last face
+   chk = chk + database(jx,ii) + database(ju,ii)
+   if ( not_finite( chk ) ) call find_bad()
    merr = ( ms - mass0 )/mass0
    if ( etot0 > zero ) then
       eerr = ( et - etot0 )/etot0
@@ -1163,6 +1189,58 @@ contains
       real(tk-tick0,dp)/real(rate,dp)
    flush( khb )
    end subroutine heartbeat_line
+
+   !*****************************************************!
+   ! The state has stopped being numbers somewhere: find !
+   ! the first face or cell (and which value), say so,   !
+   ! close the heartbeat with the reason, and stop.      !
+   !*****************************************************!
+   subroutine find_bad()
+   implicit none
+   integer(kind=int32), parameter, dimension(2) :: fchk = (/ jx, ju /)
+   integer(kind=int32), parameter, dimension(5) :: cchk = &
+      (/ jrho, je, jp, jq, jc /)
+   integer(kind=int32) :: ii, jj, jbad, ibad
+   ibad = 0
+   jbad = 0
+   search: do ii = 2, imax-1
+      if ( mod(ii,2) == 0 ) then             ! a face
+         do jj = 1, size(fchk)
+            if ( not_finite( database(fchk(jj),ii) ) ) then
+               ibad = ii
+               jbad = fchk(jj)
+               exit search
+            end if
+         end do
+      else                                   ! a cell
+         do jj = 1, size(cchk)
+            if ( not_finite( database(cchk(jj),ii) ) ) then
+               ibad = ii
+               jbad = cchk(jj)
+               exit search
+            end if
+         end do
+      end if
+   end do search
+   if ( ibad == 0 ) then                     ! the sum itself overflowed
+      write( kpt6, '(1x,a,i0)' ) 'bitwhiz: the state grew too large '// &
+         'to add up on cycle ', ncycle
+      call close_heartbeat( 'state too large' )
+   else if ( mod(ibad,2) == 0 ) then
+      write( kpt6, '(1x,a,i0,a,i0,a,es12.5,a)' ) 'bitwhiz: '// &
+         trim(dbname(jbad))//' on face ', kcell(ibad), '+1/2 is not a '// &
+         'finite number on cycle ', ncycle, ', t = ', time, ' us'
+      call close_heartbeat( trim(dbname(jbad))//' not a finite number' )
+   else
+      write( kpt6, '(1x,a,i0,3a,i0,a,es12.5,a)' ) 'bitwhiz: '// &
+         trim(dbname(jbad))//' in cell ', kcell(ibad), ' (', &
+         trim(layer(ilay(ibad))%name), ') is not a finite number on cycle ', &
+         ncycle, ', t = ', time, ' us'
+      call close_heartbeat( trim(dbname(jbad))//' not a finite number' )
+   end if
+   stop 1, quiet=.true.
+   end subroutine find_bad
+
 
    !*****************************************************!
    ! One failed setup check (section 6): say what, and   !

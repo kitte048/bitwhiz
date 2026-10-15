@@ -36,6 +36,8 @@ module av
 !    10/16/26    D. E. Kittell        Spall: intact cells hold tension
 !                (with Claude)        to -spall_strength, then break
 !                                     for good (damage slot D)
+!    10/16/26    D. E. Kittell        Kinetic energy term factored,
+!                (with Claude)        (a-b)(a+b) (round-off review)
 !
 !**********************************************************************!
 !
@@ -125,6 +127,7 @@ contains
    real(kind=dp) :: mk, ml, mr                  ! cell masses k, k-1, k+1
    real(kind=dp) :: sigl, sigr                  ! face stresses, GPa
    real(kind=dp) :: work, dke                   ! the two brackets
+   real(kind=dp) :: ua, ub                      ! face-velocity sums
 
    !*** Density from the new face positions.
    rho_new = c(jm,0)/( c(jx,1) - c(jx,-1) )
@@ -139,8 +142,13 @@ contains
 
    !*** Work by the faces, and the change in kinetic energy.
    work = (dt/mk)*( sigl*c(ju,-1) - sigr*c(ju,1) )
-   dke  = 0.125_dp*( ( c(ju_old,1) + c(ju_old,-1) )**2 - &
-                     ( c(ju,    1) + c(ju,    -1) )**2 )
+   !*** The kinetic energy term, 1/8*(a**2 - b**2), written as
+   !*** 1/8*(a - b)*(a + b): the same number, but it never squares two
+   !*** nearly equal sums and then subtracts them (round-off review,
+   !*** 10/16/26: measured 2x closer to a quad-precision run).
+   ua   = c(ju_old,1) + c(ju_old,-1)            ! 2*ubar at n-1/2
+   ub   = c(ju,    1) + c(ju,    -1)            ! 2*ubar at n+1/2
+   dke  = 0.125_dp*( ua - ub )*( ua + ub )
    e_new = c(je,0) + work + dke
    end subroutine cell_step
 

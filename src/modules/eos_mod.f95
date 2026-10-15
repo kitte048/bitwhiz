@@ -33,6 +33,9 @@ module eos
 !    10/16/26    D. E. Kittell        Expansion branch: a cubic in
 !                (with Claude)        rho - R0 that continues the
 !                                     Hugoniot form through 3rd order
+!    10/16/26    D. E. Kittell        eta = (rho - R0)/rho, exactly 0 at
+!                (with Claude)        rho = R0 for every R0 (round-off
+!                                     review)
 !
 !**********************************************************************!
 !
@@ -41,7 +44,7 @@ module eos
 !  Compression, and the Hugoniot shock speed (the root of
 !  Us = C0 + S1*up + (S2/C0)*up**2 with up = eta*Us, rationalized):
 !
-!     eta  = 1 - R0/rho                     (V = 1/rho, V0 = 1/R0)
+!     eta  = (rho - R0)/rho = 1 - V/V0      (V = 1/rho, V0 = 1/R0)
 !     a    = 1 - S1*eta
 !     xi1  = sqrt( a**2 - 4*S2*eta**2 )
 !     D    = a + xi1
@@ -295,7 +298,14 @@ contains
    end if
 
    v   = one/rho
-   eta = one - R0*v
+   eta = ( rho - R0 )/rho                ! = 1 - R0*V, but see below
+   !*** Why not eta = 1 - R0*v? Because R0*(1/R0) is NOT always exactly
+   !*** 1 in floating point: for 15% of densities (Mg 1.74, Be 1.85,
+   !*** water 0.998, Sn 7.287, ...) it is 0.9999999999999999, so a cell
+   !*** at rest would get eta = 1e-16 and P = 1e-14 GPa instead of 0.
+   !*** rho - R0 is exactly 0 when rho = R0, for any R0, and is computed
+   !*** exactly (no rounding at all) whenever rho is within a factor of
+   !*** 2 of R0, so this form is also the more accurate one near V0.
    rg  = R0*G0
 
    !*** Expansion: the cubic in x = rho - R0 (see the header). No

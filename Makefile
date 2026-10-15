@@ -7,6 +7,9 @@
 #Revision: 1.3  (10-13-26, with Claude: 'make test')
 #Revision: 1.4  (10-14-26, with Claude: eos module, EOS unit test)
 #Revision: 1.5  (10-15-26, with Claude: av module, the time loop)
+#Revision: 1.6  (10-16-26, with Claude: OpenMP tests in 'make test')
+#Revision: 1.7  (10-16-26, with Claude: -ffp-contract=off, same answer
+#                on x86 and arm64; see the NOTES at FCFLAGS)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -22,8 +25,24 @@ FCFLAGS = -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising \
 	-Waliasing -Wampersand -Wconversion -Wcharacter-truncation \
 	-Wline-truncation -fcheck=all -fbacktrace -g -O0 \
 	-ffpe-trap=invalid,zero,overflow -finit-real=snan \
-	-finit-integer=-999999 -fconvert=little-endian -fimplicit-none
+	-finit-integer=-999999 -fconvert=little-endian -fimplicit-none \
+	-ffp-contract=off
 OMPFLAGS = -fopenmp
+
+############################################################
+###  NOTES: -ffp-contract=off keeps the compiler from fusing
+###  a*b + c into one "fused multiply-add" instruction. On
+###  arm64 (Apple M, AWS Graviton, ...) gcc fuses by default;
+###  on plain x86-64 it can not. A fused result is rounded
+###  once instead of twice, so the two machines would differ
+###  in the last digits (measured: ~3e-11 km/s on the class
+###  problem). With fusing off, and with the solver using only
+###  + - * / and sqrt (all exactly rounded by IEEE 754), every
+###  machine should compute the SAME bits. Cost: a few percent
+###  on arm64, nothing on x86. Never add -ffast-math or -Ofast:
+###  they reorder sums, drop NaN checks and break both this and
+###  the bit-for-bit OpenMP tests.
+############################################################
 
 # Set up path to Fortran module files.
 ############################################################
@@ -99,10 +118,12 @@ src/modules/av_mod.o:    src/modules/eos_mod.o src/modules/shock_mod.o \
 ############################################################
 ###  NOTES: 'make test' builds bitwhiz and the unit tests if
 ###  needed, then runs the unit tests (one program each in
-###  tests/, exit status 0 = pass) and the deck reader tests
-###  (tests/run_deck_tests.sh). Every check must pass; make
-###  stops with an error at the first one that fails. Run it
-###  before every commit.
+###  tests/, exit status 0 = pass), the deck reader tests
+###  (tests/run_deck_tests.sh) and the OpenMP tests
+###  (tests/run_omp_tests.sh: 2, 3, 4 and 8 threads, as many
+###  as there are processors, must print exactly what 1 thread
+###  prints). Every check must pass; make stops with an error
+###  at the first one that fails. Run it before every commit.
 ###  A new unit test: add its program to UNIT_TESTS and a
 ###  line to the 'test' recipe; the pattern rule builds it.
 ############################################################
@@ -115,6 +136,7 @@ UNIT_TESTS = ./bin/test_eos
 test: $(EXECS) $(UNIT_TESTS)
 	./bin/test_eos
 	BIN=$(EXECS) ./tests/run_deck_tests.sh
+	BIN=$(EXECS) ./tests/run_omp_tests.sh
 
 ############################################################
 ###  NOTES: files a RUN leaves behind (not build products).
