@@ -114,6 +114,9 @@ logical :: spl                          ! a cell broke (spall) this step
 real(kind=dp) :: dnew                   ! a cell's damage D after the step
 real(kind=dp) :: pmin                   ! GPa, most tension this cycle
 real(kind=dp) :: pmin_run               ! GPa, most tension, whole run
+real(kind=dp) :: pbrk                   ! GPa, a cell's EOS P as it broke
+real(kind=dp) :: pbmin                  ! GPa, deepest of those this cycle
+real(kind=dp) :: pbreak_run             ! GPa, ... and over the whole run
 integer(kind=int32) :: kspall,nspall    ! first cell to break, count
 integer(kind=int32) :: spall_k          ! first cell to break, 0 = none
 integer(kind=int32) :: spall_cycle      ! ... its cycle
@@ -782,6 +785,7 @@ void_k  = 0                               ! first void cell, 0 = none
 spall_k = 0                               ! first cell to break, 0 = none
 nbroken = 0                               ! cells broken so far
 pmin_run = zero                           ! most tension held, whole run
+pbreak_run = zero                         ! deepest pull at a break, run
 nvoid_max = 0                             ! most void cells at one time
 
 time_loop: do while ( .not. done )
@@ -807,14 +811,15 @@ time_loop: do while ( .not. done )
    nvoid = 0                              ! void cells this cycle
    kspall = huge(kspall)                  ! first cell to break
    nspall = 0                             ! cells that broke this cycle
+   pbmin  = zero                          ! deepest pull at a break
    kbad  = huge(kbad)                     ! first cell the EOS rejects
 
    !$OMP PARALLEL IF( use_team ) DEFAULT(NONE) &
    !$OMP    SHARED( database, imax, dt, dth, BL, BQ, dtcfl, kdt, &
    !$OMP            pmax, pmin, ktens, kbad, kvoid, nvoid, kspall, &
-   !$OMP            nspall ) &
+   !$OMP            nspall, pbmin ) &
    !$OMP    PRIVATE( i, unew, xnew, rnew, enew, pnew, cnew, qnew, &
-   !$OMP             dtk, dnew, tens, spl, isvoid, ierr, dtl, kl )
+   !$OMP             dtk, dnew, tens, spl, pbrk, isvoid, ierr, dtl, kl )
 
    !*** Loop 1, faces (even i): u(n+1/2), then x(n+1). Steps a, b.
    !$OMP DO
@@ -845,11 +850,11 @@ time_loop: do while ( .not. done )
    !*** its own smallest dt_k (dtl, cell kl); they are merged below.
    dtl = huge(one)
    kl  = 0
-   !$OMP DO REDUCTION(min: ktens, kbad, kvoid, kspall, pmin) &
+   !$OMP DO REDUCTION(min: ktens, kbad, kvoid, kspall, pmin, pbmin) &
    !$OMP    REDUCTION(max: pmax) REDUCTION(+: nvoid, nspall)
    step_states: do i = 3, imax-2, 2
       call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
-         dtk, dnew, tens, spl, isvoid, ierr )
+         dtk, dnew, tens, spl, pbrk, isvoid, ierr )
       if ( ierr /= eos_ok ) then          ! reported after the region
          kbad = min( kbad, kcell(i) )
          cycle step_states
@@ -858,6 +863,7 @@ time_loop: do while ( .not. done )
       if ( spl ) then                     ! broke on this step
          nspall = nspall + 1
          kspall = min( kspall, kcell(i) )
+         pbmin  = min( pbmin, pbrk )      ! deepest pull at a break
       end if
       pmin = min( pmin, pnew )            ! most tension held
       if ( isvoid ) then                  ! see cell_state, VOID CELLS
@@ -891,7 +897,7 @@ time_loop: do while ( .not. done )
    if ( kbad < huge(kbad) ) then
       i = icell( kbad )
       call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
-         dtk, dnew, tens, spl, isvoid, ierr )
+         dtk, dnew, tens, spl, pbrk, isvoid, ierr )
       write( kpt6, '(1x,a,i0,3a,i0,a,es12.5,a)' ) 'bitwhiz: the EOS '// &
          'failed in cell ', kbad, ' (layer ', trim(layer(ilay(i))%name), &
          ') on cycle ', ncycle+1, ', t = ', time+dt, ' us:'
@@ -923,15 +929,17 @@ time_loop: do while ( .not. done )
          spall_time  = time + dt
          i           = icell( kspall )
          spall_x     = half*( database(jx,i-1) + database(jx,i+1) )
-         write( khb, '(a,i0,a,f0.6,a,i0,3a,f0.6,a,f0.4,a)' ) '# spall   : '// &
-            'first cell breaks on cycle ', spall_cycle, ', t = ', &
-            spall_time, ' us, cell ', spall_k, ' (', &
+         write( khb, '(a,i0,a,f0.6,a,i0,3a,f0.6,a,f0.4,a,f0.4,a)' ) &
+            '# spall   : first cell breaks on cycle ', spall_cycle, &
+            ', t = ', spall_time, ' us, cell ', spall_k, ' (', &
             trim(layer(ilay(i))%name), '), x = ', spall_x, &
-            ' mm, spall_strength ', database(jsp,i), ' GPa'
+            ' mm, spall_strength ', database(jsp,i), &
+            ' GPa; deepest pull at a break this cycle ', pbmin, ' GPa'
       end if
       nbroken = nbroken + nspall
    end if
-   pmin_run = min( pmin_run, pmin )
+   pmin_run   = min( pmin_run, pmin )
+   pbreak_run = min( pbreak_run, pbmin )
 
    !*** The first void cell, recorded once, and the most at any time.
    if ( nvoid > 0 .and. void_k == 0 ) then
@@ -998,7 +1006,7 @@ write( kpt6, 211 ) 'x-momentum change', xmom - xmom0
 if ( tens_k > 0 ) then
    write( kpt6, 212 ) 'First tensile cell', tens_k, &
       trim(layer(ilay(icell(tens_k)))%name), tens_time
-   write( kpt6, 211 ) 'Most tension held (GPa)', pmin_run
+   write( kpt6, 211 ) 'Most tension held, intact (GPa)', pmin_run
 else
    write( kpt6, 204 ) 'First tensile cell', 'none'
 end if
@@ -1006,6 +1014,7 @@ if ( spall_k > 0 ) then
    write( kpt6, 212 ) 'First cell to break (spall)', spall_k, &
       trim(layer(ilay(icell(spall_k)))%name), spall_time
    write( kpt6, 205 ) 'Cells broken by the end', nbroken
+   write( kpt6, 211 ) 'Deepest tension at a break (GPa)', pbreak_run
 else
    write( kpt6, 204 ) 'First cell to break (spall)', 'none'
 end if

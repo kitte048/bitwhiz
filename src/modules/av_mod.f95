@@ -14,7 +14,7 @@ module av
 !       call face_step ( database(:,i-1:i+1), dth, dt, u_new, x_new )
 !       call cell_step ( database(:,i-2:i+2), dt, rho_new, e_new )
 !       call cell_state( database(:,i-2:i+2), BL, BQ, p, c, q, dtk, &
-!                        d, tensile, spalled, void, ierr )
+!                        d, tensile, spalled, pbreak, void, ierr )
 !
 !    and returns only the new values; the loop in maincode section 7
 !    writes them back (the WRITE-BACK RULE in shock_mod). A routine
@@ -164,6 +164,11 @@ contains
    !         q  = BL*rho*c*|du| + BQ*rho*du**2   if du > 0 and rho up !
    !   5. the cell's CFL time step, dt_k                              !
    !                                                                  !
+   ! pbreak reports how hard a cell was pulled on the step it broke:  !
+   ! the EOS pressure then, before the floor. A cell can overshoot    !
+   ! its strength within one step (fast release waves), and the run  !
+   ! summary reports the deepest such value.                          !
+   !                                                                  !
    ! A round-off floor under the spall strength. A cell that only     !
    ! translates can come out a hair wider than it started, in the     !
    ! last digit, and the EOS then gives P of order -1e-13 GPa. So a   !
@@ -184,7 +189,7 @@ contains
    ! results are not to be used (signaling NaN); the caller stops.    !
    !******************************************************************!
    pure subroutine cell_state( c, BL, BQ, p, cs, q, dtk, dnew, tensile, &
-      spalled, void, ierr )
+      spalled, pbreak, void, ierr )
    implicit none
    real(kind=dp), intent(in)  :: c(nvar,-2:2)   ! cell,face,CELL,face,cell
    real(kind=dp), intent(in)  :: BL, BQ         ! viscosity coefficients
@@ -195,6 +200,9 @@ contains
    real(kind=dp), intent(out) :: dnew           ! damage D after this step
    logical, intent(out)       :: tensile        ! P below the round-off floor
    logical, intent(out)       :: spalled        ! broke on THIS step
+   real(kind=dp), intent(out) :: pbreak         ! GPa, the EOS pressure as
+                                                ! it broke (before the
+                                                ! floor), else zero
    logical, intent(out)       :: void           ! treated as void (above)
    integer(kind=int32), intent(out) :: ierr     ! from the EOS
    real(kind=dp), parameter :: ftens = 1.0e-9_dp ! round-off floor / K0
@@ -203,6 +211,7 @@ contains
 
    tensile = .false.
    spalled = .false.
+   pbreak  = zero
    void    = .false.
    rho     = c(jrho,0)
    broken  = ( c(jdam,0) > half )
@@ -225,6 +234,7 @@ contains
    if ( .not. broken .and. p < -pfail ) then
       broken  = .true.
       spalled = .true.
+      pbreak  = p                               ! how far past its strength
       dnew    = one
    end if
    if ( broken ) p = max( p, zero )

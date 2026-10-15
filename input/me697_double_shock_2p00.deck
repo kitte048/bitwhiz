@@ -49,6 +49,12 @@ Begin bitwhiz
   S1 = 1.20                     # -,    Us-up slope
   S2 = 0.0                      # -,    Us-up curvature (default 0)
   G0 = 1.60                     # -,    Gruneisen coefficient
+  spall_strength = 5.0          # GPa, dynamic. Tantalum is strong in
+                                # tension (spall strengths of several
+                                # GPa are reported); at 5.0 the Ta here
+                                # holds its ~2 GPa tension, as in the
+                                # reference data. Other materials take
+                                # the default, 0.01 GPa (input/README.md)
  End Material
 
  Begin Material Al              # aluminum, flyer face
