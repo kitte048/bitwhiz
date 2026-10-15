@@ -6,6 +6,7 @@
 #                recorded in src/modules/build_mod.f95)
 #Revision: 1.3  (10-13-26, with Claude: 'make test')
 #Revision: 1.4  (10-14-26, with Claude: eos module, EOS unit test)
+#Revision: 1.5  (10-15-26, with Claude: av module, the time loop)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -92,6 +93,8 @@ $(LIB_OBJS) $(BIN): $(MOD_OBJS)
 src/modules/shock_mod.o: src/modules/bit_mod.o
 src/modules/deck_mod.o:  src/modules/shock_mod.o src/modules/bit_mod.o
 src/modules/eos_mod.o:   src/modules/bit_mod.o
+src/modules/av_mod.o:    src/modules/eos_mod.o src/modules/shock_mod.o \
+                         src/modules/bit_mod.o
 
 ############################################################
 ###  NOTES: 'make test' builds bitwhiz and the unit tests if
