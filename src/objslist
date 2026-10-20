@@ -12,6 +12,7 @@
 	src/modules/shock_mod.o \
 	src/modules/eos_mod.o \
 	src/modules/av_mod.o \
+	src/modules/rs_mod.o \
 	src/modules/deck_mod.o \
 	src/modules/trace_mod.o
   MOD_FILS = \
@@ -28,6 +29,7 @@
 	src/modules/shock.mod \
 	src/modules/eos.mod \
 	src/modules/av.mod \
+	src/modules/rs.mod \
 	src/modules/deck.mod \
 	src/modules/trace.mod
   LIB_OBJS = \

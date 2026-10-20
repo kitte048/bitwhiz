@@ -38,6 +38,9 @@ module av
 !                                     for good (damage slot D)
 !    10/15/26    D. E. Kittell        Kinetic energy term factored,
 !                (with Claude)        (a-b)(a+b) (round-off review)
+!    10/19/26    D. E. Kittell        cell_pressure: the EOS, spall rule
+!                (with Claude)        and sound speed of cell_state, as
+!                                     a routine method RS shares
 !
 !**********************************************************************!
 !
@@ -70,7 +73,7 @@ use eos,   only: mg_pressure, mg_soundspeed, eos_ok, eos_bad_soundspeed
 implicit none
 private
 
-public :: face_step, cell_step, cell_state, cell_dt
+public :: face_step, cell_step, cell_state, cell_dt, cell_pressure
 
 contains
 
@@ -213,51 +216,18 @@ contains
                                                 ! floor), else zero
    logical, intent(out)       :: void           ! treated as void (above)
    integer(kind=int32), intent(out) :: ierr     ! from the EOS
-   real(kind=dp), parameter :: ftens = 1.0e-9_dp ! round-off floor / K0
-   real(kind=dp) :: rho, du, ubar, pfail
-   logical :: broken
+   real(kind=dp) :: rho, du, ubar
 
-   tensile = .false.
-   spalled = .false.
-   pbreak  = zero
-   void    = .false.
-   rho     = c(jrho,0)
-   broken  = ( c(jdam,0) > half )
-   dnew    = c(jdam,0)
-
-   !*** 1. Pressure.
-   call mg_pressure( rho, c(je,0), c(jr0,0), c(jc0,0), c(js1,0), &
-      c(js2,0), c(jg0,0), p, ierr )
+   !*** 1-3. Pressure, the spall rule and the sound speed: the cell's
+   !*** own business, shared with method RS (cell_pressure, below).
+   call cell_pressure( c(:,0), p, cs, dnew, tensile, spalled, pbreak, &
+      void, ierr )
    if ( ierr /= eos_ok ) then
-      cs  = p                                   ! NaN, like p
-      q   = p
-      dtk = p
+      q   = cs                                  ! NaN, like cs
+      dtk = cs
       return
    end if
-
-   !*** 2. Spall: break an intact cell pulled past its strength, and
-   !***    floor the pressure of any broken cell.
-   pfail   = max( c(jsp,0), ftens*c(jr0,0)*c(jc0,0)**2 )
-   tensile = ( p < -ftens*c(jr0,0)*c(jc0,0)**2 )
-   if ( .not. broken .and. p < -pfail ) then
-      broken  = .true.
-      spalled = .true.
-      pbreak  = p                               ! how far past its strength
-      dnew    = one
-   end if
-   if ( broken ) p = max( p, zero )
-
-   !*** 3. Sound speed at the pressure kept.
-   call mg_soundspeed( rho, p, c(jr0,0), c(jc0,0), c(js1,0), c(js2,0), &
-      c(jg0,0), cs, ierr )
-   if ( ierr == eos_bad_soundspeed .and. .not. ( p > zero ) .and. &
-        rho < c(jr0,0) ) then                   ! stretched past c = 0
-      void = .true.
-      if ( .not. broken ) spalled = .true.      ! it broke by stretching
-      dnew = one
-      ierr = eos_ok
-      p    = zero
-      cs   = zero
+   if ( void ) then                             ! P = c = 0 already
       q    = zero
       ubar = abs( half*( c(ju,-1) + c(ju,1) ) )
       if ( ubar > zero ) then
@@ -267,14 +237,10 @@ contains
       end if
       return
    end if
-   if ( ierr /= eos_ok ) then
-      q   = cs                                  ! NaN, like cs
-      dtk = cs
-      return
-   end if
 
    !*** 4. Artificial viscosity.
-   du = c(ju,-1) - c(ju,1)
+   rho = c(jrho,0)
+   du  = c(ju,-1) - c(ju,1)
    if ( du > zero .and. rho - c(jrho_old,0) > zero ) then
       q = BL*rho*cs*abs(du) + BQ*rho*du*du
    else
@@ -284,6 +250,75 @@ contains
    !*** 5. This cell's time step.
    dtk = cell_dt( c, cs )
    end subroutine cell_state
+
+   !******************************************************************!
+   ! Steps 1-3 of cell_state, for ONE cell (its slice of the database,!
+   ! with rho and e already at n+1): the pressure from the EOS, the   !
+   ! spall rule, and the sound speed at the pressure kept, or a void  !
+   ! cell (P = c = 0). Nothing here depends on the solution method,   !
+   ! so method AV (cell_state) and method RS (module rs, rs_state)    !
+   ! both call it, and the two can not drift apart. See cell_state's  !
+   ! notes above for the rules. On an EOS failure, ierr says why and  !
+   ! p and cs are signaling NaN.                                      !
+   !******************************************************************!
+   pure subroutine cell_pressure( s, p, cs, dnew, tensile, spalled, &
+      pbreak, void, ierr )
+   implicit none
+   real(kind=dp), intent(in)  :: s(nvar)        ! one cell's slots
+   real(kind=dp), intent(out) :: p              ! GPa, >= -spall_strength
+   real(kind=dp), intent(out) :: cs             ! km/s, sound speed
+   real(kind=dp), intent(out) :: dnew           ! damage D after this step
+   logical, intent(out)       :: tensile        ! P below the round-off floor
+   logical, intent(out)       :: spalled        ! broke on THIS step
+   real(kind=dp), intent(out) :: pbreak         ! GPa, the EOS pressure as
+                                                ! it broke, else zero
+   logical, intent(out)       :: void           ! treated as void
+   integer(kind=int32), intent(out) :: ierr     ! from the EOS
+   real(kind=dp), parameter :: ftens = 1.0e-9_dp ! round-off floor / K0
+   real(kind=dp) :: rho, pfail
+   logical :: broken
+
+   tensile = .false.
+   spalled = .false.
+   pbreak  = zero
+   void    = .false.
+   rho     = s(jrho)
+   broken  = ( s(jdam) > half )
+   dnew    = s(jdam)
+
+   !*** 1. Pressure.
+   call mg_pressure( rho, s(je), s(jr0), s(jc0), s(js1), s(js2), s(jg0), &
+      p, ierr )
+   if ( ierr /= eos_ok ) then
+      cs = p                                    ! NaN, like p
+      return
+   end if
+
+   !*** 2. Spall: break an intact cell pulled past its strength, and
+   !***    floor the pressure of any broken cell.
+   pfail   = max( s(jsp), ftens*s(jr0)*s(jc0)**2 )
+   tensile = ( p < -ftens*s(jr0)*s(jc0)**2 )
+   if ( .not. broken .and. p < -pfail ) then
+      broken  = .true.
+      spalled = .true.
+      pbreak  = p                               ! how far past its strength
+      dnew    = one
+   end if
+   if ( broken ) p = max( p, zero )
+
+   !*** 3. Sound speed at the pressure kept.
+   call mg_soundspeed( rho, p, s(jr0), s(jc0), s(js1), s(js2), s(jg0), &
+      cs, ierr )
+   if ( ierr == eos_bad_soundspeed .and. .not. ( p > zero ) .and. &
+        rho < s(jr0) ) then                     ! stretched past c = 0
+      void = .true.
+      if ( .not. broken ) spalled = .true.      ! it broke by stretching
+      dnew = one
+      ierr = eos_ok
+      p    = zero
+      cs   = zero
+   end if
+   end subroutine cell_pressure
 
    !******************************************************************!
    ! One cell's CFL time step (equation sheet, Time Step):            !

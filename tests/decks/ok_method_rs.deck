@@ -1,12 +1,13 @@
-# expect: under construction
-# method = RS (Riemann solver) reads, sets up, passes the setup audit,
-# writes the cycle-0 heartbeat line and tracer row, then stops at the
-# start of the time loop. When RS has a time loop, change the first
-# line to "# expect: ok".
+# expect: ok
+# method = RS (Riemann solver): an Al flyer at 1 km/s on a PMMA plate.
+# Long enough for the release waves from both free surfaces to meet in
+# the PMMA and break cells (spall), so the Riemann faces, the cell
+# update, the spall rule and the free surfaces are all exercised. Also
+# run by the OpenMP tests (threads must print the serial answer).
 Begin bitwhiz
  deck_version = 1
  Begin Run
-  t_end = 1.0
+  t_end = 3.0
  End Run
  Begin Output
   tracer = impact Al:PMMA

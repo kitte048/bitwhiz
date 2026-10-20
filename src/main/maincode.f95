@@ -53,6 +53,10 @@ program bitwhiz
 !    10/15/26    D. E. Kittell        method = RS (Riemann solver) runs
 !                (with Claude)        setup and cycle 0, then stops: the
 !                                     RS time loop is under construction
+!    10/19/26    D. E. Kittell        Method RS time loop (module rs,
+!                (with Claude)        RS sheet v3): faces solve the
+!                                     Riemann problem, cells take their
+!                                     fluxes; the RS stop is removed
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -68,6 +72,7 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads,method, &
 use deck, only: read_deck,write_resolved_deck
 use eos, only: mg_eos,eos_message,eos_ok
 use av, only: face_step,cell_step,cell_state,cell_dt
+use rs, only: riemann_face,rs_cell_step,rs_state,rs_cell_dt
 use trace, only: open_tracers,tracer_row,close_tracers,trc_open,trc_file
 use build, only: build_date,build_version       ! written by 'make'
 use, intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
@@ -739,7 +744,11 @@ dtcfl = huge(one)
 kdt   = 0
 do k = 1, kmax
    i   = icell( k )
-   dtk = cell_dt( database(:,i-2:i+2), database(jc,i) )
+   if ( method == 'RS' ) then             ! RS: dx/c (module rs)
+      dtk = rs_cell_dt( database(:,i-2:i+2), database(jc,i) )
+   else
+      dtk = cell_dt( database(:,i-2:i+2), database(jc,i) )
+   end if
    if ( dtk < dtcfl ) then
       dtcfl = dtk
       kdt   = k
@@ -777,22 +786,6 @@ write( kpt6, 205 ) '... set by cell', kdt
 write( kpt6, 204 ) 'Setup checks', 'all passed'
 write( kpt6, 202 ) repeat('=',56)
 
-!*** method = RS (Riemann solver) is under construction: everything up
-!*** to here is shared with AV and has run (deck, setup, audit, the
-!*** cycle-0 heartbeat line and tracer row), so it can be tested. Its
-!*** time loop does not exist yet, so the run stops here, closing the
-!*** output files with the reason, and exits with status 1 so that no
-!*** script mistakes it for a finished run.
-if ( method == 'RS' ) then
-   write( kpt6, 202 ) 'bitwhiz: method = RS (Riemann solver) is under '// &
-      'construction.'
-   write( kpt6, 202 ) '         Setup, the audit, and the cycle-0 '// &
-      'heartbeat and tracer rows'
-   write( kpt6, 202 ) '         were written; the time loop is not.'
-   call close_outputs( 'method RS is under construction' )
-   stop 1, quiet=.true.
-end if
-
 !==========================!
 ! 7. Begin the simulation. !
 !==========================!
@@ -814,6 +807,11 @@ end if
 ! WRITE-BACK RULE in shock_mod), so the places can be done in any
 ! order, by any thread. The physics itself is in module av
 ! (src/modules/av_mod.f95), one small routine per loop.
+!
+! That is method AV. Method RS (Godunov, a Riemann solver at every
+! face) runs its own cycle instead, in the contained routine rs_region
+! with module rs: two loops, the same OpenMP pattern, and the same
+! reports after the region.
 !
 ! OPENMP, "style 2" of the timing study (NOTES_bitwhiz_Performance_
 ! IO_v1.md, section 2): ONE parallel region per cycle, with an OMP DO
@@ -887,6 +885,10 @@ time_loop: do while ( .not. done )
    nspall = 0                             ! cells that broke this cycle
    pbmin  = zero                          ! deepest pull at a break
    kbad  = huge(kbad)                     ! first cell the EOS rejects
+
+   if ( method == 'RS' ) then
+      call rs_region()                    ! method RS (contained, below)
+   else                                   ! method AV:
 
    !$OMP PARALLEL IF( use_team ) DEFAULT(NONE) &
    !$OMP    SHARED( database, imax, dt, dth, BL, BQ, dtcfl, kdt, &
@@ -967,11 +969,18 @@ time_loop: do while ( .not. done )
 
    !$OMP END PARALLEL
 
+   end if                                 ! method AV / RS
+
    !*** An EOS failure stops the run, naming the first cell it hit.
    if ( kbad < huge(kbad) ) then
       i = icell( kbad )
-      call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
-         dtk, dnew, tens, spl, pbrk, isvoid, ierr )
+      if ( method == 'RS' ) then
+         call rs_state( database(:,i-2:i+2), pnew, cnew, dtk, dnew, &
+            tens, spl, pbrk, isvoid, ierr )
+      else
+         call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
+            dtk, dnew, tens, spl, pbrk, isvoid, ierr )
+      end if
       write( kpt6, '(1x,a,i0,3a,i0,a,es12.5,a)' ) 'bitwhiz: the EOS '// &
          'failed in cell ', kbad, ' (layer ', trim(layer(ilay(i))%name), &
          ') on cycle ', ncycle+1, ', t = ', time+dt, ' us:'
@@ -1199,6 +1208,103 @@ contains
    end function build_kind
 
    !*****************************************************!
+   ! One cycle of method RS (RS equation sheet, One      !
+   ! Cycle; the physics is in module rs). Two loops, and !
+   ! each must finish before the next starts:            !
+   !                                                     !
+   !   loop 1, faces: the Riemann problem between the    !
+   !     two cells at time n gives u* and P*; the face   !
+   !     moves, x(n+1) = x(n) + dt*u*.        (a, b, c)  !
+   !   loop 2, cells: rho, u and E from the two faces'   !
+   !     fluxes, then e, then P (spall rule), c, D and   !
+   !     the cell's dt_k.                     (c, d, e)  !
+   !                                                     !
+   ! Loop 2 can do the state in the same pass as the     !
+   ! update, because a cell's new P and c depend only on !
+   ! itself; nobody reads them until loop 1 of the next  !
+   ! cycle. Same OpenMP pattern as method AV (one region,!
+   ! DEFAULT(NONE), the same reductions and dt merge), so!
+   ! threads give the serial answer bit for bit. The     !
+   ! cycle's results go back through the host variables  !
+   ! (dtcfl, kdt, pmax, ...), exactly as AV's do.        !
+   !*****************************************************!
+   subroutine rs_region()
+   implicit none
+   integer(kind=int32) :: i, ierr, kl
+   real(kind=dp) :: us, ps, xnew, rnew, unew, enew, pnew, cnew, dtk, &
+      dnew, pbrk, dtl
+   logical :: tens, spl, isvoid
+
+   !$OMP PARALLEL IF( use_team ) DEFAULT(NONE) &
+   !$OMP    SHARED( database, imax, dt, dtcfl, kdt, pmax, pmin, ktens, &
+   !$OMP            kbad, kvoid, nvoid, kspall, nspall, pbmin ) &
+   !$OMP    PRIVATE( i, us, ps, xnew, rnew, unew, enew, pnew, cnew, dtk, &
+   !$OMP             dnew, tens, spl, pbrk, isvoid, ierr, dtl, kl )
+
+   !*** Loop 1, faces (even i): u*, P*, then x(n+1).
+   !$OMP DO
+   rs_faces: do i = 2, imax-1, 2
+      call riemann_face( database(:,i-1:i+1), us, ps )
+      xnew = database(jx,i) + dt*us
+      database(ju_star,i) = us
+      database(jp_star,i) = ps
+      database(jx_old,i)  = database(jx,i)
+      database(jx,i)      = xnew
+   end do rs_faces
+   !$OMP END DO
+
+   !*** Loop 2, cells (odd i): rho, u, e at n+1, then the state.
+   dtl = huge(one)
+   kl  = 0
+   !$OMP DO REDUCTION(min: ktens, kbad, kvoid, kspall, pmin, pbmin) &
+   !$OMP    REDUCTION(max: pmax) REDUCTION(+: nvoid, nspall)
+   rs_cells: do i = 3, imax-2, 2
+      call rs_cell_step( database(:,i-2:i+2), dt, rnew, unew, enew )
+      database(jrho_old,i) = database(jrho,i)
+      database(jrho,i)     = rnew
+      database(juc,i)      = unew
+      database(je_old,i)   = database(je,i)
+      database(je,i)       = enew
+      call rs_state( database(:,i-2:i+2), pnew, cnew, dtk, dnew, tens, &
+         spl, pbrk, isvoid, ierr )
+      if ( ierr /= eos_ok ) then          ! reported after the region
+         kbad = min( kbad, kcell(i) )
+         cycle rs_cells
+      end if
+      if ( tens ) ktens = min( ktens, kcell(i) )   ! in tension
+      if ( spl ) then                     ! broke on this step
+         nspall = nspall + 1
+         kspall = min( kspall, kcell(i) )
+         pbmin  = min( pbmin, pbrk )      ! deepest pull at a break
+      end if
+      pmin = min( pmin, pnew )            ! most tension held
+      if ( isvoid ) then
+         nvoid = nvoid + 1
+         kvoid = min( kvoid, kcell(i) )
+      end if
+      database(jp,i)   = pnew
+      database(jc,i)   = cnew
+      database(jdam,i) = dnew             ! only this cell's own D
+      pmax = max( pmax, pnew )
+      if ( dtk < dtl ) then               ! strictly less: the lowest
+         dtl = dtk                        ! cell wins a tie
+         kl  = kcell(i)
+      end if
+   end do rs_cells
+   !$OMP END DO
+
+   !*** Merge each thread's smallest dt_k (as for method AV).
+   !$OMP CRITICAL (cfl_merge_rs)
+   if ( dtl < dtcfl .or. ( .not. ( dtl > dtcfl ) .and. kl < kdt ) ) then
+      dtcfl = dtl
+      kdt   = kl
+   end if
+   !$OMP END CRITICAL (cfl_merge_rs)
+
+   !$OMP END PARALLEL
+   end subroutine rs_region
+
+   !*****************************************************!
    ! One heartbeat line: cycle, time, the step just      !
    ! taken and the cell that set it (0 = shortened to    !
    ! land on t_end), the largest pressure, and the       !
@@ -1222,9 +1328,9 @@ contains
    ! finite sum means every value is finite. That costs  !
    ! one add per value; only when the sum is bad does    !
    ! find_bad search for the place and stop the run.     !
-   ! (These are AV's evolving slots. When RS gets its    !
-   ! time loop, its own, u_star, p_star and uc, join     !
-   ! the sum and find_bad's lists.)                      !
+   ! Method RS's own slots (u_star, p_star on the faces, !
+   ! uc in the cells) are in the sum too; for method AV  !
+   ! they keep their t = 0 values, which costs nothing.  !
    !*****************************************************!
    subroutine heartbeat_line( dtu, kdtu, pm )
    implicit none
@@ -1258,10 +1364,12 @@ contains
       ei  = ei + database(jm,ii)*database(je,ii)
       chk = chk + database(jx,ii-1) + database(ju,ii-1) + database(jrho,ii) &
                 + database(je,ii) + database(jp,ii) + database(jq,ii) &
-                + database(jc,ii)
+                + database(jc,ii) + database(ju_star,ii-1) &
+                + database(jp_star,ii-1) + database(juc,ii)
    end do
    ii  = iface( kmax )                    ! the last face
-   chk = chk + database(jx,ii) + database(ju,ii)
+   chk = chk + database(jx,ii) + database(ju,ii) + database(ju_star,ii) &
+             + database(jp_star,ii)
    if ( not_finite( chk ) ) call find_bad()
    merr = ( ms - mass0 )/mass0
    if ( etot0 > zero ) then
@@ -1288,9 +1396,10 @@ contains
    !*****************************************************!
    subroutine find_bad()
    implicit none
-   integer(kind=int32), parameter, dimension(2) :: fchk = (/ jx, ju /)
-   integer(kind=int32), parameter, dimension(5) :: cchk = &
-      (/ jrho, je, jp, jq, jc /)
+   integer(kind=int32), parameter, dimension(4) :: fchk = &
+      (/ jx, ju, ju_star, jp_star /)
+   integer(kind=int32), parameter, dimension(6) :: cchk = &
+      (/ jrho, je, jp, jq, jc, juc /)
    integer(kind=int32) :: ii, jj, jbad, ibad
    ibad = 0
    jbad = 0

@@ -1,0 +1,191 @@
+module rs
+!**********************************************************************!
+!
+!  Purpose:
+!    Method RS: Godunov's method with the acoustic Riemann solver of
+!    U7, one place at a time, as the RS equation sheet writes it
+!    (Equation_Sheets/Hydrocode_RS_rev-0, v3). Every cell carries an
+!    average state (rho, u, e, P, c); every face carries the Riemann
+!    solution between its two cells (u*, P*), which moves the face and
+!    is the flux into both of them.
+!
+!       call riemann_face ( database(:,i-1:i+1), ustar, pstar )
+!       call rs_cell_step ( database(:,i-2:i+2), dt, rho_new, u_new, e_new )
+!       call rs_state     ( database(:,i-2:i+2), p, cs, dtk, d, &
+!                           tensile, spalled, pbreak, void, ierr )
+!
+!    As in module av, each routine sees only its chunk, read-only, and
+!    returns the new values; the loops in maincode section 7 write
+!    them back (the WRITE-BACK RULE in shock_mod).
+!
+!    Units, as everywhere in bitwhiz: mm, us, g/cm^3, km/s, GPa,
+!    e in (km/s)^2, masses in g/cm^3*mm (per unit area). An impedance
+!    Z = rho*c is in g/cm^3*km/s, so Z*u is in GPa.
+!
+!  References:
+!    RS equation sheet, Steps 1-3, Time Step, Boundary Conditions.
+!    U7 (Acoustic Solution); S. K. Godunov, Mat. Sb. 47 (1959);
+!    D. E. Kittell et al., Propellants Explos. Pyrotech. 45 (2020)
+!    295-315 (star values stored at the faces).
+!
+!  Record of revisions:
+!      Date       Programmer          Description of change
+!      ====       ==========          =====================
+!    10/19/26    D. E. Kittell        Original code
+!                (with Claude)
+!
+!**********************************************************************!
+use bits,  only: dp, int32, zero, half, one
+use shock, only: nvar, jx, jm, jrho, je, jp, jc, juc, ju_star, jp_star
+use eos,   only: eos_ok
+use av,    only: cell_pressure
+implicit none
+private
+
+public :: riemann_face, rs_cell_step, rs_state, rs_cell_dt
+
+contains
+
+   !******************************************************************!
+   ! Step 1, one face: the acoustic Riemann problem between the cell  !
+   ! on its left (L) and the cell on its right (R), both at time n,   !
+   ! with each side's impedance Z = rho*c held fixed for the step:    !
+   !                                                                  !
+   !    u* = ( ZL*uL + ZR*uR + PL - PR ) / ( ZL + ZR )                !
+   !    P* = ( ZR*PL + ZL*PR + ZL*ZR*(uL - uR) ) / ( ZL + ZR )        !
+   !                                                                  !
+   ! A GHOST cell (M = 0) is void: P = Z = 0 and u = 0. Its rho, c    !
+   ! and u are never read (they are signaling NaN). With ZL = 0 the   !
+   ! same two lines give the free surface, u* = uR - PR/ZR, P* = 0.   !
+   !                                                                  !
+   ! ZERO IMPEDANCE. A void cell (c = 0) has Z = 0 too, so a void     !
+   ! cell beside a ghost or another void cell makes ZL + ZR = 0. Then !
+   ! P* = 0 and u* = (uL + uR)/2, a ghost taking its neighbor's u     !
+   ! (RS sheet, Boundary Conditions). The class materials never get   !
+   ! there.                                                           !
+   !******************************************************************!
+   pure subroutine riemann_face( f, ustar, pstar )
+   implicit none
+   real(kind=dp), intent(in)  :: f(nvar,-1:1)   ! cell, FACE, cell
+   real(kind=dp), intent(out) :: ustar          ! km/s, u* (n+1/2)
+   real(kind=dp), intent(out) :: pstar          ! GPa,  P* (n+1/2)
+   real(kind=dp) :: zl, zr, pl, pr, ul, ur, zs
+   logical :: ghostl, ghostr
+
+   ghostl = .not. ( f(jm,-1) > zero )
+   ghostr = .not. ( f(jm, 1) > zero )
+   zl = zero
+   pl = zero
+   ul = zero
+   zr = zero
+   pr = zero
+   ur = zero
+   if ( .not. ghostl ) then
+      zl = f(jrho,-1)*f(jc,-1)
+      pl = f(jp,-1)
+      ul = f(juc,-1)
+   end if
+   if ( .not. ghostr ) then
+      zr = f(jrho,1)*f(jc,1)
+      pr = f(jp,1)
+      ur = f(juc,1)
+   end if
+
+   zs = zl + zr
+   if ( zs > zero ) then
+      ustar = ( zl*ul + zr*ur + pl - pr )/zs
+      pstar = ( zr*pl + zl*pr + zl*zr*( ul - ur ) )/zs
+   else                                         ! zero impedance (above)
+      if ( ghostl ) ul = ur
+      if ( ghostr ) ur = ul
+      ustar = half*( ul + ur )
+      pstar = zero
+   end if
+   end subroutine riemann_face
+
+   !******************************************************************!
+   ! Steps 2 and 3, one cell, AFTER every face has its u*, P* and new !
+   ! x (loop 1). The faces' fluxes in, the cell's average state out:  !
+   !                                                                  !
+   !    rho(n+1) = M / ( x(k+1/2) - x(k-1/2) )          at n+1        !
+   !    u(n+1)   = u(n) - dt/M * ( P*(k+1/2) - P*(k-1/2) )            !
+   !    E(n+1)   = E(n) - dt/M * ( (P*u*)(k+1/2) - (P*u*)(k-1/2) )    !
+   !    e(n+1)   = E(n+1) - u(n+1)**2/2,      E = e + u**2/2          !
+   !                                                                  !
+   ! Each face's flux leaves one cell and enters the next, so mass,   !
+   ! momentum and total energy are conserved to round-off (P* = 0 at  !
+   ! both free surfaces).                                             !
+   !******************************************************************!
+   pure subroutine rs_cell_step( c, dt, rho_new, u_new, e_new )
+   implicit none
+   real(kind=dp), intent(in)  :: c(nvar,-2:2)   ! cell,face,CELL,face,cell
+   real(kind=dp), intent(in)  :: dt             ! us, this cycle's step
+   real(kind=dp), intent(out) :: rho_new        ! g/cm^3, at n+1
+   real(kind=dp), intent(out) :: u_new          ! km/s,   at n+1
+   real(kind=dp), intent(out) :: e_new          ! (km/s)^2, at n+1
+   real(kind=dp) :: dtm, et
+
+   dtm     = dt/c(jm,0)
+   rho_new = c(jm,0)/( c(jx,1) - c(jx,-1) )
+   et      = c(je,0) + half*c(juc,0)*c(juc,0)
+   u_new   = c(juc,0) - dtm*( c(jp_star,1) - c(jp_star,-1) )
+   et      = et - dtm*( c(jp_star, 1)*c(ju_star, 1) - &
+                        c(jp_star,-1)*c(ju_star,-1) )
+   e_new   = et - half*u_new*u_new
+   end subroutine rs_cell_step
+
+   !******************************************************************!
+   ! The new state of one cell, after rs_cell_step has been written   !
+   ! back: P (with bitwhiz's spall rule), c and D from cell_pressure  !
+   ! (module av; the same rules as method AV), and the cell's time    !
+   ! step. There is no q.                                             !
+   !******************************************************************!
+   pure subroutine rs_state( c, p, cs, dtk, dnew, tensile, spalled, &
+      pbreak, void, ierr )
+   implicit none
+   real(kind=dp), intent(in)  :: c(nvar,-2:2)   ! cell,face,CELL,face,cell
+   real(kind=dp), intent(out) :: p              ! GPa, >= -spall_strength
+   real(kind=dp), intent(out) :: cs             ! km/s, sound speed
+   real(kind=dp), intent(out) :: dtk            ! us, this cell's limit
+   real(kind=dp), intent(out) :: dnew           ! damage D after this step
+   logical, intent(out)       :: tensile        ! P below the round-off floor
+   logical, intent(out)       :: spalled        ! broke on THIS step
+   real(kind=dp), intent(out) :: pbreak         ! GPa, EOS pressure as it
+                                                ! broke, else zero
+   logical, intent(out)       :: void           ! treated as void
+   integer(kind=int32), intent(out) :: ierr     ! from the EOS
+
+   call cell_pressure( c(:,0), p, cs, dnew, tensile, spalled, pbreak, &
+      void, ierr )
+   if ( ierr /= eos_ok ) then
+      dtk = cs                                  ! NaN, like cs
+      return
+   end if
+   dtk = rs_cell_dt( c, cs )
+   end subroutine rs_state
+
+   !******************************************************************!
+   ! One cell's time step limit (RS sheet, Time Step):                !
+   !                                                                  !
+   !    dt_k = ( x(k+1/2) - x(k-1/2) ) / c   ( = M/Z )                !
+   !                                                                  !
+   ! In the mass coordinate h the waves leave a face at -Z and +Z; the!
+   ! mesh moves with the material, so |u| does not enter. A void cell !
+   ! (c = 0) uses dx/|u|, as in method AV, and has no limit at rest.  !
+   ! The time step is CFL * (the smallest dt_k), set by the caller.   !
+   !******************************************************************!
+   pure function rs_cell_dt( c, cs ) result(dtk)
+   implicit none
+   real(kind=dp), intent(in) :: c(nvar,-2:2)    ! cell,face,CELL,face,cell
+   real(kind=dp), intent(in) :: cs              ! km/s, the cell's c
+   real(kind=dp) :: dtk                         ! us
+   if ( cs > zero ) then
+      dtk = ( c(jx,1) - c(jx,-1) )/cs
+   else if ( abs( c(juc,0) ) > zero ) then
+      dtk = ( c(jx,1) - c(jx,-1) )/abs( c(juc,0) )
+   else
+      dtk = huge(one)
+   end if
+   end function rs_cell_dt
+
+end module rs

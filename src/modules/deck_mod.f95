@@ -996,9 +996,8 @@ contains
 
    select case (k)
    case ('method')
-      ! The two solution methods: AV (artificial viscosity) and RS
-      ! (Riemann solver, under construction: maincode stops it at the
-      ! start of the time loop).
+      ! The two solution methods: AV (artificial viscosity, module av)
+      ! and RS (Godunov's method with a Riemann solver, module rs).
       select case (lower(val))
       case ('av')
          method = 'AV'

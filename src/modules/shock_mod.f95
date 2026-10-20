@@ -367,7 +367,7 @@ character(len=80)   :: colormap   = 'viridis'  ! for bitmap pictures; a
 !*** equation sheet,
 !***    q = BL*rho*c*|du| + BQ*rho*du**2   (only while compressing),
 !*** with the sheet's default coefficients. method = RS: Godunov's
-!*** method with a Riemann solver at every face (under construction;
+!*** method with the acoustic Riemann solver at every face (module rs;
 !*** BL and BQ are AV's and RS ignores them).
 character(len=8)    :: method     = 'AV'       ! 'AV' or 'RS'
 real(kind=dp)       :: BL         = 0.1_dp     ! linear viscosity coef.

@@ -124,7 +124,7 @@ When snapshots are on, a snapshot is written whenever either `plot_every` or
 ### `Solver`
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `method` | `AV` or `RS` | `AV` | `AV`: artificial viscosity. `RS`: Riemann solver (Godunov), **under construction**: it reads, sets up and writes cycle 0, then stops with a message |
+| `method` | `AV` or `RS` | `AV` | `AV`: artificial viscosity. `RS`: Godunov's method with the acoustic Riemann solver of U7 (no `q`; conserves mass, momentum and energy to round-off) |
 | `BL` | number | 0.1 | linear viscosity coefficient (AV only) |
 | `BQ` | number | 2.0 | quadratic viscosity coefficient (AV only) |
 | `CFL` | number | 0.6 | Courant safety factor, 0 < CFL <= 1 |

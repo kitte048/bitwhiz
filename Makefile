@@ -11,6 +11,7 @@
 #Revision: 1.7  (10-15-26, with Claude: -ffp-contract=off, same answer
 #                on x86 and arm64; see the NOTES at FCFLAGS)
 #Revision: 1.8  (10-15-26, with Claude: trace module, tracer file)
+#Revision: 1.9  (10-19-26, with Claude: rs module, method RS)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -116,6 +117,8 @@ src/modules/eos_mod.o:   src/modules/bit_mod.o
 src/modules/av_mod.o:    src/modules/eos_mod.o src/modules/shock_mod.o \
                          src/modules/bit_mod.o
 src/modules/trace_mod.o: src/modules/shock_mod.o src/modules/bit_mod.o
+src/modules/rs_mod.o:    src/modules/av_mod.o src/modules/eos_mod.o \
+                         src/modules/shock_mod.o src/modules/bit_mod.o
 
 ############################################################
 ###  NOTES: 'make test' builds bitwhiz and the unit tests if

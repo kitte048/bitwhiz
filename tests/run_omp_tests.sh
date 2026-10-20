@@ -36,7 +36,8 @@ npass=0; nfail=0
 
 DECKS="input/me697_double_shock_2p00.deck
 tests/decks/ok_setup_counter.deck
-tests/decks/ok_plate_spall.deck"
+tests/decks/ok_plate_spall.deck
+tests/decks/ok_method_rs.deck"
 
 fail() { echo "FAIL  $1: $2"; nfail=$((nfail+1)); }
 
