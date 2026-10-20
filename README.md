@@ -84,6 +84,7 @@ Run it before every commit.
 | `input` | decks and the deck syntax spec |
 | `tests` | unit tests (`test_*.f95`), deck tests, `verification/` reference tracer data |
 | `bin` | the executable |
+| `doc` | the equation sheets the code is checked against, frozen copies (`doc/README.md`) |
 
 ## Acknowledgements
 `bitwhiz` was designed and written by D. E. Kittell with the assistance of

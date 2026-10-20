@@ -41,6 +41,17 @@ src/modules/build_mod.f95
 *.heartbeat
 *.tracers.csv
 
+# ---- LaTeX build products (doc/) ------------------------------------
+# doc/ keeps each sheet's .tex and .pdf, and the figure .tex and .pdf
+# files the sheet needs; rebuilding it there writes these, which are not
+# kept.
+*.aux
+*.log
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.toc
+
 # ---- Generated images ------------------------------------------------
 # Bitmaps are outputs; they can be recreated from the code. To commit
 # a specific one on purpose (e.g. a README figure), whitelist it:
