@@ -78,9 +78,29 @@ Run it before every commit.
 | Folder | What |
 |---|---|
 | `src/main` | `maincode.f95` (the run, section by section), `bmpmaker.f95` |
-| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `av_mod` (the artificial viscosity method, one place at a time), `bit_mod` (kinds and constants), colormap data |
+| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `av_mod` (the artificial viscosity method, one place at a time), `trace_mod` (the tracer file), `bit_mod` (kinds and constants), colormap data |
 | `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_colormaps` (demo, kept in the build) |
 | `src/utils` | `make_build_info.sh` (writes the build record), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |
 | `tests` | unit tests (`test_*.f95`), deck tests, `verification/` reference tracer data |
 | `bin` | the executable |
+
+## Acknowledgements
+`bitwhiz` was designed and written by D. E. Kittell with the assistance of
+Claude Opus 5.5 (Anthropic), an AI model, run at its medium effort setting and
+used interactively in the Claude desktop app (Cowork) from October 2026. The
+instructor set the code's architecture (the interleaved database, the chunk
+and write-back rules), its numerical methods, its physics models (including
+the expansion branch of the equation of state and the spall and damage rule),
+its conventions and its style, and supplied the equation sheets and the
+independent verification data it is checked against. Claude drafted much of
+the source written since October 8, 2026, the test suites and the
+documentation, under that direction, and carried out numerical checks and
+studies on request (thread timing, the round-off review, prototypes of new
+methods). Every change was reviewed, built and tested by the instructor before
+it was committed, and the instructor is responsible for all of the content.
+The equations and material data come from the open literature, as cited.
+
+AI models change quickly, so this record is dated: it describes the model and
+the way of working used for this version of the code, not a general claim
+about what such tools can or cannot do.
