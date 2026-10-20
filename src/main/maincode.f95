@@ -57,6 +57,10 @@ program bitwhiz
 !                (with Claude)        RS sheet v3): faces solve the
 !                                     Riemann problem, cells take their
 !                                     fluxes; the RS stop is removed
+!    10/20/26    D. E. Kittell        RS order 1 or 2 (deck: order,
+!                (with Claude)        default 2): a cell loop builds the
+!                                     face states first; the method and
+!                                     order are echoed in every output
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -65,6 +69,7 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads,method, &
    kmax,imax,nvar,nlay,layer,database,ilay,icell,iface, &
    jx,ju,jx_old,ju_old,jmf,jm,jrho,je,jp,jq,jc,jrho_old,je_old, &
    jr0,jc0,js1,js2,jg0,jdam,jsp,ju_star,jp_star,juc, &
+   ju_lf,ju_rf,jp_lf,jp_rf,rs_order, &
    face_slots,cell_slots,dbname,not_finite, &
    kcell,t_end,cycle_max,CFL,BL,BQ,omp_min_zones, &
    alloc_database,dealloc_database,dealloc_layers, &
@@ -72,7 +77,7 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads,method, &
 use deck, only: read_deck,write_resolved_deck
 use eos, only: mg_eos,eos_message,eos_ok
 use av, only: face_step,cell_step,cell_state,cell_dt
-use rs, only: riemann_face,rs_cell_step,rs_state,rs_cell_dt
+use rs, only: rs_face_states,riemann_face,rs_cell_step,rs_state,rs_cell_dt
 use trace, only: open_tracers,tracer_row,close_tracers,trc_open,trc_file
 use build, only: build_date,build_version       ! written by 'make'
 use, intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
@@ -362,7 +367,7 @@ hb_open = .true.
 write( khb, '(a)' ) '# bitwhiz heartbeat'
 write( khb, '(a)' ) '# deck    : '//trim(deckname)
 write( khb, '(a)' ) '# title   : '//trim(title)
-write( khb, '(a)' ) '# method  : '//trim(method)
+write( khb, '(a)' ) '# method  : '//method_text()
 started = clock()
 write( khb, '(a)' ) '# started : '//started
 write( khb, '(a)' ) '# version : '//build_version()
@@ -497,6 +502,12 @@ layer_cells: do l = 1, nlay
          neos = neos + 1
          ieos = ierr
       end if
+      !*** RS: the face states, rebuilt every cycle before use; at t = 0
+      !*** they are the cell's own u and P.
+      database(ju_lf,i) = database(juc,i)
+      database(ju_rf,i) = database(juc,i)
+      database(jp_lf,i) = database(jp,i)
+      database(jp_rf,i) = database(jp,i)
    end do
 end do layer_cells
 
@@ -839,6 +850,7 @@ nloop = 1                                 ! threads the loop will use
 write( kpt6, 202 ) repeat('=',56)
 write( kpt6, 202 ) ' 7. Simulation'
 write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 204 ) 'Method', method_text()
 if ( .not. use_team .and. max_threads > 1 ) then
    write( kpt6, 203 ) 'Threads in the time loop', nloop, &
       '(kmax < omp_min_zones)'
@@ -1209,9 +1221,11 @@ contains
 
    !*****************************************************!
    ! One cycle of method RS (RS equation sheet, One      !
-   ! Cycle; the physics is in module rs). Two loops, and !
-   ! each must finish before the next starts:            !
+   ! Cycle; the physics is in module rs). Three loops,   !
+   ! and each must finish before the next starts:        !
    !                                                     !
+   !   loop 0, cells: the u and P each cell offers its   !
+   !     two faces (rs_face_states; order 1 or 2).       !
    !   loop 1, faces: the Riemann problem between the    !
    !     two cells at time n gives u* and P*; the face   !
    !     moves, x(n+1) = x(n) + dt*u*.        (a, b, c)  !
@@ -1232,14 +1246,28 @@ contains
    implicit none
    integer(kind=int32) :: i, ierr, kl
    real(kind=dp) :: us, ps, xnew, rnew, unew, enew, pnew, cnew, dtk, &
-      dnew, pbrk, dtl
+      dnew, pbrk, dtl, ul, ur, pl, pr
    logical :: tens, spl, isvoid
 
    !$OMP PARALLEL IF( use_team ) DEFAULT(NONE) &
    !$OMP    SHARED( database, imax, dt, dtcfl, kdt, pmax, pmin, ktens, &
-   !$OMP            kbad, kvoid, nvoid, kspall, nspall, pbmin ) &
+   !$OMP            kbad, kvoid, nvoid, kspall, nspall, pbmin, rs_order ) &
    !$OMP    PRIVATE( i, us, ps, xnew, rnew, unew, enew, pnew, cnew, dtk, &
-   !$OMP             dnew, tens, spl, pbrk, isvoid, ierr, dtl, kl )
+   !$OMP             dnew, tens, spl, pbrk, isvoid, ierr, dtl, kl, &
+   !$OMP             ul, ur, pl, pr )
+
+   !*** Loop 0, cells (odd i): the u and P each cell offers its two
+   !*** faces (its own for order 1; MUSCL-Hancock for order 2).
+   !$OMP DO
+   rs_states: do i = 3, imax-2, 2
+      call rs_face_states( database(:,i-2:i+2), dt, rs_order, ul, ur, &
+         pl, pr )
+      database(ju_lf,i) = ul
+      database(ju_rf,i) = ur
+      database(jp_lf,i) = pl
+      database(jp_rf,i) = pr
+   end do rs_states
+   !$OMP END DO
 
    !*** Loop 1, faces (even i): u*, P*, then x(n+1).
    !$OMP DO
@@ -1329,8 +1357,9 @@ contains
    ! one add per value; only when the sum is bad does    !
    ! find_bad search for the place and stop the run.     !
    ! Method RS's own slots (u_star, p_star on the faces, !
-   ! uc in the cells) are in the sum too; for method AV  !
-   ! they keep their t = 0 values, which costs nothing.  !
+   ! uc and the face states in the cells) are in the sum !
+   ! too; for method AV they keep their t = 0 values,    !
+   ! which costs nothing.                                !
    !*****************************************************!
    subroutine heartbeat_line( dtu, kdtu, pm )
    implicit none
@@ -1365,7 +1394,9 @@ contains
       chk = chk + database(jx,ii-1) + database(ju,ii-1) + database(jrho,ii) &
                 + database(je,ii) + database(jp,ii) + database(jq,ii) &
                 + database(jc,ii) + database(ju_star,ii-1) &
-                + database(jp_star,ii-1) + database(juc,ii)
+                + database(jp_star,ii-1) + database(juc,ii) &
+                + database(ju_lf,ii) + database(ju_rf,ii) &
+                + database(jp_lf,ii) + database(jp_rf,ii)
    end do
    ii  = iface( kmax )                    ! the last face
    chk = chk + database(jx,ii) + database(ju,ii) + database(ju_star,ii) &
@@ -1398,8 +1429,8 @@ contains
    implicit none
    integer(kind=int32), parameter, dimension(4) :: fchk = &
       (/ jx, ju, ju_star, jp_star /)
-   integer(kind=int32), parameter, dimension(6) :: cchk = &
-      (/ jrho, je, jp, jq, jc, juc /)
+   integer(kind=int32), parameter, dimension(10) :: cchk = &
+      (/ jrho, je, jp, jq, jc, juc, ju_lf, ju_rf, jp_lf, jp_rf /)
    integer(kind=int32) :: ii, jj, jbad, ibad
    ibad = 0
    jbad = 0
@@ -1467,6 +1498,25 @@ contains
    end function itoa
 
    !*****************************************************!
+   ! The method as the outputs name it: "AV", or "RS,    !
+   ! order 2 (MUSCL-Hancock, Van Leer)" / "RS, order 1   !
+   ! (first-order Godunov)".                             !
+   !*****************************************************!
+   function method_text() result(s)
+   implicit none
+   character(len=:), allocatable :: s
+   if ( method == 'RS' ) then
+      if ( rs_order == 2 ) then
+         s = 'RS, order 2 (MUSCL-Hancock, Van Leer)'
+      else
+         s = 'RS, order 1 (first-order Godunov)'
+      end if
+   else
+      s = 'AV (artificial viscosity)'
+   end if
+   end function method_text
+
+   !*****************************************************!
    ! Close every output file the run has open, each with !
    ! a word on how the run ended ('normal end', or the   !
    ! reason for stopping), so no file just stops without !
@@ -1517,7 +1567,7 @@ contains
    info(1) = 'bitwhiz tracers'
    info(2) = 'deck     : '//trim(deckname)
    info(3) = 'title    : '//trim(title)
-   info(4) = 'method   : '//trim(method)
+   info(4) = 'method   : '//method_text()
    info(5) = 'started  : '//started
    info(6) = 'ended    : '//clock()//'  ('//how//')'
    info(7) = 'version  : '//build_version()

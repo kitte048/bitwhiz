@@ -15,7 +15,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Artificial viscosity time loop, OpenMP (bit-for-bit with serial) | done (`src/modules/av_mod.f95`, maincode section 7) |
 | Expansion EOS (cubic, smooth through V0) and spall (`spall_strength`) | done (`eos_mod`, `av_mod`; see `input/README.md`) |
 | Tracer file (`<title>.tracers.csv`, `tracer_dt`) | done (`src/modules/trace_mod.f95`; see `input/README.md`) |
-| Second method, `method = RS` (Godunov's method, acoustic Riemann solver), in the same code | done (`src/modules/rs_mod.f95`, maincode section 7; equation sheet in draft) |
+| Second method, `method = RS` (Godunov's method, acoustic Riemann solver), in the same code; `order = 2` (MUSCL-Hancock, Van Leer, the default) or `1` | done (`src/modules/rs_mod.f95`, maincode section 7; equation sheet in draft) |
 | Snapshot output (bitmaps, t-x diagrams) | next |
 | Comparison with reference data | data in `tests/verification/` |
 
@@ -65,8 +65,9 @@ Three kinds of test, all run by `make test`, which stops at the first failure:
   deck in `tests/decks/` is accepted, or rejected with the expected message,
   and every accepted deck round-trips and passes the setup audit; bad command
   lines (no deck, a missing file, a folder, an empty file) stop cleanly.
-- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and three test
-  decks (two impact faces; a plate that spalls; method RS) run on 1 thread and on 2, 3, 4 and 8
+- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and four test
+  decks (two impact faces; a plate that spalls; method RS at order 2 and at
+  order 1) run on 1 thread and on 2, 3, 4 and 8
   threads, as many as the machine has processors for. Everything printed from
   t = 0 on, every heartbeat line and every tracer row must be identical to the 1-thread run
   (clock times aside). Any difference means a race condition. A serial build

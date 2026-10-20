@@ -1,5 +1,6 @@
 # expect: ok
-# method = RS (Riemann solver): an Al flyer at 1 km/s on a PMMA plate.
+# method = RS (Riemann solver, default order = 2): an Al flyer at 1 km/s
+# on a PMMA plate.
 # Long enough for the release waves from both free surfaces to meet in
 # the PMMA and break cells (spall), so the Riemann faces, the cell
 # update, the spall rule and the free surfaces are all exercised. Also

@@ -30,6 +30,8 @@ module deck
 !                (with Claude)
 !    10/15/26    D. E. Kittell        Solver block: method = RS (Riemann
 !                (with Claude)        solver, under construction)
+!    10/20/26    D. E. Kittell        Solver block: order (RS only;
+!                (with Claude)        1 or 2, default 2)
 !
 !**********************************************************************!
 !
@@ -1022,9 +1024,21 @@ contains
       else if (ok) then
          CFL = x
       end if
+   case ('order')
+      ! Method RS's order of accuracy: exactly 1 or 2, nothing else
+      ! (not 2.0, not -7). Method AV ignores it.
+      select case (trim(val))
+      case ('1')
+         rs_order = 1
+      case ('2')
+         rs_order = 2
+      case default
+         call deck_error(ln, 'order = '//trim(val)//' is not 1 (first '// &
+            'order) or 2 (second order, the default)')
+      end select
    case default
       call unknown_key(ln, key, 'in the Solver block', &
-         'method, BL, BQ, CFL')
+         'method, BL, BQ, CFL, order')
    end select
    end subroutine key_solver
 
@@ -1209,7 +1223,7 @@ contains
       b = 'the Run block'
    case ('tracer', 'tracer_dt', 'plot_every', 'plot_dt', 'colormap')
       b = 'the Output block'
-   case ('method', 'bl', 'bq', 'cfl')
+   case ('method', 'bl', 'bq', 'cfl', 'order')
       b = 'the Solver block'
    case ('r0', 'c0', 's1', 's2', 'g0', 'spall_strength')
       b = 'a Material block'
@@ -1608,6 +1622,13 @@ contains
    call kv(lu, 2, 'BQ',     fmt_real(BQ), &
       merge('AV only; RS ignores it', '                      ', method == 'RS'))
    call kv(lu, 2, 'CFL',    fmt_real(CFL))
+   if (method == 'RS') then
+      call kv(lu, 2, 'order', itoa(rs_order), merge( &
+         'second order: MUSCL-Hancock, Van Leer', &
+         'first order: Godunov                 ', rs_order == 2))
+   else
+      call kv(lu, 2, 'order', itoa(rs_order), 'RS only; AV ignores it')
+   end if
    write(lu,'(a)') ' End Solver'
 
    do im = 1, nmat

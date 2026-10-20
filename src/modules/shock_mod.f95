@@ -35,6 +35,10 @@ module shock
 !                (with Claude)        under construction): slots u_star,
 !                                     p_star (faces) and uc (cells); the
 !                                     stress RULE is now a RECOMMENDATION
+!    10/20/26    D. E. Kittell        RS second order: rs_order (deck key
+!                (with Claude)        order, default 2) and the cell's
+!                                     face states u, P (slots u_lf, u_rf,
+!                                     p_lf, p_rf)
 !
 !**********************************************************************!
 !
@@ -174,6 +178,15 @@ integer(kind=int32), parameter :: juc     = 23 ! RS: the cell-average
                                                ! velocity, km/s (RS's
                                                ! velocity lives in the
                                                ! cells; AV's on faces)
+!*** RS: the states this cell offers its two faces' Riemann problems,
+!*** at n+1/2: u and P on its LEFT face (_lf) and on its RIGHT face
+!*** (_rf). Order 1: the cell's own u and P. Order 2: reconstructed
+!*** with a Van Leer slope and advanced half a step (MUSCL-Hancock,
+!*** module rs). Rewritten every cycle before any face reads them.
+integer(kind=int32), parameter :: ju_lf   = 24 ! RS: u on the left face
+integer(kind=int32), parameter :: ju_rf   = 25 ! RS: u on the right face
+integer(kind=int32), parameter :: jp_lf   = 26 ! RS: P on the left face
+integer(kind=int32), parameter :: jp_rf   = 27 ! RS: P on the right face
 
 !*** MATERIAL slots (odd i). Option 6(a): each cell carries its own
 !*** copy of its layer's Mie-Gruneisen constants, so a slice or a
@@ -199,7 +212,7 @@ integer(kind=int32), parameter :: jdam    = 19 ! D, damage, 0 or 1
 !*** dbname below, and add it to face_slots or cell_slots. The compiler
 !*** checks that dbname has nvar items; the setup audit in maincode
 !*** checks that the two lists add up to nvar.
-integer(kind=int32), parameter :: nvar    = 23
+integer(kind=int32), parameter :: nvar    = 27
 
 !*** Which slots a face fills, and which a real cell fills. The setup
 !*** audit (maincode section 6) uses these to check that every slot a
@@ -209,9 +222,9 @@ integer(kind=int32), parameter :: nvar    = 23
 !*** not depend on the method.
 integer(kind=int32), parameter, dimension(7)  :: face_slots = (/ &
    jx, ju, jx_old, ju_old, jmf, ju_star, jp_star /)
-integer(kind=int32), parameter, dimension(16) :: cell_slots = (/ &
+integer(kind=int32), parameter, dimension(20) :: cell_slots = (/ &
    jm, jrho, je, jp, jq, jc, jrho_old, je_old, jr0, jc0, js1, js2, jg0, &
-   jdam, jsp, juc /)
+   jdam, jsp, juc, ju_lf, ju_rf, jp_lf, jp_rf /)
 
 !*** Short names for each slot, in slot order. Used for output file
 !*** headers, plot labels and the XDMF sidecar.
@@ -220,7 +233,8 @@ character(len=8), parameter, dimension(nvar) :: dbname = (/ &
    'm       ', 'rho     ', 'e       ', 'p       ', 'q       ', &
    'c       ', 'rho_old ', 'e_old   ', 'R0      ', 'C0      ', &
    'S1      ', 'S2      ', 'G0      ', 'D       ', 'spall   ', &
-   'u_star  ', 'p_star  ', 'uc      ' /)
+   'u_star  ', 'p_star  ', 'uc      ', 'u_lf    ', 'u_rf    ', &
+   'p_lf    ', 'p_rf    ' /)
 
 !**********************************************************************!
 ! Data dictionary: stencil half-width for a chunk.
@@ -368,8 +382,14 @@ character(len=80)   :: colormap   = 'viridis'  ! for bitmap pictures; a
 !***    q = BL*rho*c*|du| + BQ*rho*du**2   (only while compressing),
 !*** with the sheet's default coefficients. method = RS: Godunov's
 !*** method with the acoustic Riemann solver at every face (module rs;
-!*** BL and BQ are AV's and RS ignores them).
+!*** BL and BQ are AV's and RS ignores them; order is RS's, AV ignores
+!*** it).
 character(len=8)    :: method     = 'AV'       ! 'AV' or 'RS'
+integer(kind=int32) :: rs_order   = 2          ! RS only (deck: order):
+                                               ! 1 = first order (the
+                                               ! project's Option B),
+                                               ! 2 = MUSCL-Hancock with a
+                                               ! Van Leer limiter
 real(kind=dp)       :: BL         = 0.1_dp     ! linear viscosity coef.
 real(kind=dp)       :: BQ         = 2.0_dp     ! quadratic viscosity coef.
 real(kind=dp)       :: CFL        = 0.6_dp     ! Courant safety factor
@@ -491,7 +511,7 @@ type(tracer_t), allocatable :: tracer(:)      ! tracer(1:ntrc)
 !                        the layer on its LEFT; an interface is where
 !                        ilay(i-1) /= ilay(i+1).
 !
-!  Memory: 8*nvar bytes per place, so about 350 KB for the 945-zone
+!  Memory: 8*nvar bytes per place, so about 410 KB for the 945-zone
 !  class problem. It does not depend on nlay at all.
 !
 !***NOTE: a burn model can later get its own array with the SAME

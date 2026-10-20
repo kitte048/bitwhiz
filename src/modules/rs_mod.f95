@@ -9,6 +9,8 @@ module rs
 !    solution between its two cells (u*, P*), which moves the face and
 !    is the flux into both of them.
 !
+!       call rs_face_states( database(:,i-2:i+2), dt, order, &
+!                            ul, ur, pl, pr )
 !       call riemann_face ( database(:,i-1:i+1), ustar, pstar )
 !       call rs_cell_step ( database(:,i-2:i+2), dt, rho_new, u_new, e_new )
 !       call rs_state     ( database(:,i-2:i+2), p, cs, dtk, d, &
@@ -33,23 +35,107 @@ module rs
 !      ====       ==========          =====================
 !    10/19/26    D. E. Kittell        Original code
 !                (with Claude)
+!    10/20/26    D. E. Kittell        Second order (order = 2, the
+!                (with Claude)        default): MUSCL-Hancock face
+!                                     states with a Van Leer limiter
 !
 !**********************************************************************!
 use bits,  only: dp, int32, zero, half, one
-use shock, only: nvar, jx, jm, jrho, je, jp, jc, juc, ju_star, jp_star
+use shock, only: nvar, jx, jm, jrho, je, jp, jc, juc, ju_star, jp_star, &
+   ju_lf, ju_rf, jp_lf, jp_rf
 use eos,   only: eos_ok
 use av,    only: cell_pressure
 implicit none
 private
 
-public :: riemann_face, rs_cell_step, rs_state, rs_cell_dt
+public :: rs_face_states, riemann_face, rs_cell_step, rs_state, rs_cell_dt
 
 contains
 
    !******************************************************************!
+   ! Step 0 of a cycle, one cell: the u and P it offers the Riemann   !
+   ! problems on its LEFT face (ul, pl) and its RIGHT face (ur, pr).  !
+   !                                                                  !
+   ! order = 1: the cell's own u and P on both faces (first-order     !
+   ! Godunov; the copies are exact, so the results are the same bits).!
+   !                                                                  !
+   ! order = 2, MUSCL-Hancock (van Leer 1979):                        !
+   !  a. a slope per unit mass for u and for P, from the differences  !
+   !     to the two neighbors (mass distances, so a mesh that changes !
+   !     zone size at an interface is handled):                       !
+   !        a = (W(k) - W(k-1)) / ((M(k-1) + M(k))/2)                 !
+   !        b = (W(k+1) - W(k)) / ((M(k) + M(k+1))/2)                 !
+   !     limited by Van Leer's harmonic mean:                         !
+   !        s = 2*a*b/(a + b)  if a*b > 0,   else s = 0               !
+   !     so a peak or a trough gets no slope (no new extremum, no     !
+   !     ringing). A cell beside a ghost gets s = 0 (the free         !
+   !     surfaces stay first order).                                  !
+   !  b. the values at the two faces, W -/+ M*s/2, each advanced by   !
+   !     half a step with the cell's own acoustic equations,          !
+   !        du/dt = -dP/dh,   dP/dt = -Z**2 du/dh,   Z = rho*c,       !
+   !     so the face states are centered at n+1/2.                    !
+   ! Only u and P are needed: the acoustic Riemann solver takes Z     !
+   ! from the cell averages. Both are continuous across a material    !
+   ! interface, so the slopes may span one (V, which jumps there, is  !
+   ! never reconstructed).                                            !
+   !******************************************************************!
+   pure subroutine rs_face_states( c, dt, order, ul, ur, pl, pr )
+   implicit none
+   real(kind=dp), intent(in)  :: c(nvar,-2:2)   ! cell,face,CELL,face,cell
+   real(kind=dp), intent(in)  :: dt             ! us, this cycle's step
+   integer(kind=int32), intent(in) :: order     ! 1 or 2
+   real(kind=dp), intent(out) :: ul, ur         ! km/s, u on left/right face
+   real(kind=dp), intent(out) :: pl, pr         ! GPa,  P on left/right face
+   real(kind=dp) :: mk, su, sp, du, dp_, z2
+
+   if ( order < 2 ) then
+      ul = c(juc,0)
+      ur = c(juc,0)
+      pl = c(jp,0)
+      pr = c(jp,0)
+      return
+   end if
+
+   mk = c(jm,0)
+   if ( .not. ( c(jm,-2) > zero ) .or. .not. ( c(jm,2) > zero ) ) then
+      su = zero                                 ! beside a ghost
+      sp = zero
+   else
+      su = vanleer( ( c(juc,0) - c(juc,-2) )/( half*( c(jm,-2) + mk ) ), &
+                    ( c(juc,2) - c(juc, 0) )/( half*( mk + c(jm,2) ) ) )
+      sp = vanleer( ( c(jp,0)  - c(jp,-2)  )/( half*( c(jm,-2) + mk ) ), &
+                    ( c(jp,2)  - c(jp, 0)  )/( half*( mk + c(jm,2) ) ) )
+   end if
+
+   !*** Half a step of the cell's own acoustic equations.
+   z2  = ( c(jrho,0)*c(jc,0) )**2
+   du  = -half*dt*sp
+   dp_ = -half*dt*z2*su
+   ul  = c(juc,0) - half*mk*su + du
+   ur  = c(juc,0) + half*mk*su + du
+   pl  = c(jp,0)  - half*mk*sp + dp_
+   pr  = c(jp,0)  + half*mk*sp + dp_
+   end subroutine rs_face_states
+
+   !*** Van Leer's limiter: the harmonic mean of two one-sided slopes
+   !*** when they agree in sign, else zero.
+   pure function vanleer( a, b ) result(s)
+   implicit none
+   real(kind=dp), intent(in) :: a, b
+   real(kind=dp) :: s
+   if ( a*b > zero ) then
+      s = 2.0_dp*a*b/( a + b )
+   else
+      s = zero
+   end if
+   end function vanleer
+
+   !******************************************************************!
    ! Step 1, one face: the acoustic Riemann problem between the cell  !
-   ! on its left (L) and the cell on its right (R), both at time n,   !
-   ! with each side's impedance Z = rho*c held fixed for the step:    !
+   ! on its left (L) and the cell on its right (R), with each side's  !
+   ! impedance Z = rho*c at time n held fixed for the step, and the u !
+   ! and P each side offers this face (rs_face_states: the cell       !
+   ! values for order 1, MUSCL-Hancock for order 2):                  !
    !                                                                  !
    !    u* = ( ZL*uL + ZR*uR + PL - PR ) / ( ZL + ZR )                !
    !    P* = ( ZR*PL + ZL*PR + ZL*ZR*(uL - uR) ) / ( ZL + ZR )        !
@@ -80,15 +166,15 @@ contains
    zr = zero
    pr = zero
    ur = zero
-   if ( .not. ghostl ) then
+   if ( .not. ghostl ) then                     ! the left cell's RIGHT face
       zl = f(jrho,-1)*f(jc,-1)
-      pl = f(jp,-1)
-      ul = f(juc,-1)
+      pl = f(jp_rf,-1)
+      ul = f(ju_rf,-1)
    end if
-   if ( .not. ghostr ) then
+   if ( .not. ghostr ) then                     ! the right cell's LEFT face
       zr = f(jrho,1)*f(jc,1)
-      pr = f(jp,1)
-      ur = f(juc,1)
+      pr = f(jp_lf,1)
+      ur = f(ju_lf,1)
    end if
 
    zs = zl + zr

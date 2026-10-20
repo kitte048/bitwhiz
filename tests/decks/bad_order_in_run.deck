@@ -1,0 +1,39 @@
+# expect: order belongs in the Solver block, not the Run block
+Begin bitwhiz
+ deck_version = 1
+ Begin Run
+  t_end = 3.0
+  order = 2
+ End Run
+ Begin Output
+  tracer = impact Al:PMMA
+  tracer = mid    PMMA@0.5
+ End Output
+ Begin Solver
+  method = RS
+ End Solver
+ Begin Material Al
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ End Material
+ Begin Material PMMA
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90
+ End Material
+ Begin Stack
+  resolution = 10
+  Begin Layer
+   material = Al
+   width = 2.0
+   xvel = 1.0
+  End Layer
+  Begin Layer
+   material = PMMA
+   width = 4.0
+  End Layer
+ End Stack
+End bitwhiz

@@ -128,6 +128,7 @@ When snapshots are on, a snapshot is written whenever either `plot_every` or
 | `BL` | number | 0.1 | linear viscosity coefficient (AV only) |
 | `BQ` | number | 2.0 | quadratic viscosity coefficient (AV only) |
 | `CFL` | number | 0.6 | Courant safety factor, 0 < CFL <= 1 |
+| `order` | `1` or `2` | `2` | RS only: `2` is second order (MUSCL-Hancock with a Van Leer limiter), `1` is first-order Godunov (the project's Option B). AV ignores it |
 
 The artificial viscosity is the equation sheet's, with its default
 coefficients: q = BL ρ c |Δu| + BQ ρ (Δu)², applied only while the cell is
