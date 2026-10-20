@@ -1225,13 +1225,13 @@ contains
    ! and each must finish before the next starts:        !
    !                                                     !
    !   loop 0, cells: the u and P each cell offers its   !
-   !     two faces (rs_face_states; order 1 or 2).       !
+   !     two faces (rs_face_states; order 1 or 2). (a)   !
    !   loop 1, faces: the Riemann problem between the    !
    !     two cells at time n gives u* and P*; the face   !
-   !     moves, x(n+1) = x(n) + dt*u*.        (a, b, c)  !
+   !     moves, x(n+1) = x(n) + dt*u*.           (b, c)  !
    !   loop 2, cells: rho, u and E from the two faces'   !
    !     fluxes, then e, then P (spall rule), c, D and   !
-   !     the cell's dt_k.                     (c, d, e)  !
+   !     the cell's dt_k.                  (c, d, e, f)  !
    !                                                     !
    ! Loop 2 can do the state in the same pass as the     !
    ! update, because a cell's new P and c depend only on !

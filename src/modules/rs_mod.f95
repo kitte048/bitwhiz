@@ -4,7 +4,7 @@ module rs
 !  Purpose:
 !    Method RS: Godunov's method with the acoustic Riemann solver of
 !    U7, one place at a time, as the RS equation sheet writes it
-!    (Equation_Sheets/Hydrocode_RS_rev-0, v3). Every cell carries an
+!    (Equation_Sheets/Hydrocode_RS_rev-0, v4). Every cell carries an
 !    average state (rho, u, e, P, c); every face carries the Riemann
 !    solution between its two cells (u*, P*), which moves the face and
 !    is the flux into both of them.
@@ -25,7 +25,7 @@ module rs
 !    Z = rho*c is in g/cm^3*km/s, so Z*u is in GPa.
 !
 !  References:
-!    RS equation sheet, Steps 1-3, Time Step, Boundary Conditions.
+!    RS equation sheet, Steps 1-4, Time Step, Boundary Conditions.
 !    U7 (Acoustic Solution); S. K. Godunov, Mat. Sb. 47 (1959);
 !    D. E. Kittell et al., Propellants Explos. Pyrotech. 45 (2020)
 !    295-315 (star values stored at the faces).
@@ -53,7 +53,7 @@ public :: rs_face_states, riemann_face, rs_cell_step, rs_state, rs_cell_dt
 contains
 
    !******************************************************************!
-   ! Step 0 of a cycle, one cell: the u and P it offers the Riemann   !
+   ! Step 1, one cell: the u and P it offers the Riemann              !
    ! problems on its LEFT face (ul, pl) and its RIGHT face (ur, pr).  !
    !                                                                  !
    ! order = 1: the cell's own u and P on both faces (first-order     !
@@ -131,7 +131,7 @@ contains
    end function vanleer
 
    !******************************************************************!
-   ! Step 1, one face: the acoustic Riemann problem between the cell  !
+   ! Step 2, one face: the acoustic Riemann problem between the cell  !
    ! on its left (L) and the cell on its right (R), with each side's  !
    ! impedance Z = rho*c at time n held fixed for the step, and the u !
    ! and P each side offers this face (rs_face_states: the cell       !
@@ -190,7 +190,7 @@ contains
    end subroutine riemann_face
 
    !******************************************************************!
-   ! Steps 2 and 3, one cell, AFTER every face has its u*, P* and new !
+   ! Steps 3 and 4, one cell, AFTER every face has its u*, P* and new !
    ! x (loop 1). The faces' fluxes in, the cell's average state out:  !
    !                                                                  !
    !    rho(n+1) = M / ( x(k+1/2) - x(k-1/2) )          at n+1        !

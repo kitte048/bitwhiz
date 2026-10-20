@@ -10,18 +10,21 @@ number.
 | Sheet | Method | Status | Checked against |
 |---|---|---|---|
 | `Hydrocode_Eqns_v4` (`.pdf`, `.tex`) | AV, artificial viscosity (`method = AV`) | frozen, Oct 19, 2026 | bitwhiz `311bf6d` (solver source unchanged through `12e5d9f`) |
-| Method RS sheet | RS, Riemann solver (`method = RS`) | in draft, not here yet | |
+| `Hydrocode_RS_Eqns_v4` (`.pdf`, `.tex`) | RS, Riemann solver (`method = RS`, `order = 1` or `2`) | frozen, Oct 20, 2026 | bitwhiz `f16485c` |
 
 ## What each file is for
 - **`.pdf`**: to read. This is the published look, the same file as in
-  `Equation_Sheets/Hydrocode_rev-1/`.
+  `Equation_Sheets/Hydrocode_rev-1/` (AV) or
+  `Equation_Sheets/Hydrocode_RS_rev-0/` (RS).
 - **`.tex`**: to search, diff and quote exactly. The equations are plain text
   here, so a person or an AI tool can read them without the errors that come
   from pulling math out of a PDF.
-- **`hc_*_v1.tex` and `.pdf`**: the sheet's three figures (TikZ sources and
-  the PDFs the sheet includes), so the sheet builds in this folder:
+- **`hc_*_v1.tex` and `.pdf`**: the AV sheet's three figures (TikZ sources
+  and the PDFs the sheet includes); **`riemann_schematic_v5.tex` and `.pdf`**:
+  the RS sheet's one figure. So both sheets build in this folder:
 
       pdflatex Hydrocode_Eqns_v4.tex     (twice, for the figure numbers)
+      pdflatex Hydrocode_RS_Eqns_v4.tex
 
   The `.aux`, `.log` and `.synctex.gz` files that writes are ignored by git.
 
