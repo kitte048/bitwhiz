@@ -15,6 +15,9 @@
 #Revision: 1.10 (10-20-26, with Claude: 'cleanrun' renamed 'tidy' and
 #                'cleanbmp' renamed 'bmpclean', so no target name is
 #                the start of another; see the NOTES at 'tidy')
+#Revision: 1.11 (10-20-26, with Claude: 'make release', an optimized
+#                build in build/release, checked against the debug
+#                build; see the NOTES at RFLAGS and at 'release')
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -33,6 +36,26 @@ FCFLAGS = -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising \
 	-finit-integer=-999999 -fconvert=little-endian -fimplicit-none \
 	-ffp-contract=off
 OMPFLAGS = -fopenmp
+
+# The release flags ('make release')
+RFLAGS = -std=f2018 -O2 -fimplicit-none -fconvert=little-endian \
+	-ffp-contract=off
+
+############################################################
+###  NOTES: RFLAGS are for 'make release', the executable to
+###  hand out or host. They keep what decides the ANSWER
+###  (-std, -fimplicit-none, -fconvert, -ffp-contract=off) and
+###  drop what only helps find bugs: the run-time checks
+###  (-fcheck=all), the floating-point traps, the NaN and
+###  -999999 fills, -g, and the warnings (the debug build
+###  already shows them, from the same source). -O2 does not
+###  reorder arithmetic, so the release build must compute the
+###  same bits as the debug build; 'make release' checks that
+###  it does. Without traps, a NaN is still caught: the
+###  heartbeat's finite check stops the run (maincode,
+###  heartbeat_line). The rule against -ffast-math and -Ofast
+###  below holds here too.
+############################################################
 
 ############################################################
 ###  NOTES: -ffp-contract=off keeps the compiler from fusing
@@ -113,15 +136,21 @@ $(LIB_OBJS) $(BIN): $(MOD_OBJS)
 ###  NOTES: modules that USE other modules must be built
 ###  after them. Plain 'make' already follows the order in
 ###  objslist; these lines make 'make -j' safe too.
+###  The list is written once, as MOD_ORDER, and used for the
+###  debug objects here and the release objects in RDIR (the
+###  argument $(1) is the folder put in front of every name).
 ############################################################
-src/modules/shock_mod.o: src/modules/bit_mod.o
-src/modules/deck_mod.o:  src/modules/shock_mod.o src/modules/bit_mod.o
-src/modules/eos_mod.o:   src/modules/bit_mod.o
-src/modules/av_mod.o:    src/modules/eos_mod.o src/modules/shock_mod.o \
-                         src/modules/bit_mod.o
-src/modules/trace_mod.o: src/modules/shock_mod.o src/modules/bit_mod.o
-src/modules/rs_mod.o:    src/modules/av_mod.o src/modules/eos_mod.o \
-                         src/modules/shock_mod.o src/modules/bit_mod.o
+define MOD_ORDER
+$(1)src/modules/shock_mod.o: $(1)src/modules/bit_mod.o
+$(1)src/modules/deck_mod.o:  $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
+$(1)src/modules/eos_mod.o:   $(1)src/modules/bit_mod.o
+$(1)src/modules/av_mod.o:    $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
+                             $(1)src/modules/bit_mod.o
+$(1)src/modules/trace_mod.o: $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
+$(1)src/modules/rs_mod.o:    $(1)src/modules/av_mod.o $(1)src/modules/eos_mod.o \
+                             $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
+endef
+$(eval $(call MOD_ORDER,))
 
 ############################################################
 ###  NOTES: 'make test' builds bitwhiz and the unit tests if
@@ -147,6 +176,49 @@ test: $(EXECS) $(UNIT_TESTS)
 	BIN=$(EXECS) ./tests/run_omp_tests.sh
 
 ############################################################
+###  NOTES: 'make release' builds the optimized executable,
+###  ./bin/bitwhiz_release, with RFLAGS, in its own folder
+###  (RDIR: objects and .mod files under build/release, which
+###  git ignores). The debug build in src/ is never touched,
+###  so 'make' and 'make release' can be used in any order
+###  and neither one recompiles the other's files.
+###  It then checks the release build: the deck tests and the
+###  OpenMP tests on it, and tests/run_release_tests.sh, which
+###  runs the decks on both builds and requires them to print
+###  the same results, heartbeat and tracer rows, bit for bit
+###  (the debug build is made first if needed). Any failure
+###  stops make with an error. To hand it out, copy it under
+###  any name; its banner and heartbeat say "optimized" and
+###  record its flags and git version.
+############################################################
+RDIR     = build/release
+REL_EXEC = ./bin/bitwhiz_release
+R_INCS   = -I$(RDIR)/mod -J$(RDIR)/mod
+R_MODS   = $(addprefix $(RDIR)/,$(MOD_OBJS))
+R_LIBS   = $(addprefix $(RDIR)/,$(LIB_OBJS))
+R_BIN    = $(addprefix $(RDIR)/,$(BIN))
+R_BUILD  = $(RDIR)/$(BUILD_OBJ)
+
+release: $(REL_EXEC) $(EXECS)
+	BIN=$(REL_EXEC) ./tests/run_deck_tests.sh
+	BIN=$(REL_EXEC) ./tests/run_omp_tests.sh
+	DEBUG=$(EXECS) RELEASE=$(REL_EXEC) ./tests/run_release_tests.sh
+
+$(REL_EXEC): $(R_MODS) $(R_LIBS) $(R_BIN) $(R_BUILD)
+	@mkdir -p ./bin
+	$(FC) $(OMPFLAGS) -o $(REL_EXEC) $(R_BIN) $(R_MODS) $(R_LIBS) \
+		$(R_BUILD)
+
+$(RDIR)/%.o: %.f95
+	@mkdir -p $(dir $@) $(RDIR)/mod
+	$(FC) $(R_INCS) -c $(RFLAGS) $(OMPFLAGS) $< -o $@
+
+$(R_BUILD): $(BUILD_SRC)
+$(R_BIN): | $(R_BUILD)
+$(R_LIBS) $(R_BIN): $(R_MODS)
+$(eval $(call MOD_ORDER,$(RDIR)/))
+
+############################################################
 ###  NOTES: files a RUN leaves behind (not build products).
 ###  'make tidy' removes only these and keeps the objects
 ###  and bin/bitwhiz, so the next run needs no rebuild.
@@ -170,13 +242,14 @@ tidy:
 	rm -f $(RUN_FILES)
 
 ############################################################
-###  NOTES: 'make clean' removes the build products AND the
-###  run outputs, for a fresh start.
+###  NOTES: 'make clean' removes the build products (debug
+###  and release) AND the run outputs, for a fresh start.
 ############################################################
 clean: tidy
 	rm -f $(EXECS) $(MOD_OBJS) $(LIB_OBJS) $(BIN) $(MOD_FILS)
 	rm -f $(BUILD_SRC) $(BUILD_OBJ) src/modules/build.mod
 	rm -f bitwhiz *.mod $(UNIT_TESTS)
+	rm -rf $(RDIR) $(REL_EXEC)
 
 ############################################################
 ###  NOTES: bitmaps in the top folder are kept by both
@@ -189,5 +262,5 @@ bmpclean:
 .f95.o:
 	$(FC) $(INCLUDES) -c $(FCFLAGS) $(OMPFLAGS) $< -o $@
 
-.PHONY : bitwhiz test clean tidy bmpclean FORCE
+.PHONY : bitwhiz test release clean tidy bmpclean FORCE
 # End of the makefile

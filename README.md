@@ -24,13 +24,23 @@ Needs gfortran and make.
 ```
 make            # bin/bitwhiz, debug build with strict flags and -fopenmp
 make test       # build if needed, then run the unit and deck tests (see Test)
+make release    # bin/bitwhiz_release, optimized (-O2), checked against the debug build
 make tidy       # remove run outputs (heartbeats, tracer files, bitmaps); keep the build
-make clean      # tidy, plus objects, module files and the executable
+make clean      # tidy, plus objects, module files and both executables
 make bmpclean   # remove bitmaps in this folder (kept by the two above)
 make OMPFLAGS=  # a serial build from the same source
 ```
 The root `Makefile` is the only build; there are no Makefiles under `src/`.
 After changing compiler flags, run `make clean` first.
+
+`make release` is the executable to hand out or host: about 3 times faster on
+the class problem, with the run-time checks and floating-point traps left out
+(a NaN still stops the run, through the heartbeat's finite check). It builds
+in `build/release/`, so the debug build is never touched, and then runs the
+deck and OpenMP tests on it, plus `tests/run_release_tests.sh`: the class deck
+and four test decks must give the debug build's results, heartbeat and
+tracer rows bit for bit. Develop and run `make test` with the debug build;
+run `make release` before handing an executable out.
 
 Every `make` also writes `src/modules/build_mod.f95` (generated, not in git):
 the build date and the git version from `git describe --tags --always --dirty`,
@@ -73,6 +83,10 @@ Three kinds of test, all run by `make test`, which stops at the first failure:
   (clock times aside). Any difference means a race condition. A serial build
   (`make OMPFLAGS=`) skips them.
 
+`make release` runs the deck and OpenMP tests again on the optimized build, and
+a fourth kind, the **release tests** (`tests/run_release_tests.sh`): both builds
+must print the same results, bit for bit (see Build).
+
 Run it before every commit.
 
 ## Layout
@@ -83,8 +97,9 @@ Run it before every commit.
 | `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_colormaps` (demo, kept in the build) |
 | `src/utils` | `make_build_info.sh` (writes the build record), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |
-| `tests` | unit tests (`test_*.f95`), deck tests, `verification/` reference tracer data |
-| `bin` | the executable |
+| `tests` | unit tests (`test_*.f95`), deck, OpenMP and release tests, `verification/` reference tracer data |
+| `bin` | the executables: `bitwhiz` (debug), `bitwhiz_release` (optimized) |
+| `build/release` | the release build's objects and module files (made by `make release`, not in git) |
 | `doc` | the equation sheets the code is checked against, frozen copies (`doc/README.md`) |
 
 ## Acknowledgements
