@@ -12,6 +12,9 @@
 #                on x86 and arm64; see the NOTES at FCFLAGS)
 #Revision: 1.8  (10-15-26, with Claude: trace module, tracer file)
 #Revision: 1.9  (10-19-26, with Claude: rs module, method RS)
+#Revision: 1.10 (10-20-26, with Claude: 'cleanrun' renamed 'tidy' and
+#                'cleanbmp' renamed 'bmpclean', so no target name is
+#                the start of another; see the NOTES at 'tidy')
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -145,7 +148,7 @@ test: $(EXECS) $(UNIT_TESTS)
 
 ############################################################
 ###  NOTES: files a RUN leaves behind (not build products).
-###  'make cleanrun' removes only these and keeps the objects
+###  'make tidy' removes only these and keeps the objects
 ###  and bin/bitwhiz, so the next run needs no rebuild.
 ###  Add each new output type here as bitwhiz learns to
 ###  write it (tracers, snapshots, run log, ...).
@@ -154,14 +157,23 @@ test: $(EXECS) $(UNIT_TESTS)
 RUN_FILES = *.heartbeat input/*.heartbeat *.tracers.csv \
             input/*.tracers.csv input/*.bmp
 
-cleanrun:
+############################################################
+###  NOTES: target names. No target name is the start of
+###  another, so a name typed short fails ('No rule to make
+###  target') instead of running a different target. The
+###  old names 'cleanrun' and 'cleanbmp' both began with
+###  'clean': stopping early removed the whole build. To
+###  see what a target would do without doing it:
+###      make -n clean
+############################################################
+tidy:
 	rm -f $(RUN_FILES)
 
 ############################################################
 ###  NOTES: 'make clean' removes the build products AND the
 ###  run outputs, for a fresh start.
 ############################################################
-clean: cleanrun
+clean: tidy
 	rm -f $(EXECS) $(MOD_OBJS) $(LIB_OBJS) $(BIN) $(MOD_FILS)
 	rm -f $(BUILD_SRC) $(BUILD_OBJ) src/modules/build.mod
 	rm -f bitwhiz *.mod $(UNIT_TESTS)
@@ -169,13 +181,13 @@ clean: cleanrun
 ############################################################
 ###  NOTES: bitmaps in the top folder are kept by both
 ###  targets above (e.g. a figure you want to keep); remove
-###  them on purpose with 'make cleanbmp'.
+###  them on purpose with 'make bmpclean'.
 ############################################################
-cleanbmp:
+bmpclean:
 	rm -f *.bmp
 
 .f95.o:
 	$(FC) $(INCLUDES) -c $(FCFLAGS) $(OMPFLAGS) $< -o $@
 
-.PHONY : bitwhiz test clean cleanrun cleanbmp FORCE
+.PHONY : bitwhiz test clean tidy bmpclean FORCE
 # End of the makefile

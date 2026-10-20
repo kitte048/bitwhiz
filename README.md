@@ -24,9 +24,9 @@ Needs gfortran and make.
 ```
 make            # bin/bitwhiz, debug build with strict flags and -fopenmp
 make test       # build if needed, then run the unit and deck tests (see Test)
-make cleanrun   # remove run outputs (heartbeats, tracer files, bitmaps); keep the build
-make clean      # cleanrun, plus objects, module files and the executable
-make cleanbmp   # remove bitmaps in this folder (kept by the two above)
+make tidy       # remove run outputs (heartbeats, tracer files, bitmaps); keep the build
+make clean      # tidy, plus objects, module files and the executable
+make bmpclean   # remove bitmaps in this folder (kept by the two above)
 make OMPFLAGS=  # a serial build from the same source
 ```
 The root `Makefile` is the only build; there are no Makefiles under `src/`.
