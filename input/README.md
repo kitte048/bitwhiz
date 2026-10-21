@@ -108,13 +108,14 @@ Units: mm, us, g/cm^3, km/s, GPa. Nothing is converted inside the code.
 **Nothing given means nothing is written.** The only files every run writes are
 the heartbeat (`<title>.heartbeat`, one line per cycle) and, later, the run log.
 A deck with tracers also writes the tracer file, `<title>.tracers.csv`
-(section 8). The whole block may be left out.
+(section 8), and a deck with snapshots the history file, `<title>.hist`
+(section 9, draft). The whole block may be left out.
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `tracer` | name location | none | repeatable; see section 8 |
 | `tracer_dt` | number, us | 0 (every cycle) | time between rows of the tracer file |
-| `plot_every` | integer | 0 (off) | write a snapshot every N cycles |
+| `plot_every` | integer | 0 (off) | write a snapshot (a frame of the history file, section 9) every N cycles |
 | `plot_dt` | number, us | 0 (off) | also write a snapshot every plot_dt |
 | `colormap` | name | `viridis` | for bitmap pictures: `grayscale`, `viridis`, `plasma`, `inferno`, `blackbody`, `kindlmann`, `extendedkindlmann`, `smoothcoolwarm`, `bentcoolwarm` |
 
@@ -285,7 +286,122 @@ Written in the folder the run starts from, laid out like the verification data
 
 ---
 
-## 9. Errors and the log
+## 9. The history file, `<title>.hist`
+> **Draft (Oct 20, 2026): the format bitwhiz will write. Not in the code yet.**
+
+The history file is the run's record of the whole mesh over time, for
+pictures: t-x diagrams now, made by bitwhiz itself in a later step (a deck
+that only re-draws pictures from this file, without re-running), and
+publication figures with matplotlib or any other tool. It is binary, so a
+reader loads it in a fraction of a second.
+
+- **When it is written:** whenever snapshots are on (`plot_every` or
+  `plot_dt`, section 6, `Output`). No snapshot keys, no file.
+- **Where:** in the folder the run starts from, like the heartbeat.
+- **When a frame is written:** cycle 0, then the first cycle at or after each
+  multiple of `plot_dt`, and every `plot_every` cycles, at that cycle's own
+  time (nothing is interpolated); always the last cycle.
+- **What a frame holds, for this beta: x, u and P.** Each is stored where the
+  method keeps it, as in the tracer file (section 8):
+
+  | Name | Unit | Where | Values per frame | Method AV | Method RS |
+  |---|---|---|---|---|---|
+  | `XPOS` | mm | faces | k_max + 1 | x | x |
+  | `KMPS` | km/s | faces | k_max + 1 | face velocity u | Riemann u★ |
+  | `GPA` | GPa | cells | k_max | P | P |
+
+  Faces are numbered 1 to k_max + 1 from the left free surface; face k is the
+  left face of cell k. x and P are at the frame's time; u is at the half step
+  before it, the velocity the method carries (as `KMPS` in the tracer file).
+  Ghost cells are not stored.
+- **Size:** 12 k_max + 24 bytes per frame. The class problem (945 cells,
+  `plot_dt = 0.01` to 5 us, 501 frames) writes 5.7 MB.
+
+### Layout
+Little-endian on every machine (bitwhiz is compiled with
+`-fconvert=little-endian`). Fortran stream access: plain bytes, no record
+markers. `int32` and `real32` are 4 bytes, `real64` 8; text is ASCII, padded
+with spaces, not null-terminated.
+
+**Header,** `header_bytes` long, in four parts:
+
+1. **Fixed part, 64 bytes:**
+
+   | Offset | Type | Field | Notes |
+   |---|---|---|---|
+   | 0 | 8 chars | `magic` | `BWHIST` and two spaces: this is a bitwhiz history file |
+   | 8 | int32 | `version` | 1. A change a version-1 reader cannot follow raises it |
+   | 12 | int32 | `header_bytes` | where frame 1 starts |
+   | 16 | int32 | `frame_bytes` | the length of every frame |
+   | 20 | int32 | `nframes` | frames written; 0 until the run ends (see Ending) |
+   | 24 | int32 | `status` | how the run ended: 0 not ended (or crashed), 1 reached `t_end`, 2 reached `cycle_max`, 3 stopped by an error |
+   | 28 | int32 | `kmax` | cells |
+   | 32 | int32 | `nvar` | variables per frame (3) |
+   | 36 | int32 | `nlayer` | layers |
+   | 40 | 8 chars | `method` | `AV` or `RS` |
+   | 48 | int32 | `order` | 1 or 2 for `RS`; 0 for `AV` |
+   | 52 | int32 | `text_bytes` | length of part 4 (2048) |
+   | 56 | 2 int32 | spare | 0 |
+
+2. **Variables,** `nvar` entries of 32 bytes, in the order they appear in each
+   frame: `name` (8 chars), `unit` (16 chars), `where` (int32: 0 faces,
+   1 cells), spare (int32, 0).
+3. **Layers,** `nlayer` entries of 72 bytes, left to right: `name`
+   (32 chars), `material` (32 chars), first and last cell (2 int32).
+4. **Text,** `text_bytes` long: `key : value` lines, as in the heartbeat's
+   header (deck, title, method, started, version, built, flags), each ending
+   in a newline, padded with spaces to the end.
+
+So `header_bytes` = 64 + 32 `nvar` + 72 `nlayer` + `text_bytes`.
+
+**Frames,** `frame_bytes` each, one after another to the end of the file:
+
+| Type | Field |
+|---|---|
+| real64 | `time` (us) |
+| int32 | `cycle` |
+| int32 | `frame`, 1, 2, 3, ... |
+| real32 × (k_max + 1, or k_max) | each variable in turn, in the order of part 2 |
+
+**Ending.** Frames are written and flushed as the run goes. Every way out of a
+run that bitwhiz controls then fills in `nframes` and `status`. A file with
+`nframes` = 0 is from a run that crashed or is still going; its whole frames
+are still good (count them from the file size, as the reader below does).
+
+**Comparing two files.** The text part names the build and the clock time, so
+it differs between any two runs. Everything else (the fixed part, variables,
+layers and every frame) depends only on the deck: the OpenMP and release tests
+will require it to be identical, byte for byte.
+
+### Reading it (Python)
+```
+import numpy as np
+b = open('double_shock_2p00.hist', 'rb').read()
+H = np.frombuffer(b, count=1, dtype=[('magic', 'S8'), ('version', '<i4'),
+    ('header_bytes', '<i4'), ('frame_bytes', '<i4'), ('nframes', '<i4'),
+    ('status', '<i4'), ('kmax', '<i4'), ('nvar', '<i4'), ('nlayer', '<i4'),
+    ('method', 'S8'), ('order', '<i4'), ('text_bytes', '<i4'),
+    ('spare', '<i4', 2)])[0]
+V = np.frombuffer(b, count=H['nvar'], offset=64, dtype=[('name', 'S8'),
+    ('unit', 'S16'), ('where', '<i4'), ('spare', '<i4')])
+k = H['kmax']
+fr = np.dtype([('time', '<f8'), ('cycle', '<i4'), ('frame', '<i4')] +
+    [(v['name'].decode().strip(), '<f4', k + 1 - v['where']) for v in V])
+n = (len(b) - H['header_bytes']) // fr.itemsize   # whole frames on disk
+F = np.frombuffer(b, dtype=fr, count=n, offset=H['header_bytes'])
+t, x, u, P = F['time'], F['XPOS'], F['KMPS'], F['GPA']
+```
+`x[j, :]` is frame j's face positions and `P[j, :]` its cell pressures. A
+quick Lagrangian t-x look is `plt.imshow(P, origin='lower', aspect='auto')`
+(cell index across, frame up); an Eulerian one puts each cell at its center,
+`xc = 0.5*(x[:, 1:] + x[:, :-1])`, then
+`plt.pcolormesh(xc, np.broadcast_to(t[:, None], xc.shape), P, shading='nearest')`.
+Find variables by name, not by position: new
+variables are only ever added at the end of part 2.
+
+---
+
+## 10. Errors and the log
 - **Fatal, with file name and line number:**
   - an unknown key or block (a real key in the wrong block says where it
     belongs, e.g. "tracer belongs in the Output block, not the Run block");
@@ -311,7 +427,7 @@ Written in the folder the run starts from, laid out like the verification data
 
 ---
 
-## 10. Where values land in the code
+## 11. Where values land in the code
 | Deck | Code (`src/modules/shock_mod.f95`) |
 |---|---|
 | `Layer` keys `width`, `xvel`, `zones`, `resolution`, `name` | `layer(l)%...` (same names) |
@@ -322,7 +438,7 @@ Written in the folder the run starts from, laid out like the verification data
 
 ---
 
-## 11. Tests
+## 12. Tests
 ```
 make
 ./tests/run_deck_tests.sh
