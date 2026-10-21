@@ -30,7 +30,7 @@
 #     files, stops it with an error.                                   #
 #                                                                      #
 #  Pictures (section 9 of a run): every run that finishes must write   #
-#  exactly its pictures, by name (<title>.xt_u.bmp and .xt_p.bmp with  #
+#  exactly its pictures, by name (<title>.tx_u.bmp and .tx_p.bmp with  #
 #  snapshots, <title>.tr_<tracer>.bmp per tracer) and size (t-x        #
 #  1200 x 900, tracer plots 800 x 600), and no other bitmap. A         #
 #  plots_only run with another colormap must redraw the t-x diagrams   #
@@ -39,7 +39,9 @@
 #  its corners white (untouched flyer and PMMA at t = 0, no material   #
 #  at x = -7 mm by t_end), the impact plane x = 0 colored just after   #
 #  t = 0, and the PMMA at x = 15 mm white just after t = 0 but colored #
-#  near t_end (so t runs up, not down).                                #
+#  near t_end (so t runs up, not down). Its u t-x diagram must color   #
+#  what P leaves white: the moving flyer and the PMMA at rest at t = 0 #
+#  (no wave has reached them, but they have a velocity).               #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")    # absolute
@@ -107,15 +109,15 @@ bmp_dim() { od -An -t d4 -j "$2" -N 4 "$1" | tr -d ' '; }
 
 # Folder $1 holds exactly the pictures its run should make, each a
 # bitmap ("BM") of the right size: the t-x pair if it has a history
-# file (or if $2 is "xt"), and one plot per tracer in its tracer file.
+# file (or if $2 is "tx"), and one plot per tracer in its tracer file.
 # Prints what is wrong, if anything.
 pics_ok() {
    local d=$1 t f w h want=""
    t=$(basename "$(ls "$d"/*.heartbeat "$d"/*.tracers.csv 2>/dev/null | head -1)")
    t=${t%%.*}
    if ls "$d"/*.hist > /dev/null 2>&1; then
-      want="$t.xt_u.bmp 1200 900
-$t.xt_p.bmp 1200 900"
+      want="$t.tx_u.bmp 1200 900
+$t.tx_p.bmp 1200 900"
    fi
    if ls "$d"/*.tracers.csv > /dev/null 2>&1; then
       for f in $(sed -n 's/^# tracer [0-9]* \([^ ]*\) :.*/\1/p' "$d"/*.tracers.csv); do
@@ -157,10 +159,12 @@ against_tracer() {   # $1 case name, $2 deck, $3 dt, $4 tracer
    if ! check_file "$d" 1 $place; then fail "$1" "test_hist (above)"; return; fi
    tracer_cols "$d" "$4" > "$d/rows"
    if ! paste -d' ' "$d/frames" "$d/rows" | awk '
-         function rel(a, b) { d = a - b; if (d < 0) d = -d; s = (b < 0 ? -b : b); return d / (s > 1 ? s : 1) }
+         # (+0 makes every value a number: mawk leaves a field like
+         # 1.5E-323, which underflows, as a string, and compares strings.)
+         function rel(a, b) { a += 0; b += 0; d = a - b; if (d < 0) d = -d; s = (b < 0 ? -b : b); return d / (s > 1 ? s : 1) }
          NF != 12 { bad = "frames and tracer rows differ in number"; exit 1 }
          $2 != $8 { bad = "frame " NR " is cycle " $2 ", the tracer row cycle " $8; exit 1 }
-         rel($4, $9) > 1e-6 || rel($5, $10) > 1e-6 || rel($6, $11) > 1e-6 || $7 != ($12 > 0 ? 1 : 0) {
+         rel($4, $9) > 1e-6 || rel($5, $10) > 1e-6 || rel($6, $11) > 1e-6 || $7 != ($12 + 0 > 0 ? 1 : 0) {
             bad = "cycle " $2 ": x, u, P, D " $4 " " $5 " " $6 " " $7 " vs the tracer " $9 " " $10 " " $11 " " $12; exit 1 }
          END { if (bad != "") { print bad; exit 1 } }' > "$d/diff"; then
       fail "$1" "$(cat "$d/diff")"; return
@@ -178,8 +182,8 @@ against_tracer class_av  input/me697_double_shock_2p00.deck 0.01 pdv
 # Case: the class run's P t-x diagram (1200 x 900), lab frame and white
 # rule. x = 0 is column floor((0 - xmin)/dx) + 1, with xmin and xmax
 # (the image's edges) from the screen's "x across" line.
-c=xt_p_class
-f="$TMP/class_av/double_shock_2p00.xt_p.bmp"
+c=tx_p_class
+f="$TMP/class_av/double_shock_2p00.tx_p.bmp"
 if [ ! -f "$f" ]; then
    fail $c "no P t-x diagram"
 else
@@ -199,6 +203,22 @@ else
    else
       npass=$((npass+1))
    fi
+fi
+
+# Case: the class run's u t-x diagram: colored where there is material,
+# moving or not (the flyer and the PMMA at t = 0), white where there is
+# none (beyond the PMMA's rear at t = 0, beyond the flyer's rear by
+# t_end).
+c=tx_u_class
+f="$TMP/class_av/double_shock_2p00.tx_u.bmp"
+if [ ! -f "$f" ]; then
+   fail $c "no u t-x diagram"
+elif [ "$(pixel "$f" 1 1 1200)" = ffffff ] || [ "$(pixel "$f" "$i15" 5 1200)" = ffffff ]; then
+   fail $c "the moving flyer or the PMMA at rest is white at t = 0"
+elif [ "$(pixel "$f" 1200 1 1200)" != ffffff ] || [ "$(pixel "$f" 1 900 1200)" != ffffff ]; then
+   fail $c "a place with no material is not white"
+else
+   npass=$((npass+1))
 fi
 against_tracer rs_order2 tests/decks/ok_method_rs.deck        0.05 impact
 against_tracer rs_order1 tests/decks/ok_method_rs_order1.deck 0.05 impact
@@ -292,7 +312,7 @@ elif grep -qE '^ +[3-8]\. ' "$d/screen.out"; then
    fail $c "it printed run sections (it must go from 2 to 9)"
 elif bad=$(pics_ok "$d") && [ -n "$bad" ]; then
    fail $c "$bad"
-elif cmp -s "$d/double_shock_2p00.xt_u.bmp" "$TMP/class_av/double_shock_2p00.xt_u.bmp"; then
+elif cmp -s "$d/double_shock_2p00.tx_u.bmp" "$TMP/class_av/double_shock_2p00.tx_u.bmp"; then
    fail $c "with colormap = inferno the u t-x diagram is the same as viridis's"
 elif ! cmp -s "$d/double_shock_2p00.tr_pdv.bmp" "$TMP/class_av/double_shock_2p00.tr_pdv.bmp"; then
    fail $c "the pdv tracer plot changed with the colormap"

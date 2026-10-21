@@ -25,6 +25,8 @@
 #Revision: 1.14 (10-20-26, with Claude: draw_xt and draw_trace; 'tidy'
 #                removes the run's pictures; 'clean' removes the
 #                macOS debug-symbol folders, bin/*.dSYM)
+#Revision: 1.15 (10-20-26, with Claude: the t-x pictures are named
+#                <title>.tx_u.bmp and .tx_p.bmp, drawn by draw_tx)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -244,14 +246,14 @@ $(eval $(call MOD_ORDER,$(RDIR)/))
 ###  Add each new output type here as bitwhiz learns to
 ###  write it (tracers, snapshots, run log, ...).
 ###  The decks and README in input/ are never touched.
-###  A run's pictures are named <title>.xt_u.bmp,
-###  <title>.xt_p.bmp and <title>.tr_<tracer>.bmp, so only
+###  A run's pictures are named <title>.tx_u.bmp,
+###  <title>.tx_p.bmp and <title>.tr_<tracer>.bmp, so only
 ###  those bitmaps go here; any other .bmp in the top folder
 ###  is kept (see bmpclean below).
 ############################################################
 RUN_FILES = *.heartbeat input/*.heartbeat *.tracers.csv \
             input/*.tracers.csv *.hist input/*.hist input/*.bmp \
-            *.xt_u.bmp *.xt_p.bmp *.tr_*.bmp
+            *.tx_u.bmp *.tx_p.bmp *.tr_*.bmp
 
 ############################################################
 ###  NOTES: target names. No target name is the start of

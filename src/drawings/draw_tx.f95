@@ -1,7 +1,7 @@
-subroutine draw_xt( var, bout, cmap, clo, chi )
+subroutine draw_tx( var, bout, cmap, clo, chi )
 !**********************************************************************!
 !  About:                                                              !
-!    DRAW_XT makes one t-x diagram (u or P) as a fixed-size bitmap,    !
+!    DRAW_TX makes one t-x diagram (u or P) as a fixed-size bitmap,    !
 !    nx by ny pixels, and hands it to bmpmaker. Called by module pics  !
 !    (maincode section 9), after a run and in a plots_only run, once   !
 !    the history file has been read (module hist, the hr_ arrays).     !
@@ -42,8 +42,14 @@ subroutine draw_xt( var, bout, cmap, clo, chi )
 !         than half of it is white. Cells smaller than a pixel (a      !
 !         compressed metal) are averaged instead of skipped.           !
 !                                                                      !
-!    Velocity: STILL THE FIDUCIAL (a ramp from 0 to 1 through the      !
-!    colormap, left to right); the data come next.                     !
+!    Velocity: the deck's colormap over its window, and WHITE only     !
+!    where there is no material and in open spall (as above). The u of !
+!    the history file is at the FACES (AV's u, RS's u*), so within a   !
+!    cell u runs linearly from its left face to its right face; a      !
+!    pixel takes the mean of that line over the part of the cell it    !
+!    covers, which is its value at that part's midpoint. Untouched     !
+!    material is colored: a moving flyer has a velocity, and material  !
+!    at rest has u = 0.                                                !
 !                                                                      !
 !  Record of revisions:                                                !
 !      Date       Programmer          Description of change            !
@@ -56,10 +62,13 @@ subroutine draw_xt( var, bout, cmap, clo, chi )
 !    10/20/26    D. E. Kittell        White: not yet reached (|P| has  !
 !                (with Claude)        never exceeded pzero), or open   !
 !                                     spall (D = 1, P = 0)             !
+!    10/20/26    D. E. Kittell        Renamed draw_tx (was draw_xt);   !
+!                (with Claude)        the velocity from the history    !
+!                                     file, linear across each cell    !
 !                                                                      !
 !**********************************************************************!
 use bits, only: int32,dp,kpt6,zero,half,one
-use hist, only: hr_nframes,hr_kmax,hr_time,hr_x,hr_p,hr_d
+use hist, only: hr_nframes,hr_kmax,hr_time,hr_x,hr_u,hr_p,hr_d
 implicit none
 
 !**********************************************************************!
@@ -86,7 +95,10 @@ integer(kind=int32) :: istat                  ! allocation status
 real(kind=dp) :: xmin,xmax,dx                 ! mm: image edges, a pixel
 real(kind=dp) :: tend,dt,t,w                  ! us: top edge, a row, row t
 real(kind=dp) :: a,b,lo,hi,ov                 ! mm: a cell, a pixel, overlap
-real(kind=dp) :: p,span                       ! GPa: a cell, the window
+real(kind=dp) :: p,span                       ! a cell's P (GPa), the window
+real(kind=dp) :: ua,ub                        ! km/s: u at a cell's faces
+real(kind=dp) :: v                            ! the value drawn (P or u)
+logical :: isu                                ! drawing u (not P)
 real(kind=dp) :: pzero                        ! GPa: |P| below this is 0
 real(kind=dp), parameter :: zero_frac=1.0e-6_dp  ! pzero / largest |P|
 real(kind=dp), dimension(:,:), allocatable :: fcn       ! values [0,1]
@@ -97,7 +109,7 @@ logical, dimension(:), allocatable :: reached           ! a wave has
 logical :: blank                              ! this cell is white now
 real(kind=dp), dimension(:), allocatable :: xf          ! faces at t
 real(kind=dp), dimension(:), allocatable :: acc,clen    ! per pixel: sum
-                                              ! of P*length, colored length
+                                              ! of v*length, colored length
 character(len=80) :: none                     ! 'rgb': no colormap
 
 !*** Allocate the image arrays (too large for the stack).
@@ -106,21 +118,11 @@ kmax = hr_kmax
 allocate( fcn(nx,ny), RGB(nx,ny,3), white(nx,ny), xf(kmax+1), &
    acc(nx), clen(nx), reached(kmax), stat=istat )
 if (istat /= 0) then
-   write(kpt6,*) 'ERROR draw_xt could not allocate the image.'
+   write(kpt6,*) 'ERROR draw_tx could not allocate the image.'
    return
 end if
 
-!*** The fiducial, for the velocity (for now): a ramp, left to right.
-if (var == 'u') then
-   do j=1,ny,1
-      do i=1,nx,1
-         fcn( i, j ) = real( i - 1, dp ) / real( nx - 1, dp )
-      end do
-   end do
-   call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
-   deallocate( fcn, RGB, white, xf, acc, clen, reached )
-   return
-end if
+isu = ( var == 'u' )
 
 !*** The image's edges: x over the whole run, t from 0 to the last frame.
 xmin = real( minval( hr_x(:,1:nf) ), dp )
@@ -172,15 +174,20 @@ rows: do r=1,ny,1
       a = xf(k)
       b = xf(k+1)
       p = real( hr_p(k,jn), dp )
-      blank = ( .not. reached(k) ) .or. &
-              ( hr_d(k,jn) == 1 .and. .not. ( abs(p) > pzero ) )
+      ua = real( hr_u(k,jn), dp )
+      ub = real( hr_u(k+1,jn), dp )
+      ! White: open spall in both; in P also not reached yet.
+      blank = ( hr_d(k,jn) == 1 .and. .not. ( abs(p) > pzero ) )
+      if ( .not. isu ) blank = blank .or. ( .not. reached(k) )
       if ( ischeme == 1 ) then
-         ! The pixels whose centers are in [a, b).
+         ! The pixels whose centers are in [a, b), each the value at
+         ! its center.
          i1 = max( 1,  ceiling( ( a - xmin )/dx + half ) )
          i2 = min( nx, ceiling( ( b - xmin )/dx + half ) - 1 )
          do i=i1,i2,1
             if ( .not. blank ) then
-               fcn( i, j )   = window( p )
+               fcn( i, j )   = window( value( xmin + ( real( i, dp ) &
+                  - half )*dx ) )
                white( i, j ) = .false.
             end if
          end do
@@ -195,15 +202,18 @@ rows: do r=1,ny,1
             hi = lo + dx
             ov = min( b, hi ) - max( a, lo )
             if ( ov > zero ) then
-               acc(i)  = acc(i)  + ov*p
+               ! The mean over the overlap: the value at its midpoint
+               ! (P is the same across a cell, u linear in x).
+               v = value( half*( max( a, lo ) + min( b, hi ) ) )
+               acc(i)  = acc(i)  + ov*v
                clen(i) = clen(i) + ov
             end if
          end do
       end if
    end do cells
 
-   ! Scheme 2: a pixel more than half colored takes the mean P of its
-   ! colored part; otherwise it stays white.
+   ! Scheme 2: a pixel more than half colored takes the mean value of
+   ! its colored part; otherwise it stays white.
    if ( ischeme /= 1 ) then
       do i=1,nx,1
          if ( clen(i) > half*dx ) then
@@ -229,14 +239,25 @@ return
 
 contains
 
-   !*** A pressure's place in the color window, from 0 to 1.
-   real(kind=dp) function window( v )
-   real(kind=dp), intent(in) :: v
+   !*** A value's place in the color window, from 0 to 1.
+   real(kind=dp) function window( y )
+   real(kind=dp), intent(in) :: y
    if ( span > zero ) then
-      window = min( max( ( v - clo )/span, zero ), one )
+      window = min( max( ( y - clo )/span, zero ), one )
    else
       window = half
    end if
    end function window
 
-end subroutine draw_xt
+   !*** The value drawn at x inside the current cell [a, b]: its P, or
+   !*** u from the left face's ua to the right face's ub, linearly.
+   real(kind=dp) function value( x )
+   real(kind=dp), intent(in) :: x
+   if ( isu ) then
+      value = ua + ( ub - ua )*( x - a )/( b - a )
+   else
+      value = p
+   end if
+   end function value
+
+end subroutine draw_tx

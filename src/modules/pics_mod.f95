@@ -7,8 +7,8 @@ module pics
 !    the files an earlier run of the same deck wrote, without running
 !    (a new colormap or color window takes about a second).
 !
-!       <title>.xt_u.bmp     t-x diagram of the velocity u   } with
-!       <title>.xt_p.bmp     t-x diagram of the pressure P   } snapshots
+!       <title>.tx_u.bmp     t-x diagram of the velocity u   } with
+!       <title>.tx_p.bmp     t-x diagram of the pressure P   } snapshots
 !       <title>.tr_<name>.bmp  velocity against time, one per tracer
 !
 !    Everything is read back from the files, never from the run's
@@ -27,12 +27,11 @@ module pics
 !  each of which prepares its image and hands it to bmpmaker, as
 !  draw_colormaps does:
 !
-!       draw_xt      t-x diagram, 1200 x 900 pixels, the deck's colormap
+!       draw_tx      t-x diagram, 1200 x 900 pixels, the deck's colormap
 !       draw_trace   tracer plot,  800 x 600 pixels, black on white
 !
-!  THIS VERSION: the P t-x diagram is drawn from the data; the u t-x
-!  diagram (a colormap ramp) and the tracer plots (the empty frame)
-!  are still fiducials. The pictures, when done:
+!  THIS VERSION: both t-x diagrams are drawn from the data; the tracer
+!  plots are still the empty frame (a fiducial). The pictures:
 !    t-x diagrams, in the lab frame: x across, from the smallest to
 !    the largest face position of the whole run, t up, from 0 to the
 !    last frame; every pixel colored, edge to edge, no text. Colors:
@@ -41,8 +40,9 @@ module pics
 !    beyond saturating. White: open spall (D = 1 and P = 0) and
 !    outside the material, in both; in P also every cell no wave has
 !    reached yet (its |P| has not yet exceeded 1e-6 of the run's
-!    largest |P|). Each cell is drawn between its faces at that time,
-!    pixels averaging the cells over them (draw_xt).
+!    largest |P|). Each cell is drawn between its faces at that time
+!    (u linear between them), pixels averaging the cells over them
+!    (draw_tx).
 !    Tracer plots: velocity against time, x from the first to the
 !    last time, y from min - 5% to max + 5% of the range, a border
 !    and tick marks at tenths, no text.
@@ -60,6 +60,10 @@ module pics
 !                                     is checked to exist afterwards
 !    10/20/26    D. E. Kittell        draw_xt gets the color window;
 !                (with Claude)        the P t-x diagram is drawn
+!    10/20/26    D. E. Kittell        t-x, not x-t, in names: files
+!                (with Claude)        <title>.tx_u.bmp, .tx_p.bmp and
+!                                     draw_tx; the u t-x diagram is
+!                                     drawn too
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
@@ -80,12 +84,12 @@ character(len=*), parameter :: fl = '(3x,a,t40,'': '',a)'   ! label : text
 !*** The drawing routines (src/drawings; external, like bmpmaker).
 !*** The interface lets the compiler check every call.
 interface
-   subroutine draw_xt( var, bout, cmap, clo, chi )
+   subroutine draw_tx( var, bout, cmap, clo, chi )
       import :: dp
       character(len=*), intent(in) :: var
       character(len=80), intent(in) :: bout, cmap
       real(kind=dp), intent(in) :: clo, chi
-   end subroutine draw_xt
+   end subroutine draw_tx
    subroutine draw_trace( bout )
       character(len=80), intent(in) :: bout
    end subroutine draw_trace
@@ -101,24 +105,24 @@ contains
    subroutine make_pictures( nerr )
    implicit none
    integer(kind=int32), intent(out) :: nerr
-   logical :: want_xt, want_tr
+   logical :: want_tx, want_tr
 
    nerr = 0
-   want_xt = ( plot_every > 0 .or. plot_dt > zero )
+   want_tx = ( plot_every > 0 .or. plot_dt > zero )
    want_tr = ( ntrc > 0 )
    write( kpt6, '(1x,a)' ) repeat('=',56)
    write( kpt6, '(1x,a)' ) ' 9. Pictures'
    write( kpt6, '(1x,a)' ) repeat('-',56)
    if ( plots_only ) write( kpt6, fl ) 'plots_only', &
       'yes: no run; from the files of an earlier run'
-   if ( .not. ( want_xt .or. want_tr ) ) then
+   if ( .not. ( want_tx .or. want_tr ) ) then
       write( kpt6, fl ) 'Pictures', 'none (no plot_every, plot_dt or '// &
          'tracers in the deck)'
       if ( plots_only ) call error( 'plots_only: this deck has nothing '// &
          'to draw', nerr )
    else
       write( kpt6, fl ) 'Colormap', trim(colormap)
-      if ( want_xt ) call xt_pictures( nerr )
+      if ( want_tx ) call tx_pictures( nerr )
       if ( want_tr ) call tracer_pictures( nerr )
    end if
    if ( plots_only .and. nerr > 0 ) write( kpt6, '(a)' ) ' bitwhiz: '// &
@@ -130,7 +134,7 @@ contains
    !******************************************************************!
    ! The two t-x diagrams, from <title>.hist.                         !
    !******************************************************************!
-   subroutine xt_pictures( nerr )
+   subroutine tx_pictures( nerr )
    implicit none
    integer(kind=int32), intent(inout) :: nerr
    character(len=:), allocatable :: fname, msg, what
@@ -226,10 +230,10 @@ contains
    write( kpt6, fl ) '', 'in P also material no wave has reached'
 
    !*** The pictures.
-   call xt_file( 'u', trim(title)//'.xt_u', ulo, uhi, nerr )
-   call xt_file( 'P', trim(title)//'.xt_p', plo, phi, nerr )
+   call tx_file( 'u', trim(title)//'.tx_u', ulo, uhi, nerr )
+   call tx_file( 'P', trim(title)//'.tx_p', plo, phi, nerr )
    call free_history()
-   end subroutine xt_pictures
+   end subroutine tx_pictures
 
    !******************************************************************!
    ! One plot per tracer, velocity against time, from the tracer      !
@@ -324,10 +328,10 @@ contains
 
    !******************************************************************!
    ! One t-x diagram (u or P) into <base>.bmp: name it on the screen, !
-   ! draw it (draw_xt, from the history file just read, colors from  !
+   ! draw it (draw_tx, from the history file just read, colors from  !
    ! clo to chi), and check the file is there.                        !
    !******************************************************************!
-   subroutine xt_file( var, base, clo, chi, nerr )
+   subroutine tx_file( var, base, clo, chi, nerr )
    implicit none
    character(len=*), intent(in) :: var, base
    real(kind=dp), intent(in) :: clo, chi
@@ -337,9 +341,9 @@ contains
    bout = base
    cmap = colormap
    call fresh( base//'.bmp' )
-   call draw_xt( var, bout, cmap, clo, chi )
+   call draw_tx( var, bout, cmap, clo, chi )
    call written( base//'.bmp', nerr )
-   end subroutine xt_file
+   end subroutine tx_file
 
    !******************************************************************!
    ! One tracer plot into <base>.bmp: name it on the screen, draw it  !

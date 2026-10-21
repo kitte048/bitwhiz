@@ -35,7 +35,7 @@ Begin bitwhiz
  End Output
 
  Begin Solver
-  method = AV
+  method = RS
   BL     = 0.1                  # linear viscosity coefficient
   BQ     = 2.0                  # quadratic viscosity coefficient
                                 # (the equation sheet's defaults; leave

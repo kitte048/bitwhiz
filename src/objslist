@@ -47,7 +47,7 @@
 	src/colormaps/cmap_smoothcoolwarm.o \
 	src/colormaps/cmap_bentcoolwarm.o \
 	src/drawings/draw_colormaps.o \
-	src/drawings/draw_xt.o \
+	src/drawings/draw_tx.o \
 	src/drawings/draw_trace.o \
 	src/main/bmpmaker.o \
 	src/utils/random.o \

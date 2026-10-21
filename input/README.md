@@ -417,17 +417,16 @@ the screen) and writes, in the folder the run starts from:
 
 | File | What | Size (pixels) | Needs |
 |---|---|---|---|
-| `<title>.xt_u.bmp` | t-x diagram of the velocity u | 1200 × 900 | snapshots (`plot_every` or `plot_dt`) |
-| `<title>.xt_p.bmp` | t-x diagram of the pressure P | 1200 × 900 | snapshots |
+| `<title>.tx_u.bmp` | t-x diagram of the velocity u | 1200 × 900 | snapshots (`plot_every` or `plot_dt`) |
+| `<title>.tx_p.bmp` | t-x diagram of the pressure P | 1200 × 900 | snapshots |
 | `<title>.tr_<name>.bmp` | one tracer's velocity against time, one per tracer | 800 × 600 | tracers |
 
-> **So far, the P t-x diagram is drawn from the data.** The u t-x diagram is
-> still a fiducial (a ramp from 0 to 1 through the deck's `colormap`, left to
-> right), and each tracer plot is the empty frame (border and tick marks); what
-> they will show is described below.
+> **So far, both t-x diagrams are drawn from the data.** Each tracer plot is
+> still the empty frame (border and tick marks); what it will show is described
+> below.
 
 The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
-`src/drawings/draw_xt.f95` and `draw_trace.f95` and written by
+`src/drawings/draw_tx.f95` and `draw_trace.f95` and written by
 `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
 
 - **Read from the files, never from memory.** The t-x diagrams come from
@@ -444,15 +443,17 @@ The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
   again, it carries pressure and is colored), in both; in P also material no
   wave has reached yet. A cell counts as reached once its |P| exceeds 10⁻⁶ of
   the run's largest |P| in any frame so far; material a release has brought
-  back to about zero pressure stays colored. (Why not "P = 0 exactly": in the
+  back to about zero pressure stays colored. In u, untouched material is
+  colored too: a moving flyer has its velocity, material at rest u = 0. (Why not "P = 0 exactly": in the
   lab frame a moving flyer's faces move every step, so its untouched cells pick
   up round-off pressures of about 10⁻¹⁴ GPa.)
-- **How a t-x diagram is drawn** (`src/drawings/draw_xt.f95`): pixel row r
+- **How a t-x diagram is drawn** (`src/drawings/draw_tx.f95`): pixel row r
   (from the bottom) is the time (r − ½)·Δt. The face positions are interpolated
   in time between the two frames around it, so material moves smoothly between
   frames; each cell's state comes from the nearer frame; each cell is laid
   between its two faces, and a pixel takes the length-weighted mean of the
-  cells over it (white if more than half of it is white). A face is a curve of
+  cells over it (white if more than half of it is white). P is the same across
+  a cell; u, stored at the faces, runs linearly across it. A face is a curve of
   slope dx/dt = u, and a shock front's slope is the shock velocity. (A simpler
   point-sampling scheme, `ischeme = 1` in the code, shows stair-steps when the
   frames are coarser than the pixel rows.) With the class deck's 501 frames
@@ -546,4 +547,5 @@ the tracer plots. In the class run's P t-x diagram, pixels at known places
 must be white (the untouched flyer and PMMA at t = 0, no material at
 x = −7 mm by t_end) or colored (the impact plane just after t = 0, the PMMA at
 x = 15 mm near t_end), which checks the lab frame, the time direction and the
-white rule.
+white rule; in its u t-x diagram the moving flyer and the PMMA at rest must be
+colored at t = 0, and the places with no material white.
