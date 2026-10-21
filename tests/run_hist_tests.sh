@@ -36,18 +36,22 @@
 #  plots_only run with another colormap must redraw the t-x diagrams   #
 #  differently and the tracer plots (no colormap) the same. The class  #
 #  run's P t-x diagram must be in the lab frame with the white rule:   #
-#  its corners white (untouched flyer and PMMA at t = 0, no material   #
-#  at x = -7 mm by t_end), the impact plane x = 0 colored just after   #
-#  t = 0, and the PMMA at x = 15 mm white just after t = 0 but colored #
-#  near t_end (so t runs up, not down). Its u t-x diagram must color   #
-#  what P leaves white: the moving flyer and the PMMA at rest at t = 0 #
-#  (no wave has reached them, but they have a velocity). A tracer      #
-#  plot's frame: the bottom spine full slate (#2C3E50), its inner edge #
-#  a half shade (anti-aliased), the box's outer corner pixel white     #
-#  (rounded); and the curve drawn: vermilion (#D55E00) where u = 0     #
-#  falls on the pdv plot's y axis, early on, before the shock arrives; #
-#  and the title BITWHIZ SCOPE VIEW above the box (the stem of its     #
-#  first I slate, the gap after it white).                             #
+#  its plot area's corners white (untouched flyer and PMMA at t = 0,   #
+#  no material at x = -7 mm by t_end), the impact plane x = 0 colored  #
+#  just after t = 0, and the PMMA at x = 15 mm white just after t = 0  #
+#  but colored near t_end (so t runs up, not down). Its u t-x diagram  #
+#  must color what P leaves white: the moving flyer and the PMMA at    #
+#  rest at t = 0 (no wave has reached them, but they have a velocity). #
+#  The t-x diagram's frame: the bottom spine full slate, the box's     #
+#  outer corner pixel white; the title BITWHIZ PRESSURE VIEW above it  #
+#  (the stem of its first I slate, the gap after it white); the color  #
+#  bar below it (a slate outline, two different colors near its ends). #
+#  A tracer plot's frame: the bottom spine full slate (#2C3E50), its   #
+#  inner edge a half shade (anti-aliased), the box's outer corner      #
+#  pixel white (rounded); and the curve drawn: vermilion (#D55E00)     #
+#  where u = 0 falls on the pdv plot's y axis, early on, before the    #
+#  shock arrives; and the title BITWHIZ SCOPE VIEW above the box (the  #
+#  stem of its first I slate, the gap after it white).                 #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")    # absolute
@@ -186,8 +190,13 @@ against_tracer() {   # $1 case name, $2 deck, $3 dt, $4 tracer
 against_tracer class_av  input/me697_double_shock_2p00.deck 0.01 pdv
 
 # Case: the class run's P t-x diagram (1200 x 900), lab frame and white
-# rule. x = 0 is column floor((0 - xmin)/dx) + 1, with xmin and xmax
-# (the image's edges) from the screen's "x across" line.
+# rule. The plot area is x = 42.5 to 1157.5 pixels across and
+# y = 42.5 (t_end) to 817.5 (t = 0) down, inside the frame's spines;
+# x (mm) is at x0 + (x - xmin)/(xmax - xmin)*1115 with xmin and xmax
+# from the screen's "x across" line. Rows are counted from the bottom:
+# row 85 is just after t = 0, row 838 just before t_end. Columns 60 and
+# 1140 and rows 95 and 830 are near the plot area's corners, clear of
+# the spines, the rounded corners and the ticks.
 c=tx_p_class
 f="$TMP/class_av/double_shock_2p00.tx_p.bmp"
 if [ ! -f "$f" ]; then
@@ -195,16 +204,16 @@ if [ ! -f "$f" ]; then
 else
    col() {   # the pixel column of x = $1 mm
       awk -F: -v x="$1" '/x across \(mm\)/ {split($2, v, " to "); x0 = v[1] + 0; x1 = v[2] + 0;
-           print int((x - x0)/((x1 - x0)/1200)) + 1}' "$TMP/class_av/screen.out"
+           print int(42.5 + (x - x0)/(x1 - x0)*1115) + 1}' "$TMP/class_av/screen.out"
    }
    i0=$(col 0); i15=$(col 15)
-   if [ "$(pixel "$f" 1 1 1200)" != ffffff ] || [ "$(pixel "$f" 1200 1 1200)" != ffffff ] ||
-      [ "$(pixel "$f" 1 900 1200)" != ffffff ]; then
-      fail $c "a corner is not white (bottom left, bottom right, top left)"
-   elif [ -z "$i0" ] || [ "$(pixel "$f" "$i0" 5 1200)" = ffffff ]; then
+   if [ "$(pixel "$f" 60 95 1200)" != ffffff ] || [ "$(pixel "$f" 1140 95 1200)" != ffffff ] ||
+      [ "$(pixel "$f" 60 830 1200)" != ffffff ]; then
+      fail $c "a corner of the plot area is not white (bottom left, bottom right, top left)"
+   elif [ -z "$i0" ] || [ "$(pixel "$f" "$i0" 85 1200)" = ffffff ]; then
       fail $c "the impact plane (column ${i0:-?}) is white just after t = 0"
-   elif [ -z "$i15" ] || [ "$(pixel "$f" "$i15" 5 1200)" != ffffff ] ||
-        [ "$(pixel "$f" "$i15" 880 1200)" = ffffff ]; then
+   elif [ -z "$i15" ] || [ "$(pixel "$f" "$i15" 85 1200)" != ffffff ] ||
+        [ "$(pixel "$f" "$i15" 838 1200)" = ffffff ]; then
       fail $c "the PMMA at x = 15 mm (column ${i15:-?}) is not white at t = 0 and colored near t_end"
    else
       npass=$((npass+1))
@@ -219,10 +228,36 @@ c=tx_u_class
 f="$TMP/class_av/double_shock_2p00.tx_u.bmp"
 if [ ! -f "$f" ]; then
    fail $c "no u t-x diagram"
-elif [ "$(pixel "$f" 1 1 1200)" = ffffff ] || [ "$(pixel "$f" "$i15" 5 1200)" = ffffff ]; then
+elif [ "$(pixel "$f" 60 95 1200)" = ffffff ] || [ "$(pixel "$f" "$i15" 85 1200)" = ffffff ]; then
    fail $c "the moving flyer or the PMMA at rest is white at t = 0"
-elif [ "$(pixel "$f" 1200 1 1200)" != ffffff ] || [ "$(pixel "$f" 1 900 1200)" != ffffff ]; then
+elif [ "$(pixel "$f" 1140 95 1200)" != ffffff ] || [ "$(pixel "$f" 60 830 1200)" != ffffff ]; then
    fail $c "a place with no material is not white"
+else
+   npass=$((npass+1))
+fi
+
+# Case: the t-x diagram's frame, title and color bar, in the scope
+# view's style (module strokes). The box's outside edges are 40 and
+# 1160 across, 40 and 820 down; its bottom spine, 2.5 pixels, fills
+# rows 81 and 82 from the bottom and half of row 83; column 580 is
+# clear of the ticks. The title BITWHIZ PRESSURE VIEW is centered over
+# the box, cap height 16 centered on y = 20 (row 881): the stem of its
+# first I (at x = 463.0, 2.2 pixels wide) fills column 463, and column
+# 466, between I and T, is white. The color bar, 300 to 900 across and
+# 842 to 860 down, has a 1.5-pixel slate outline (its top fills row 58)
+# and the colormap inside, from 0 at the left to 1 at the right (row
+# 50: two different colors near its ends, neither white).
+c=tx_frame
+f="$TMP/class_av/double_shock_2p00.tx_p.bmp"
+lft=$(pixel "$f" 305 50 1200); rgt=$(pixel "$f" 895 50 1200)
+if [ "$(pixel "$f" 580 81 1200)" != 503e2c ] || [ "$(pixel "$f" 580 82 1200)" != 503e2c ] ||
+   [ "$(pixel "$f" 41 81 1200)" != ffffff ]; then
+   fail $c "the bottom spine is not slate, or the box's outer corner pixel is not white"
+elif [ "$(pixel "$f" 463 881 1200)" != 503e2c ] || [ "$(pixel "$f" 466 881 1200)" != ffffff ]; then
+   fail $c "the title's first I is not where it belongs (slate stem, white gap)"
+elif [ "$(pixel "$f" 600 58 1200)" != 503e2c ] || [ "$lft" = ffffff ] ||
+     [ "$rgt" = ffffff ] || [ "$lft" = "$rgt" ]; then
+   fail $c "the color bar: no slate outline, or no colormap inside ($lft to $rgt)"
 else
    npass=$((npass+1))
 fi

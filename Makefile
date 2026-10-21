@@ -27,6 +27,8 @@
 #                macOS debug-symbol folders, bin/*.dSYM)
 #Revision: 1.15 (10-20-26, with Claude: the t-x pictures are named
 #                <title>.tx_u.bmp and .tx_p.bmp, drawn by draw_tx)
+#Revision: 1.16 (10-21-26, with Claude: strokes module, the frame and
+#                font shared by draw_trace and draw_tx)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -157,6 +159,7 @@ $(1)src/modules/av_mod.o:    $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/trace_mod.o: $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
 $(1)src/modules/hist_mod.o:  $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
+$(1)src/modules/strk_mod.o:  $(1)src/modules/bit_mod.o
 $(1)src/modules/pics_mod.o:  $(1)src/modules/hist_mod.o $(1)src/modules/deck_mod.o \
                              $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
 $(1)src/modules/rs_mod.o:    $(1)src/modules/av_mod.o $(1)src/modules/eos_mod.o \

@@ -33,7 +33,9 @@ module pics
 !  The pictures:
 !    t-x diagrams, in the lab frame: x across, from the smallest to
 !    the largest face position of the whole run, t up, from 0 to the
-!    last frame; every pixel colored, edge to edge, no text. Colors:
+!    last frame, inside a frame like the tracer plots', titled
+!    BITWHIZ PRESSURE VIEW or BITWHIZ VELOCITY VIEW, with a color bar
+!    (0 to 1 of the window) below. Colors:
 !    the deck's colormap over the color window, min + lo*(max - min)
 !    to min + hi*(max - min) of the data (plot_u_lo, ...), values
 !    beyond saturating. White: open spall (D = 1 and P = 0) and
@@ -41,7 +43,8 @@ module pics
 !    reached yet (its |P| has not yet exceeded 1e-6 of the run's
 !    largest |P|). Each cell is drawn between its faces at that time
 !    (u linear between them), pixels averaging the cells over them
-!    (draw_tx).
+!    and shaded by how much of them is colored (anti-aliasing,
+!    draw_tx).
 !    Tracer plots: velocity against time, x from the first to the
 !    last time, y from min - 5% to max + 5% of the range, a border
 !    and tick marks at tenths, and the title BITWHIZ SCOPE VIEW
@@ -69,6 +72,9 @@ module pics
 !                                     longer prints per file)
 !    10/21/26    D. E. Kittell        draw_trace gets each tracer's
 !                (with Claude)        times, velocities and y axis
+!    10/21/26    D. E. Kittell        Comments: the t-x diagrams get
+!                (with Claude)        the scope view's frame, a title,
+!                                     a color bar, anti-aliasing
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6

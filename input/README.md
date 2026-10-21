@@ -431,8 +431,7 @@ The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
   made after a run and the same picture from a `plots_only` run are made from
   the same numbers.
 - **t-x diagrams, lab frame:** x across, from the smallest to the largest face
-  position of the whole run; t up, from 0 to the last frame; colored edge to
-  edge, with no text. The colors are the deck's `colormap` over a window of
+  position of the whole run; t up, from 0 to the last frame. The colors are the deck's `colormap` over a window of
   the data: from min + lo·(max − min) to min + hi·(max − min), with lo and hi
   from `plot_u_lo`, `plot_u_hi` (or `plot_p_lo`, `plot_p_hi`), 0 and 1 by
   default. Values beyond the window take its end colors. **White:** everything
@@ -444,18 +443,29 @@ The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
   colored too: a moving flyer has its velocity, material at rest u = 0. (Why not "P = 0 exactly": in the
   lab frame a moving flyer's faces move every step, so its untouched cells pick
   up round-off pressures of about 10⁻¹⁴ GPa.)
-- **How a t-x diagram is drawn** (`src/drawings/draw_tx.f95`): pixel row r
-  (from the bottom) is the time (r − ½)·Δt. The face positions are interpolated
-  in time between the two frames around it, so material moves smoothly between
-  frames; each cell's state comes from the nearer frame; each cell is laid
-  between its two faces, and a pixel takes the length-weighted mean of the
-  cells over it (white if more than half of it is white). P is the same across
-  a cell; u, stored at the faces, runs linearly across it. A face is a curve of
-  slope dx/dt = u, and a shock front's slope is the shock velocity. (A simpler
-  point-sampling scheme, `ischeme = 1` in the code, shows stair-steps when the
-  frames are coarser than the pixel rows.) With the class deck's 501 frames
-  for 900 rows, halving `plot_dt` changes fewer than 0.4% of the pixels
-  visibly.
+- **How a t-x diagram is drawn** (`src/drawings/draw_tx.f95`): like the
+  mixed cells of an Eulerian hydrocode. Each pixel row is 4 sub-rows, each at
+  its own time. The face positions are interpolated in time between the two
+  frames around it, so material moves smoothly between frames; each cell's
+  state comes from the nearer frame; each cell is laid between its two faces,
+  and a pixel takes the length-weighted mean of the colored cells over it and
+  its **coverage**, the fraction of its width they fill (white cells add
+  nothing). Its color in a sub-row is coverage × colormap(mean) +
+  (1 − coverage) × white, and the pixel is the average of its sub-rows. So a
+  free surface or a spall plane that cuts a pixel shades it by how much of it
+  is material, and lines of any slope are smooth, not stair-stepped: area
+  coverage, exact across and sampled 4 times up. P is the same across a cell;
+  u, stored at the faces, runs linearly across it. A face is a curve of slope
+  dx/dt = u, and a shock front's slope is the shock velocity. With the class
+  deck's 501 frames for 775 rows, halving `plot_dt` changes fewer than 0.3% of
+  the pixels by more than 16 of 255 levels.
+- **The t-x picture** has the tracer plots' look (below; the frame, the font
+  and the slate are shared, `src/modules/strk_mod.f95`): the plot area inside
+  a box with rounded corners and ticks at tenths, 40-pixel margins left, right
+  and above; the title **BITWHIZ PRESSURE VIEW** or **BITWHIZ VELOCITY VIEW**
+  engraved above the box; and below it a **color bar**, the colormap from 0
+  (the color window's low end, left) to 1 (its high end, right), outlined in
+  slate and labeled 0 and 1. The screen gives the window in data units.
 - **Tracer plots** (`src/drawings/draw_trace.f95`): the tracer's velocity
   (`KMPS`) against time, a line through every row of the tracer file, 3.0
   pixels wide, in Okabe-Ito vermilion (#D55E00). x runs from the first to the
@@ -463,8 +473,8 @@ The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
   range at each end. The only text is the title **BITWHIZ SCOPE VIEW**,
   engraved in slate in the margin above the box: 16-pixel capitals in
   bitwhiz's own stroke font (each letter a few straight strokes and elliptical
-  arcs; only the title's 12 letters are defined), drawn and anti-aliased like
-  the curve. The frame: slate (#2C3E50, the sheets' ink) spines 2.5 pixels wide
+  arcs; only the titles' letters and the color bar's 0 and 1 are defined),
+  drawn and anti-aliased like the curve. The frame: slate (#2C3E50, the sheets' ink) spines 2.5 pixels wide
   around a 40-pixel margin, outside corners rounded to a 12-pixel radius, and
   tick marks at tenths of each axis pointing in; where the curve meets a
   spine, the spine is on top. The colors follow the equation sheets' figures
@@ -560,4 +570,5 @@ must be white (the untouched flyer and PMMA at t = 0, no material at
 x = −7 mm by t_end) or colored (the impact plane just after t = 0, the PMMA at
 x = 15 mm near t_end), which checks the lab frame, the time direction and the
 white rule; in its u t-x diagram the moving flyer and the PMMA at rest must be
-colored at t = 0, and the places with no material white.
+colored at t = 0, and the places with no material white. The P t-x diagram's
+frame, title and color bar are checked at known pixels too.

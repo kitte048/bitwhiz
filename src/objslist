@@ -16,6 +16,7 @@
 	src/modules/deck_mod.o \
 	src/modules/trace_mod.o \
 	src/modules/hist_mod.o \
+	src/modules/strk_mod.o \
 	src/modules/pics_mod.o
   MOD_FILS = \
 	src/modules/bits.mod \
@@ -35,6 +36,7 @@
 	src/modules/deck.mod \
 	src/modules/trace.mod \
 	src/modules/hist.mod \
+	src/modules/strokes.mod \
 	src/modules/pics.mod
   LIB_OBJS = \
 	src/colormaps/cmap_grayscale.o \
