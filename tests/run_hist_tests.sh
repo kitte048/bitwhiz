@@ -42,9 +42,10 @@
 #  near t_end (so t runs up, not down). Its u t-x diagram must color   #
 #  what P leaves white: the moving flyer and the PMMA at rest at t = 0 #
 #  (no wave has reached them, but they have a velocity). A tracer      #
-#  plot's frame: the bottom spine full navy (#1F497D), its inner edge  #
+#  plot's frame: the bottom spine full slate (#2C3E50), its inner edge #
 #  a half shade (anti-aliased), the box's outer corner pixel white     #
-#  (rounded).                                                          #
+#  (rounded); and the curve drawn: vermilion (#D55E00) where u = 0     #
+#  falls on the pdv plot's y axis, early on, before the shock arrives. #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")    # absolute
@@ -232,12 +233,31 @@ c=tr_frame
 f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
 if [ ! -f "$f" ]; then
    fail $c "no pdv tracer plot"
-elif [ "$(pixel "$f" 380 41 800)" != 7d491f ] || [ "$(pixel "$f" 380 42 800)" != 7d491f ]; then
-   fail $c "the bottom spine is not navy (#1F497D)"
-elif [ "$(pixel "$f" 380 43 800)" != bea48f ] || [ "$(pixel "$f" 380 44 800)" != ffffff ]; then
+elif [ "$(pixel "$f" 380 41 800)" != 503e2c ] || [ "$(pixel "$f" 380 42 800)" != 503e2c ]; then
+   fail $c "the bottom spine is not slate (#2C3E50)"
+elif [ "$(pixel "$f" 380 43 800)" != a89f96 ] || [ "$(pixel "$f" 380 44 800)" != ffffff ]; then
    fail $c "the spine's inner edge is not a half shade, then white (anti-aliasing)"
 elif [ "$(pixel "$f" 41 41 800)" != ffffff ]; then
    fail $c "the box's outer corner pixel is not white (rounded corners)"
+else
+   npass=$((npass+1))
+fi
+
+# Case: the pdv curve. Until the first shock (about 2 us) the PDV
+# velocity is 0, so at column 100 the curve is a 3-pixel line at the
+# height of u = 0 on the plot's y axis (from the screen line "Tracer
+# pdv u (km/s) : ..., y axis ylo to yhi"); its middle pixel must be
+# full vermilion (bytes 00 5e d5: blue, green, red).
+c=tr_curve
+f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
+r0=$(awk -F'y axis ' '/Tracer pdv u \(km\/s\)/ {split($2, v, " to "); lo = v[1] + 0; hi = v[2] + 0;
+     yb = 557.5; ya = 42.5; y = yb - (0 - lo)/(hi - lo)*(yb - ya); print 600 - int(y)}' "$TMP/class_av/screen.out")
+found=""
+for r in $((r0 - 1)) $r0 $((r0 + 1)); do
+   [ "$(pixel "$f" 100 "$r" 800)" = 005ed5 ] && found=$r
+done
+if [ -z "$r0" ] || [ -z "$found" ]; then
+   fail $c "no full-vermilion pixel at column 100 near row ${r0:-?} (u = 0)"
 else
    npass=$((npass+1))
 fi

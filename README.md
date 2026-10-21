@@ -17,7 +17,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Tracer file (`<title>.tracers.csv`, `tracer_dt`) | done (`src/modules/trace_mod.f95`; see `input/README.md`) |
 | Second method, `method = RS` (Godunov's method, acoustic Riemann solver), in the same code; `order = 2` (MUSCL-Hancock, Van Leer, the default) or `1` | done (`src/modules/rs_mod.f95`, maincode section 7; equation sheet `doc/Hydrocode_RS_Eqns_v4`) |
 | History file `<title>.hist`: x, u, P and damage on the whole mesh, one frame per snapshot (`plot_every`, `plot_dt`) | done (`src/modules/hist_mod.f95`; format in `input/README.md`, section 9) |
-| Pictures: t-x diagrams of u and P, one plot per tracer; `plots_only = yes` re-draws them without running | both t-x diagrams are drawn (lab frame; white outside the material and in open spall, and in P where no wave has reached); the tracer plots are still fiducials (`src/modules/pics_mod.f95`, `src/drawings/draw_tx.f95`, `draw_trace.f95`; `input/README.md` section 9b) |
+| Pictures: t-x diagrams of u and P, one plot per tracer; `plots_only = yes` re-draws them without running | done: both t-x diagrams (lab frame; white outside the material and in open spall, and in P where no wave has reached) and the tracer plots (velocity against time, anti-aliased) (`src/modules/pics_mod.f95`, `src/drawings/draw_tx.f95`, `draw_trace.f95`; `input/README.md` section 9b) |
 | Comparison with reference data | data in `tests/verification/` |
 
 ## Build

@@ -422,10 +422,6 @@ the screen) and writes, in the folder the run starts from:
 | `<title>.tx_p.bmp` | t-x diagram of the pressure P | 1200 × 900 | snapshots |
 | `<title>.tr_<name>.bmp` | one tracer's velocity against time, one per tracer | 800 × 600 | tracers |
 
-> **So far, both t-x diagrams are drawn from the data.** Each tracer plot is
-> still the empty frame (border and tick marks); what it will show is described
-> below.
-
 The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
 `src/drawings/draw_tx.f95` and `draw_trace.f95` and written by
 `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
@@ -460,15 +456,20 @@ The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
   frames are coarser than the pixel rows.) With the class deck's 501 frames
   for 900 rows, halving `plot_dt` changes fewer than 0.4% of the pixels
   visibly.
-- **Tracer plots:** x from the first to the last time, y from the smallest to
-  the largest velocity, widened by 5% of the range at each end; no text. The
-  frame (`src/drawings/draw_trace.f95`): navy (#1F497D) spines 2.5 pixels wide
+- **Tracer plots** (`src/drawings/draw_trace.f95`): the tracer's velocity
+  (`KMPS`) against time, a line through every row of the tracer file, 3.0
+  pixels wide, in Okabe-Ito vermilion (#D55E00). x runs from the first to the
+  last time, y from the smallest to the largest velocity, widened by 5% of the
+  range at each end; no text. The frame: slate (#2C3E50, the sheets' ink) spines 2.5 pixels wide
   around a 40-pixel margin, outside corners rounded to a 12-pixel radius, and
-  tick marks at tenths of each axis pointing in. It is anti-aliased: drawn at
-  4 × 4 samples per pixel and averaged, so each pixel takes the shade of how
-  much of it the ink covers (Russ and Neal, *The Image Processing Handbook*,
-  ch. 4, neighborhood averaging). Curves are smooth, not stair-stepped, and a
-  spine does not jump from ink to white within one pixel.
+  tick marks at tenths of each axis pointing in; where the curve meets a
+  spine, the spine is on top. The colors follow the equation sheets' figures
+  (the Okabe-Ito palette, which colorblind readers can tell apart). Everything
+  is anti-aliased: drawn at 4 × 4 samples per pixel and averaged, so each
+  pixel takes the shade of how much of it each ink covers (Russ and Neal,
+  *The Image Processing Handbook*, ch. 4, neighborhood averaging). Curves and
+  corners are smooth, not stair-stepped, and a line does not jump from ink to
+  white within one pixel.
 - **The screen gives every range** (x, t, the data, each color window and
   each tracer's y axis), so the pictures can be read without text on them.
 

@@ -28,10 +28,9 @@ module pics
 !  draw_colormaps does:
 !
 !       draw_tx      t-x diagram, 1200 x 900 pixels, the deck's colormap
-!       draw_trace   tracer plot,  800 x 600 pixels, black on white
+!       draw_trace   tracer plot,  800 x 600 pixels, on white
 !
-!  THIS VERSION: both t-x diagrams are drawn from the data; the tracer
-!  plots are still the empty frame (a fiducial). The pictures:
+!  The pictures:
 !    t-x diagrams, in the lab frame: x across, from the smallest to
 !    the largest face position of the whole run, t up, from 0 to the
 !    last frame; every pixel colored, edge to edge, no text. Colors:
@@ -67,6 +66,8 @@ module pics
 !    10/21/26    D. E. Kittell        Quieter: each group of pictures
 !                (with Claude)        is announced once (bmpmaker no
 !                                     longer prints per file)
+!    10/21/26    D. E. Kittell        draw_trace gets each tracer's
+!                (with Claude)        times, velocities and y axis
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
@@ -93,8 +94,11 @@ interface
       character(len=80), intent(in) :: bout, cmap
       real(kind=dp), intent(in) :: clo, chi
    end subroutine draw_tx
-   subroutine draw_trace( bout )
+   subroutine draw_trace( bout, n, t, u, ylo, yhi )
+      import :: dp, int32
       character(len=80), intent(in) :: bout
+      integer(kind=int32), intent(in) :: n
+      real(kind=dp), intent(in) :: t(n), u(n), ylo, yhi
    end subroutine draw_trace
 end interface
 
@@ -331,7 +335,8 @@ contains
       write( kpt6, fl ) 'Tracer '//trim(tracer(it)%name)//' u (km/s)', &
          num(real(umin,sp))//' to '//num(real(umax,sp))//', y axis '// &
          num(real(umin - del,sp))//' to '//num(real(umax + del,sp))
-      call trace_file( trim(title)//'.tr_'//trim(tracer(it)%name), nerr )
+      call trace_file( trim(title)//'.tr_'//trim(tracer(it)%name), t, &
+         u(:,it), umin - del, umax + del, nerr )
    end do
    end subroutine tracer_pictures
 
@@ -354,18 +359,19 @@ contains
    end subroutine tx_file
 
    !******************************************************************!
-   ! One tracer plot into <base>.bmp: draw it (draw_trace) and check  !
-   ! the file is there. (The caller announces the pictures.)          !
-   ! NEXT: draw_trace gets the tracer's times, velocities and y axis. !
+   ! One tracer plot into <base>.bmp: draw its velocity u against     !
+   ! time t, y axis from ylo to yhi (draw_trace), and check the file  !
+   ! is there. (The caller announces the pictures.)                   !
    !******************************************************************!
-   subroutine trace_file( base, nerr )
+   subroutine trace_file( base, t, u, ylo, yhi, nerr )
    implicit none
    character(len=*), intent(in) :: base
+   real(kind=dp), intent(in) :: t(:), u(:), ylo, yhi
    integer(kind=int32), intent(inout) :: nerr
    character(len=80) :: bout
    bout = base
    call fresh( base//'.bmp' )
-   call draw_trace( bout )
+   call draw_trace( bout, size(t), t, u, ylo, yhi )
    call written( base//'.bmp', nerr )
    end subroutine trace_file
 
