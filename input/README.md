@@ -461,8 +461,14 @@ The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
   for 900 rows, halving `plot_dt` changes fewer than 0.4% of the pixels
   visibly.
 - **Tracer plots:** x from the first to the last time, y from the smallest to
-  the largest velocity, widened by 5% of the range at each end; a border and
-  tick marks at tenths of each axis; no text.
+  the largest velocity, widened by 5% of the range at each end; no text. The
+  frame (`src/drawings/draw_trace.f95`): navy (#1F497D) spines 2.5 pixels wide
+  around a 40-pixel margin, outside corners rounded to a 12-pixel radius, and
+  tick marks at tenths of each axis pointing in. It is anti-aliased: drawn at
+  4 × 4 samples per pixel and averaged, so each pixel takes the shade of how
+  much of it the ink covers (Russ and Neal, *The Image Processing Handbook*,
+  ch. 4, neighborhood averaging). Curves are smooth, not stair-stepped, and a
+  spine does not jump from ink to white within one pixel.
 - **The screen gives every range** (x, t, the data, each color window and
   each tracer's y axis), so the pictures can be read without text on them.
 

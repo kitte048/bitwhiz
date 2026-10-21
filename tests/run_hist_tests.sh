@@ -41,7 +41,10 @@
 #  t = 0, and the PMMA at x = 15 mm white just after t = 0 but colored #
 #  near t_end (so t runs up, not down). Its u t-x diagram must color   #
 #  what P leaves white: the moving flyer and the PMMA at rest at t = 0 #
-#  (no wave has reached them, but they have a velocity).               #
+#  (no wave has reached them, but they have a velocity). A tracer      #
+#  plot's frame: the bottom spine full navy (#1F497D), its inner edge  #
+#  a half shade (anti-aliased), the box's outer corner pixel white     #
+#  (rounded).                                                          #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")    # absolute
@@ -217,6 +220,24 @@ elif [ "$(pixel "$f" 1 1 1200)" = ffffff ] || [ "$(pixel "$f" "$i15" 5 1200)" = 
    fail $c "the moving flyer or the PMMA at rest is white at t = 0"
 elif [ "$(pixel "$f" 1200 1 1200)" != ffffff ] || [ "$(pixel "$f" 1 900 1200)" != ffffff ]; then
    fail $c "a place with no material is not white"
+else
+   npass=$((npass+1))
+fi
+
+# Case: a tracer plot's frame (800 x 600, margin 40, spine 2.5 pixels).
+# Rows from the bottom: the bottom spine covers rows 41 and 42 fully
+# and half of row 43. Column 380 is clear of the ticks. Bytes are blue,
+# green, red, as a bitmap stores them.
+c=tr_frame
+f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
+if [ ! -f "$f" ]; then
+   fail $c "no pdv tracer plot"
+elif [ "$(pixel "$f" 380 41 800)" != 7d491f ] || [ "$(pixel "$f" 380 42 800)" != 7d491f ]; then
+   fail $c "the bottom spine is not navy (#1F497D)"
+elif [ "$(pixel "$f" 380 43 800)" != bea48f ] || [ "$(pixel "$f" 380 44 800)" != ffffff ]; then
+   fail $c "the spine's inner edge is not a half shade, then white (anti-aliasing)"
+elif [ "$(pixel "$f" 41 41 800)" != ffffff ]; then
+   fail $c "the box's outer corner pixel is not white (rounded corners)"
 else
    npass=$((npass+1))
 fi
