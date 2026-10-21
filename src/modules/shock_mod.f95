@@ -39,6 +39,9 @@ module shock
 !                (with Claude)        order, default 2) and the cell's
 !                                     face states u, P (slots u_lf, u_rf,
 !                                     p_lf, p_rf)
+!    10/20/26    D. E. Kittell        Pictures: plots_only (Run block);
+!                (with Claude)        plot_u_lo, plot_u_hi, plot_p_lo,
+!                                     plot_p_hi (Output block)
 !
 !**********************************************************************!
 !
@@ -363,6 +366,9 @@ character(len=32)   :: title      = ' '        ! names the run's files
 real(kind=dp)       :: t_end      = unset      ! us, termination time
 integer(kind=int32) :: cycle_max  = 1000000    ! backstop on cycles
                                                ! (threads: nproc, above)
+logical             :: plots_only = .false.    ! yes: no run, only re-draw
+                                               ! the pictures from the
+                                               ! files a run left
 
 !*** Block "Output": what to write. Nothing given means nothing is
 !*** written (except the heartbeat and the run log, which always are).
@@ -376,6 +382,13 @@ real(kind=dp)       :: tracer_dt  = zero       ! us, between rows of the
 character(len=80)   :: colormap   = 'viridis'  ! for bitmap pictures; a
                                                ! name bmpmaker knows
                                                ! (tracers: tracer table)
+!*** The color window of each t-x diagram, as fractions of the data's
+!*** own range: the colors run from min + lo*(max - min) to
+!*** min + hi*(max - min), and values beyond saturate. 0 <= lo < hi <= 1.
+real(kind=dp)       :: plot_u_lo  = zero       ! velocity, low end
+real(kind=dp)       :: plot_u_hi  = one        ! velocity, high end
+real(kind=dp)       :: plot_p_lo  = zero       ! pressure, low end
+real(kind=dp)       :: plot_p_hi  = one        ! pressure, high end
 
 !*** Block "Solver". method = AV: the artificial viscosity of the
 !*** equation sheet,

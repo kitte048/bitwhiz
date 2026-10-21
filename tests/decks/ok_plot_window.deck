@@ -1,0 +1,51 @@
+# expect: ok
+# The picture keys: plots_only = no (a normal run) and a color window
+# for each t-x diagram, as fractions of the data's range. The run
+# takes snapshots, so it ends by reporting the pictures (section 9).
+Begin bitwhiz
+ deck_version = 1
+ Begin Run
+  t_end = 1.0
+  plots_only = no
+ End Run
+ Begin Output
+  plot_every = 10
+  colormap   = smoothcoolwarm
+  plot_u_lo  = 0.2
+  plot_u_hi  = 0.9
+  plot_p_hi  = 0.5
+ End Output
+ Begin Material Al
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ End Material
+ Begin Material PMMA
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90
+ End Material
+ Begin Stack
+  Begin Layer
+   name = Al1
+   material = Al
+   width = 2.0
+   xvel = 1.5
+   zones = 20
+  End Layer
+  Begin Layer
+   material = PMMA
+   width = 3.0
+   zones = 45
+  End Layer
+  Begin Layer
+   name = Al2
+   material = Al
+   width = 1.0
+   xvel = -0.5
+   zones = 7
+  End Layer
+ End Stack
+End bitwhiz

@@ -32,6 +32,11 @@ module deck
 !                (with Claude)        solver, under construction)
 !    10/20/26    D. E. Kittell        Solver block: order (RS only;
 !                (with Claude)        1 or 2, default 2)
+!    10/20/26    D. E. Kittell        Run block: plots_only (yes, no);
+!                (with Claude)        Output block: plot_u_lo, plot_u_hi,
+!                                     plot_p_lo, plot_p_hi (0 to 1, lo
+!                                     below hi); fmt_real and get_line
+!                                     are public (module pics)
 !
 !**********************************************************************!
 !
@@ -95,7 +100,7 @@ use shock
 implicit none
 private
 
-public :: read_deck, write_resolved_deck
+public :: read_deck, write_resolved_deck, fmt_real, get_line
 
 !**********************************************************************!
 ! Data dictionary: limits.
@@ -165,6 +170,8 @@ integer(kind=int32) :: line_run = 0, line_solver = 0, line_stack = 0
 integer(kind=int32) :: line_output = 0
 integer(kind=int32) :: line_version = 0
 integer(kind=int32) :: line_origin  = 0, line_xleft = 0
+integer(kind=int32) :: line_ulo = 0, line_uhi = 0  ! color windows
+integer(kind=int32) :: line_plo = 0, line_phi = 0
 integer(kind=int32) :: imat_now = 0, ilay_now = 0  ! block being filled
 logical             :: tend_given = .false.        ! t_end appeared
 
@@ -916,9 +923,22 @@ contains
       if (ok .and. iv < 0) call deck_error(ln, 'omp_min_zones must be '// &
          '0 or more')
       if (ok .and. iv >= 0) omp_min_zones = iv
+   case ('plots_only')
+      ! yes: read the deck, then only re-draw the pictures from the
+      ! files an earlier run of it left (no time steps, no new files
+      ! but the pictures). no (the default): a normal run.
+      select case (lower(val))
+      case ('yes')
+         plots_only = .true.
+      case ('no')
+         plots_only = .false.
+      case default
+         call deck_error(ln, 'plots_only = '//trim(val)//' is not yes '// &
+            'or no')
+      end select
    case default
       call unknown_key(ln, key, 'in the Run block', &
-         'title, t_end, cycle_max, num_threads, omp_min_zones')
+         'title, t_end, cycle_max, num_threads, omp_min_zones, plots_only')
    end select
    end subroutine key_run
 
@@ -959,6 +979,22 @@ contains
             'grayscale, viridis, plasma, inferno, blackbody, kindlmann, '// &
             'extendedkindlmann, smoothcoolwarm, bentcoolwarm')
       end select
+   case ('plot_u_lo', 'plot_u_hi', 'plot_p_lo', 'plot_p_hi')
+      ! A t-x diagram's color window, as a fraction of the data's range
+      ! (0 = its min, 1 = its max). lo below hi is checked once the
+      ! whole deck is read (resolve_deck).
+      call get_real(ln, key, val, x, ok)
+      if (ok .and. (x < zero .or. x > one)) then
+         call deck_error(ln, trim(key)//' must be from 0 to 1 (a '// &
+            'fraction of the data''s range)')
+      else if (ok) then
+         select case (k)
+         case ('plot_u_lo'); plot_u_lo = x; line_ulo = ln
+         case ('plot_u_hi'); plot_u_hi = x; line_uhi = ln
+         case ('plot_p_lo'); plot_p_lo = x; line_plo = ln
+         case ('plot_p_hi'); plot_p_hi = x; line_phi = ln
+         end select
+      end if
    case ('tracer')
       call split_words(val, words, nw)
       if (nw /= 2) then
@@ -984,7 +1020,8 @@ contains
       tracer(ntrc)%line = ln
    case default
       call unknown_key(ln, key, 'in the Output block', &
-         'tracer, tracer_dt, plot_every, plot_dt, colormap')
+         'tracer, tracer_dt, plot_every, plot_dt, colormap, plot_u_lo, '// &
+         'plot_u_hi, plot_p_lo, plot_p_hi')
    end select
    end subroutine key_output
 
@@ -1219,9 +1256,11 @@ contains
    select case (trim(k))
    case ('deck_version')
       b = 'the top level'
-   case ('title', 't_end', 'cycle_max', 'num_threads', 'omp_min_zones')
+   case ('title', 't_end', 'cycle_max', 'num_threads', 'omp_min_zones', &
+         'plots_only')
       b = 'the Run block'
-   case ('tracer', 'tracer_dt', 'plot_every', 'plot_dt', 'colormap')
+   case ('tracer', 'tracer_dt', 'plot_every', 'plot_dt', 'colormap', &
+         'plot_u_lo', 'plot_u_hi', 'plot_p_lo', 'plot_p_hi')
       b = 'the Output block'
    case ('method', 'bl', 'bq', 'cfl', 'order')
       b = 'the Solver block'
@@ -1382,6 +1421,15 @@ contains
       if (.not. ok) call deck_error(tracer(it)%line, 'tracer '// &
          trim(tracer(it)%name)//' at '//trim(tracer(it)%at)//': '//msg)
    end do
+
+   !*** 6. Color windows: the low end below the high end (each is
+   !***    already in 0 to 1). The error points at the later line.
+   if (.not. (plot_u_lo < plot_u_hi)) call deck_error(max(line_ulo, &
+      line_uhi), 'plot_u_lo ('//fmt_real(plot_u_lo)//') must be less '// &
+      'than plot_u_hi ('//fmt_real(plot_u_hi)//')')
+   if (.not. (plot_p_lo < plot_p_hi)) call deck_error(max(line_plo, &
+      line_phi), 'plot_p_lo ('//fmt_real(plot_p_lo)//') must be less '// &
+      'than plot_p_hi ('//fmt_real(plot_p_hi)//')')
 
    return
    end subroutine resolve_deck
@@ -1586,6 +1634,11 @@ contains
    end if
    call kv(lu, 2, 'omp_min_zones', itoa(omp_min_zones), &
       'cells; fewer runs on one thread')
+   if (plots_only) then
+      call kv(lu, 2, 'plots_only', 'yes', 'no run: re-draw the pictures')
+   else
+      call kv(lu, 2, 'plots_only', 'no')
+   end if
    write(lu,'(a)') ' End Run'
 
    write(lu,'(a)') ''
@@ -1595,6 +1648,12 @@ contains
    call kv(lu, 2, 'plot_dt',     fmt_real(plot_dt), &
       merge('off', 'us ', plot_dt <= zero))
    call kv(lu, 2, 'colormap',    trim(colormap))
+   call kv(lu, 2, 'plot_u_lo',   fmt_real(plot_u_lo), &
+      'u colors: fractions of the u range')
+   call kv(lu, 2, 'plot_u_hi',   fmt_real(plot_u_hi))
+   call kv(lu, 2, 'plot_p_lo',   fmt_real(plot_p_lo), &
+      'P colors: fractions of the P range')
+   call kv(lu, 2, 'plot_p_hi',   fmt_real(plot_p_hi))
    call kv(lu, 2, 'tracer_dt',   fmt_real(tracer_dt), &
       merge('us, 0 = every cycle', 'us                 ', tracer_dt <= zero))
    do it = 1, ntrc

@@ -103,6 +103,7 @@ Units: mm, us, g/cm^3, km/s, GPa. Nothing is converted inside the code.
 | `cycle_max` | integer | 1000000 | backstop against a stalled time step |
 | `num_threads` | integer | 1 | `0` means all processors; capped at the processor count |
 | `omp_min_zones` | integer | 2000 | a mesh with fewer cells runs the time loop on one thread, whatever `num_threads` says (threads cost more than they save on small 1-D meshes); `0` = always use the threads |
+| `plots_only` | `yes` or `no` | `no` | `yes`: no run; only re-draw the pictures from the files an earlier run of this deck left (section 9b) |
 
 ### `Output`
 **Nothing given means nothing is written.** The only files every run writes are
@@ -118,6 +119,8 @@ A deck with tracers also writes the tracer file, `<title>.tracers.csv`
 | `plot_every` | integer | 0 (off) | write a snapshot (a frame of the history file, section 9) every N cycles |
 | `plot_dt` | number, us | 0 (off) | also write a snapshot every plot_dt |
 | `colormap` | name | `viridis` | for bitmap pictures: `grayscale`, `viridis`, `plasma`, `inferno`, `blackbody`, `kindlmann`, `extendedkindlmann`, `smoothcoolwarm`, `bentcoolwarm` |
+| `plot_u_lo`, `plot_u_hi` | number, 0 to 1 | 0, 1 | the u t-x diagram's color window, as fractions of the data's range (lo below hi; section 9b) |
+| `plot_p_lo`, `plot_p_hi` | number, 0 to 1 | 0, 1 | the same for the P t-x diagram |
 
 When snapshots are on, a snapshot is written whenever either `plot_every` or
 `plot_dt` says so, and the first and last cycles are always included.
@@ -287,15 +290,15 @@ Written in the folder the run starts from, laid out like the verification data
 ---
 
 ## 9. The history file, `<title>.hist`
-> Format version 1, written by bitwhiz since Oct 20, 2026 (module `hist`).
+> Format version 1, written by bitwhiz since Oct 20, 2026 (module `hist`;
+> `DMG` and the variable `type` field were added the same day, compatibly).
 > The screen's section 4 names the file, and the end-of-run report gives
 > the number of frames written.
 
 The history file is the run's record of the whole mesh over time, for
-pictures: t-x diagrams now, made by bitwhiz itself in a later step (a deck
-that only re-draws pictures from this file, without re-running), and
-publication figures with matplotlib or any other tool. It is binary, so a
-reader loads it in a fraction of a second.
+pictures: bitwhiz's own t-x diagrams (section 9b), and publication figures
+with matplotlib or any other tool. It is binary, so a reader loads it in a
+fraction of a second.
 
 - **When it is written:** whenever snapshots are on (`plot_every` or
   `plot_dt`, section 6, `Output`). No snapshot keys, no file.
@@ -303,27 +306,31 @@ reader loads it in a fraction of a second.
 - **When a frame is written:** cycle 0, then the first cycle at or after each
   multiple of `plot_dt`, and every `plot_every` cycles, at that cycle's own
   time (nothing is interpolated); always the last cycle.
-- **What a frame holds, for this beta: x, u and P.** Each is stored where the
-  method keeps it, as in the tracer file (section 8):
+- **What a frame holds: x, u, P and D.** Each is stored where the method
+  keeps it, as in the tracer file (section 8):
 
-  | Name | Unit | Where | Values per frame | Method AV | Method RS |
-  |---|---|---|---|---|---|
-  | `XPOS` | mm | faces | k_max + 1 | x | x |
-  | `KMPS` | km/s | faces | k_max + 1 | face velocity u | Riemann u★ |
-  | `GPA` | GPa | cells | k_max | P | P |
+  | Name | Unit | Where | Type | Values per frame | Method AV | Method RS |
+  |---|---|---|---|---|---|---|
+  | `XPOS` | mm | faces | real32 | k_max + 1 | x | x |
+  | `KMPS` | km/s | faces | real32 | k_max + 1 | face velocity u | Riemann u★ |
+  | `GPA` | GPa | cells | real32 | k_max | P | P |
+  | `DMG` | - | cells | int8 | k_max | damage: 0 intact, 1 broken | the same |
 
   Faces are numbered 1 to k_max + 1 from the left free surface; face k is the
   left face of cell k. x and P are at the frame's time; u is at the half step
   before it, the velocity the method carries (as `KMPS` in the tracer file).
-  Ghost cells are not stored.
-- **Size:** 12 k_max + 24 bytes per frame. The class problem (945 cells,
-  `plot_dt = 0.01` to 5 us, 501 frames) writes 5.7 MB.
+  Ghost cells are not stored. `DMG` is 1 wherever the cell's damage is above
+  0 (bitwhiz's damage is only ever 0 or 1); a continuous damage model would
+  get a new real32 variable instead.
+- **Size:** 13 k_max + 24 bytes per frame. The class problem (945 cells,
+  `plot_dt = 0.01` to 5 us, 501 frames) writes 6.2 MB.
 
 ### Layout
 Little-endian on every machine (bitwhiz is compiled with
 `-fconvert=little-endian`). Fortran stream access: plain bytes, no record
-markers. `int32` and `real32` are 4 bytes, `real64` 8; text is ASCII, padded
-with spaces, not null-terminated.
+markers. `int8` is 1 byte, `int32` and `real32` 4, `real64` 8; text is ASCII,
+padded with spaces, not null-terminated. Nothing is padded for alignment, so
+a frame may be any number of bytes long.
 
 **Header,** `header_bytes` long, in four parts:
 
@@ -338,7 +345,7 @@ with spaces, not null-terminated.
    | 20 | int32 | `nframes` | frames written; 0 until the run ends (see Ending) |
    | 24 | int32 | `status` | how the run ended: 0 not ended (or crashed), 1 reached `t_end`, 2 reached `cycle_max`, 3 stopped by an error |
    | 28 | int32 | `kmax` | cells |
-   | 32 | int32 | `nvar` | variables per frame (3) |
+   | 32 | int32 | `nvar` | variables per frame (4) |
    | 36 | int32 | `nlayer` | layers |
    | 40 | 8 chars | `method` | `AV` or `RS` |
    | 48 | int32 | `order` | 1 or 2 for `RS`; 0 for `AV` |
@@ -347,12 +354,14 @@ with spaces, not null-terminated.
 
 2. **Variables,** `nvar` entries of 32 bytes, in the order they appear in each
    frame: `name` (8 chars), `unit` (16 chars), `where` (int32: 0 faces,
-   1 cells), spare (int32, 0).
+   1 cells), `type` (int32: 0 real32, 1 int8). Files written before `DMG`
+   was added have 3 variables, all with `type` 0.
 3. **Layers,** `nlayer` entries of 72 bytes, left to right: `name`
    (32 chars), `material` (32 chars), first and last cell (2 int32).
 4. **Text,** `text_bytes` long: `key : value` lines, as in the heartbeat's
-   header (deck, title, method, started, version, built, flags), each ending
-   in a newline, padded with spaces to the end.
+   header (deck, title, method, started, version, built, flags), then
+   `plot_dt` and `plot_every` as the run's deck set them; each ends in a
+   newline, and spaces pad the rest.
 
 So `header_bytes` = 64 + 32 `nvar` + 72 `nlayer` + `text_bytes`.
 
@@ -363,7 +372,7 @@ So `header_bytes` = 64 + 32 `nvar` + 72 `nlayer` + `text_bytes`.
 | real64 | `time` (us) |
 | int32 | `cycle` |
 | int32 | `frame`, 1, 2, 3, ... |
-| real32 × (k_max + 1, or k_max) | each variable in turn, in the order of part 2 |
+| real32 or int8 × (k_max + 1, or k_max) | each variable in turn, in the order of part 2 |
 
 **Ending.** Frames are written and flushed as the run goes. Every way out of a
 run that bitwhiz controls then fills in `nframes` and `status`. A file with
@@ -385,13 +394,14 @@ H = np.frombuffer(b, count=1, dtype=[('magic', 'S8'), ('version', '<i4'),
     ('method', 'S8'), ('order', '<i4'), ('text_bytes', '<i4'),
     ('spare', '<i4', 2)])[0]
 V = np.frombuffer(b, count=H['nvar'], offset=64, dtype=[('name', 'S8'),
-    ('unit', 'S16'), ('where', '<i4'), ('spare', '<i4')])
+    ('unit', 'S16'), ('where', '<i4'), ('type', '<i4')])
 k = H['kmax']
 fr = np.dtype([('time', '<f8'), ('cycle', '<i4'), ('frame', '<i4')] +
-    [(v['name'].decode().strip(), '<f4', k + 1 - v['where']) for v in V])
+    [(v['name'].decode().strip(), '<f4' if v['type'] == 0 else 'i1',
+      k + 1 - v['where']) for v in V])
 n = (len(b) - H['header_bytes']) // fr.itemsize   # whole frames on disk
 F = np.frombuffer(b, dtype=fr, count=n, offset=H['header_bytes'])
-t, x, u, P = F['time'], F['XPOS'], F['KMPS'], F['GPA']
+t, x, u, P, D = F['time'], F['XPOS'], F['KMPS'], F['GPA'], F['DMG']
 ```
 `x[j, :]` is frame j's face positions and `P[j, :]` its cell pressures. A
 quick Lagrangian t-x look is `plt.imshow(P, origin='lower', aspect='auto')`
@@ -400,6 +410,47 @@ quick Lagrangian t-x look is `plt.imshow(P, origin='lower', aspect='auto')`
 `plt.pcolormesh(xc, np.broadcast_to(t[:, None], xc.shape), P, shading='nearest')`.
 Find variables by name, not by position: new
 variables are only ever added at the end of part 2.
+
+### 9b. Pictures
+At the end of a run, and in a `plots_only` run, bitwhiz reports (section 9 of
+the screen) and, from the next version on, draws:
+
+| File | What | Needs |
+|---|---|---|
+| `<title>.xt_u.bmp` | t-x diagram of the velocity u | snapshots (`plot_every` or `plot_dt`) |
+| `<title>.xt_p.bmp` | t-x diagram of the pressure P | snapshots |
+| `<title>.tr_<name>.bmp` | one tracer's velocity against time, one per tracer | tracers |
+
+- **Read from the files, never from memory.** The t-x diagrams come from
+  `<title>.hist` and the tracer plots from `<title>.tracers.csv`, so a picture
+  made after a run and the same picture from a `plots_only` run are made from
+  the same numbers.
+- **t-x diagrams, lab frame:** x across, from the smallest to the largest face
+  position of the whole run; t up, from 0 to the last frame; colored edge to
+  edge, with no text. The colors are the deck's `colormap` over a window of
+  the data: from min + lo·(max − min) to min + hi·(max − min), with lo and hi
+  from `plot_u_lo`, `plot_u_hi` (or `plot_p_lo`, `plot_p_hi`), 0 and 1 by
+  default. Values beyond the window take its end colors. **White:** open spall
+  (D = 1 and P = 0) and everything outside the material, in both; in P also
+  every intact cell at P = 0 exactly (material no wave has reached).
+- **Tracer plots:** x from the first to the last time, y from the smallest to
+  the largest velocity, widened by 5% of the range at each end; a border and
+  tick marks at tenths of each axis; no text.
+- **The screen gives every range** (x, t, the data, each color window and
+  each tracer's y axis), so the pictures can be read without text on them.
+
+**`plots_only = yes`** (Run block) re-draws the pictures without running: a
+new `colormap` or color window takes about a second. It reads the deck as
+usual, skips sections 3 to 8 of the run, and writes nothing but the pictures,
+so the heartbeat, tracer and history files it reads are never touched.
+- The history file must have been made by this deck: its method, order, cell
+  count and layers (names, materials, cells) are checked against the deck's.
+  A mismatch, or a missing file, stops the run with an error (exit status 1).
+- The frames in the file decide the t-x diagrams. The deck's `plot_dt` and
+  `plot_every` only say whether there is a history file to read; if they
+  differ from the run's (recorded in the file's text), the screen says they
+  are not used.
+- Every tracer in the deck must be in the tracer file.
 
 ---
 
@@ -456,5 +507,9 @@ also run by `make test`. `bin/test_hist` reads each run's file the way
 section 9 says to and checks every part of it; then, with `tracer_dt` set
 equal to `plot_dt`, an interface tracer's x, u and P must be the file's values
 at its face and cell, frame for frame. Other cases: frames every 7th cycle
-(`plot_every`), a run stopped by `cycle_max` (status 2), and a deck without
-snapshots (no file).
+(`plot_every`, where the last frame's broken cells must also be the run's
+count), a run stopped by `cycle_max` (status 2), a deck without snapshots (no
+file), and `plots_only`: with a new colormap, window and `plot_dt` it must
+report the run's own ranges and leave the run's files untouched, and a deck
+with another mesh, or a folder without the files, must stop it with an
+error.

@@ -13,9 +13,12 @@ program test_hist
 !    3 error). With a face and a cell (both numbered from 1, as in
 !    the file), it also prints one line per frame,
 !
-!       F  cycle  time  x(face)  u(face)  P(cell)
+!       F  cycle  time  x(face)  u(face)  P(cell)  D(cell)
 !
-!    which the script compares with the same run's tracer file.
+!    which the script compares with the same run's tracer file. The
+!    last line it prints is always
+!
+!       B  <cells broken (D = 1) in the last frame>
 !
 !  Independent of module hist on purpose: this program reads the
 !  file the way the README says to, so it checks the README and the
@@ -28,9 +31,12 @@ program test_hist
 !      ====       ==========          =====================
 !    10/20/26    D. E. Kittell        Original code
 !                (with Claude)
+!    10/20/26    D. E. Kittell        DMG (int8, cells) and the variable
+!                (with Claude)        type field; the text's plot_dt and
+!                                     plot_every lines; B line
 !
 !**********************************************************************!
-use bits, only: sp, dp, int32, int64
+use bits, only: sp, dp, int8, int32, int64
 implicit none
 
 !*** The fixed part (64 bytes).
@@ -40,19 +46,18 @@ integer(kind=int32) :: version, header_bytes, frame_bytes, nframes, &
 !*** The tables and the text.
 character(len=8),  allocatable :: vname(:)
 character(len=16), allocatable :: vunit(:)
-integer(kind=int32), allocatable :: vwhere(:), vspare(:)
+integer(kind=int32), allocatable :: vwhere(:), vtype(:), nval(:)
 character(len=32), allocatable :: lname(:), lmat(:)
 integer(kind=int32), allocatable :: kfirst(:), klast(:)
 character(len=:), allocatable :: text
-!*** A frame.
+!*** A frame: XPOS, KMPS (faces), GPA (cells) and DMG (cells).
 real(kind=dp) :: time, tprev
 integer(kind=int32) :: cycle, frame, cprev
-real(kind=sp), allocatable :: vals(:)
-integer(kind=int32), allocatable :: off(:), nval(:)
+real(kind=sp), allocatable :: x(:), u(:), p(:)
+integer(kind=int8), allocatable :: d(:)
 
 character(len=256) :: fname, arg
-integer(kind=int32) :: lu, ios, j, k, n, want_status, face, cell, nbad
-integer(kind=int32) :: ix, iu, ip
+integer(kind=int32) :: lu, ios, j, k, want_status, face, cell, nbad, nbytes
 integer(kind=int64) :: fsize
 logical :: printing
 
@@ -93,21 +98,22 @@ call check( header_bytes == 64 + 32*nvar + 72*nlayer + text_bytes, &
    'header_bytes = 64 + 32 nvar + 72 nlayer + text_bytes' )
 if ( nbad > 0 ) call finish()
 
-!*** 2. Variables: this beta's three, in this order, at these places.
-allocate( vname(nvar), vunit(nvar), vwhere(nvar), vspare(nvar) )
+!*** 2. Variables: this version's four, in this order, at these places,
+!*** of these types (0 real32, 1 int8).
+allocate( vname(nvar), vunit(nvar), vwhere(nvar), vtype(nvar), nval(nvar) )
 do j = 1, nvar
-   read( lu ) vname(j), vunit(j), vwhere(j), vspare(j)
+   read( lu ) vname(j), vunit(j), vwhere(j), vtype(j)
 end do
-call check( nvar == 3, 'nvar is 3' )
-if ( nvar == 3 ) then
-   call check( vname(1) == 'XPOS' .and. vunit(1) == 'mm' .and. &
-      vwhere(1) == 0, 'variable 1 is XPOS, mm, faces' )
-   call check( vname(2) == 'KMPS' .and. vunit(2) == 'km/s' .and. &
-      vwhere(2) == 0, 'variable 2 is KMPS, km/s, faces' )
-   call check( vname(3) == 'GPA' .and. vunit(3) == 'GPa' .and. &
-      vwhere(3) == 1, 'variable 3 is GPA, GPa, cells' )
-end if
-call check( all( vspare == 0 ), 'variable spares are 0' )
+call check( nvar == 4, 'nvar is 4' )
+if ( nbad > 0 ) call finish()
+call check( vname(1) == 'XPOS' .and. vunit(1) == 'mm' .and. &
+   vwhere(1) == 0 .and. vtype(1) == 0, 'variable 1 is XPOS, mm, faces, real32' )
+call check( vname(2) == 'KMPS' .and. vunit(2) == 'km/s' .and. &
+   vwhere(2) == 0 .and. vtype(2) == 0, 'variable 2 is KMPS, km/s, faces, real32' )
+call check( vname(3) == 'GPA' .and. vunit(3) == 'GPa' .and. &
+   vwhere(3) == 1 .and. vtype(3) == 0, 'variable 3 is GPA, GPa, cells, real32' )
+call check( vname(4) == 'DMG' .and. vunit(4) == '-' .and. &
+   vwhere(4) == 1 .and. vtype(4) == 1, 'variable 4 is DMG, -, cells, int8' )
 
 !*** 3. Layers: they tile cells 1 to kmax, left to right, no gaps.
 allocate( lname(nlayer), lmat(nlayer), kfirst(nlayer), klast(nlayer) )
@@ -122,22 +128,24 @@ if ( nlayer > 1 ) call check( all( kfirst(2:) == klast(:nlayer-1) + 1 ), &
 call check( all( len_trim(lname) > 0 ) .and. all( len_trim(lmat) > 0 ), &
    'layer and material names are not blank' )
 
-!*** 4. Text: key : value lines, the title and the flags among them.
+!*** 4. Text: key : value lines, among them the title, the flags and
+!*** the snapshot rule.
 allocate( character(len=text_bytes) :: text )
 read( lu ) text
 call check( index(text, 'title   : ') > 0, 'the text names the title' )
 call check( index(text, 'flags   : ') > 0, 'the text names the flags' )
+call check( index(text, new_line('a')//'plot_dt    : ') > 0 .and. &
+   index(text, new_line('a')//'plot_every : ') > 0, &
+   'the text has plot_dt and plot_every' )
 
-!*** Sizes: the frame length follows from the table, and the file is
-!*** the header plus nframes whole frames.
-allocate( off(nvar), nval(nvar) )
-n = 0
+!*** Sizes: the frame length follows from the table (4 bytes a real32,
+!*** 1 an int8), and the file is the header plus nframes whole frames.
+nbytes = 16
 do j = 1, nvar
    nval(j) = kmax + 1 - vwhere(j)
-   off(j)  = n
-   n = n + nval(j)
+   nbytes  = nbytes + nval(j)*merge( 4, 1, vtype(j) == 0 )
 end do
-call check( frame_bytes == 16 + 4*n, 'frame_bytes = 16 + 4 * values' )
+call check( frame_bytes == nbytes, 'frame_bytes = 16 + the values'' bytes' )
 call check( nframes > 0, 'nframes is filled in' )
 call check( fsize == int(header_bytes,int64) + &
    int(nframes,int64)*int(frame_bytes,int64), &
@@ -145,14 +153,13 @@ call check( fsize == int(header_bytes,int64) + &
 if ( nbad > 0 ) call finish()
 
 !*** Frames.
-allocate( vals(n) )
-ix = 1; iu = 2; ip = 3                     ! XPOS, KMPS, GPA (checked)
+allocate( x(kmax+1), u(kmax+1), p(kmax), d(kmax) )
 if ( printing ) call check( face >= 1 .and. face <= kmax + 1 .and. &
    cell >= 1 .and. cell <= kmax, 'the face and cell asked for exist' )
 if ( nbad > 0 ) call finish()
 cprev = -1; tprev = -1.0_dp
 do j = 1, nframes
-   read( lu, iostat=ios ) time, cycle, frame, vals
+   read( lu, iostat=ios ) time, cycle, frame, x, u, p, d
    if ( ios /= 0 ) call fail( 'cannot read frame '//itoa(j) )
    if ( frame /= j ) call fail( 'frame '//itoa(j)//' is numbered '// &
       itoa(frame) )
@@ -160,23 +167,26 @@ do j = 1, nframes
       call fail( 'frame 1 is not cycle 0 at t = 0' )
    if ( cycle <= cprev .or. .not. ( time > tprev ) ) &
       call fail( 'frame '//itoa(j)//': cycle and time do not increase' )
-   do k = 1, n
-      if ( not_finite32( vals(k) ) ) call fail( 'frame '//itoa(j)// &
-         ': a value is not a finite number' )
-   end do
+   if ( any( not_finite32(x) ) .or. any( not_finite32(u) ) .or. &
+        any( not_finite32(p) ) ) call fail( 'frame '//itoa(j)// &
+      ': a value is not a finite number' )
    do k = 1, kmax
-      if ( .not. ( vals(off(ix)+k+1) > vals(off(ix)+k) ) ) &
-         call fail( 'frame '//itoa(j)//': faces '//itoa(k)//' and '// &
-            itoa(k+1)//' are not in order' )
+      if ( .not. ( x(k+1) > x(k) ) ) call fail( 'frame '//itoa(j)// &
+         ': faces '//itoa(k)//' and '//itoa(k+1)//' are not in order' )
    end do
-   if ( j == 1 .and. any( abs(vals(off(ip)+1:off(ip)+kmax)) > 0.0_sp ) ) &
+   if ( any( d /= 0_int8 .and. d /= 1_int8 ) ) call fail( 'frame '// &
+      itoa(j)//': a DMG value is not 0 or 1' )
+   if ( j == 1 .and. any( abs(p) > 0.0_sp ) ) &
       call fail( 'frame 1: P is not 0 everywhere at t = 0' )
-   if ( printing ) write( *, '(a,i0,4(1x,es24.16e3))' ) 'F ', cycle, time, &
-      real( vals(off(ix)+face), dp ), real( vals(off(iu)+face), dp ), &
-      real( vals(off(ip)+cell), dp )
+   if ( j == 1 .and. any( d /= 0_int8 ) ) &
+      call fail( 'frame 1: a cell is broken at t = 0' )
+   if ( printing ) write( *, '(a,i0,4(1x,es24.16e3),1x,i0)' ) 'F ', &
+      cycle, time, real( x(face), dp ), real( u(face), dp ), &
+      real( p(cell), dp ), int( d(cell), int32 )
    cprev = cycle; tprev = time
 end do
 close( lu )
+write( *, '(a,i0)' ) 'B ', count( d == 1_int8 )
 call finish()
 
 contains
@@ -202,9 +212,9 @@ contains
    end subroutine finish
 
    !*** NaN or infinity: all 8 exponent bits set (IEEE 754 single).
-   logical function not_finite32( x )
-   real(kind=sp), intent(in) :: x
-   not_finite32 = ( iand( ishft( transfer(x, 0_int32), -23 ), 255 ) == 255 )
+   elemental logical function not_finite32( v )
+   real(kind=sp), intent(in) :: v
+   not_finite32 = ( iand( ishft( transfer(v, 0_int32), -23 ), 255 ) == 255 )
    end function not_finite32
 
    function itoa( i ) result(s)

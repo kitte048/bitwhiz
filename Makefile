@@ -20,6 +20,8 @@
 #                build; see the NOTES at RFLAGS and at 'release')
 #Revision: 1.12 (10-20-26, with Claude: hist module, the history file;
 #                its tests in 'make test' and 'make release')
+#Revision: 1.13 (10-20-26, with Claude: pics module, the pictures;
+#                plots_only tests in run_hist_tests.sh)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -150,6 +152,8 @@ $(1)src/modules/av_mod.o:    $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/trace_mod.o: $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
 $(1)src/modules/hist_mod.o:  $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
+$(1)src/modules/pics_mod.o:  $(1)src/modules/hist_mod.o $(1)src/modules/deck_mod.o \
+                             $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
 $(1)src/modules/rs_mod.o:    $(1)src/modules/av_mod.o $(1)src/modules/eos_mod.o \
                              $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
 endef

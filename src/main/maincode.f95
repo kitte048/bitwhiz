@@ -9,8 +9,11 @@ program bitwhiz
 !      0. Loading screen.            5. Allocate the data arrays.
 !      1. Read the command line.     6. Initialization (t = 0).
 !      2. Read the input deck.       7. Begin the simulation.
-!      3. Test OpenMP settings.      8. Close the output files,
-!      4. Open the output files.        free the memory.
+!      3. Test OpenMP settings.      8. Close the output files.
+!      4. Open the output files.     9. Pictures; free the memory.
+!
+!    A deck with plots_only = yes goes from 2 straight to 9: no run,
+!    only the pictures, from the files an earlier run of it left.
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -65,6 +68,10 @@ program bitwhiz
 !                (with Claude)        hist): x, u, P on the whole mesh,
 !                                     one frame per snapshot (plot_every,
 !                                     plot_dt); closed by close_outputs
+!    10/20/26    D. E. Kittell        Section 9, pictures (module pics):
+!                (with Claude)        after a run, and the whole of a
+!                                     plots_only run; plot_dt and
+!                                     plot_every in the history file
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -77,8 +84,9 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads,method, &
    face_slots,cell_slots,dbname,not_finite, &
    kcell,t_end,cycle_max,CFL,BL,BQ,omp_min_zones, &
    alloc_database,dealloc_database,dealloc_layers, &
-   dealloc_materials,dealloc_tracers
-use deck, only: read_deck,write_resolved_deck
+   dealloc_materials,dealloc_tracers,plots_only,plot_dt,plot_every
+use deck, only: read_deck,write_resolved_deck,fmt_real
+use pics, only: make_pictures
 use eos, only: mg_eos,eos_message,eos_ok
 use av, only: face_step,cell_step,cell_state,cell_dt
 use rs, only: rs_face_states,riemann_face,rs_cell_step,rs_state,rs_cell_dt
@@ -96,7 +104,8 @@ real(kind=dp) :: cpu0,cpu1              ! CPU seconds, start and end
 integer(kind=int32) :: nargs            ! command line word count
 integer(kind=int32) :: kerr             ! errors found in the deck
 integer(kind=int32) :: ios              ! I/O status from open()
-character(len=1024) :: hinfo(7)         ! the history file's text lines
+character(len=1024) :: hinfo(9)         ! the history file's text lines
+integer(kind=int32) :: npic = 0         ! problems making the pictures
 integer(kind=int32) :: nlen             ! full length of the deck path
 character(len=256) :: deckname          ! the deck file, from the
                                         ! command line
@@ -170,7 +179,6 @@ logical :: running = .false.            ! the time loop has started
 204 format(3x,a,t40,': ',a)             ! label : text
 205 format(3x,a,t40,': ',i8)            ! label : integer
 206 format(3x,a,t15,': ',a)             ! banner label : text
-207 format(3x,a,t15,': ',f10.3,a)       ! banner label : seconds  note
 208 format(3x,a10,i9,es11.4,f13.6,f10.4) ! layer table row
 209 format(3x,a,f10.6,a)                ! label number unit
 210 format(5x,a,f8.4,a,f8.4,a,f8.4)     ! impact face velocities
@@ -272,6 +280,17 @@ write( kpt6, 202 ) repeat('=',56)
 write( kpt6, 202 ) ' 2. Input deck: '//trim(deckname)
 write( kpt6, 202 ) repeat('=',56)
 call write_resolved_deck( int(kpt6) )
+
+!*** plots_only = yes: no run. Straight to the pictures (section 9),
+!*** from the files an earlier run of this deck left. Nothing else is
+!*** opened, so the heartbeat, tracer and history files it reads are
+!*** never touched.
+if ( plots_only ) then
+   call make_pictures( npic )
+   call finish_run()
+   if ( npic > 0 ) stop 1, quiet=.true.
+   stop 0, quiet=.true.
+end if
 
 !===================================!
 ! 3. Test OpenMP settings, if used. !
@@ -408,6 +427,8 @@ hinfo(4) = 'started : '//started
 hinfo(5) = 'version : '//build_version()
 hinfo(6) = 'built   : '//build_date()//', '//compiler_version()
 hinfo(7) = 'flags   : '//compiler_options()
+hinfo(8) = 'plot_dt    : '//fmt_real(plot_dt)
+hinfo(9) = 'plot_every : '//itoa(plot_every)
 call open_history( title, hinfo, ios )
 if ( ios /= 0 ) then
    write( kpt6, 202 ) 'bitwhiz: cannot open the history file '// &
@@ -1173,36 +1194,57 @@ end if
 if ( hst_open ) write( kpt6, 205 ) 'History frames written', hst_frames
 write( kpt6, 202 ) repeat('=',56)
 
-!===============================================!
-! 8. Close the output files, free the memory.   !
-!===============================================!
+!=============================!
+! 8. Close the output files.  !
+!=============================!
 call close_outputs( trim(endhow) )
 
-! Every alloc_ in shock_mod has its dealloc_ (bits RULE). kerr only
-! counts; a failure here at the very end is reported, not fatal.
-kerr = 0
-call dealloc_database( kerr )
-call dealloc_tracers( kerr )
-call dealloc_layers( kerr )
-call dealloc_materials( kerr )
-if ( kerr > 0 ) write( kpt6, 202 ) 'bitwhiz: warning: could not free '// &
-   'all memory at the end of the run'
+!========================================!
+! 9. Pictures (module pics), then free   !
+!    the memory and say how long it took.!
+!========================================!
 
-!=================================!
-! End of run: how long it took.   !
-!=================================!
-
-! Same layout as the banner, so a run's screen output opens and closes
-! the same way. (See the start of the program for wall vs. CPU time.)
-call system_clock( tick1 )
-call cpu_time( cpu1 )
-write( kpt6, 202 ) repeat('=',56)
-write( kpt6, 206 ) 'run end',    clock()
-write( kpt6, 207 ) 'wall clock', real(tick1-tick0,dp)/real(rate,dp), ' s'
-write( kpt6, 207 ) 'CPU time',   cpu1-cpu0, ' s (all threads)'
-write( kpt6, 202 ) repeat('=',56)
+! Read back from the files just closed, exactly as a plots_only run
+! reads them, so both make the same pictures from the same numbers.
+call make_pictures( npic )
+call finish_run()
+if ( npic > 0 ) stop 1, quiet=.true.     ! a picture could not be made
 
 contains
+
+   !*****************************************************!
+   ! The end of every run that gets this far (a normal   !
+   ! one, and plots_only): free the memory and say how   !
+   ! long it took. (The caller then stops with exit      !
+   ! status 1 if a picture could not be made, npic.)     !
+   !                                                     !
+   ! Every alloc_ in shock_mod has its dealloc_ (bits    !
+   ! RULE). A failure to free memory at the very end is  !
+   ! reported, not fatal. The closing lines have the     !
+   ! banner's layout, so a run's screen output opens and !
+   ! closes the same way. (See the start of the program  !
+   ! for wall vs. CPU time.)                             !
+   !*****************************************************!
+   subroutine finish_run()
+   implicit none
+   integer(kind=int32) :: kfree
+   kfree = 0
+   call dealloc_database( kfree )
+   call dealloc_tracers( kfree )
+   call dealloc_layers( kfree )
+   call dealloc_materials( kfree )
+   if ( kfree > 0 ) write( kpt6, '(1x,a)' ) 'bitwhiz: warning: could '// &
+      'free all memory at the end of the run'
+   call system_clock( tick1 )
+   call cpu_time( cpu1 )
+   write( kpt6, '(1x,a)' ) repeat('=',56)
+   write( kpt6, '(3x,a,t15,": ",a)' ) 'run end', clock()
+   write( kpt6, '(3x,a,t15,": ",f10.3,a)' ) 'wall clock', &
+      real(tick1-tick0,dp)/real(rate,dp), ' s'
+   write( kpt6, '(3x,a,t15,": ",f10.3,a)' ) 'CPU time', cpu1-cpu0, &
+      ' s (all threads)'
+   write( kpt6, '(1x,a)' ) repeat('=',56)
+   end subroutine finish_run
 
    !*****************************************************!
    ! Print what went wrong on the command line, how to   !

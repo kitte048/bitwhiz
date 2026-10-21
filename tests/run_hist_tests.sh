@@ -8,18 +8,25 @@
 #  its <title>.hist with bin/test_hist, which reads it as              #
 #  input/README.md, section 9, says to (sizes, tables, text, frames    #
 #  numbered and in time order, faces in order, every value finite, P   #
-#  = 0 at t = 0, nframes and status filled in). Then, case by case:   #
+#  = 0 and D = 0 at t = 0, D only 0 or 1, nframes and status filled    #
+#  in). Then, case by case:                                            #
 #                                                                      #
 #   - with tracer_dt = plot_dt, the frames must be at exactly the      #
-#     tracer rows' cycles, and an interface tracer's x, u and P must   #
-#     be the file's values at its face and cell, to single precision   #
-#     (this checks the snapshot rule, the slots, AV's u and RS's u*,   #
-#     and the face and cell numbering);                                #
+#     tracer rows' cycles, and an interface tracer's x, u, P and D     #
+#     must be the file's values at its face and cell, to single        #
+#     precision (this checks the snapshot rule, the slots, AV's u and  #
+#     RS's u*, and the face and cell numbering);                       #
 #   - with plot_every = 7, the frames are cycles 0, 7, 14, ... and the #
-#     last;                                                            #
+#     last, and the cells broken in the last frame are the run's       #
+#     count;                                                           #
 #   - a run stopped by cycle_max ends its file with status 2 and a     #
 #     frame at that cycle;                                             #
-#   - a deck with no snapshot keys writes no history file.            #
+#   - a deck with no snapshot keys writes no history file;             #
+#   - plots_only = yes (no run): with a new colormap, color window and #
+#     plot_dt it reports the same ranges as the run did, leaves the    #
+#     run's files untouched and says the deck's plot_dt is not used;   #
+#     a deck with a different mesh, or a folder without the run's      #
+#     files, stops it with an error.                                   #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")    # absolute
@@ -63,14 +70,28 @@ tracer_place() {
       awk '{ print $1 + 1, $2 }'
 }
 
-# The tracer file's CYCLE, XPOS, KMPS and GPA columns for tracer $2.
+# The tracer file's CYCLE, XPOS, KMPS, GPA and DMG columns for tracer $2.
 tracer_cols() {
    awk -F', *' -v t="$2" '
       NR == 1 { for (i = 1; i <= NF; i++) c[$i] = i; next }
       NR == 2 || /^#/ { next }
-      { print $(c["CYCLE"]), $(c["XPOS." t]), $(c["KMPS." t]), $(c["GPA." t]) }
+      { print $(c["CYCLE"]), $(c["XPOS." t]), $(c["KMPS." t]), $(c["GPA." t]), $(c["DMG." t]) }
    ' "$1"/*.tracers.csv
 }
+
+# test_hist on folder $1's history file, expected status $2, face and
+# cell $3 $4: its F lines into $1/frames, its B count into $1/broken.
+check_file() {
+   if ! "$CHK" "$1"/*.hist "$2" "$3" "$4" > "$1/chk.out"; then
+      grep FAIL "$1/chk.out" | head -3; return 1
+   fi
+   grep '^F ' "$1/chk.out" > "$1/frames"
+   awk '/^B / {print $2}' "$1/chk.out" > "$1/broken"
+}
+
+# A checksum of each of the run's own files in folder $1 (cksum is in
+# every POSIX system; md5sum is not on macOS).
+sums() { (cd "$1" && cksum *.hist *.tracers.csv *.heartbeat 2>/dev/null); }
 
 # Case: tracer_dt = plot_dt, so frames and tracer rows share their
 # cycles; compare an interface tracer with the file at its face/cell.
@@ -79,16 +100,14 @@ against_tracer() {   # $1 case name, $2 deck, $3 dt, $4 tracer
    if ! run "$1" "$TMP/$1.deck"; then fail "$1" "the run did not finish"; return; fi
    local d="$TMP/$1" place
    place=$(tracer_place "$d" "$4")
-   if ! "$CHK" "$d"/*.hist 1 $place > "$d/frames"; then
-      fail "$1" "test_hist:"; grep FAIL "$d/frames" | head -3; return
-   fi
+   if ! check_file "$d" 1 $place; then fail "$1" "test_hist (above)"; return; fi
    tracer_cols "$d" "$4" > "$d/rows"
    if ! paste -d' ' "$d/frames" "$d/rows" | awk '
          function rel(a, b) { d = a - b; if (d < 0) d = -d; s = (b < 0 ? -b : b); return d / (s > 1 ? s : 1) }
-         NF != 10 { bad = "frames and tracer rows differ in number"; exit 1 }
-         $2 != $7 { bad = "frame " NR " is cycle " $2 ", the tracer row cycle " $7; exit 1 }
-         rel($4, $8) > 1e-6 || rel($5, $9) > 1e-6 || rel($6, $10) > 1e-6 {
-            bad = "cycle " $2 ": x, u, P " $4 " " $5 " " $6 " vs the tracer " $8 " " $9 " " $10; exit 1 }
+         NF != 12 { bad = "frames and tracer rows differ in number"; exit 1 }
+         $2 != $8 { bad = "frame " NR " is cycle " $2 ", the tracer row cycle " $8; exit 1 }
+         rel($4, $9) > 1e-6 || rel($5, $10) > 1e-6 || rel($6, $11) > 1e-6 || $7 != ($12 > 0 ? 1 : 0) {
+            bad = "cycle " $2 ": x, u, P, D " $4 " " $5 " " $6 " " $7 " vs the tracer " $9 " " $10 " " $11 " " $12; exit 1 }
          END { if (bad != "") { print bad; exit 1 } }' > "$d/diff"; then
       fail "$1" "$(cat "$d/diff")"; return
    fi
@@ -102,16 +121,20 @@ against_tracer rs_order2 tests/decks/ok_method_rs.deck        0.05 impact
 against_tracer rs_order1 tests/decks/ok_method_rs_order1.deck 0.05 impact
 
 # Case: plot_every = 7 (the deck's own setting): cycles 0, 7, 14, ...
-# and the last.
+# and the last; the plate spalls, and the last frame's broken cells
+# are the run's count.
 c=plot_every
 if run $c tests/decks/ok_plate_spall.deck; then
    d="$TMP/$c"
    last=$(grep '^ *Cycles  ' "$d/screen.out" | awk -F: '{print $2+0}')
-   if ! "$CHK" "$d"/*.hist 1 1 1 > "$d/frames"; then
-      fail $c "test_hist:"; grep FAIL "$d/frames" | head -3
+   nbrk=$(grep 'Cells broken by the end' "$d/screen.out" | awk -F: '{print $2+0}')
+   if ! check_file "$d" 1 1 1; then
+      fail $c "test_hist (above)"
    elif ! diff <(awk '{print $2}' "$d/frames") \
                <(awk -v n="$last" 'BEGIN { for (i = 0; i < n; i += 7) print i; print n }') > /dev/null; then
       fail $c "the frames are not cycles 0, 7, 14, ... and the last ($last)"
+   elif [ -z "$nbrk" ] || [ "$nbrk" -eq 0 ] || [ "$(cat "$d/broken")" != "$nbrk" ]; then
+      fail $c "broken cells in the last frame: $(cat "$d/broken"), the run: ${nbrk:-none}"
    else
       npass=$((npass+1))
    fi
@@ -124,8 +147,8 @@ c=cycle_max
 setkeys input/me697_double_shock_2p00.deck Run "cycle_max = 100" > "$TMP/$c.deck"
 run $c "$TMP/$c.deck"                       # stops early; exit code not 0
 d="$TMP/$c"
-if ! "$CHK" "$d"/*.hist 2 1 1 > "$d/frames"; then
-   fail $c "test_hist:"; grep FAIL "$d/frames" | head -3
+if ! check_file "$d" 2 1 1; then
+   fail $c "test_hist (above)"
 elif [ "$(tail -1 "$d/frames" | awk '{print $2}')" != 100 ]; then
    fail $c "the last frame is not cycle 100"
 else
@@ -144,6 +167,57 @@ if run $c tests/decks/ok_setup_counter.deck; then
    fi
 else
    fail $c "the run did not finish"
+fi
+
+# Cases: plots_only = yes, in a copy of the class_av run's folder.
+# The ranges it reports must be the run's own (same numbers, read the
+# same way), and the run's files must not change.
+ranges() { grep -E '^ +(x across|t up|u in the run|P in the run|Rows|Tracer [a-z_]+ u )' "$1"; }
+c=plots_only
+d="$TMP/$c"; mkdir -p "$d"
+cp "$TMP"/class_av/*.hist "$TMP"/class_av/*.tracers.csv "$TMP"/class_av/*.heartbeat "$d"/
+before=$(sums "$d")
+setkeys "$TMP/class_av.deck" Run "plots_only = yes" > "$TMP/$c.1"
+setkeys "$TMP/$c.1" Output "colormap = inferno" "plot_p_lo = 0.1" \
+   "plot_p_hi = 0.6" "plot_dt = 0.5" "tracer_dt = 0.5" > "$TMP/$c.deck"
+if ! run $c "$TMP/$c.deck"; then
+   fail $c "the plots_only run did not finish:"; grep 'bitwhiz:' "$d/screen.out" | head -3
+elif [ "$(sums "$d")" != "$before" ]; then
+   fail $c "it changed the run's files"
+elif ! diff <(ranges "$TMP/class_av/screen.out") <(ranges "$d/screen.out") > /dev/null; then
+   fail $c "its ranges differ from the run's"
+elif ! grep -q 'Colormap *: inferno' "$d/screen.out" ||
+     ! grep -q 'P colors (GPa).*(window 0.1 to 0.6)' "$d/screen.out" ||
+     ! grep -q 'not used: the frames in the file are' "$d/screen.out"; then
+   fail $c "it does not report the new colormap, window or plot_dt"
+elif grep -qE '^ +[3-8]\. ' "$d/screen.out"; then
+   fail $c "it printed run sections (it must go from 2 to 9)"
+else
+   npass=$((npass+1))
+fi
+
+# The same folder, a deck with a different mesh: an error, no change.
+c=plots_only_other_mesh
+setkeys "$TMP/plots_only.deck" Stack "resolution = 30" > "$TMP/$c.deck"
+if run plots_only "$TMP/$c.deck"; then
+   fail $c "a history file from another mesh was accepted"
+elif ! grep -q 'was not made by this deck: 945 cells, not 810' "$d/screen.out"; then
+   fail $c "the error does not say what differs"
+elif [ "$(sums "$d")" != "$before" ]; then
+   fail $c "it changed the run's files"
+else
+   npass=$((npass+1))
+fi
+
+# A folder without the run's files: an error naming them.
+c=plots_only_no_files
+if run $c "$TMP/plots_only.deck"; then
+   fail $c "it finished without the run's files"
+elif ! grep -q 'cannot open double_shock_2p00.hist' "$TMP/$c/screen.out" ||
+     ! grep -q 'cannot open double_shock_2p00.tracers.csv' "$TMP/$c/screen.out"; then
+   fail $c "the errors do not name the missing files"
+else
+   npass=$((npass+1))
 fi
 
 echo "history tests: $npass passed, $nfail failed"
