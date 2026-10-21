@@ -37,9 +37,11 @@ src/modules/build_mod.f95
 
 # ---- Run outputs ------------------------------------------------------
 # Every run writes <title>.heartbeat in the folder it runs from, and
-# <title>.tracers.csv when the deck has tracers.
+# <title>.tracers.csv when the deck has tracers, and <title>.hist when it
+# has snapshots (plot_every or plot_dt).
 *.heartbeat
 *.tracers.csv
+*.hist
 
 # ---- LaTeX build products (doc/) ------------------------------------
 # doc/ keeps each sheet's .tex and .pdf, and the figure .tex and .pdf

@@ -16,7 +16,8 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Expansion EOS (cubic, smooth through V0) and spall (`spall_strength`) | done (`eos_mod`, `av_mod`; see `input/README.md`) |
 | Tracer file (`<title>.tracers.csv`, `tracer_dt`) | done (`src/modules/trace_mod.f95`; see `input/README.md`) |
 | Second method, `method = RS` (Godunov's method, acoustic Riemann solver), in the same code; `order = 2` (MUSCL-Hancock, Van Leer, the default) or `1` | done (`src/modules/rs_mod.f95`, maincode section 7; equation sheet `doc/Hydrocode_RS_Eqns_v4`) |
-| Snapshot output (bitmaps, t-x diagrams) | next |
+| History file `<title>.hist`: x, u, P on the whole mesh, one frame per snapshot (`plot_every`, `plot_dt`) | done (`src/modules/hist_mod.f95`; format in `input/README.md`, section 9) |
+| Pictures from the history file (t-x bitmaps, a plot-only mode) | next |
 | Comparison with reference data | data in `tests/verification/` |
 
 ## Build
@@ -66,7 +67,7 @@ out like the verification data in `tests/verification/`.
 ```
 make test
 ```
-Three kinds of test, all run by `make test`, which stops at the first failure:
+Four kinds of test, all run by `make test`, which stops at the first failure:
 
 - **Unit tests**, one program each, `tests/test_*.f95`, exit status 0 = pass.
   `test_eos` checks the equation of state against 45 states computed
@@ -81,7 +82,13 @@ Three kinds of test, all run by `make test`, which stops at the first failure:
   threads, as many as the machine has processors for. Everything printed from
   t = 0 on, every heartbeat line and every tracer row must be identical to the 1-thread run
   (clock times aside). Any difference means a race condition. A serial build
-  (`make OMPFLAGS=`) skips them.
+  (`make OMPFLAGS=`) skips them. The history file must match too, byte for
+  byte (apart from its text block, which names the build).
+- **History file tests**, `tests/run_hist_tests.sh`: `bin/test_hist` checks
+  each run's `<title>.hist` against its format (`input/README.md`,
+  section 9), and against the tracer file at the same cycles, for both
+  methods; plus `plot_every`, a run stopped by `cycle_max`, and a deck
+  without snapshots.
 
 `make release` runs the deck and OpenMP tests again on the optimized build, and
 a fourth kind, the **release tests** (`tests/run_release_tests.sh`): both builds
@@ -93,11 +100,11 @@ Run it before every commit.
 | Folder | What |
 |---|---|
 | `src/main` | `maincode.f95` (the run, section by section), `bmpmaker.f95` |
-| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `av_mod` (the artificial viscosity method, one place at a time), `rs_mod` (the Riemann solver method), `trace_mod` (the tracer file), `bit_mod` (kinds and constants), colormap data |
+| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `av_mod` (the artificial viscosity method, one place at a time), `rs_mod` (the Riemann solver method), `trace_mod` (the tracer file), `hist_mod` (the history file), `bit_mod` (kinds and constants), colormap data |
 | `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_colormaps` (demo, kept in the build) |
 | `src/utils` | `make_build_info.sh` (writes the build record), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |
-| `tests` | unit tests (`test_*.f95`), deck, OpenMP and release tests, `verification/` reference tracer data |
+| `tests` | unit tests (`test_*.f95`), deck, OpenMP, history file and release tests, `verification/` reference tracer data |
 | `bin` | the executables: `bitwhiz` (debug), `bitwhiz_release` (optimized) |
 | `build/release` | the release build's objects and module files (made by `make release`, not in git) |
 | `doc` | the equation sheets the code is checked against, frozen copies (`doc/README.md`) |

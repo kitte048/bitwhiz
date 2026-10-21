@@ -7,11 +7,12 @@
 #     ./tests/run_release_tests.sh                                     #
 #                                                                      #
 #  Each deck below is run once on each build (one thread). A deck      #
-#  passes if everything the release build prints from section 6 on,   #
-#  every heartbeat line and every tracer row are IDENTICAL to the      #
-#  debug build's, character for character. Left out, as in the OpenMP  #
-#  tests: the clock times, and the lines that name the build itself    #
-#  (version, built, flags), which are meant to differ.                 #
+#  passes if everything the release build prints from section 6 on,    #
+#  every heartbeat line, every tracer row and the history file (byte   #
+#  for byte) are IDENTICAL to the debug build's. Left out, as in the   #
+#  OpenMP tests: the clock times, and the lines that name the build    #
+#  itself (version, built, flags, and the history file's text block),  #
+#  which are meant to differ.                                          #
 #                                                                      #
 #  Why identical, not "close": the two builds differ only in checks    #
 #  and optimization, never in arithmetic (Makefile, NOTES at RFLAGS:   #
@@ -53,6 +54,17 @@ rows() {      # $1 = folder of one run
    grep -vE '^# (started|ended|version|built|flags|cycles)' "$f"
 }
 
+# The history file without its text block (build lines and clock
+# times, which differ between any two runs): bytes 0 to header_bytes -
+# text_bytes, then every frame. No file, no output.
+hbody() {     # $1 = folder of one run
+   f=$(ls "$1"/*.hist 2>/dev/null) || return 0
+   hb=$(od -An -t d4 -j 12 -N 4 "$f" | tr -d ' ')
+   tb=$(od -An -t d4 -j 52 -N 4 "$f" | tr -d ' ')
+   head -c $((hb - tb)) "$f"
+   tail -c +$((hb + 1)) "$f"
+}
+
 for deck in $DECKS; do
    name=$(basename "$deck" .deck)
    ok=1
@@ -85,6 +97,9 @@ for deck in $DECKS; do
    if ! diff <(rows "$a") <(rows "$b") > "$b/diff"; then
       fail "$deck" "the release build's tracer file differs:"
       head -4 "$b/diff" | cut -c1-120; continue
+   fi
+   if ! cmp -s <(hbody "$a") <(hbody "$b"); then
+      fail "$deck" "the release build's history file differs"; continue
    fi
    npass=$((npass+1))
 done

@@ -14,7 +14,8 @@
 	src/modules/av_mod.o \
 	src/modules/rs_mod.o \
 	src/modules/deck_mod.o \
-	src/modules/trace_mod.o
+	src/modules/trace_mod.o \
+	src/modules/hist_mod.o
   MOD_FILS = \
 	src/modules/bits.mod \
 	src/modules/plasma.mod \
@@ -31,7 +32,8 @@
 	src/modules/av.mod \
 	src/modules/rs.mod \
 	src/modules/deck.mod \
-	src/modules/trace.mod
+	src/modules/trace.mod \
+	src/modules/hist.mod
   LIB_OBJS = \
 	src/colormaps/cmap_grayscale.o \
 	src/colormaps/cmap_plasma.o \

@@ -15,10 +15,12 @@
 #      progress lines, errors, tension, breaks, ...) and every         #
 #      heartbeat line are IDENTICAL to the 1-thread run, character     #
 #      for character, and so is the tracer file (if the deck has     #
-#      tracers), every row to the last digit. Only the clock times    #
-#      are left out: wall and CPU time, the heartbeat's wall column,  #
-#      and the time stamps and wall time in the files' headers and    #
-#      the tracer file's trailer.                                     #
+#      tracers), every row to the last digit, and so is the history  #
+#      file (if the deck has snapshots), byte for byte. Only the     #
+#      clock times are left out: wall and CPU time, the heartbeat's  #
+#      wall column, the time stamps and wall time in the files'      #
+#      headers and the tracer file's trailer, and the history file's #
+#      text block (it names the build and the start time).           #
 #                                                                      #
 #  Why identical, not "close": every cell gets the same arithmetic on  #
 #  any thread, and what the threads combine (minimums, maximums,       #
@@ -82,6 +84,17 @@ rows() {      # $1 = folder of one run
    grep -vE '^# (started|ended|version|built|flags|cycles)' "$f"
 }
 
+# The history file without its text block (build lines and clock
+# times, which differ between any two runs): bytes 0 to header_bytes -
+# text_bytes, then every frame. No file, no output.
+hbody() {     # $1 = folder of one run
+   f=$(ls "$1"/*.hist 2>/dev/null) || return 0
+   hb=$(od -An -t d4 -j 12 -N 4 "$f" | tr -d ' ')
+   tb=$(od -An -t d4 -j 52 -N 4 "$f" | tr -d ' ')
+   head -c $((hb - tb)) "$f"
+   tail -c +$((hb + 1)) "$f"
+}
+
 # Is OpenMP compiled in? (Section 3 of any run says so.)
 probe=$(cd "$TMP" && "$BIN" "$OLDPWD/tests/decks/ok_setup_one_layer.deck" 2>&1)
 if ! echo "$probe" | grep -q 'OpenMP compiled in *: yes'; then
@@ -124,6 +137,9 @@ for deck in $DECKS; do
       if ! diff <(rows "$ref") <(rows "$d") > "$d/diff" ; then
          fail "$deck" "$n threads: the tracer file differs from 1 thread:"
          head -4 "$d/diff" | cut -c1-120; continue
+      fi
+      if ! cmp -s <(hbody "$ref") <(hbody "$d"); then
+         fail "$deck" "$n threads: the history file differs from 1 thread"; continue
       fi
       npass=$((npass+1))
    done

@@ -287,7 +287,9 @@ Written in the folder the run starts from, laid out like the verification data
 ---
 
 ## 9. The history file, `<title>.hist`
-> **Draft (Oct 20, 2026): the format bitwhiz will write. Not in the code yet.**
+> Format version 1, written by bitwhiz since Oct 20, 2026 (module `hist`).
+> The screen's section 4 names the file, and the end-of-run report gives
+> the number of frames written.
 
 The history file is the run's record of the whole mesh over time, for
 pictures: t-x diagrams now, made by bitwhiz itself in a later step (a deck
@@ -371,7 +373,7 @@ are still good (count them from the file size, as the reader below does).
 **Comparing two files.** The text part names the build and the clock time, so
 it differs between any two runs. Everything else (the fixed part, variables,
 layers and every frame) depends only on the deck: the OpenMP and release tests
-will require it to be identical, byte for byte.
+require it to be identical, byte for byte.
 
 ### Reading it (Python)
 ```
@@ -448,3 +450,11 @@ or `# expect: <part of the message>` (it must fail with that message). Clean
 decks, and every deck in this folder, are also round-tripped: the resolved
 deck must read back to the same statements. To add a case, drop in a deck
 with an `# expect:` line.
+
+The history file (section 9) has its own tests, `tests/run_hist_tests.sh`,
+also run by `make test`. `bin/test_hist` reads each run's file the way
+section 9 says to and checks every part of it; then, with `tracer_dt` set
+equal to `plot_dt`, an interface tracer's x, u and P must be the file's values
+at its face and cell, frame for frame. Other cases: frames every 7th cycle
+(`plot_every`), a run stopped by `cycle_max` (status 2), and a deck without
+snapshots (no file).

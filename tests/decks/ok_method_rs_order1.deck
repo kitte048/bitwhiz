@@ -1,13 +1,14 @@
 # expect: ok
 # method = RS with order = 1 (first-order Godunov, the project's Option B):
 # the same Al-on-PMMA run as ok_method_rs.deck, which uses the default
-# order = 2. Also run by the OpenMP tests.
+# order = 2. Also run by the OpenMP, history and release tests.
 Begin bitwhiz
  deck_version = 1
  Begin Run
   t_end = 3.0
  End Run
  Begin Output
+  plot_dt = 0.05
   tracer = impact Al:PMMA
   tracer = mid    PMMA@0.5
  End Output

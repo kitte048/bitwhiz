@@ -61,6 +61,10 @@ program bitwhiz
 !                (with Claude)        default 2): a cell loop builds the
 !                                     face states first; the method and
 !                                     order are echoed in every output
+!    10/20/26    D. E. Kittell        History file <title>.hist (module
+!                (with Claude)        hist): x, u, P on the whole mesh,
+!                                     one frame per snapshot (plot_every,
+!                                     plot_dt); closed by close_outputs
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -79,6 +83,8 @@ use eos, only: mg_eos,eos_message,eos_ok
 use av, only: face_step,cell_step,cell_state,cell_dt
 use rs, only: rs_face_states,riemann_face,rs_cell_step,rs_state,rs_cell_dt
 use trace, only: open_tracers,tracer_row,close_tracers,trc_open,trc_file
+use hist, only: open_history,history_frame,close_history,hst_open, &
+   hst_file,hst_frames
 use build, only: build_date,build_version       ! written by 'make'
 use, intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 !$ use omp_lib, only: omp_get_num_procs,omp_set_num_threads, &
@@ -90,6 +96,7 @@ real(kind=dp) :: cpu0,cpu1              ! CPU seconds, start and end
 integer(kind=int32) :: nargs            ! command line word count
 integer(kind=int32) :: kerr             ! errors found in the deck
 integer(kind=int32) :: ios              ! I/O status from open()
+character(len=1024) :: hinfo(7)         ! the history file's text lines
 integer(kind=int32) :: nlen             ! full length of the deck path
 character(len=256) :: deckname          ! the deck file, from the
                                         ! command line
@@ -388,6 +395,27 @@ if ( ios /= 0 ) then
    stop 1, quiet=.true.
 end if
 
+!*** The history file, <title>.hist (module hist), if the deck asks for
+!*** snapshots (plot_every or plot_dt): the header now, with the same
+!*** lines as the heartbeat's header for its text block, a frame at
+!*** cycle 0 (section 6) and at every snapshot (section 7), and the
+!*** frame count and how the run ended when it ends (close_outputs).
+hinfo    = ' '
+hinfo(1) = 'deck    : '//trim(deckname)
+hinfo(2) = 'title   : '//trim(title)
+hinfo(3) = 'method  : '//method_text()
+hinfo(4) = 'started : '//started
+hinfo(5) = 'version : '//build_version()
+hinfo(6) = 'built   : '//build_date()//', '//compiler_version()
+hinfo(7) = 'flags   : '//compiler_options()
+call open_history( title, hinfo, ios )
+if ( ios /= 0 ) then
+   write( kpt6, 202 ) 'bitwhiz: cannot open the history file '// &
+      trim(title)//'.hist'
+   call close_outputs( 'cannot open the history file' )
+   stop 1, quiet=.true.
+end if
+
 write( kpt6, 202 ) repeat('=',56)
 write( kpt6, 202 ) ' 4. Output files'
 write( kpt6, 202 ) repeat('-',56)
@@ -396,6 +424,11 @@ if ( trc_open ) then
    write( kpt6, 204 ) 'Tracer file', trim(trc_file)
 else
    write( kpt6, 204 ) 'Tracer file', 'none (no tracers in the deck)'
+end if
+if ( hst_open ) then
+   write( kpt6, 204 ) 'History file', trim(hst_file)
+else
+   write( kpt6, 204 ) 'History file', 'none (no plot_every or plot_dt)'
 end if
 write( kpt6, 202 ) repeat('=',56)
 
@@ -782,6 +815,7 @@ write( khb, '(a)' ) '#   cycle      t (us)     dt (us)  dt cell'// &
 call heartbeat_line( dt, kdt, zero )      ! cycle 0: the first dt(0)
 call tracer_row( ncycle, time, dt, mtot, etot, ekin, eint, xmom, &
    .false. )                              ! cycle 0, always written
+call history_frame( ncycle, time, .false. )   ! cycle 0, always written
 
 !*** Report.
 write( kpt6, 202 ) repeat('=',56)
@@ -1090,6 +1124,10 @@ time_loop: do while ( .not. done )
    call tracer_row( ncycle, time, dt_used, mtot, etot, ekin, eint, &
       xmom, done )
 
+   !*** A history frame, if this cycle is a snapshot (plot_every,
+   !*** plot_dt), and always on the last cycle.
+   call history_frame( ncycle, time, done )
+
 end do time_loop
 
 !*** Report.
@@ -1132,6 +1170,7 @@ if ( stopped ) then
       itoa(cycle_max)//' before t_end.'
    endhow = 'cycle_max reached before t_end'
 end if
+if ( hst_open ) write( kpt6, 205 ) 'History frames written', hst_frames
 write( kpt6, 202 ) repeat('=',56)
 
 !===============================================!
@@ -1533,6 +1572,7 @@ contains
    implicit none
    character(len=*), intent(in) :: how
    call finish_tracers( how )             ! <title>.tracers.csv
+   call finish_history( how )             ! <title>.hist
    call finish_heartbeat( how )           ! <title>.heartbeat, last
    end subroutine close_outputs
 
@@ -1547,6 +1587,26 @@ contains
    close( khb )
    hb_open = .false.
    end subroutine finish_heartbeat
+
+   !*****************************************************!
+   ! The history file's frame count and how the run      !
+   ! ended (header bytes 20 and 24), then close it:      !
+   ! status 1 at t_end, 2 at cycle_max, 3 for any other  !
+   ! way out (an error).                                 !
+   !*****************************************************!
+   subroutine finish_history( how )
+   implicit none
+   character(len=*), intent(in) :: how
+   if ( .not. hst_open ) return
+   select case ( how )
+   case ( 'normal end' )
+      call close_history( 1_int32 )
+   case ( 'cycle_max reached before t_end' )
+      call close_history( 2_int32 )
+   case default
+      call close_history( 3_int32 )
+   end select
+   end subroutine finish_history
 
    !*****************************************************!
    ! The tracer file's trailer (module trace adds the    !

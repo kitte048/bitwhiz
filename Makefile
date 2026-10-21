@@ -18,6 +18,8 @@
 #Revision: 1.11 (10-20-26, with Claude: 'make release', an optimized
 #                build in build/release, checked against the debug
 #                build; see the NOTES at RFLAGS and at 'release')
+#Revision: 1.12 (10-20-26, with Claude: hist module, the history file;
+#                its tests in 'make test' and 'make release')
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -147,6 +149,7 @@ $(1)src/modules/eos_mod.o:   $(1)src/modules/bit_mod.o
 $(1)src/modules/av_mod.o:    $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/trace_mod.o: $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
+$(1)src/modules/hist_mod.o:  $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
 $(1)src/modules/rs_mod.o:    $(1)src/modules/av_mod.o $(1)src/modules/eos_mod.o \
                              $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
 endef
@@ -159,12 +162,15 @@ $(eval $(call MOD_ORDER,))
 ###  (tests/run_deck_tests.sh) and the OpenMP tests
 ###  (tests/run_omp_tests.sh: 2, 3, 4 and 8 threads, as many
 ###  as there are processors, must print exactly what 1 thread
-###  prints). Every check must pass; make stops with an error
+###  prints) and the history file tests (tests/run_hist_tests.sh:
+###  bin/test_hist checks each run's <title>.hist against the
+###  format in input/README.md, section 9, and against the tracer
+###  file). Every check must pass; make stops with an error
 ###  at the first one that fails. Run it before every commit.
 ###  A new unit test: add its program to UNIT_TESTS and a
 ###  line to the 'test' recipe; the pattern rule builds it.
 ############################################################
-UNIT_TESTS = ./bin/test_eos
+UNIT_TESTS = ./bin/test_eos ./bin/test_hist
 
 ./bin/test_%: tests/test_%.f95 $(MOD_OBJS)
 	@mkdir -p ./bin
@@ -174,6 +180,7 @@ test: $(EXECS) $(UNIT_TESTS)
 	./bin/test_eos
 	BIN=$(EXECS) ./tests/run_deck_tests.sh
 	BIN=$(EXECS) ./tests/run_omp_tests.sh
+	BIN=$(EXECS) ./tests/run_hist_tests.sh
 
 ############################################################
 ###  NOTES: 'make release' builds the optimized executable,
@@ -182,11 +189,12 @@ test: $(EXECS) $(UNIT_TESTS)
 ###  git ignores). The debug build in src/ is never touched,
 ###  so 'make' and 'make release' can be used in any order
 ###  and neither one recompiles the other's files.
-###  It then checks the release build: the deck tests and the
-###  OpenMP tests on it, and tests/run_release_tests.sh, which
+###  It then checks the release build: the deck, OpenMP and
+###  history file tests on it, and tests/run_release_tests.sh, which
 ###  runs the decks on both builds and requires them to print
-###  the same results, heartbeat and tracer rows, bit for bit
-###  (the debug build is made first if needed). Any failure
+###  the same results, heartbeat, tracer rows and history
+###  frames, bit for bit (the debug build is made first if
+###  needed). Any failure
 ###  stops make with an error. To hand it out, copy it under
 ###  any name; its banner and heartbeat say "optimized" and
 ###  record its flags and git version.
@@ -199,9 +207,10 @@ R_LIBS   = $(addprefix $(RDIR)/,$(LIB_OBJS))
 R_BIN    = $(addprefix $(RDIR)/,$(BIN))
 R_BUILD  = $(RDIR)/$(BUILD_OBJ)
 
-release: $(REL_EXEC) $(EXECS)
+release: $(REL_EXEC) $(EXECS) $(UNIT_TESTS)
 	BIN=$(REL_EXEC) ./tests/run_deck_tests.sh
 	BIN=$(REL_EXEC) ./tests/run_omp_tests.sh
+	BIN=$(REL_EXEC) ./tests/run_hist_tests.sh
 	DEBUG=$(EXECS) RELEASE=$(REL_EXEC) ./tests/run_release_tests.sh
 
 $(REL_EXEC): $(R_MODS) $(R_LIBS) $(R_BIN) $(R_BUILD)
@@ -227,7 +236,7 @@ $(eval $(call MOD_ORDER,$(RDIR)/))
 ###  The decks and README in input/ are never touched.
 ############################################################
 RUN_FILES = *.heartbeat input/*.heartbeat *.tracers.csv \
-            input/*.tracers.csv input/*.bmp
+            input/*.tracers.csv *.hist input/*.hist input/*.bmp
 
 ############################################################
 ###  NOTES: target names. No target name is the start of
