@@ -12,8 +12,17 @@ subroutine draw_trace( bout, n, t, u, ylo, yhi )
 !    it, the tracer's velocity against time, a line through its n      !
 !    points. Time runs across, from the first point (the left edge of  !
 !    the plot area) to the last (the right edge); velocity up, from    !
-!    ylo (the bottom edge) to yhi (the top edge). No text: the screen  !
-!    gives the ranges.                                                 !
+!    ylo (the bottom edge) to yhi (the top edge). The only text is a   !
+!    title engraved in the margin above the box, BITWHIZ SCOPE VIEW;   !
+!    the screen gives the ranges.                                      !
+!                                                                      !
+!    THE TITLE is drawn with strokes, like the curve: each letter is a !
+!    few straight lines and elliptical arcs (as nar segments) in a     !
+!    cell one cap height tall, from bitwhiz's own small table (glyph,  !
+!    below; only the letters of the title), set at th pixels with      !
+!    strokes tsw wide, in slate, centered over the box and in the      !
+!    margin's height. A stroke font keeps the letters anti-aliased the !
+!    same way as everything else, with no font file.                  !
 !                                                                      !
 !    Colors, from the equation sheets' figures (the Okabe-Ito palette, !
 !    which colorblind readers can tell apart, beside a dark ink): the  !
@@ -60,6 +69,9 @@ subroutine draw_trace( bout, n, t, u, ylo, yhi )
 !                                     way; the frame slate #2C3E50     !
 !                                     (was navy #1F497D), the sheets'  !
 !                                     ink                              !
+!    10/21/26    D. E. Kittell        The title BITWHIZ SCOPE VIEW,    !
+!                (with Claude)        engraved above the box (a stroke !
+!                                     font of its 12 letters)          !
 !                                                                      !
 !**********************************************************************!
 use bits, only: int8,int32,dp,kpt6,zero,half,one
@@ -86,6 +98,16 @@ real(kind=dp), parameter :: rc=12.0_dp        ! outside corner radius, px
 real(kind=dp), parameter :: tl=10.0_dp        ! tick length, pixels
 real(kind=dp), parameter :: tw=2.0_dp         ! tick width, pixels
 real(kind=dp), parameter :: cw=3.0_dp         ! curve width, pixels
+!*** The title: its text, cap height and stroke width (pixels), the
+!*** space between letters and a word space (in cap heights), and the
+!*** segments per arc.
+character(len=*), parameter :: title_text='BITWHIZ SCOPE VIEW'
+real(kind=dp), parameter :: th=16.0_dp        ! cap height, pixels
+real(kind=dp), parameter :: tsw=2.2_dp        ! stroke width, pixels
+real(kind=dp), parameter :: tgap=0.34_dp      ! between letters
+real(kind=dp), parameter :: tspace=0.46_dp    ! a word space
+integer(kind=int32), parameter :: nar=16      ! segments per arc
+real(kind=dp), parameter :: degrad=3.141592653589793_dp/180.0_dp
 !*** The inks, as red, green, blue (0 to 255): the frame slate, #2C3E50,
 !*** the equation sheets' ink; the curve Okabe-Ito vermilion, #D55E00.
 real(kind=dp), parameter, dimension(3) :: ink_rgb = &
@@ -95,7 +117,6 @@ real(kind=dp), parameter, dimension(3) :: crv_rgb = &
 integer(kind=int32) :: i,j,k,ii,jj,m          ! loop indices
 integer(kind=int32) :: nf,nc                  ! frame, curve samples in a
                                               ! pixel
-integer(kind=int32) :: is1,is2,js1,js2        ! samples a segment may reach
 integer(kind=int32) :: istat                  ! allocation status
 real(kind=dp) :: x,y                          ! a sample, pixels from the
                                               ! top-left corner
@@ -107,7 +128,10 @@ real(kind=dp), dimension(9) :: xt,yt          ! tick positions
 real(kind=dp), dimension(:), allocatable :: px,py       ! the points, px
 real(kind=dp), dimension(:,:), allocatable :: fcn       ! (not used)
 character(len=1), dimension(:,:,:), allocatable :: RGB  ! the colors
-integer(kind=int8), dimension(:,:), allocatable :: crv  ! curve samples
+integer(kind=int8), dimension(:,:), allocatable :: crv  ! samples: 1
+                                              ! curve, 2 title, 0 neither
+real(kind=dp) :: gx,gy                        ! a letter's cell, top left
+real(kind=dp) :: wt                           ! the title's width, pixels
 character(len=80) :: cmap                     ! 'rgb': no colormap
 
 !*** Allocate the image arrays (too large for the stack). bmpmaker
@@ -160,23 +184,27 @@ end do
 !*** at x = (ii - 1/2)/ns, y = (jj - 1/2)/ns.
 crv = 0_int8
 do k=1,max( n - 1, 1 ),1
-   m  = min( k + 1, n )
-   is1 = max( 1,     floor( ( min( px(k), px(m) ) - half*cw )*ns ) )
-   is2 = min( nx*ns, ceiling( ( max( px(k), px(m) ) + half*cw )*ns ) )
-   js1 = max( 1,     floor( ( min( py(k), py(m) ) - half*cw )*ns ) )
-   js2 = min( ny*ns, ceiling( ( max( py(k), py(m) ) + half*cw )*ns ) )
-   do jj=js1,js2,1
-      y = ( real( jj, dp ) - half )*hs
-      do ii=is1,is2,1
-         x = ( real( ii, dp ) - half )*hs
-         if ( seg_dist2( x, y, px(k), py(k), px(m), py(m) ) <= &
-              ( half*cw )**2 ) crv( ii, jj ) = 1_int8
-      end do
-   end do
+   m = min( k + 1, n )
+   call stamp( px(k), py(k), px(m), py(m), cw, 1_int8 )
+end do
+
+!*** The title's samples (marked 2): letter by letter, left to right,
+!*** centered over the box, the cap height centered in the margin.
+wt = zero
+do k=1,len( title_text ),1
+   wt = wt + advance( title_text(k:k) ) + tgap
+end do
+wt = wt - tgap
+gx = half*( bl + br ) - wt*th/2.0_dp
+gy = half*bt - half*th
+do k=1,len( title_text ),1
+   call glyph( title_text(k:k) )
+   gx = gx + ( advance( title_text(k:k) ) + tgap )*th
 end do
 
 !*** The page: white. Then each pixel that has ink: its coverages from
-!*** its ns x ns samples, the frame first.
+!*** its ns x ns samples, the frame first. The title is slate, so its
+!*** samples count with the frame's.
 RGB = char(255)
 do j=1,ny,1
    do i=1,nx,1
@@ -193,6 +221,8 @@ do j=1,ny,1
                nf = nf + 1
             else if ( crv( (i-1)*ns+ii, (j-1)*ns+jj ) == 1_int8 ) then
                nc = nc + 1
+            else if ( crv( (i-1)*ns+ii, (j-1)*ns+jj ) == 2_int8 ) then
+               nf = nf + 1
             end if
          end do
       end do
@@ -275,5 +305,131 @@ contains
       zero ), one )
    seg_dist2 = ( x - x1 - s*dx )**2 + ( y - y1 - s*dy )**2
    end function seg_dist2
+
+   !*** Mark (as val) every sample within half of width w of the segment
+   !*** from (x1, y1) to (x2, y2). Sample (ii, jj) is at
+   !*** x = (ii - 1/2)/ns, y = (jj - 1/2)/ns.
+   subroutine stamp( x1, y1, x2, y2, w, val )
+   real(kind=dp), intent(in) :: x1, y1, x2, y2, w
+   integer(kind=int8), intent(in) :: val
+   integer(kind=int32) :: i1, i2, j1, j2, a, b
+   real(kind=dp) :: xs, ys
+   i1 = max( 1,     floor( ( min( x1, x2 ) - half*w )*ns ) )
+   i2 = min( nx*ns, ceiling( ( max( x1, x2 ) + half*w )*ns ) )
+   j1 = max( 1,     floor( ( min( y1, y2 ) - half*w )*ns ) )
+   j2 = min( ny*ns, ceiling( ( max( y1, y2 ) + half*w )*ns ) )
+   do b=j1,j2,1
+      ys = ( real( b, dp ) - half )*hs
+      do a=i1,i2,1
+         xs = ( real( a, dp ) - half )*hs
+         if ( seg_dist2( xs, ys, x1, y1, x2, y2 ) <= ( half*w )**2 ) &
+            crv( a, b ) = val
+      end do
+   end do
+   end subroutine stamp
+
+   !******************************************************************!
+   ! THE TITLE'S LETTERS. Each in a cell one cap height tall: x from  !
+   ! 0 (its left) to its advance width, y from 0 (cap top) to 1       !
+   ! (baseline); placed at (gx, gy) and scaled by th. gl draws a      !
+   ! straight stroke; ga an elliptical arc, center (cx, cy), radii    !
+   ! (rx, ry), from angle a0 to a1 in degrees, measured as on paper   !
+   ! (0 to the right, 90 up), in nar segments.                        !
+   !******************************************************************!
+   real(kind=dp) function advance( c )
+   character(len=1), intent(in) :: c
+   select case ( c )
+   case ( 'B' ); advance = 0.72_dp
+   case ( 'I' ); advance = 0.00_dp
+   case ( 'T' ); advance = 0.70_dp
+   case ( 'W' ); advance = 1.00_dp
+   case ( 'H' ); advance = 0.70_dp
+   case ( 'Z' ); advance = 0.70_dp
+   case ( 'S' ); advance = 0.66_dp
+   case ( 'C' ); advance = 0.78_dp
+   case ( 'O' ); advance = 0.86_dp
+   case ( 'P' ); advance = 0.66_dp
+   case ( 'E' ); advance = 0.62_dp
+   case ( 'V' ); advance = 0.80_dp
+   case default; advance = tspace         ! a space (or a letter not
+   end select                             ! in the table: left blank)
+   end function advance
+
+   subroutine glyph( c )
+   character(len=1), intent(in) :: c
+   select case ( c )
+   case ( 'B' )
+      call gl( 0.00_dp, 1.0_dp, 0.00_dp, 0.0_dp )
+      call gl( 0.00_dp, 0.0_dp, 0.42_dp, 0.0_dp )
+      call ga( 0.42_dp, 0.25_dp, 0.25_dp, 0.25_dp, 90.0_dp, -90.0_dp )
+      call gl( 0.42_dp, 0.5_dp, 0.00_dp, 0.5_dp )
+      call gl( 0.00_dp, 0.5_dp, 0.47_dp, 0.5_dp )
+      call ga( 0.47_dp, 0.75_dp, 0.25_dp, 0.25_dp, 90.0_dp, -90.0_dp )
+      call gl( 0.47_dp, 1.0_dp, 0.00_dp, 1.0_dp )
+   case ( 'I' )
+      call gl( 0.00_dp, 0.0_dp, 0.00_dp, 1.0_dp )
+   case ( 'T' )
+      call gl( 0.00_dp, 0.0_dp, 0.70_dp, 0.0_dp )
+      call gl( 0.35_dp, 0.0_dp, 0.35_dp, 1.0_dp )
+   case ( 'W' )
+      call gl( 0.00_dp, 0.0_dp, 0.22_dp, 1.0_dp )
+      call gl( 0.22_dp, 1.0_dp, 0.50_dp, 0.3_dp )
+      call gl( 0.50_dp, 0.3_dp, 0.78_dp, 1.0_dp )
+      call gl( 0.78_dp, 1.0_dp, 1.00_dp, 0.0_dp )
+   case ( 'H' )
+      call gl( 0.00_dp, 0.0_dp, 0.00_dp, 1.0_dp )
+      call gl( 0.70_dp, 0.0_dp, 0.70_dp, 1.0_dp )
+      call gl( 0.00_dp, 0.5_dp, 0.70_dp, 0.5_dp )
+   case ( 'Z' )
+      call gl( 0.00_dp, 0.0_dp, 0.70_dp, 0.0_dp )
+      call gl( 0.70_dp, 0.0_dp, 0.00_dp, 1.0_dp )
+      call gl( 0.00_dp, 1.0_dp, 0.70_dp, 1.0_dp )
+   case ( 'S' )
+      call ga( 0.33_dp, 0.25_dp, 0.31_dp, 0.25_dp, 25.0_dp, 270.0_dp )
+      call ga( 0.33_dp, 0.75_dp, 0.33_dp, 0.25_dp, 90.0_dp, -155.0_dp )
+   case ( 'C' )
+      call ga( 0.44_dp, 0.5_dp, 0.44_dp, 0.5_dp, 48.0_dp, 312.0_dp )
+   case ( 'O' )
+      call ga( 0.43_dp, 0.5_dp, 0.43_dp, 0.5_dp, 0.0_dp, 360.0_dp )
+   case ( 'P' )
+      call gl( 0.00_dp, 1.0_dp, 0.00_dp, 0.0_dp )
+      call gl( 0.00_dp, 0.0_dp, 0.40_dp, 0.0_dp )
+      call ga( 0.40_dp, 0.25_dp, 0.26_dp, 0.25_dp, 90.0_dp, -90.0_dp )
+      call gl( 0.40_dp, 0.5_dp, 0.00_dp, 0.5_dp )
+   case ( 'E' )
+      call gl( 0.62_dp, 0.0_dp, 0.00_dp, 0.0_dp )
+      call gl( 0.00_dp, 0.0_dp, 0.00_dp, 1.0_dp )
+      call gl( 0.00_dp, 1.0_dp, 0.62_dp, 1.0_dp )
+      call gl( 0.00_dp, 0.5_dp, 0.52_dp, 0.5_dp )
+   case ( 'V' )
+      call gl( 0.00_dp, 0.0_dp, 0.40_dp, 1.0_dp )
+      call gl( 0.40_dp, 1.0_dp, 0.80_dp, 0.0_dp )
+   end select
+   end subroutine glyph
+
+   !*** A straight stroke of the current letter, cell coordinates.
+   subroutine gl( xa1, ya1, xa2, ya2 )
+   real(kind=dp), intent(in) :: xa1, ya1, xa2, ya2
+   call stamp( gx + xa1*th, gy + ya1*th, gx + xa2*th, gy + ya2*th, tsw, &
+      2_int8 )
+   end subroutine gl
+
+   !*** An elliptical arc of the current letter, as nar strokes.
+   subroutine ga( cx, cy, rx, ry, a0, a1 )
+   real(kind=dp), intent(in) :: cx, cy, rx, ry, a0, a1
+   integer(kind=int32) :: q
+   real(kind=dp) :: p, q1x, q1y, q2x, q2y
+   p   = ( a0 + ( a1 - a0 )*0.0_dp/real( nar, dp ) )*degrad
+   q1x = cx + rx*cos( p )
+   q1y = cy - ry*sin( p )
+   do q=1,nar,1
+      p   = ( a0 + ( a1 - a0 )*real( q, dp )/real( nar, dp ) )*degrad
+      q2x = cx + rx*cos( p )
+      q2y = cy - ry*sin( p )
+      call gl( q1x, q1y, q2x, q2y )
+      q1x = q2x
+      q1y = q2y
+   end do
+   end subroutine ga
 
 end subroutine draw_trace

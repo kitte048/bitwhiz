@@ -460,7 +460,11 @@ The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
   (`KMPS`) against time, a line through every row of the tracer file, 3.0
   pixels wide, in Okabe-Ito vermilion (#D55E00). x runs from the first to the
   last time, y from the smallest to the largest velocity, widened by 5% of the
-  range at each end; no text. The frame: slate (#2C3E50, the sheets' ink) spines 2.5 pixels wide
+  range at each end. The only text is the title **BITWHIZ SCOPE VIEW**,
+  engraved in slate in the margin above the box: 16-pixel capitals in
+  bitwhiz's own stroke font (each letter a few straight strokes and elliptical
+  arcs; only the title's 12 letters are defined), drawn and anti-aliased like
+  the curve. The frame: slate (#2C3E50, the sheets' ink) spines 2.5 pixels wide
   around a 40-pixel margin, outside corners rounded to a 12-pixel radius, and
   tick marks at tenths of each axis pointing in; where the curve meets a
   spine, the spine is on top. The colors follow the equation sheets' figures

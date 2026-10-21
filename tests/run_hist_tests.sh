@@ -45,7 +45,9 @@
 #  plot's frame: the bottom spine full slate (#2C3E50), its inner edge #
 #  a half shade (anti-aliased), the box's outer corner pixel white     #
 #  (rounded); and the curve drawn: vermilion (#D55E00) where u = 0     #
-#  falls on the pdv plot's y axis, early on, before the shock arrives. #
+#  falls on the pdv plot's y axis, early on, before the shock arrives; #
+#  and the title BITWHIZ SCOPE VIEW above the box (the stem of its     #
+#  first I slate, the gap after it white).                             #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")    # absolute
@@ -258,6 +260,18 @@ for r in $((r0 - 1)) $r0 $((r0 + 1)); do
 done
 if [ -z "$r0" ] || [ -z "$found" ]; then
    fail $c "no full-vermilion pixel at column 100 near row ${r0:-?} (u = 0)"
+else
+   npass=$((npass+1))
+fi
+
+# Case: the title, BITWHIZ SCOPE VIEW, 16 pixels tall, centered over the
+# box in the 40-pixel margin. The stem of the first I (a straight
+# stroke, 2.2 pixels wide, at x = 284.8) fills column 285 at mid-height
+# (row 581 from the bottom); column 288, between I and T, is white.
+c=tr_title
+f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
+if [ "$(pixel "$f" 285 581 800)" != 503e2c ] || [ "$(pixel "$f" 288 581 800)" != ffffff ]; then
+   fail $c "the title's first I is not where it belongs (slate stem, white gap)"
 else
    npass=$((npass+1))
 fi

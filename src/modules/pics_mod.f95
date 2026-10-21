@@ -44,7 +44,8 @@ module pics
 !    (draw_tx).
 !    Tracer plots: velocity against time, x from the first to the
 !    last time, y from min - 5% to max + 5% of the range, a border
-!    and tick marks at tenths, no text.
+!    and tick marks at tenths, and the title BITWHIZ SCOPE VIEW
+!    above the box (no other text).
 !    The screen gets every range, so a picture can be read without
 !    text on it.
 !
@@ -322,7 +323,7 @@ contains
    !*** value, or +-0.05 km/s at 0).
    !*** The pictures announced once; then one line per tracer, its
    !*** velocity range and the plot's y axis (what a reader needs to
-   !*** read a plot that has no text on it).
+   !*** read a plot whose only text is its title).
    write( kpt6, fl ) 'Tracer file', fname
    write( kpt6, fl ) 'Rows', itoa(nrow)//', t = '//fmt_real(t(1))// &
       ' to '//fmt_real(t(nrow))//' us'
