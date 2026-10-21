@@ -17,7 +17,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Tracer file (`<title>.tracers.csv`, `tracer_dt`) | done (`src/modules/trace_mod.f95`; see `input/README.md`) |
 | Second method, `method = RS` (Godunov's method, acoustic Riemann solver), in the same code; `order = 2` (MUSCL-Hancock, Van Leer, the default) or `1` | done (`src/modules/rs_mod.f95`, maincode section 7; equation sheet `doc/Hydrocode_RS_Eqns_v4`) |
 | History file `<title>.hist`: x, u, P and damage on the whole mesh, one frame per snapshot (`plot_every`, `plot_dt`) | done (`src/modules/hist_mod.f95`; format in `input/README.md`, section 9) |
-| Pictures: t-x diagrams of u and P, one plot per tracer; `plots_only = yes` re-draws them without running | files read back and checked, ranges and color windows reported (`src/modules/pics_mod.f95`, `input/README.md` section 9b); drawing the bitmaps next |
+| Pictures: t-x diagrams of u and P, one plot per tracer; `plots_only = yes` re-draws them without running | the files are written, by name and size, from a run and from `plots_only`, but show fiducials (`src/modules/pics_mod.f95`, `src/drawings/draw_xt.f95`, `draw_trace.f95`; `input/README.md` section 9b); drawing the data next |
 | Comparison with reference data | data in `tests/verification/` |
 
 ## Build
@@ -26,9 +26,9 @@ Needs gfortran and make.
 make            # bin/bitwhiz, debug build with strict flags and -fopenmp
 make test       # build if needed, then run the unit and deck tests (see Test)
 make release    # bin/bitwhiz_release, optimized (-O2), checked against the debug build
-make tidy       # remove run outputs (heartbeats, tracer files, bitmaps); keep the build
+make tidy       # remove run outputs (heartbeats, tracer and history files, pictures); keep the build
 make clean      # tidy, plus objects, module files and both executables
-make bmpclean   # remove bitmaps in this folder (kept by the two above)
+make bmpclean   # remove any other bitmaps in this folder (kept by the two above)
 make OMPFLAGS=  # a serial build from the same source
 ```
 The root `Makefile` is the only build; there are no Makefiles under `src/`.
@@ -89,7 +89,9 @@ Four kinds of test, all run by `make test`, which stops at the first failure:
   section 9), and against the tracer file at the same cycles, for both
   methods; plus `plot_every`, a run stopped by `cycle_max`, a deck
   without snapshots, and `plots_only` (same ranges as the run, the run's
-  files untouched, an error for another mesh or missing files).
+  files untouched, an error for another mesh or missing files). Every run
+  must write exactly its pictures, by name and size; the OpenMP and release
+  tests also require the pictures to be identical, byte for byte.
 
 `make release` runs the deck and OpenMP tests again on the optimized build, and
 a fourth kind, the **release tests** (`tests/run_release_tests.sh`): both builds
@@ -102,7 +104,7 @@ Run it before every commit.
 |---|---|
 | `src/main` | `maincode.f95` (the run, section by section), `bmpmaker.f95` |
 | `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `av_mod` (the artificial viscosity method, one place at a time), `rs_mod` (the Riemann solver method), `trace_mod` (the tracer file), `hist_mod` (the history file), `pics_mod` (the pictures), `bit_mod` (kinds and constants), colormap data |
-| `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_colormaps` (demo, kept in the build) |
+| `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_xt` and `draw_trace` (a run's pictures), `draw_colormaps` (demo, kept in the build) |
 | `src/utils` | `make_build_info.sh` (writes the build record), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |
 | `tests` | unit tests (`test_*.f95`), deck, OpenMP, history file and release tests, `verification/` reference tracer data |

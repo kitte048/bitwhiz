@@ -413,13 +413,23 @@ variables are only ever added at the end of part 2.
 
 ### 9b. Pictures
 At the end of a run, and in a `plots_only` run, bitwhiz reports (section 9 of
-the screen) and, from the next version on, draws:
+the screen) and writes, in the folder the run starts from:
 
-| File | What | Needs |
-|---|---|---|
-| `<title>.xt_u.bmp` | t-x diagram of the velocity u | snapshots (`plot_every` or `plot_dt`) |
-| `<title>.xt_p.bmp` | t-x diagram of the pressure P | snapshots |
-| `<title>.tr_<name>.bmp` | one tracer's velocity against time, one per tracer | tracers |
+| File | What | Size (pixels) | Needs |
+|---|---|---|---|
+| `<title>.xt_u.bmp` | t-x diagram of the velocity u | 1200 × 900 | snapshots (`plot_every` or `plot_dt`) |
+| `<title>.xt_p.bmp` | t-x diagram of the pressure P | 1200 × 900 | snapshots |
+| `<title>.tr_<name>.bmp` | one tracer's velocity against time, one per tracer | 800 × 600 | tracers |
+
+> **For now the pictures are fiducials,** to check the file names, sizes, the
+> colormap and `plots_only`: each t-x diagram is a ramp from 0 to 1 through the
+> deck's `colormap` (left to right for u, bottom to top for P, so the color for
+> 0 is at the bottom left), and each tracer plot is the empty frame (border and
+> tick marks). The data go in next; what they will show is described below.
+
+The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
+`src/drawings/draw_xt.f95` and `draw_trace.f95` and written by
+`src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
 
 - **Read from the files, never from memory.** The t-x diagrams come from
   `<title>.hist` and the tracer plots from `<title>.tracers.csv`, so a picture
@@ -451,6 +461,8 @@ so the heartbeat, tracer and history files it reads are never touched.
   differ from the run's (recorded in the file's text), the screen says they
   are not used.
 - Every tracer in the deck must be in the tracer file.
+- It writes the same pictures a run would, by the same names, replacing the
+  old ones.
 
 ---
 
@@ -512,4 +524,7 @@ count), a run stopped by `cycle_max` (status 2), a deck without snapshots (no
 file), and `plots_only`: with a new colormap, window and `plot_dt` it must
 report the run's own ranges and leave the run's files untouched, and a deck
 with another mesh, or a folder without the files, must stop it with an
-error.
+error. Every finished run must write exactly its pictures, by name and size
+(tracer plots only, for a deck with tracers but no snapshots), and a
+`plots_only` run with another colormap must change the t-x diagrams and not
+the tracer plots.

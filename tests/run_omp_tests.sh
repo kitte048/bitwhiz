@@ -20,7 +20,8 @@
 #      clock times are left out: wall and CPU time, the heartbeat's  #
 #      wall column, the time stamps and wall time in the files'      #
 #      headers and the tracer file's trailer, and the history file's #
-#      text block (it names the build and the start time).           #
+#      text block (it names the build and the start time). The run's #
+#      pictures (section 9) must be the same files, byte for byte.   #
 #                                                                      #
 #  Why identical, not "close": every cell gets the same arithmetic on  #
 #  any thread, and what the threads combine (minimums, maximums,       #
@@ -95,6 +96,17 @@ hbody() {     # $1 = folder of one run
    tail -c +$((hb + 1)) "$f"
 }
 
+# The pictures (section 9 of a run): the same files, byte for byte.
+# Prints the first difference, if any.
+pics_same() {  # $1, $2 = folders of two runs
+   a=$(cd "$1" && ls *.bmp 2>/dev/null | tr '\n' ' ')
+   b=$(cd "$2" && ls *.bmp 2>/dev/null | tr '\n' ' ')
+   [ "$a" = "$b" ] || { echo "different pictures: $a / $b"; return; }
+   for f in $a; do
+      cmp -s "$1/$f" "$2/$f" || { echo "$f differs"; return; }
+   done
+}
+
 # Is OpenMP compiled in? (Section 3 of any run says so.)
 probe=$(cd "$TMP" && "$BIN" "$OLDPWD/tests/decks/ok_setup_one_layer.deck" 2>&1)
 if ! echo "$probe" | grep -q 'OpenMP compiled in *: yes'; then
@@ -140,6 +152,10 @@ for deck in $DECKS; do
       fi
       if ! cmp -s <(hbody "$ref") <(hbody "$d"); then
          fail "$deck" "$n threads: the history file differs from 1 thread"; continue
+      fi
+      bad=$(pics_same "$ref" "$d")
+      if [ -n "$bad" ]; then
+         fail "$deck" "$n threads: $bad"; continue
       fi
       npass=$((npass+1))
    done

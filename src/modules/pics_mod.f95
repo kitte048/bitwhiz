@@ -23,7 +23,16 @@ module pics
 !    frames decide the picture, whatever the deck's plot_dt and
 !    plot_every say now (they only say whether there is a file).
 !
-!  The pictures (next commit; the calls are in place):
+!  The drawing is done by two fixed-size routines in src/drawings,
+!  each of which prepares its image and hands it to bmpmaker, as
+!  draw_colormaps does:
+!
+!       draw_xt      t-x diagram, 1200 x 900 pixels, the deck's colormap
+!       draw_trace   tracer plot,  800 x 600 pixels, black on white
+!
+!  THIS VERSION: they draw fiducials (a colormap ramp; the plot frame)
+!  so the file names, sizes, the colormap and plots_only can be
+!  checked. The pictures to come:
 !    t-x diagrams, in the lab frame: x across, from the smallest to
 !    the largest face position of the whole run, t up, from 0 to the
 !    last frame; every pixel colored, edge to edge, no text. Colors:
@@ -43,6 +52,10 @@ module pics
 !      ====       ==========          =====================
 !    10/20/26    D. E. Kittell        Original code: reading, checks,
 !                (with Claude)        ranges and the calls; drawing next
+!    10/20/26    D. E. Kittell        The calls go to draw_xt and
+!                (with Claude)        draw_trace (src/drawings), which
+!                                     draw fiducials for now; each file
+!                                     is checked to exist afterwards
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
@@ -59,6 +72,18 @@ private
 public :: make_pictures
 
 character(len=*), parameter :: fl = '(3x,a,t40,'': '',a)'   ! label : text
+
+!*** The drawing routines (src/drawings; external, like bmpmaker).
+!*** The interface lets the compiler check every call.
+interface
+   subroutine draw_xt( var, bout, cmap )
+      character(len=*), intent(in) :: var
+      character(len=80), intent(in) :: bout, cmap
+   end subroutine draw_xt
+   subroutine draw_trace( bout )
+      character(len=80), intent(in) :: bout
+   end subroutine draw_trace
+end interface
 
 contains
 
@@ -195,8 +220,8 @@ contains
    write( kpt6, fl ) '', 'in P also intact cells at P = 0'
 
    !*** The pictures.
-   call draw_xt( 'u', trim(title)//'.xt_u.bmp', ulo, uhi )
-   call draw_xt( 'P', trim(title)//'.xt_p.bmp', plo, phi )
+   call xt_file( 'u', trim(title)//'.xt_u', nerr )
+   call xt_file( 'P', trim(title)//'.xt_p', nerr )
    call free_history()
    end subroutine xt_pictures
 
@@ -286,35 +311,69 @@ contains
       write( kpt6, fl ) 'Tracer '//trim(tracer(it)%name)//' u (km/s)', &
          num(real(umin,sp))//' to '//num(real(umax,sp))//', y axis '// &
          num(real(umin - del,sp))//' to '//num(real(umax + del,sp))
-      call draw_trace( trim(tracer(it)%name), trim(title)//'.tr_'// &
-         trim(tracer(it)%name)//'.bmp', t, u(:,it), umin - del, umax + del )
+      call trace_file( trim(tracer(it)%name), trim(title)//'.tr_'// &
+         trim(tracer(it)%name), nerr )
    end do
    end subroutine tracer_pictures
 
    !******************************************************************!
-   ! A t-x diagram of u or P into file, colors from clo to chi.       !
-   ! NEXT COMMIT: the drawing (bmpmaker and the deck's colormap). For !
-   ! now it says what it will write.                                  !
+   ! One t-x diagram (u or P) into <base>.bmp: name it on the screen, !
+   ! draw it (draw_xt), and check the file is there.                  !
+   ! NEXT: draw_xt gets the data (module hist) and the color window.  !
    !******************************************************************!
-   subroutine draw_xt( var, file, clo, chi )
+   subroutine xt_file( var, base, nerr )
    implicit none
-   character(len=*), intent(in) :: var, file
-   real(kind=dp), intent(in) :: clo, chi
-   if ( .not. ( chi > clo ) ) return       ! (keeps clo, chi in use)
-   write( kpt6, fl ) var//' t-x diagram', file//'  (not drawn yet)'
-   end subroutine draw_xt
+   character(len=*), intent(in) :: var, base
+   integer(kind=int32), intent(inout) :: nerr
+   character(len=80) :: bout, cmap
+   write( kpt6, fl ) var//' t-x diagram', base//'.bmp'
+   bout = base
+   cmap = colormap
+   call fresh( base//'.bmp' )
+   call draw_xt( var, bout, cmap )
+   call written( base//'.bmp', nerr )
+   end subroutine xt_file
 
    !******************************************************************!
-   ! One tracer's velocity against time into file, y from ylo to yhi. !
-   ! NEXT COMMIT: the drawing. For now it says what it will write.    !
+   ! One tracer plot into <base>.bmp: name it on the screen, draw it  !
+   ! (draw_trace), and check the file is there.                       !
+   ! NEXT: draw_trace gets the tracer's times, velocities and y axis. !
    !******************************************************************!
-   subroutine draw_trace( name, file, t, u, ylo, yhi )
+   subroutine trace_file( name, base, nerr )
    implicit none
-   character(len=*), intent(in) :: name, file
-   real(kind=dp), intent(in) :: t(:), u(:), ylo, yhi
-   if ( size(t) /= size(u) .or. .not. ( yhi > ylo ) ) return  ! (in use)
-   write( kpt6, fl ) 'Tracer '//name//' plot', file//'  (not drawn yet)'
-   end subroutine draw_trace
+   character(len=*), intent(in) :: name, base
+   integer(kind=int32), intent(inout) :: nerr
+   character(len=80) :: bout
+   write( kpt6, fl ) 'Tracer '//name//' plot', base//'.bmp'
+   bout = base
+   call fresh( base//'.bmp' )
+   call draw_trace( bout )
+   call written( base//'.bmp', nerr )
+   end subroutine trace_file
+
+   !*** Remove an old copy of a picture before drawing it, so that
+   !*** "written" below can only find the new one. (bmpmaker reports
+   !*** a file it cannot open on the screen, but does not return it.)
+   subroutine fresh( file )
+   implicit none
+   character(len=*), intent(in) :: file
+   integer(kind=int32) :: lu, ios
+   logical :: there
+   inquire( file=file, exist=there )
+   if ( .not. there ) return
+   open( newunit=lu, file=file, status='old', iostat=ios )
+   if ( ios == 0 ) close( lu, status='delete' )
+   end subroutine fresh
+
+   !*** Was the picture written? If not, an error.
+   subroutine written( file, nerr )
+   implicit none
+   character(len=*), intent(in) :: file
+   integer(kind=int32), intent(inout) :: nerr
+   logical :: there
+   inquire( file=file, exist=there )
+   if ( .not. there ) call error( 'could not write '//file, nerr )
+   end subroutine written
 
    !******************************************************************!
    ! Small helpers.                                                   !

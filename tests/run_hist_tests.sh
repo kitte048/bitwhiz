@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #**********************************************************************#
-#  History file tests. Run from the bitwhiz folder, after 'make':      #
+#  History file and picture tests. Run from the bitwhiz folder,      #
+#  after 'make':                                                       #
 #                                                                      #
 #     ./tests/run_hist_tests.sh                                        #
 #                                                                      #
@@ -27,6 +28,13 @@
 #     run's files untouched and says the deck's plot_dt is not used;   #
 #     a deck with a different mesh, or a folder without the run's      #
 #     files, stops it with an error.                                   #
+#                                                                      #
+#  Pictures (section 9 of a run): every run that finishes must write   #
+#  exactly its pictures, by name (<title>.xt_u.bmp and .xt_p.bmp with  #
+#  snapshots, <title>.tr_<tracer>.bmp per tracer) and size (t-x        #
+#  1200 x 900, tracer plots 800 x 600), and no other bitmap. A         #
+#  plots_only run with another colormap must redraw the t-x diagrams   #
+#  differently and the tracer plots (no colormap) the same.            #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")    # absolute
@@ -89,6 +97,41 @@ check_file() {
    awk '/^B / {print $2}' "$1/chk.out" > "$1/broken"
 }
 
+# A bitmap's width or height, from its header (int32 at byte 18 or 22).
+bmp_dim() { od -An -t d4 -j "$2" -N 4 "$1" | tr -d ' '; }
+
+# Folder $1 holds exactly the pictures its run should make, each a
+# bitmap ("BM") of the right size: the t-x pair if it has a history
+# file (or if $2 is "xt"), and one plot per tracer in its tracer file.
+# Prints what is wrong, if anything.
+pics_ok() {
+   local d=$1 t f w h want=""
+   t=$(basename "$(ls "$d"/*.heartbeat "$d"/*.tracers.csv 2>/dev/null | head -1)")
+   t=${t%%.*}
+   if ls "$d"/*.hist > /dev/null 2>&1; then
+      want="$t.xt_u.bmp 1200 900
+$t.xt_p.bmp 1200 900"
+   fi
+   if ls "$d"/*.tracers.csv > /dev/null 2>&1; then
+      for f in $(sed -n 's/^# tracer [0-9]* \([^ ]*\) :.*/\1/p' "$d"/*.tracers.csv); do
+         want="$want${want:+
+}$t.tr_$f.bmp 800 600"
+      done
+   fi
+   if [ "$(cd "$d" && ls *.bmp 2>/dev/null | sort)" != "$(echo "$want" | awk 'NF {print $1}' | sort)" ]; then
+      echo "pictures: $(cd "$d" && ls *.bmp 2>/dev/null | tr '\n' ' ')(wanted: $(echo "$want" | awk '{print $1}' | tr '\n' ' '))"
+      return
+   fi
+   echo "$want" | while read -r f w h; do
+      [ -n "$f" ] || continue
+      if [ "$(head -c 2 "$d/$f")" != BM ] || [ "$(bmp_dim "$d/$f" 18)" != "$w" ] ||
+         [ "$(bmp_dim "$d/$f" 22)" != "$h" ] ||
+         [ "$(wc -c < "$d/$f" | tr -d ' ')" != $((54 + 3*w*h)) ]; then
+         echo "$f is not a $w x $h bitmap"
+      fi
+   done
+}
+
 # A checksum of each of the run's own files in folder $1 (cksum is in
 # every POSIX system; md5sum is not on macOS).
 sums() { (cd "$1" && cksum *.hist *.tracers.csv *.heartbeat 2>/dev/null); }
@@ -113,6 +156,9 @@ against_tracer() {   # $1 case name, $2 deck, $3 dt, $4 tracer
    fi
    [ "$(wc -l < "$d/frames")" -eq "$(wc -l < "$d/rows")" ] ||
       { fail "$1" "frames and tracer rows differ in number"; return; }
+   local bad
+   bad=$(pics_ok "$d")
+   [ -z "$bad" ] || { fail "$1" "$bad"; return; }
    npass=$((npass+1))
 }
 
@@ -160,6 +206,8 @@ c=no_snapshots
 if run $c tests/decks/ok_setup_counter.deck; then
    if ls "$TMP/$c"/*.hist > /dev/null 2>&1; then
       fail $c "a history file was written"
+   elif ls "$TMP/$c"/*.bmp > /dev/null 2>&1; then
+      fail $c "a picture was written (no snapshots, no tracers)"
    elif ! grep -q 'History file *: none' "$TMP/$c/screen.out"; then
       fail $c "the screen does not say there is no history file"
    else
@@ -167,6 +215,19 @@ if run $c tests/decks/ok_setup_counter.deck; then
    fi
 else
    fail $c "the run did not finish"
+fi
+
+# Case: tracers but no snapshots: tracer plots only, no t-x diagrams.
+c=tracers_only
+setkeys tests/decks/ok_method_rs.deck Output "plot_dt = 0" "plot_every = 0" > "$TMP/$c.deck"
+if ! run $c "$TMP/$c.deck"; then
+   fail $c "the run did not finish"
+elif ls "$TMP/$c"/*.hist > /dev/null 2>&1; then
+   fail $c "a history file was written"
+elif bad=$(pics_ok "$TMP/$c") && [ -n "$bad" ]; then
+   fail $c "$bad"
+else
+   npass=$((npass+1))
 fi
 
 # Cases: plots_only = yes, in a copy of the class_av run's folder.
@@ -192,6 +253,12 @@ elif ! grep -q 'Colormap *: inferno' "$d/screen.out" ||
    fail $c "it does not report the new colormap, window or plot_dt"
 elif grep -qE '^ +[3-8]\. ' "$d/screen.out"; then
    fail $c "it printed run sections (it must go from 2 to 9)"
+elif bad=$(pics_ok "$d") && [ -n "$bad" ]; then
+   fail $c "$bad"
+elif cmp -s "$d/double_shock_2p00.xt_u.bmp" "$TMP/class_av/double_shock_2p00.xt_u.bmp"; then
+   fail $c "with colormap = inferno the u t-x diagram is the same as viridis's"
+elif ! cmp -s "$d/double_shock_2p00.tr_pdv.bmp" "$TMP/class_av/double_shock_2p00.tr_pdv.bmp"; then
+   fail $c "the pdv tracer plot changed with the colormap"
 else
    npass=$((npass+1))
 fi

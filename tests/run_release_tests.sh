@@ -12,7 +12,8 @@
 #  for byte) are IDENTICAL to the debug build's. Left out, as in the   #
 #  OpenMP tests: the clock times, and the lines that name the build    #
 #  itself (version, built, flags, and the history file's text block),  #
-#  which are meant to differ.                                          #
+#  which are meant to differ. The pictures (section 9) must be the     #
+#  same files, byte for byte.                                          #
 #                                                                      #
 #  Why identical, not "close": the two builds differ only in checks    #
 #  and optimization, never in arithmetic (Makefile, NOTES at RFLAGS:   #
@@ -65,6 +66,17 @@ hbody() {     # $1 = folder of one run
    tail -c +$((hb + 1)) "$f"
 }
 
+# The pictures (section 9 of a run): the same files, byte for byte.
+# Prints the first difference, if any.
+pics_same() {  # $1, $2 = folders of two runs
+   a=$(cd "$1" && ls *.bmp 2>/dev/null | tr '\n' ' ')
+   b=$(cd "$2" && ls *.bmp 2>/dev/null | tr '\n' ' ')
+   [ "$a" = "$b" ] || { echo "different pictures: $a / $b"; return; }
+   for f in $a; do
+      cmp -s "$1/$f" "$2/$f" || { echo "$f differs"; return; }
+   done
+}
+
 for deck in $DECKS; do
    name=$(basename "$deck" .deck)
    ok=1
@@ -100,6 +112,10 @@ for deck in $DECKS; do
    fi
    if ! cmp -s <(hbody "$a") <(hbody "$b"); then
       fail "$deck" "the release build's history file differs"; continue
+   fi
+   bad=$(pics_same "$a" "$b")
+   if [ -n "$bad" ]; then
+      fail "$deck" "the release build's pictures: $bad"; continue
    fi
    npass=$((npass+1))
 done

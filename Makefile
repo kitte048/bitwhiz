@@ -22,6 +22,9 @@
 #                its tests in 'make test' and 'make release')
 #Revision: 1.13 (10-20-26, with Claude: pics module, the pictures;
 #                plots_only tests in run_hist_tests.sh)
+#Revision: 1.14 (10-20-26, with Claude: draw_xt and draw_trace; 'tidy'
+#                removes the run's pictures; 'clean' removes the
+#                macOS debug-symbol folders, bin/*.dSYM)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -173,12 +176,15 @@ $(eval $(call MOD_ORDER,))
 ###  at the first one that fails. Run it before every commit.
 ###  A new unit test: add its program to UNIT_TESTS and a
 ###  line to the 'test' recipe; the pattern rule builds it.
+###  It links every module AND the library objects: module
+###  pics calls the drawing routines (src/drawings), which
+###  call bmpmaker and the colormaps.
 ############################################################
 UNIT_TESTS = ./bin/test_eos ./bin/test_hist
 
-./bin/test_%: tests/test_%.f95 $(MOD_OBJS)
+./bin/test_%: tests/test_%.f95 $(MOD_OBJS) $(LIB_OBJS)
 	@mkdir -p ./bin
-	$(FC) $(INCLUDES) $(FCFLAGS) $(OMPFLAGS) -o $@ $< $(MOD_OBJS)
+	$(FC) $(INCLUDES) $(FCFLAGS) $(OMPFLAGS) -o $@ $< $(MOD_OBJS) $(LIB_OBJS)
 
 test: $(EXECS) $(UNIT_TESTS)
 	./bin/test_eos
@@ -238,9 +244,14 @@ $(eval $(call MOD_ORDER,$(RDIR)/))
 ###  Add each new output type here as bitwhiz learns to
 ###  write it (tracers, snapshots, run log, ...).
 ###  The decks and README in input/ are never touched.
+###  A run's pictures are named <title>.xt_u.bmp,
+###  <title>.xt_p.bmp and <title>.tr_<tracer>.bmp, so only
+###  those bitmaps go here; any other .bmp in the top folder
+###  is kept (see bmpclean below).
 ############################################################
 RUN_FILES = *.heartbeat input/*.heartbeat *.tracers.csv \
-            input/*.tracers.csv *.hist input/*.hist input/*.bmp
+            input/*.tracers.csv *.hist input/*.hist input/*.bmp \
+            *.xt_u.bmp *.xt_p.bmp *.tr_*.bmp
 
 ############################################################
 ###  NOTES: target names. No target name is the start of
@@ -257,17 +268,22 @@ tidy:
 ############################################################
 ###  NOTES: 'make clean' removes the build products (debug
 ###  and release) AND the run outputs, for a fresh start.
+###  On macOS, linking with -g also writes a debug-symbol
+###  folder next to each program (bin/test_eos.dSYM, ...);
+###  those go too.
 ############################################################
 clean: tidy
 	rm -f $(EXECS) $(MOD_OBJS) $(LIB_OBJS) $(BIN) $(MOD_FILS)
 	rm -f $(BUILD_SRC) $(BUILD_OBJ) src/modules/build.mod
 	rm -f bitwhiz *.mod $(UNIT_TESTS)
 	rm -rf $(RDIR) $(REL_EXEC)
+	rm -rf ./bin/*.dSYM
 
 ############################################################
 ###  NOTES: bitmaps in the top folder are kept by both
-###  targets above (e.g. a figure you want to keep); remove
-###  them on purpose with 'make bmpclean'.
+###  targets above (e.g. a figure you want to keep), except
+###  a run's own pictures (RUN_FILES); remove the rest on
+###  purpose with 'make bmpclean'.
 ############################################################
 bmpclean:
 	rm -f *.bmp
