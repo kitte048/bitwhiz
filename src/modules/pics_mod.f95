@@ -30,17 +30,19 @@ module pics
 !       draw_xt      t-x diagram, 1200 x 900 pixels, the deck's colormap
 !       draw_trace   tracer plot,  800 x 600 pixels, black on white
 !
-!  THIS VERSION: they draw fiducials (a colormap ramp; the plot frame)
-!  so the file names, sizes, the colormap and plots_only can be
-!  checked. The pictures to come:
+!  THIS VERSION: the P t-x diagram is drawn from the data; the u t-x
+!  diagram (a colormap ramp) and the tracer plots (the empty frame)
+!  are still fiducials. The pictures, when done:
 !    t-x diagrams, in the lab frame: x across, from the smallest to
 !    the largest face position of the whole run, t up, from 0 to the
 !    last frame; every pixel colored, edge to edge, no text. Colors:
 !    the deck's colormap over the color window, min + lo*(max - min)
 !    to min + hi*(max - min) of the data (plot_u_lo, ...), values
 !    beyond saturating. White: open spall (D = 1 and P = 0) and
-!    outside the material, in both; in P also every intact cell at
-!    P = 0 (material no wave has reached).
+!    outside the material, in both; in P also every cell no wave has
+!    reached yet (its |P| has not yet exceeded 1e-6 of the run's
+!    largest |P|). Each cell is drawn between its faces at that time,
+!    pixels averaging the cells over them (draw_xt).
 !    Tracer plots: velocity against time, x from the first to the
 !    last time, y from min - 5% to max + 5% of the range, a border
 !    and tick marks at tenths, no text.
@@ -56,6 +58,8 @@ module pics
 !                (with Claude)        draw_trace (src/drawings), which
 !                                     draw fiducials for now; each file
 !                                     is checked to exist afterwards
+!    10/20/26    D. E. Kittell        draw_xt gets the color window;
+!                (with Claude)        the P t-x diagram is drawn
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
@@ -76,9 +80,11 @@ character(len=*), parameter :: fl = '(3x,a,t40,'': '',a)'   ! label : text
 !*** The drawing routines (src/drawings; external, like bmpmaker).
 !*** The interface lets the compiler check every call.
 interface
-   subroutine draw_xt( var, bout, cmap )
+   subroutine draw_xt( var, bout, cmap, clo, chi )
+      import :: dp
       character(len=*), intent(in) :: var
       character(len=80), intent(in) :: bout, cmap
+      real(kind=dp), intent(in) :: clo, chi
    end subroutine draw_xt
    subroutine draw_trace( bout )
       character(len=80), intent(in) :: bout
@@ -215,13 +221,13 @@ contains
    write( kpt6, fl ) 'P colors (GPa)', num(real(plo,sp))//' to '// &
       num(real(phi,sp))//'  (window '//fmt_real(plot_p_lo)//' to '// &
       fmt_real(plot_p_hi)//')'
-   write( kpt6, fl ) 'White', 'open spall (D = 1, P = 0), outside the '// &
-      'material;'
-   write( kpt6, fl ) '', 'in P also intact cells at P = 0'
+   write( kpt6, fl ) 'White', 'outside the material, open spall '// &
+      '(D = 1, P = 0);'
+   write( kpt6, fl ) '', 'in P also material no wave has reached'
 
    !*** The pictures.
-   call xt_file( 'u', trim(title)//'.xt_u', nerr )
-   call xt_file( 'P', trim(title)//'.xt_p', nerr )
+   call xt_file( 'u', trim(title)//'.xt_u', ulo, uhi, nerr )
+   call xt_file( 'P', trim(title)//'.xt_p', plo, phi, nerr )
    call free_history()
    end subroutine xt_pictures
 
@@ -318,19 +324,20 @@ contains
 
    !******************************************************************!
    ! One t-x diagram (u or P) into <base>.bmp: name it on the screen, !
-   ! draw it (draw_xt), and check the file is there.                  !
-   ! NEXT: draw_xt gets the data (module hist) and the color window.  !
+   ! draw it (draw_xt, from the history file just read, colors from  !
+   ! clo to chi), and check the file is there.                        !
    !******************************************************************!
-   subroutine xt_file( var, base, nerr )
+   subroutine xt_file( var, base, clo, chi, nerr )
    implicit none
    character(len=*), intent(in) :: var, base
+   real(kind=dp), intent(in) :: clo, chi
    integer(kind=int32), intent(inout) :: nerr
    character(len=80) :: bout, cmap
    write( kpt6, fl ) var//' t-x diagram', base//'.bmp'
    bout = base
    cmap = colormap
    call fresh( base//'.bmp' )
-   call draw_xt( var, bout, cmap )
+   call draw_xt( var, bout, cmap, clo, chi )
    call written( base//'.bmp', nerr )
    end subroutine xt_file
 

@@ -34,7 +34,12 @@
 #  snapshots, <title>.tr_<tracer>.bmp per tracer) and size (t-x        #
 #  1200 x 900, tracer plots 800 x 600), and no other bitmap. A         #
 #  plots_only run with another colormap must redraw the t-x diagrams   #
-#  differently and the tracer plots (no colormap) the same.            #
+#  differently and the tracer plots (no colormap) the same. The class  #
+#  run's P t-x diagram must be in the lab frame with the white rule:   #
+#  its corners white (untouched flyer and PMMA at t = 0, no material   #
+#  at x = -7 mm by t_end), the impact plane x = 0 colored just after   #
+#  t = 0, and the PMMA at x = 15 mm white just after t = 0 but colored #
+#  near t_end (so t runs up, not down).                                #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")    # absolute
@@ -132,6 +137,12 @@ $t.xt_p.bmp 1200 900"
    done
 }
 
+# Pixel (i, r) of a 24-bit bitmap nx pixels wide, as 6 hex digits;
+# i from the left, r from the BOTTOM (the first row in the file).
+pixel() {   # $1 file, $2 i, $3 r, $4 nx
+   od -An -t x1 -j $((54 + 3*(($3 - 1)*$4 + $2 - 1))) -N 3 "$1" | tr -d ' \n'
+}
+
 # A checksum of each of the run's own files in folder $1 (cksum is in
 # every POSIX system; md5sum is not on macOS).
 sums() { (cd "$1" && cksum *.hist *.tracers.csv *.heartbeat 2>/dev/null); }
@@ -163,6 +174,32 @@ against_tracer() {   # $1 case name, $2 deck, $3 dt, $4 tracer
 }
 
 against_tracer class_av  input/me697_double_shock_2p00.deck 0.01 pdv
+
+# Case: the class run's P t-x diagram (1200 x 900), lab frame and white
+# rule. x = 0 is column floor((0 - xmin)/dx) + 1, with xmin and xmax
+# (the image's edges) from the screen's "x across" line.
+c=xt_p_class
+f="$TMP/class_av/double_shock_2p00.xt_p.bmp"
+if [ ! -f "$f" ]; then
+   fail $c "no P t-x diagram"
+else
+   col() {   # the pixel column of x = $1 mm
+      awk -F: -v x="$1" '/x across \(mm\)/ {split($2, v, " to "); x0 = v[1] + 0; x1 = v[2] + 0;
+           print int((x - x0)/((x1 - x0)/1200)) + 1}' "$TMP/class_av/screen.out"
+   }
+   i0=$(col 0); i15=$(col 15)
+   if [ "$(pixel "$f" 1 1 1200)" != ffffff ] || [ "$(pixel "$f" 1200 1 1200)" != ffffff ] ||
+      [ "$(pixel "$f" 1 900 1200)" != ffffff ]; then
+      fail $c "a corner is not white (bottom left, bottom right, top left)"
+   elif [ -z "$i0" ] || [ "$(pixel "$f" "$i0" 5 1200)" = ffffff ]; then
+      fail $c "the impact plane (column ${i0:-?}) is white just after t = 0"
+   elif [ -z "$i15" ] || [ "$(pixel "$f" "$i15" 5 1200)" != ffffff ] ||
+        [ "$(pixel "$f" "$i15" 880 1200)" = ffffff ]; then
+      fail $c "the PMMA at x = 15 mm (column ${i15:-?}) is not white at t = 0 and colored near t_end"
+   else
+      npass=$((npass+1))
+   fi
+fi
 against_tracer rs_order2 tests/decks/ok_method_rs.deck        0.05 impact
 against_tracer rs_order1 tests/decks/ok_method_rs_order1.deck 0.05 impact
 

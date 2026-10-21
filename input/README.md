@@ -421,11 +421,10 @@ the screen) and writes, in the folder the run starts from:
 | `<title>.xt_p.bmp` | t-x diagram of the pressure P | 1200 × 900 | snapshots |
 | `<title>.tr_<name>.bmp` | one tracer's velocity against time, one per tracer | 800 × 600 | tracers |
 
-> **For now the pictures are fiducials,** to check the file names, sizes, the
-> colormap and `plots_only`: each t-x diagram is a ramp from 0 to 1 through the
-> deck's `colormap` (left to right for u, bottom to top for P, so the color for
-> 0 is at the bottom left), and each tracer plot is the empty frame (border and
-> tick marks). The data go in next; what they will show is described below.
+> **So far, the P t-x diagram is drawn from the data.** The u t-x diagram is
+> still a fiducial (a ramp from 0 to 1 through the deck's `colormap`, left to
+> right), and each tracer plot is the empty frame (border and tick marks); what
+> they will show is described below.
 
 The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
 `src/drawings/draw_xt.f95` and `draw_trace.f95` and written by
@@ -440,9 +439,25 @@ The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
   edge, with no text. The colors are the deck's `colormap` over a window of
   the data: from min + lo·(max − min) to min + hi·(max − min), with lo and hi
   from `plot_u_lo`, `plot_u_hi` (or `plot_p_lo`, `plot_p_hi`), 0 and 1 by
-  default. Values beyond the window take its end colors. **White:** open spall
-  (D = 1 and P = 0) and everything outside the material, in both; in P also
-  every intact cell at P = 0 exactly (material no wave has reached).
+  default. Values beyond the window take its end colors. **White:** everything
+  outside the material, and open spall (a broken cell, D = 1, at P = 0; closed
+  again, it carries pressure and is colored), in both; in P also material no
+  wave has reached yet. A cell counts as reached once its |P| exceeds 10⁻⁶ of
+  the run's largest |P| in any frame so far; material a release has brought
+  back to about zero pressure stays colored. (Why not "P = 0 exactly": in the
+  lab frame a moving flyer's faces move every step, so its untouched cells pick
+  up round-off pressures of about 10⁻¹⁴ GPa.)
+- **How a t-x diagram is drawn** (`src/drawings/draw_xt.f95`): pixel row r
+  (from the bottom) is the time (r − ½)·Δt. The face positions are interpolated
+  in time between the two frames around it, so material moves smoothly between
+  frames; each cell's state comes from the nearer frame; each cell is laid
+  between its two faces, and a pixel takes the length-weighted mean of the
+  cells over it (white if more than half of it is white). A face is a curve of
+  slope dx/dt = u, and a shock front's slope is the shock velocity. (A simpler
+  point-sampling scheme, `ischeme = 1` in the code, shows stair-steps when the
+  frames are coarser than the pixel rows.) With the class deck's 501 frames
+  for 900 rows, halving `plot_dt` changes fewer than 0.4% of the pixels
+  visibly.
 - **Tracer plots:** x from the first to the last time, y from the smallest to
   the largest velocity, widened by 5% of the range at each end; a border and
   tick marks at tenths of each axis; no text.
@@ -527,4 +542,8 @@ with another mesh, or a folder without the files, must stop it with an
 error. Every finished run must write exactly its pictures, by name and size
 (tracer plots only, for a deck with tracers but no snapshots), and a
 `plots_only` run with another colormap must change the t-x diagrams and not
-the tracer plots.
+the tracer plots. In the class run's P t-x diagram, pixels at known places
+must be white (the untouched flyer and PMMA at t = 0, no material at
+x = −7 mm by t_end) or colored (the impact plane just after t = 0, the PMMA at
+x = 15 mm near t_end), which checks the lab frame, the time direction and the
+white rule.

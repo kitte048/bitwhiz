@@ -17,7 +17,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Tracer file (`<title>.tracers.csv`, `tracer_dt`) | done (`src/modules/trace_mod.f95`; see `input/README.md`) |
 | Second method, `method = RS` (Godunov's method, acoustic Riemann solver), in the same code; `order = 2` (MUSCL-Hancock, Van Leer, the default) or `1` | done (`src/modules/rs_mod.f95`, maincode section 7; equation sheet `doc/Hydrocode_RS_Eqns_v4`) |
 | History file `<title>.hist`: x, u, P and damage on the whole mesh, one frame per snapshot (`plot_every`, `plot_dt`) | done (`src/modules/hist_mod.f95`; format in `input/README.md`, section 9) |
-| Pictures: t-x diagrams of u and P, one plot per tracer; `plots_only = yes` re-draws them without running | the files are written, by name and size, from a run and from `plots_only`, but show fiducials (`src/modules/pics_mod.f95`, `src/drawings/draw_xt.f95`, `draw_trace.f95`; `input/README.md` section 9b); drawing the data next |
+| Pictures: t-x diagrams of u and P, one plot per tracer; `plots_only = yes` re-draws them without running | the P t-x diagram is drawn (lab frame, white where no wave has reached and in open spall); the u t-x diagram and the tracer plots are still fiducials (`src/modules/pics_mod.f95`, `src/drawings/draw_xt.f95`, `draw_trace.f95`; `input/README.md` section 9b) |
 | Comparison with reference data | data in `tests/verification/` |
 
 ## Build
@@ -90,8 +90,9 @@ Four kinds of test, all run by `make test`, which stops at the first failure:
   methods; plus `plot_every`, a run stopped by `cycle_max`, a deck
   without snapshots, and `plots_only` (same ranges as the run, the run's
   files untouched, an error for another mesh or missing files). Every run
-  must write exactly its pictures, by name and size; the OpenMP and release
-  tests also require the pictures to be identical, byte for byte.
+  must write exactly its pictures, by name and size, and the class run's P
+  t-x diagram is checked pixel by pixel at known places; the OpenMP and
+  release tests also require the pictures to be identical, byte for byte.
 
 `make release` runs the deck and OpenMP tests again on the optimized build, and
 a fourth kind, the **release tests** (`tests/run_release_tests.sh`): both builds
