@@ -64,6 +64,9 @@ module pics
 !                (with Claude)        <title>.tx_u.bmp, .tx_p.bmp and
 !                                     draw_tx; the u t-x diagram is
 !                                     drawn too
+!    10/21/26    D. E. Kittell        Quieter: each group of pictures
+!                (with Claude)        is announced once (bmpmaker no
+!                                     longer prints per file)
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
@@ -229,7 +232,9 @@ contains
       '(D = 1, P = 0);'
    write( kpt6, fl ) '', 'in P also material no wave has reached'
 
-   !*** The pictures.
+   !*** The pictures, announced once.
+   write( kpt6, fl ) 'Drawing t-x diagrams', trim(title)//'.tx_u.bmp, '// &
+      trim(title)//'.tx_p.bmp'
    call tx_file( 'u', trim(title)//'.tx_u', ulo, uhi, nerr )
    call tx_file( 'P', trim(title)//'.tx_p', plo, phi, nerr )
    call free_history()
@@ -311,9 +316,14 @@ contains
    !*** One plot per tracer: x from the first to the last time, y from
    !*** min - 5% to max + 5% of the range (a flat line: +-5% of its
    !*** value, or +-0.05 km/s at 0).
+   !*** The pictures announced once; then one line per tracer, its
+   !*** velocity range and the plot's y axis (what a reader needs to
+   !*** read a plot that has no text on it).
    write( kpt6, fl ) 'Tracer file', fname
    write( kpt6, fl ) 'Rows', itoa(nrow)//', t = '//fmt_real(t(1))// &
       ' to '//fmt_real(t(nrow))//' us'
+   write( kpt6, fl ) 'Drawing tracer plots', itoa(ntrc)//', '// &
+      trim(title)//'.tr_<tracer>.bmp'
    do it = 1, ntrc
       umin = minval(u(:,it)); umax = maxval(u(:,it))
       del  = 0.05_dp*( umax - umin )
@@ -321,15 +331,14 @@ contains
       write( kpt6, fl ) 'Tracer '//trim(tracer(it)%name)//' u (km/s)', &
          num(real(umin,sp))//' to '//num(real(umax,sp))//', y axis '// &
          num(real(umin - del,sp))//' to '//num(real(umax + del,sp))
-      call trace_file( trim(tracer(it)%name), trim(title)//'.tr_'// &
-         trim(tracer(it)%name), nerr )
+      call trace_file( trim(title)//'.tr_'//trim(tracer(it)%name), nerr )
    end do
    end subroutine tracer_pictures
 
    !******************************************************************!
-   ! One t-x diagram (u or P) into <base>.bmp: name it on the screen, !
-   ! draw it (draw_tx, from the history file just read, colors from  !
-   ! clo to chi), and check the file is there.                        !
+   ! One t-x diagram (u or P) into <base>.bmp: draw it (draw_tx, from !
+   ! the history file just read, colors from clo to chi) and check    !
+   ! the file is there. (The caller announces the pictures.)          !
    !******************************************************************!
    subroutine tx_file( var, base, clo, chi, nerr )
    implicit none
@@ -337,7 +346,6 @@ contains
    real(kind=dp), intent(in) :: clo, chi
    integer(kind=int32), intent(inout) :: nerr
    character(len=80) :: bout, cmap
-   write( kpt6, fl ) var//' t-x diagram', base//'.bmp'
    bout = base
    cmap = colormap
    call fresh( base//'.bmp' )
@@ -346,16 +354,15 @@ contains
    end subroutine tx_file
 
    !******************************************************************!
-   ! One tracer plot into <base>.bmp: name it on the screen, draw it  !
-   ! (draw_trace), and check the file is there.                       !
+   ! One tracer plot into <base>.bmp: draw it (draw_trace) and check  !
+   ! the file is there. (The caller announces the pictures.)          !
    ! NEXT: draw_trace gets the tracer's times, velocities and y axis. !
    !******************************************************************!
-   subroutine trace_file( name, base, nerr )
+   subroutine trace_file( base, nerr )
    implicit none
-   character(len=*), intent(in) :: name, base
+   character(len=*), intent(in) :: base
    integer(kind=int32), intent(inout) :: nerr
    character(len=80) :: bout
-   write( kpt6, fl ) 'Tracer '//name//' plot', base//'.bmp'
    bout = base
    call fresh( base//'.bmp' )
    call draw_trace( bout )

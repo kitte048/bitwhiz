@@ -61,7 +61,34 @@ momentum); watch it with `tail -f`. The heartbeat also records the first cell
 to go tensile, the first cell to break (spall: its pressure fell below
 `-spall_strength`, set per material), and the first void cell, if any. A deck
 with tracers also writes `<title>.tracers.csv`: one row per `tracer_dt`, laid
-out like the verification data in `tests/verification/`.
+out like the verification data in `tests/verification/`. A deck with snapshots
+(`plot_dt` or `plot_every`) also writes `<title>.hist`, the whole mesh over
+time, and every run ends by drawing its pictures: t-x diagrams of u and P
+(`<title>.tx_u.bmp`, `.tx_p.bmp`) and one plot per tracer
+(`<title>.tr_<name>.bmp`); see `input/README.md`, section 9b.
+
+## A typical session
+From the bitwhiz folder, starting cold:
+```
+make                 # debug build, bin/bitwhiz
+make test            # every test; about a minute
+make release         # bin/bitwhiz_release, checked against the debug build
+make tidy            # clear the tests' leftover run files
+cd input
+../bin/bitwhiz_release me697_double_shock_2p00.deck
+```
+The run's files land beside the deck, in `input/`. The two builds give the
+same answers bit for bit; the release build is about 3 times faster, so it is
+the one to drive, and the debug build (`../bin/bitwhiz`) the one to develop
+with.
+
+To tune the pictures without running again, add `plots_only = yes` to the
+Run block and change `colormap` or the color windows (`plot_u_lo`,
+`plot_u_hi`, `plot_p_lo`, `plot_p_hi`) in the Output block; each re-draw
+takes about a second. Set it back to `no` (or delete the line) for a real
+run. The class deck ends with a reference of every key, its default and its
+options, the colormap names among them. `make tidy` (from the bitwhiz
+folder) clears the run's files from `input/` too.
 
 ## Test
 ```
@@ -79,7 +106,10 @@ Four kinds of test, all run by `make test`, which stops at the first failure:
 - **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and four test
   decks (two impact faces; a plate that spalls; method RS at order 2 and at
   order 1) run on 1 thread and on 2, 3, 4 and 8
-  threads, as many as the machine has processors for. Everything printed from
+  threads, as many as the machine has processors for, so the count of these
+  tests depends on the machine: 20 with 8 or more processors, 15 with 4 to
+  7, 10 with 3, 5 with 2.
+  Everything printed from
   t = 0 on, every heartbeat line and every tracer row must be identical to the 1-thread run
   (clock times aside). Any difference means a race condition. A serial build
   (`make OMPFLAGS=`) skips them. The history file must match too, byte for

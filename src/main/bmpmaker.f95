@@ -23,6 +23,10 @@ subroutine bmpmaker(nx,ny,fcn,RGB,bout,cmap)
 !                                   so a caller can color an image,    !
 !                                   then change pixels (draw_xt), and  !
 !                                   pass RGB with no colormap ('rgb')  !
+!    10/21/26    Claude (for DEK)   Silent when it works: no "MAKING   !
+!                                   File" or row-padding lines (the    !
+!                                   caller says what it is writing);   !
+!                                   the ERROR lines stay               !
 !                                                                      !
 !**********************************************************************!
 use bits, only: dp,int8,int16,int32,one,thr,for,eig,ten, &
@@ -78,7 +82,6 @@ else
       end if
    end do
    bfile = trim(adjustl(bout(1:ilast)))//".bmp"
-   write(kpt6,*) "MAKING File: ",bfile(1:54)
 
    ! Write to file.
    open ( unit=uu, file=bfile, status='replace', &
@@ -103,9 +106,6 @@ else
 
       ! Write Bit Values, if row padding.
       rowpad_if: if (nzp > 0) then
-         write(kpt6,*) &
-            "   Zero padding is required to make bitmap image."
-         write(kpt6,*) "    bytes = ",nzp
          allocate(zpad(nzp))
          zpad = 0_int8
 
@@ -120,8 +120,6 @@ else
 
       ! Write Bit Values, if NOT row padding.
       else
-         write(kpt6,*) &
-            "   No zero padding required to make bitmap image."
 
          ! Lines (bottom to top).
          do j=ny,1,-1

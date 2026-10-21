@@ -15,6 +15,7 @@ Begin bitwhiz
  define u_fly = 2.00            # km/s, flyer velocity
 
  Begin Run
+  plots_only = no    # yes or no
   title       = double_shock_2p00
   t_end       = 5.0             # us. Placeholder: the first shock reaches
                                 # PMMA near 2.0 us at 2.00 km/s; set the
@@ -35,7 +36,7 @@ Begin bitwhiz
  End Output
 
  Begin Solver
-  method = RS
+  method = AV
   BL     = 0.1                  # linear viscosity coefficient
   BQ     = 2.0                  # quadratic viscosity coefficient
                                 # (the equation sheet's defaults; leave
@@ -114,3 +115,65 @@ End bitwhiz
 Notes (ignored by the parser):
 - Convergence study: change "resolution = 35" to 17.5 and 8.75.
 - Velocity sweep: change "define u_fly" only.
+
+#**********************************************************************#
+#  KEY REFERENCE (deck_version 1): every key, its default, its options #
+#  Details and examples: input/README.md, sections 6 to 9b. Names and  #
+#  values ignore case; units are mm, us, g/cm^3, km/s, GPa.            #
+#**********************************************************************#
+#  Top level
+#    deck_version   1 (required)
+#    define         <name> = <number>; use the name as a value later
+#
+#  Begin Run
+#    title          name of the run's files     (default: the deck's name)
+#    t_end          us, end time                (required)
+#    cycle_max      cycles, a backstop          (1000000)
+#    num_threads    0 = all processors          (1)
+#    omp_min_zones  fewer cells run on 1 thread (2000; 0 = always thread)
+#    plots_only     yes | no: yes skips the run and re-draws the
+#                   pictures from this deck's earlier files  (no)
+#
+#  Begin Output     (nothing listed = nothing written but the heartbeat)
+#    tracer         <name> <location>, repeatable; locations:
+#                     A:B    the interface of neighboring layers A, B
+#                     A@f    fraction f across layer A (0 left, 1 right)
+#                     12.3   an x position, mm
+#    tracer_dt      us between tracer rows      (0 = every cycle)
+#    plot_dt        us between snapshots        (0 = off)
+#    plot_every     cycles between snapshots    (0 = off)
+#                   either one on writes <title>.hist and the t-x
+#                   pictures <title>.tx_u.bmp, <title>.tx_p.bmp
+#    colormap       viridis (default), plasma, inferno, blackbody,
+#                   kindlmann, extendedkindlmann, smoothcoolwarm,
+#                   bentcoolwarm, grayscale
+#    plot_u_lo      u color window, fraction 0 to 1 of the u range (0)
+#    plot_u_hi                                                      (1)
+#    plot_p_lo      P color window, fraction 0 to 1 of the P range (0)
+#    plot_p_hi                                                      (1)
+#
+#  Begin Solver
+#    method         AV (artificial viscosity, default) | RS (Riemann)
+#    order          RS only: 2 (MUSCL-Hancock, Van Leer, default) | 1
+#    BL             AV only, linear viscosity coefficient     (0.1)
+#    BQ             AV only, quadratic viscosity coefficient  (2.0)
+#    CFL            Courant safety factor, 0 < CFL <= 1       (0.6)
+#
+#  Begin Material <name>
+#    R0, C0, S1, G0 g/cm^3, km/s, -, -          (required)
+#    S2             -                           (0.0)
+#    spall_strength GPa, tension held before a cell breaks (0.01)
+#
+#  Begin Stack
+#    resolution     zones/mm for every layer    (none: each layer's own)
+#    origin         x = 0 at a location (A:B or A@f), or
+#    x_left         mm, x of the left face      (0.0; not with origin)
+#    Begin Layer    (left to right, all in contact)
+#      material     a Material block's name     (required)
+#      name         the layer's own name        (the material's; required
+#                                                if a material is used twice)
+#      width        mm                          (required)
+#      xvel         km/s, + is to the right     (0.0)
+#      zones        cells in this layer         (or from a resolution)
+#      resolution   zones/mm, overrides the Stack's
+#**********************************************************************#

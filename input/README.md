@@ -110,7 +110,8 @@ Units: mm, us, g/cm^3, km/s, GPa. Nothing is converted inside the code.
 the heartbeat (`<title>.heartbeat`, one line per cycle) and, later, the run log.
 A deck with tracers also writes the tracer file, `<title>.tracers.csv`
 (section 8), and a deck with snapshots the history file, `<title>.hist`
-(section 9, draft). The whole block may be left out.
+(section 9), and every run that finishes draws its pictures (section 9b). The
+whole block may be left out.
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
