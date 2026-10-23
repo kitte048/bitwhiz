@@ -79,9 +79,12 @@ program bitwhiz
 !                                     momentum-weighted u of their two
 !                                     cells; the momentum check scales
 !                                     with the momentum's magnitude
+!    10/23/26    D. E. Kittell        Exits through quit (module bits),
+!                (with Claude)        not "stop n, quiet=.true.", so
+!                                     gfortran 9 and 10 compile it
 !
 !**********************************************************************!
-use bits, only: dp,int32,int64,kpt6,zero,half,one
+use bits, only: dp,int32,int64,kpt6,zero,half,one,quit
 use shock, only: omp_on,nproc,num_procs,max_threads,num_threads,method, &
    thread_num,nalive,title,khb,hb_open,hb_file, &
    kmax,imax,nvar,nlay,layer,database,ilay,icell,iface, &
@@ -297,7 +300,7 @@ call read_deck( trim(deckname), kerr )
 if ( kerr > 0 ) then
    write( kpt6, 202 ) repeat('-',56)
    write( kpt6, '(1x,i0,a)' ) kerr, ' error(s) in the input deck; stopping.'
-   stop 1, quiet=.true.                 ! exit status 1, no "STOP 1" line
+   call quit( 1 )                       ! exit status 1, quietly (bits)
 end if
 write( kpt6, 202 ) repeat('=',56)
 write( kpt6, 202 ) ' 2. Input deck: '//trim(deckname)
@@ -311,8 +314,8 @@ call write_resolved_deck( int(kpt6) )
 if ( plots_only ) then
    call make_pictures( npic )
    call finish_run()
-   if ( npic > 0 ) stop 1, quiet=.true.
-   stop 0, quiet=.true.
+   if ( npic > 0 ) call quit( 1 )
+   call quit( 0 )
 end if
 
 !===================================!
@@ -406,7 +409,7 @@ open( newunit=khb, file=trim(hb_file), status='replace', &
 if ( ios /= 0 ) then
    write( kpt6, 202 ) 'bitwhiz: cannot open the heartbeat file '// &
       trim(hb_file)
-   stop 1, quiet=.true.
+   call quit( 1 )
 end if
 hb_open = .true.
 
@@ -434,7 +437,7 @@ if ( ios /= 0 ) then
    write( kpt6, 202 ) 'bitwhiz: cannot open the tracer file '// &
       trim(title)//'.tracers.csv'
    call close_outputs( 'cannot open the tracer file' )
-   stop 1, quiet=.true.
+   call quit( 1 )
 end if
 
 !*** The history file, <title>.hist (module hist), if the deck asks for
@@ -457,7 +460,7 @@ if ( ios /= 0 ) then
    write( kpt6, 202 ) 'bitwhiz: cannot open the history file '// &
       trim(title)//'.hist'
    call close_outputs( 'cannot open the history file' )
-   stop 1, quiet=.true.
+   call quit( 1 )
 end if
 
 write( kpt6, 202 ) repeat('=',56)
@@ -511,7 +514,7 @@ if ( kerr > 0 ) then
    write( kpt6, 202 ) 'bitwhiz: cannot allocate the database '// &
       '(out of memory?)'
    call close_outputs( 'could not allocate the database' )
-   stop 1, quiet=.true.
+   call quit( 1 )
 end if
 
 !*** 5a. Face positions, layer by layer. Faces are evenly spaced
@@ -887,7 +890,7 @@ if ( nbad > 0 ) then
    write( kpt6, '(1x,i0,a)' ) nbad, ' setup check(s) failed; stopping. '// &
       'This is a bug in bitwhiz, not in the deck.'
    call close_outputs( 'setup check failed' )
-   stop 1, quiet=.true.
+   call quit( 1 )
 end if
 
 !*** 6c. The first time step, dt(0), from the t = 0 state (c = C0 and
@@ -1145,7 +1148,7 @@ time_loop: do while ( .not. done )
       write( kpt6, '(1x,a)' ) '         '//eos_message(ierr)
       call close_outputs( 'EOS failure in cell '//itoa(kbad)//': '// &
          eos_message(ierr) )
-      stop 1, quiet=.true.
+      call quit( 1 )
    end if
 
    !*** The first cell to go tensile, recorded once (equation sheet,
@@ -1210,7 +1213,7 @@ time_loop: do while ( .not. done )
       write( kpt6, '(1x,a,i0)' ) 'bitwhiz: the time step collapsed '// &
          'on cycle ', ncycle
       call close_outputs( 'time step collapsed' )
-      stop 1, quiet=.true.
+      call quit( 1 )
    end if
 
    !*** Step f: one heartbeat line per cycle, a screen line every 10%.
@@ -1299,7 +1302,7 @@ call close_outputs( trim(endhow) )
 ! reads them, so both make the same pictures from the same numbers.
 call make_pictures( npic )
 call finish_run()
-if ( npic > 0 ) stop 1, quiet=.true.     ! a picture could not be made
+if ( npic > 0 ) call quit( 1 )     ! a picture could not be made
 
 contains
 
@@ -1351,7 +1354,7 @@ contains
    write( error_unit, '(a)' ) ' usage:   bitwhiz <deck>'
    write( error_unit, '(a)' ) '          e.g. bitwhiz input/'// &
       'me697_double_shock_2p00.deck'
-   stop 1, quiet=.true.
+   call quit( 1 )
    end subroutine usage
 
    !*****************************************************!
@@ -1641,7 +1644,7 @@ contains
          ncycle, ', t = ', time, ' us'
       call close_outputs( trim(dbname(jbad))//' not a finite number' )
    end if
-   stop 1, quiet=.true.
+   call quit( 1 )
    end subroutine find_bad
 
 

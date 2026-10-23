@@ -11,6 +11,9 @@ module bits
 !    10/13/26    D. E. Kittell        Shared loop counters i,j,k,ii,jj,kk
 !                (with Claude)        and istat removed: every routine
 !                                     declares its own (see the RULE)
+!    10/23/26    D. E. Kittell        quit: a quiet exit with a status,
+!                (with Claude)        for compilers before Fortran 2018's
+!                                     "stop code, quiet=.true."
 !
 !**********************************************************************!
 implicit none
@@ -358,5 +361,29 @@ contains
 
    return
    end subroutine dealloc_CIELAB
+
+   !******************************************************************!
+   ! End the program here, with exit status code (0 = all is well),   !
+   ! and print nothing more: no "STOP 1" line, no note about          !
+   ! floating-point flags. Fortran 2018 says this as                  !
+   !    stop code, quiet=.true.                                       !
+   ! but gfortran before version 11 rejects that line (nanoHUB's      !
+   ! compiler, for one), so bitwhiz calls the C library's exit()      !
+   ! through standard C interoperability instead. The Fortran         !
+   ! runtime still flushes and closes every open unit as the program  !
+   ! ends, exactly as at a STOP.                                      !
+   !******************************************************************!
+   subroutine quit( code )
+   use, intrinsic :: iso_c_binding, only: c_int
+   implicit none
+   integer, intent(in) :: code
+   interface
+      subroutine c_exit( status ) bind( c, name='exit' )
+      import :: c_int
+      integer(kind=c_int), value :: status
+      end subroutine c_exit
+   end interface
+   call c_exit( int( code, c_int ) )
+   end subroutine quit
 
 end module bits

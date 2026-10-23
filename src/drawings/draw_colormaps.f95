@@ -29,6 +29,8 @@ subroutine draw_colormaps()
 !    10/06/26    Claude (for DEK)   Atmospheric-noise grain (anoise)   !
 !    10/08/26    Claude (for DEK)   ipat=2: plain ramp above y=x,      !
 !                                   ripple + grain below it            !
+!    10/23/26    Claude (for DEK)   Fixed seed by random_seed, not     !
+!                                   random_init (gfortran 9+ only)     !
 !                                                                      !
 !**********************************************************************!
 use bits, only: int32,dp,kpt6,zero,half,one,two,pi
@@ -39,6 +41,8 @@ implicit none
 !**********************************************************************!
 integer(kind=int32) :: i,j,k
 integer(kind=int32) :: istat            ! allocation status
+integer :: nseed                         ! the generator's seed size
+integer, allocatable :: seed(:)          ! ... and the seed
 integer(kind=int32), parameter :: n=512       ! square image, n x n pixels
 integer(kind=int32), parameter :: nx=n
 integer(kind=int32), parameter :: ny=n
@@ -64,8 +68,14 @@ if (istat /= 0) then
    return
 end if
 
-!*** Same grain every run (set repeatable=.false. for fresh grain).
-call random_init( repeatable=.true., image_distinct=.false. )
+!*** Same grain every run: a fixed seed (Fortran 95's random_seed;
+!*** Fortran 2018's random_init needs gfortran 9 or later). For fresh
+!*** grain every run, leave out the "put".
+call random_seed( size=nseed )
+allocate( seed(nseed) )
+seed = 20231125 + 7919*(/ ( i, i = 1, nseed ) /)
+call random_seed( put=seed )
+deallocate( seed )
 
 !*** Make the image and write to file.
 !    bmpmaker writes row j=ny first, which is the BOTTOM of the image,

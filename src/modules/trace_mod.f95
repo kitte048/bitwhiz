@@ -34,6 +34,9 @@ module trace
 !                (with Claude)        column names its slot for AV and
 !                                     for RS; a column a method does not
 !                                     have (q under RS) is written NaN
+!    10/23/26    D. E. Kittell        Rows written as es24.16e3 with
+!                (with Claude)        leading blanks dropped (es0.16e3,
+!                                     the same text, needs gfortran 10)
 !
 !**********************************************************************!
 use bits,  only: dp, int32, zero
@@ -200,6 +203,8 @@ contains
    logical, intent(in) :: last            ! the run's last cycle
    integer(kind=int32) :: it, j, n, ia, ib, ic
    real(kind=dp) :: w
+   character(len=:), allocatable :: line   ! the row, as written
+   character(len=24) :: buf                ! the cycle, as text
 
    if ( .not. trc_open ) return
    if ( tracer_dt > zero .and. ncycle > 0 .and. .not. last .and. &
@@ -229,13 +234,29 @@ contains
       end do
    end do
 
-   !*** One write per row (fast): TIME, then CYCLE as an integer, then
-   !*** the rest. es0.16e3 is 17 significant digits, all a double has,
-   !*** so a row read back is the same number to the last bit.
-   write( ktr, '(es0.16e3,a,i0,*(a,es0.16e3))' ) row(1), ', ', ncycle, &
-      ( ', ', row(j), j = 2, n )
+   !*** One write per row: TIME, then CYCLE as an integer, then the
+   !*** rest. Each number has 17 significant digits, all a double has,
+   !*** so a row read back is the same number to the last bit. Written
+   !*** as es24.16e3 with the leading blanks dropped: the same text as
+   !*** es0.16e3 (which gfortran before version 10 rejects).
+   line = num17( row(1) )
+   write( buf, '(i0)' ) ncycle
+   line = line//', '//trim( buf )
+   do j = 2, n
+      line = line//', '//num17( row(j) )
+   end do
+   write( ktr, '(a)' ) line
    nrows = nrows + 1
    end subroutine tracer_row
+
+   !*** A double as text: es24.16e3, leading blanks dropped.
+   function num17( x ) result( s )
+   real(kind=dp), intent(in) :: x
+   character(len=:), allocatable :: s
+   character(len=24) :: b
+   write( b, '(es24.16e3)' ) x
+   s = trim( adjustl( b ) )
+   end function num17
 
    !******************************************************************!
    ! The trailer, then close. info holds the run's lines (deck, how   !
