@@ -1,8 +1,11 @@
 # Distributions: design note
 
 Branch `distributions`, started from `v1.0` (108762f), Oct 22, 2026.
-Status: **design**, no code yet. This note records the plan so that the idea
-survives even if the branch sits for a while.
+Status: **phase 1 implemented** (Oct 22, 2026): module `distributions`,
+its unit test, `xvel_profile` and `xvel_amplitude`, deck and history tests,
+documentation. Phase 2 (sampling) is not started. The note below is the plan
+as agreed; what implementing it decided is at the end ("Implementation
+notes").
 
 ## The idea
 
@@ -281,3 +284,37 @@ formation time from characteristics (to derive first, for the acoustic limit).
 - **Mean plus shape:** `u = ubar + du ( f - 1 )`, with `du` defaulting to
   `ubar`. Momentum stays exact for any `du`; a layer may be at rest on
   average and still stretch or squeeze; velocities may cross zero.
+
+## Implementation notes (Oct 22, 2026)
+
+Decided while coding phase 1; the code's comments say the same.
+
+- **Parameter ranges.** Positive parameters (spreads, scales, shapes, beta's
+  a and b) from 1e-6 to 1e6; the others from -1e6 to 1e6; |s| <= 1. Within
+  them no intermediate result can overflow, so the library is safe with
+  bitwhiz's floating-point traps on (the debug build). sinh-arcsinh
+  saturates F at exactly 0 or 1 once |delta asinh(y) - eps| > 50.
+- **`dist_sf`**, the survival function S = 1 - F, computed directly for every
+  distribution (not as 1 - F), and **`dist_mean`** takes its difference from
+  S where F(a) >= 1/2. So a profile far in a tail keeps its digits: a normal
+  centered 8 widths to the left of a layer puts 6.2e-16 on it, and that is
+  computed to 1e-12, not lost to round-off.
+- **One G per layer.** maincode computes G = F (or -S, if F(0) >= 1/2) once
+  at every face of a layer and differences it, so the cells' momenta
+  telescope to R0 width xvel exactly in exact arithmetic, and to round-off
+  in practice.
+- **The momentum check (section 6, check 6)** now measures round-off against
+  the sum of M |u| as well: a layer at rest on average has total momentum 0,
+  which is no scale for round-off. For decks without profiles nothing
+  changes.
+- **The resolved deck** prints `xvel_profile` and `xvel_amplitude` (the
+  default, xvel, written out with a note) for a non-uniform layer only;
+  `xvel_profile = uniform` is stored as no profile.
+- **The screen** (section 5) gives each profiled layer's starting velocity
+  range; the layer table's u is its mean (`xvel`).
+- **Tests:** `test_dist` (107 checks; reference values from
+  `tests/dist_reference.py`, mpmath at 50 digits); 17 deck tests
+  (`tests/decks/*prof*`: one clean deck with every distribution, 16 errors);
+  history test `profile_frame1` (frame 1's face velocities against F written
+  again in awk, linear and Cauchy, including a stretching layer); the
+  profile deck also runs in the OpenMP and release tests (bit for bit).

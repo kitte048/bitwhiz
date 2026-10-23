@@ -18,6 +18,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Second method, `method = RS` (Godunov's method, acoustic Riemann solver), in the same code; `order = 2` (MUSCL-Hancock, Van Leer, the default) or `1` | done (`src/modules/rs_mod.f95`, maincode section 7; equation sheet `doc/Hydrocode_RS_Eqns_v4`) |
 | History file `<title>.hist`: x, u, P and damage on the whole mesh, one frame per snapshot (`plot_every`, `plot_dt`) | done (`src/modules/hist_mod.f95`; format in `input/README.md`, section 9) |
 | Pictures: t-x diagrams of u and P, one plot per tracer; `plots_only = yes` re-draws them without running | done: both t-x diagrams (lab frame; white outside the material and in open spall, and in P where no wave has reached) and the tracer plots (velocity against time); each framed and titled (BITWHIZ PRESSURE, VELOCITY and SCOPE VIEW), the t-x diagrams with a color bar, all anti-aliased (`src/modules/pics_mod.f95`, `src/drawings/draw_tx.f95`, `draw_trace.f95`, `src/modules/strk_mod.f95`; `input/README.md` section 9b) |
+| Velocity profiles: a layer's starting velocity shaped by a probability density (`xvel_profile`, `xvel_amplitude`; uniform, linear, beta, normal, split normal, sinh-arcsinh, Cauchy), momentum exact | done on branch `distributions` (`src/modules/dist_mod.f95`, with unit test; `input/README.md`, Layer block; design `doc/design/distributions.md`) |
 | Comparison with reference data | data in `tests/verification/` |
 
 ## Build
@@ -99,16 +100,19 @@ Four kinds of test, all run by `make test`, which stops at the first failure:
 - **Unit tests**, one program each, `tests/test_*.f95`, exit status 0 = pass.
   `test_eos` checks the equation of state against 45 states computed
   independently at 50 digits (`tests/eos_reference.py`), plus its error codes.
+  `test_dist` checks the distributions (module `distributions`) against
+  values computed at 50 digits (`tests/dist_reference.py`), plus identities
+  and its parameter checks.
 - **Deck tests**, `tests/run_deck_tests.sh` (also runnable on its own): every
   deck in `tests/decks/` is accepted, or rejected with the expected message,
   and every accepted deck round-trips and passes the setup audit; bad command
   lines (no deck, a missing file, a folder, an empty file) stop cleanly.
-- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and four test
+- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and five test
   decks (two impact faces; a plate that spalls; method RS at order 2 and at
-  order 1) run on 1 thread and on 2, 3, 4 and 8
+  order 1; velocity profiles) run on 1 thread and on 2, 3, 4 and 8
   threads, as many as the machine has processors for, so the count of these
-  tests depends on the machine: 20 with 8 or more processors, 15 with 4 to
-  7, 10 with 3, 5 with 2.
+  tests depends on the machine: 24 with 8 or more processors, 18 with 4 to
+  7, 12 with 3, 6 with 2.
   Everything printed from
   t = 0 on, every heartbeat line and every tracer row must be identical to the 1-thread run
   (clock times aside). Any difference means a race condition. A serial build
@@ -117,8 +121,10 @@ Four kinds of test, all run by `make test`, which stops at the first failure:
 - **History file tests**, `tests/run_hist_tests.sh`: `bin/test_hist` checks
   each run's `<title>.hist` against its format (`input/README.md`,
   section 9), and against the tracer file at the same cycles, for both
-  methods; plus `plot_every`, a run stopped by `cycle_max`, a deck
-  without snapshots, and `plots_only` (same ranges as the run, the run's
+  methods; plus velocity profiles (frame 1's velocities against the
+  profiles, computed again in the test), `plot_every`, a run stopped by
+  `cycle_max`, a deck without snapshots, and `plots_only` (same ranges
+  as the run, the run's
   files untouched, an error for another mesh or missing files). Every run
   must write exactly its pictures, by name and size, and the class run's
   t-x diagrams are checked pixel by pixel at known places; the OpenMP and
@@ -134,7 +140,7 @@ Run it before every commit.
 | Folder | What |
 |---|---|
 | `src/main` | `maincode.f95` (the run, section by section), `bmpmaker.f95` |
-| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `av_mod` (the artificial viscosity method, one place at a time), `rs_mod` (the Riemann solver method), `trace_mod` (the tracer file), `hist_mod` (the history file), `pics_mod` (the pictures), `bit_mod` (kinds and constants), colormap data |
+| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `av_mod` (the artificial viscosity method, one place at a time), `rs_mod` (the Riemann solver method), `trace_mod` (the tracer file), `hist_mod` (the history file), `pics_mod` (the pictures), `strk_mod` (the pictures' frame and font), `dist_mod` (probability distributions, self-contained), `bit_mod` (kinds and constants), colormap data |
 | `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_tx` and `draw_trace` (a run's pictures), `draw_colormaps` (demo, kept in the build) |
 | `src/utils` | `make_build_info.sh` (writes the build record), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |

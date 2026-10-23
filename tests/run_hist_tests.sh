@@ -17,6 +17,10 @@
 #     must be the file's values at its face and cell, to single        #
 #     precision (this checks the snapshot rule, the slots, AV's u and  #
 #     RS's u*, and the face and cell numbering);                       #
+#   - with velocity profiles (xvel_profile, xvel_amplitude), frame 1's #
+#     face velocities are the profiles' cell averages, momentum-       #
+#     weighted onto the faces, from F computed here in awk, to single  #
+#     precision; the screen reports each profile's velocity range;     #
 #   - with plot_every = 7, the frames are cycles 0, 7, 14, ... and the #
 #     last, and the cells broken in the last frame are the run's       #
 #     count;                                                           #
@@ -312,6 +316,72 @@ else
 fi
 against_tracer rs_order2 tests/decks/ok_method_rs.deck        0.05 impact
 against_tracer rs_order1 tests/decks/ok_method_rs_order1.deck 0.05 impact
+
+# Case: velocity profiles (xvel_profile, xvel_amplitude). Frame 1 is
+# t = 0, so its face velocities (KMPS, real32) must be what the deck
+# asks for: in each layer the profile's mean over every cell,
+#    u = xvel + du*( fbar - 1 ),
+#    fbar = ( F(xi_r) - F(xi_l) )/( ( F(1) - F(0) )*( xi_r - xi_l ) ),
+# on the faces xi = j/zones, then momentum-weighted onto the faces
+# (cell masses R0*width/zones). F here is the textbook one, written
+# again in awk (linear: x + s(x^2 - x); Cauchy: 1/2 + atan(y)/pi), not
+# taken from bitwhiz. The layers are tests/decks/ok_profile_hist.deck's.
+c=profile_frame1
+if run $c tests/decks/ok_profile_hist.deck; then
+   d="$TMP/$c"
+   f=$(ls "$d"/*.hist)
+   hb=$(od -An -t d4 -j 12 -N 4 "$f" | tr -d ' ')
+   kmax=$(od -An -t d4 -j 28 -N 4 "$f" | tr -d ' ')
+   # Frame 1: time (8 bytes), cycle and frame (4 each), XPOS (kmax+1
+   # real32), then KMPS (kmax+1 real32).
+   od -An -v -t f4 -j $((hb + 16 + 4*(kmax + 1))) -N $((4*(kmax + 1))) "$f" |
+      tr -s ' ' '\n' | grep -v '^$' > "$d/kmps"
+   bad=$(awk -v kmax="$kmax" '
+      function lin(x, s) { return x + s*(x*x - x) }
+      function cau(x, x0, g) { return 0.5 + atan2((x - x0)/g, 1)/3.141592653589793 }
+      function F(x, l) { return (kind[l] == "linear") ? lin(x, p1[l]) : cau(x, p1[l], p2[l]) }
+      BEGIN {
+         # name, R0, width, zones, xvel, du, kind, parameters
+         split("2.78 1.187 2.78", R0, " "); split("2.0 3.0 1.0", W, " ")
+         split("20 30 10", Z, " "); split("1.0 0.0 -0.3", U, " ")
+         split("0.4 0.2 -0.3", DU, " ")
+         split("linear linear cauchy", kind, " ")
+         split("-0.5 1.0 0.5", p1, " "); split("0 0 0.1", p2, " ")
+         k = 0
+         for (l = 1; l <= 3; l++) {
+            mass = F(1, l) - F(0, l)
+            for (j = 1; j <= Z[l]; j++) {
+               k++
+               fbar = (F(j/Z[l], l) - F((j-1)/Z[l], l))/(mass/Z[l])
+               u[k] = U[l] + DU[l]*(fbar - 1); m[k] = R0[l]*W[l]/Z[l]
+            }
+         }
+         if (k != kmax) { print "the deck has " k " cells, the file " kmax; exit 1 }
+      }
+      { got[NR - 1] = $1 }
+      END {
+         if (NR != kmax + 1) { print "read " NR " face velocities, not " kmax + 1; exit 1 }
+         for (i = 0; i <= kmax; i++) {
+            if (i == 0) want = u[1]
+            else if (i == kmax) want = u[kmax]
+            else want = (m[i]*u[i] + m[i+1]*u[i+1])/(m[i] + m[i+1])
+            e = got[i] - want; if (e < 0) e = -e
+            a = want < 0 ? -want : want
+            if (e > 3e-7*(a > 1 ? a : 1)) { print "face " i ": " got[i] " km/s, expected " want; exit 1 }
+         }
+      }' "$d/kmps")
+   if ! check_file "$d" 1 1 1; then
+      fail $c "test_hist (above)"
+   elif [ -n "$bad" ]; then
+      fail $c "$bad"
+   elif ! grep -q 'Profile P1 (linear): u from  -0.1933 to   0.1933 km/s' "$d/screen.out"; then
+      fail $c "the screen does not report P1's velocity range"
+   else
+      npass=$((npass+1))
+   fi
+else
+   fail $c "the run did not finish"
+fi
 
 # Case: plot_every = 7 (the deck's own setting): cycles 0, 7, 14, ...
 # and the last; the plate spalls, and the last frame's broken cells

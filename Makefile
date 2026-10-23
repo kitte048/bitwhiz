@@ -29,6 +29,8 @@
 #                <title>.tx_u.bmp and .tx_p.bmp, drawn by draw_tx)
 #Revision: 1.16 (10-21-26, with Claude: strokes module, the frame and
 #                font shared by draw_trace and draw_tx)
+#Revision: 1.17 (10-22-26, with Claude: distributions module and its
+#                unit test, test_dist, in 'make test')
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -153,7 +155,8 @@ $(LIB_OBJS) $(BIN): $(MOD_OBJS)
 ############################################################
 define MOD_ORDER
 $(1)src/modules/shock_mod.o: $(1)src/modules/bit_mod.o
-$(1)src/modules/deck_mod.o:  $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
+$(1)src/modules/deck_mod.o:  $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o \
+                             $(1)src/modules/dist_mod.o
 $(1)src/modules/eos_mod.o:   $(1)src/modules/bit_mod.o
 $(1)src/modules/av_mod.o:    $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
                              $(1)src/modules/bit_mod.o
@@ -185,7 +188,7 @@ $(eval $(call MOD_ORDER,))
 ###  pics calls the drawing routines (src/drawings), which
 ###  call bmpmaker and the colormaps.
 ############################################################
-UNIT_TESTS = ./bin/test_eos ./bin/test_hist
+UNIT_TESTS = ./bin/test_eos ./bin/test_hist ./bin/test_dist
 
 ./bin/test_%: tests/test_%.f95 $(MOD_OBJS) $(LIB_OBJS)
 	@mkdir -p ./bin
@@ -193,6 +196,7 @@ UNIT_TESTS = ./bin/test_eos ./bin/test_hist
 
 test: $(EXECS) $(UNIT_TESTS)
 	./bin/test_eos
+	./bin/test_dist
 	BIN=$(EXECS) ./tests/run_deck_tests.sh
 	BIN=$(EXECS) ./tests/run_omp_tests.sh
 	BIN=$(EXECS) ./tests/run_hist_tests.sh

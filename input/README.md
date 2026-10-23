@@ -181,7 +181,9 @@ face of the first layer.
 | `material` | name | required | a `Material` block's name |
 | `name` | name | the material's name | **required** if that material is used by more than one layer |
 | `width` | number, mm | required | |
-| `xvel` | number or define, km/s | 0.0 | initial velocity, + is to the right |
+| `xvel` | number or define, km/s | 0.0 | initial velocity, + is to the right; with `xvel_profile`, the layer's mean velocity |
+| `xvel_profile` | a distribution's name, then its parameters (numbers or defines) | uniform | the shape of the initial velocity across the layer; see below |
+| `xvel_amplitude` | number or define, km/s | `xvel` | how strongly the shape varies the velocity; only with an `xvel_profile` |
 | `zones` | integer | | zone count for this layer |
 | `resolution` | number, zones/mm | the Stack's | overrides the Stack value |
 
@@ -191,6 +193,43 @@ and the log says so. If `width * resolution` is not a whole number, it is
 rounded and the log warns (a silently uneven mesh is worse than a warning).
 The width is always kept exact, so interfaces stay where the deck puts them;
 rounding only changes that layer's dx = width / zones slightly.
+
+**Velocity profiles.** By default a layer starts at one velocity, `xvel`.
+With `xvel_profile` the velocity varies across the layer with the shape of a
+probability density f, and `xvel_amplitude` (du) sets how strongly:
+
+    u(xi) = xvel + du * ( f(xi) - 1 ),    xi = 0 at the layer's left face, 1 at its right
+
+Because f integrates to 1, the layer's momentum is still R0 × width × xvel, for
+any shape and any du: `xvel` is the layer's mean velocity. Without
+`xvel_amplitude`, du = `xvel`, so u = xvel × f. With `xvel = 0` and an
+amplitude, a layer at rest on average can still stretch or squeeze. The
+distributions (positions and spreads in layer widths; module
+`distributions`, `src/modules/dist_mod.f95`):
+
+| `xvel_profile =` | Parameters | Shape |
+|---|---|---|
+| `uniform` | none | flat (the same as no profile) |
+| `linear s` | slope s, −1 to 1 | f = 1 + s(2 xi − 1): s > 0 faster at the right, s < 0 at the left |
+| `beta a b` | a, b > 0 | on [0, 1]; a < b leans left, a > b right, a = b symmetric |
+| `normal mu sigma` | center, spread > 0 | the Gaussian |
+| `split_normal m sl sr` | peak, left spread, right spread | a normal on each side of the peak; leans toward the wider side |
+| `sinh_arcsinh loc scale eps delta` | center, spread, skewness, tail weight | eps = 0 symmetric, either sign leans; delta = 1 normal-like, below 1 heavier tails |
+| `cauchy x0 gamma` | center, spread | heavy tails |
+
+Each is truncated to the layer, xi from 0 to 1, and renormalized there; a
+profile that puts almost nothing on the layer (less than 1e-12, say a normal
+centered far outside it) is an error. Each cell starts at the profile's mean
+over the cell, so the momentum is exact to round-off, and the setup checks
+(section 6 of a run) confirm it on every run. Examples:
+
+    xvel           = 2.0
+    xvel_profile   = beta 2 5         # faster near the left face
+    xvel_profile   = linear 1.0       # with xvel = 0 and xvel_amplitude = 0.2:
+                                      # -0.2 km/s at the left face, +0.2 at the right
+
+The screen's section 5 gives each profile's velocity range. The design, and
+what is planned next (random draws), is in `doc/design/distributions.md`.
 
 **Keep the origin near the problem.** Positions are stored as plain numbers, so
 round-off in x grows with the size of x: a cell's width is the difference of
@@ -534,6 +573,7 @@ so the heartbeat, tracer and history files it reads are never touched.
 | Deck | Code (`src/modules/shock_mod.f95`) |
 |---|---|
 | `Layer` keys `width`, `xvel`, `zones`, `resolution`, `name` | `layer(l)%...` (same names) |
+| `xvel_profile`, `xvel_amplitude` | `layer(l)%prof_name`, `prof_np`, `prof_par`; `xamp`, `have_amp` |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
 | `num_threads` | `nproc` |
 | `Run`, `Output`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `plot_dt`, `colormap`, `CFL`, `stack_resolution`, ...) |
@@ -571,4 +611,13 @@ x = −7 mm by t_end) or colored (the impact plane just after t = 0, the PMMA at
 x = 15 mm near t_end), which checks the lab frame, the time direction and the
 white rule; in its u t-x diagram the moving flyer and the PMMA at rest must be
 colored at t = 0, and the places with no material white. The P t-x diagram's
-frame, title and color bar are checked at known pixels too.
+frame, title and color bar are checked at known pixels too. With velocity
+profiles, frame 1's face velocities must be the profiles' cell averages, from
+the textbook F computed again in the test, to single precision.
+
+The distributions themselves (module `distributions`) have a unit test,
+`bin/test_dist`, also run by `make test`: f, F and 1 − F at 42 points against
+50-digit values from `tests/dist_reference.py` (mpmath), and identities that
+need no reference values (F + (1 − F) = 1, F never decreasing, F's
+differences against a numerical integral of f, the special cases that reduce
+to the normal or the uniform, and the parameter checks).

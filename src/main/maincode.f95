@@ -72,6 +72,13 @@ program bitwhiz
 !                (with Claude)        after a run, and the whole of a
 !                                     plots_only run; plot_dt and
 !                                     plot_every in the history file
+!    10/22/26    D. E. Kittell        Velocity profiles: a layer's
+!                (with Claude)        starting u may vary across it
+!                                     (xvel_profile, module
+!                                     distributions); faces take the
+!                                     momentum-weighted u of their two
+!                                     cells; the momentum check scales
+!                                     with the momentum's magnitude
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one
@@ -94,6 +101,7 @@ use trace, only: open_tracers,tracer_row,close_tracers,trc_open,trc_file
 use hist, only: open_history,history_frame,close_history,hst_open, &
    hst_file,hst_frames
 use build, only: build_date,build_version       ! written by 'make'
+use distributions, only: dist_t,dist_set,dist_cdf,dist_sf
 use, intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 !$ use omp_lib, only: omp_get_num_procs,omp_set_num_threads, &
 !$    omp_get_num_threads,omp_get_thread_num
@@ -116,12 +124,26 @@ integer(kind=int32) :: nz               ! zones in one layer
 integer(kind=int32) :: nimpact          ! impact faces found
 integer(kind=int32) :: nbad             ! setup checks that failed
 integer(kind=int32) :: ierr             ! status from the EOS
+integer(kind=int32) :: ierr_d           ! status from dist_set
 integer(kind=int32) :: neos,ieos        ! EOS failures at setup, last status
 integer(kind=int32) :: ncycle           ! cycle number, n
 real(kind=dp) :: time                   ! problem time, us
 real(kind=dp) :: ml,mr                  ! cell masses left/right of a face
 real(kind=dp) :: ubar                   ! cell-average velocity, km/s
 real(kind=dp) :: mass0,xmom0,etot0      ! t = 0 totals (per unit area)
+real(kind=dp) :: xabs0                  ! t = 0 sum of M*|u|, momentum's
+                                        ! scale (a layer may be at rest
+                                        ! on average yet moving)
+real(kind=dp), allocatable :: ucell(:)  ! km/s, each cell's starting u
+real(kind=dp), allocatable :: gface(:)  ! a layer's profile, F (or -S) at
+                                        ! each of its faces
+type(dist_t) :: dprof                   ! a layer's velocity profile
+character(len=200) :: dmsg              ! dist_set's message (unused:
+                                        ! the deck reader checked it)
+real(kind=dp) :: du,gmass,xi,dxi        ! profile: amplitude (km/s), the
+                                        ! probability on the layer, a
+                                        ! face's xi, a cell's width in xi
+logical :: use_sf                       ! profile: build G from -S
 real(kind=dp) :: mdeck,pdeck            ! the same, straight from the deck
 real(kind=dp) :: tol                    ! round-off allowance, relative
 character(len=16) :: buf                ! scratch text for a number
@@ -184,6 +206,7 @@ logical :: running = .false.            ! the time loop has started
 210 format(5x,a,f8.4,a,f8.4,a,f8.4)     ! impact face velocities
 211 format(3x,a,t40,': ',es15.8)        ! label : real
 212 format(3x,a,t40,': ',i0,' (',a,'), t =',f9.4,' us') ! tensile event
+213 format(3x,a,f9.4,a,f9.4,a)          ! a profile's velocity range
 
 !*** Start the clocks. Two different times are kept, because with
 !*** OpenMP they tell different stories:
@@ -530,6 +553,52 @@ ieos = eos_ok                             ! the last failure's status
 !*** from the equation of state (module eos), the same call the time
 !*** loop will make. At rho = R0 and e = 0 it must give P = 0 and
 !*** c = C0 (equation sheet Step 0); section 6 checks that it does.
+!*** Each cell's starting velocity, ucell(k). A layer without
+!*** xvel_profile: its xvel. With one (input/README.md, Layer block;
+!*** doc/design/distributions.md):
+!***
+!***    u = xvel + du*( fbar - 1 ),   du = xvel_amplitude (else xvel)
+!***
+!*** fbar is the mean over the cell of the profile's density on the
+!*** layer, xi = (x - xleft)/width from 0 to 1, truncated to [0, 1]
+!*** and renormalized:
+!***
+!***    fbar_k = ( G(xi_r) - G(xi_l) ) / ( ( G(1) - G(0) )*( xi_r - xi_l ) )
+!***
+!*** G is the cumulative distribution F, or -S (S = 1 - F, the
+!*** accurate tail) where F(0) >= 1/2. G is computed once at every
+!*** face, so the differences telescope: the layer's momentum is
+!*** R0*width*xvel to round-off, which section 6, check (6), checks.
+allocate( ucell(kmax), gface(0:maxval( layer(:)%zones )) )
+layer_velocity: do l = 1, nlay
+   if ( len_trim( layer(l)%prof_name ) == 0 ) then
+      ucell( layer(l)%kfirst:layer(l)%klast ) = layer(l)%xvel
+      cycle layer_velocity
+   end if
+   call dist_set( dprof, layer(l)%prof_name, &
+      layer(l)%prof_par(1:layer(l)%prof_np), ierr_d, dmsg )
+   du = layer(l)%xvel
+   if ( layer(l)%have_amp ) du = layer(l)%xamp
+   use_sf = ( dist_cdf( dprof, zero ) >= half )
+   nz = layer(l)%zones
+   do j = 0, nz
+      i  = iface( layer(l)%kfirst - 1 + j )
+      xi = ( database(jx,i) - layer(l)%xleft )/layer(l)%width
+      if ( use_sf ) then
+         gface(j) = -dist_sf( dprof, xi )
+      else
+         gface(j) = dist_cdf( dprof, xi )
+      end if
+   end do
+   gmass = gface(nz) - gface(0)
+   do j = 1, nz
+      k   = layer(l)%kfirst - 1 + j
+      dxi = ( database(jx,iface(k)) - database(jx,iface(k-1)) )/layer(l)%width
+      ucell(k) = layer(l)%xvel + du*( ( gface(j) - gface(j-1) )/ &
+         ( gmass*dxi ) - one )
+   end do
+end do layer_velocity
+
 layer_cells: do l = 1, nlay
    do k = layer(l)%kfirst, layer(l)%klast
       i = icell( k )
@@ -541,7 +610,7 @@ layer_cells: do l = 1, nlay
       database(jg0,i) = layer(l)%G0
       database(jsp,i) = layer(l)%spall_strength
       database(jdam,i) = zero             ! every cell starts intact
-      database(juc,i)  = layer(l)%xvel    ! RS: the cell's velocity
+      database(juc,i)  = ucell(k)         ! RS: the cell's velocity
       database(jm,i)       = layer(l)%R0*( database(jx,i+1) - database(jx,i-1) )
       database(jrho,i)     = layer(l)%R0
       database(je,i)       = zero
@@ -577,9 +646,11 @@ database( (/jm,jp,jq/), imax ) = zero    ! right ghost, i = imax
 !*** 5d. Faces: node mass and velocity. The node mass is half of each
 !*** neighbor cell, mf = (M_k + M_k+1)/2 (a ghost adds 0). The velocity
 !*** belongs to time level n = -1/2 (leapfrog, equation sheet Step 1),
-!*** and is the layer's xvel, except on an IMPACT face, where the two
-!*** layers meet with different velocities. There we use the momentum-
-!*** weighted value of equation sheet Step 0,
+!*** and is its cells' velocity (ucell, above) where both have the
+!*** same; where they differ (an IMPACT face, where two layers meet
+!*** with different velocities, or inside a layer with a velocity
+!*** profile) it is the momentum-weighted value of equation sheet
+!*** Step 0,
 !***
 !***    u = ( M_k*u_k + M_k+1*u_k+1 ) / ( M_k + M_k+1 )
 !***
@@ -595,14 +666,14 @@ face_loop: do k = 0, kmax
    ll = ilay(i-1)                         ! layer on the left  (0 if ghost)
    lr = ilay(i+1)                         ! layer on the right (0 if ghost)
    if ( ll == 0 ) then                    ! left free surface
-      database(ju,i) = layer(lr)%xvel
+      database(ju,i) = ucell(k+1)
    else if ( lr == 0 ) then               ! right free surface
-      database(ju,i) = layer(ll)%xvel
-   else if ( abs( layer(ll)%xvel - layer(lr)%xvel ) > zero ) then
-      database(ju,i) = ( ml*layer(ll)%xvel + mr*layer(lr)%xvel )/( ml + mr )
-      nimpact = nimpact + 1               ! an impact face
+      database(ju,i) = ucell(k)
+   else if ( abs( ucell(k) - ucell(k+1) ) > zero ) then
+      database(ju,i) = ( ml*ucell(k) + mr*ucell(k+1) )/( ml + mr )
+      if ( ll /= lr ) nimpact = nimpact + 1   ! an impact face
    else
-      database(ju,i) = layer(ll)%xvel     ! same velocity on both sides
+      database(ju,i) = ucell(k)           ! same velocity on both sides
    end if
 
    database(jx_old,i) = database(jx,i)
@@ -637,22 +708,35 @@ do l = 1, nlay
       layer(l)%width/real(layer(l)%zones,dp), layer(l)%xleft, &
       layer(l)%xvel
 end do
+!*** A layer with a velocity profile: the table gives its mean (xvel);
+!*** here, the range its cells start with.
+if ( any( len_trim( layer(:)%prof_name ) > 0 ) ) then
+   write( kpt6, 202 ) repeat('-',56)
+   do l = 1, nlay
+      if ( len_trim( layer(l)%prof_name ) == 0 ) cycle
+      write( kpt6, 213 ) 'Profile '//trim(layer(l)%name)//' ('// &
+         trim(layer(l)%prof_name)//'): u from', &
+         minval( ucell(layer(l)%kfirst:layer(l)%klast) ), ' to', &
+         maxval( ucell(layer(l)%kfirst:layer(l)%klast) ), ' km/s'
+   end do
+end if
 if ( nimpact > 0 ) then
    write( kpt6, 202 ) repeat('-',56)
    do k = 0, kmax
       i  = iface( k )
       ll = ilay(i-1)
       lr = ilay(i+1)
-      if ( ll == 0 .or. lr == 0 ) cycle
-      if ( abs( layer(ll)%xvel - layer(lr)%xvel ) > zero ) then
+      if ( ll == 0 .or. lr == 0 .or. ll == lr ) cycle
+      if ( abs( ucell(k) - ucell(k+1) ) > zero ) then
          write( kpt6, 209 ) 'Impact face '//trim(layer(ll)%name)//':'// &
             trim(layer(lr)%name)//' at x =', database(jx,i), ' mm'
          write( kpt6, 210 ) 'u =', database(ju,i), &
-            ' km/s, weighted from', layer(ll)%xvel, ' |', layer(lr)%xvel
+            ' km/s, weighted from', ucell(k), ' |', ucell(k+1)
       end if
    end do
 end if
 write( kpt6, 202 ) repeat('=',56)
+deallocate( ucell, gface )
 
 !===================================================!
 ! 6. Initialization: time zero and cycle zero.      !
@@ -677,10 +761,12 @@ ncycle = 0
 !***
 !*** That is AV, whose velocities live on the faces. RS carries a
 !*** velocity in every cell (uc), and its totals use that instead:
-!*** ubar_k = uc_k. (At t = 0 it is the layer's xvel, so RS's totals
-!*** match the deck exactly, impact face or not.)
+!*** ubar_k = uc_k. (At t = 0 it is the cell's starting velocity,
+!*** ucell, so RS's totals match the deck exactly, impact face or
+!*** velocity profile or not.)
 mass0 = zero
 xmom0 = zero
+xabs0 = zero
 etot0 = zero
 do k = 1, kmax
    i = icell( k )
@@ -691,6 +777,7 @@ do k = 1, kmax
    end if
    mass0 = mass0 + database(jm,i)
    xmom0 = xmom0 + database(jm,i)*ubar
+   xabs0 = xabs0 + database(jm,i)*abs( ubar )
    etot0 = etot0 + database(jm,i)*( database(je,i) + half*ubar**2 )
 end do
 
@@ -769,7 +856,11 @@ end do
 
 ! (6) Mass and momentum match the deck, layer by layer: sum of
 !     R0*width and of R0*width*xvel. The impact faces are weighted so
-!     that momentum comes out exact (to round-off).
+!     that momentum comes out exact (to round-off), and so are layers
+!     with a velocity profile (their xvel is their mean velocity).
+!     Momentum's round-off is measured against xabs0, the sum of
+!     M*|u|: a layer at rest on average (xvel = 0) can still be moving,
+!     and then the total, 0, is no scale at all.
 !
 !     How close is "exact to round-off"? Adding up kmax numbers one
 !     after another can lose up to about kmax*epsilon (relative), and
@@ -788,7 +879,7 @@ tol = real(kmax,dp)*epsilon(one)
 if ( abs( mass0 - mdeck ) > tol*mdeck ) then
    call setup_fail( 'total mass does not match the deck' )
 end if
-if ( abs( xmom0 - pdeck ) > tol*max( abs(pdeck), abs(xmom0) ) ) then
+if ( abs( xmom0 - pdeck ) > tol*max( abs(pdeck), abs(xmom0), xabs0 ) ) then
    call setup_fail( 'total momentum does not match the deck' )
 end if
 

@@ -1,0 +1,57 @@
+# expect: ok
+# Velocity profiles, for the history file test (profile_frame1 in
+# run_hist_tests.sh): frame 1's face velocities must be the profiles'
+# cell averages, momentum-weighted onto the faces. Three layers:
+#   A1  linear, s = -0.5, xvel 1.0, amplitude 0.4 (faster at the left)
+#   P1  linear, s = 1.0, xvel 0, amplitude 0.2 (at rest on average,
+#       stretching: -0.2 km/s at its left face, +0.2 at its right)
+#   A2  cauchy 0.5 0.1, xvel -0.3 (amplitude: xvel, the default)
+# Total momentum: 2.78*2*1.0 + 0 + 2.78*1*(-0.3) = 4.726.
+Begin bitwhiz
+ deck_version = 1
+ Begin Run
+  t_end = 0.2
+ End Run
+ Begin Output
+  plot_dt = 0.05
+ End Output
+ Begin Material Al
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ End Material
+ Begin Material PMMA
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90
+ End Material
+ Begin Stack
+  Begin Layer
+   name = A1
+   material = Al
+   width = 2.0
+   xvel = 1.0
+   xvel_profile = linear -0.5
+   xvel_amplitude = 0.4
+   zones = 20
+  End Layer
+  Begin Layer
+   name = P1
+   material = PMMA
+   width = 3.0
+   xvel_profile = linear 1.0
+   xvel_amplitude = 0.2
+   zones = 30
+  End Layer
+  Begin Layer
+   name = A2
+   material = Al
+   width = 1.0
+   xvel = -0.3
+   xvel_profile = cauchy 0.5 0.1
+   zones = 10
+  End Layer
+ End Stack
+End bitwhiz

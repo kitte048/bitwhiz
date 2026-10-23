@@ -450,6 +450,15 @@ type :: layer_t
    real(kind=dp)       :: width      = unset  ! mm               REQUIRED
    real(kind=dp)       :: xvel       = zero   ! km/s, initial u  optional
    character(len=32)   :: xvel_from  = ' '    ! define name, if one used
+   ! xvel_profile and xvel_amplitude (optional; module distributions,
+   ! doc/design/distributions.md): u = xvel + du*( f - 1 ) across the
+   ! layer. prof_name is blank for a uniform layer.
+   character(len=16)   :: prof_name  = ' '    ! the distribution's name
+   integer(kind=int32) :: prof_np    = 0      ! its number of parameters
+   real(kind=dp)       :: prof_par(4) = zero  ! its parameters
+   real(kind=dp)       :: xamp       = zero   ! km/s, du, if given
+   logical             :: have_amp   = .false. ! xvel_amplitude given
+   integer(kind=int32) :: line_amp   = 0      ! ... on this deck line
    real(kind=dp)       :: resolution = zero   ! zones/mm, 0 = not given
    integer(kind=int32) :: zones      = 0      ! zone count, 0 = not given
    ! Copied from the material table:

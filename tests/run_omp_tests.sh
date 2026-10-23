@@ -41,7 +41,8 @@ DECKS="input/me697_double_shock_2p00.deck
 tests/decks/ok_setup_counter.deck
 tests/decks/ok_plate_spall.deck
 tests/decks/ok_method_rs.deck
-tests/decks/ok_method_rs_order1.deck"
+tests/decks/ok_method_rs_order1.deck
+tests/decks/ok_profile_hist.deck"
 
 fail() { echo "FAIL  $1: $2"; nfail=$((nfail+1)); }
 

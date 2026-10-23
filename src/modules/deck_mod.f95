@@ -37,6 +37,10 @@ module deck
 !                                     plot_p_lo, plot_p_hi (0 to 1, lo
 !                                     below hi); fmt_real and get_line
 !                                     are public (module pics)
+!    10/22/26    D. E. Kittell        Layer block: xvel_profile and
+!                (with Claude)        xvel_amplitude (module
+!                                     distributions); split_words takes
+!                                     any number of words
 !
 !**********************************************************************!
 !
@@ -97,6 +101,8 @@ module deck
 !**********************************************************************!
 use bits,  only: dp, int32, int64, zero, one, kpt6, nline
 use shock
+use distributions, only: dist_t, dist_set, dist_nparam, dist_mean, &
+   dist_names
 implicit none
 private
 
@@ -1178,6 +1184,15 @@ contains
          id = find_define(val)
          if (id > 0) l%xvel_from = def_name(id)
       end if
+   case ('xvel_profile')
+      call get_profile(ln, key, val, l)
+   case ('xvel_amplitude')
+      call get_real(ln, key, val, x, ok)
+      if (ok) then
+         l%xamp     = x
+         l%have_amp = .true.
+         l%line_amp = ln
+      end if
    case ('zones')
       call get_int(ln, key, val, iv, ok)
       if (ok .and. iv < 1) call deck_error(ln, 'zones must be at least 1')
@@ -1188,10 +1203,69 @@ contains
       if (ok) l%resolution = x
    case default
       call unknown_key(ln, key, 'in a Layer block', &
-         'material, name, width, xvel, zones, resolution')
+         'material, name, width, xvel, xvel_profile, xvel_amplitude, '// &
+         'zones, resolution')
    end select
    end associate
    end subroutine key_layer
+
+   !*******************************************************************!
+   ! xvel_profile = <name> [parameters]: the shape of the velocity     !
+   ! across a layer, a probability density (module distributions).     !
+   ! The parameters are numbers or defines. Checked here: the name,     !
+   ! the count and range of the parameters (dist_set), and that the     !
+   ! distribution puts some probability on the layer, xi from 0 to 1    !
+   ! (at least 1e-12; the shape is renormalized by it). "uniform" is    !
+   ! the same as no profile, and is stored as none.                     !
+   !*******************************************************************!
+   subroutine get_profile(ln, key, val, l)
+   implicit none
+   integer(kind=int32), intent(in) :: ln
+   character(len=*), intent(in) :: key, val
+   type(layer_t), intent(inout) :: l
+   character(len=wordlen) :: words(6)
+   real(kind=dp) :: p(5), mass
+   integer(kind=int32) :: nw, np, j, ierr
+   type(dist_t) :: d
+   character(len=200) :: msg
+   logical :: ok
+
+   call split_words(val, words, nw)
+   np = dist_nparam(words(1))
+   if (np < 0) then
+      call deck_error(ln, trim(key)//' = '//trim(val)//': "'// &
+         trim(words(1))//'" is not a distribution (one of: '// &
+         dist_names//')')
+      return
+   end if
+   if (nw > 6) then
+      call deck_error(ln, trim(key)//' = '//trim(val)//': too many '// &
+         'parameters (at most 4)')
+      return
+   end if
+   p = zero
+   do j = 2, nw
+      call get_real(ln, key, words(j), p(j-1), ok)
+      if (.not. ok) return
+   end do
+   call dist_set(d, words(1), p(1:nw-1), ierr, msg)
+   if (ierr /= 0) then
+      call deck_error(ln, trim(key)//' = '//trim(val)//': '//trim(msg))
+      return
+   end if
+   mass = dist_mean(d, zero, one)
+   if (mass < 1.0e-12_dp) then
+      call deck_error(ln, trim(key)//' = '//trim(val)//' puts almost '// &
+         'nothing on the layer (probability '//fmt_real(mass)// &
+         ' between its faces; at least 1e-12 is needed)')
+      return
+   end if
+   l%prof_name = ' '
+   if (lower(words(1)) /= 'uniform') l%prof_name = lower(words(1))
+   l%prof_np  = np
+   l%prof_par = zero
+   l%prof_par(1:np) = p(1:np)
+   end subroutine get_profile
 
    !*******************************************************************!
    ! Say exactly what is wrong with a line that is not "key = value".   !
@@ -1268,7 +1342,8 @@ contains
       b = 'a Material block'
    case ('origin', 'x_left')
       b = 'the Stack block'
-   case ('material', 'name', 'width', 'xvel', 'zones')
+   case ('material', 'name', 'width', 'xvel', 'zones', 'xvel_profile', &
+         'xvel_amplitude')
       b = 'a Layer block'
    case default
       b = ''
@@ -1311,6 +1386,15 @@ contains
       layer(l)%S2 = material(im)%S2
       layer(l)%G0 = material(im)%G0
       layer(l)%spall_strength = material(im)%spall_strength
+   end do
+   if (nerr > 0) return
+
+   !*** 1b. xvel_amplitude scales a shape, so it needs one.
+   do l = 1, nlay
+      if (layer(l)%have_amp .and. len_trim(layer(l)%prof_name) == 0) &
+         call deck_error(layer(l)%line_amp, 'xvel_amplitude needs an '// &
+         'xvel_profile (other than uniform) in the same layer: it '// &
+         'scales the shape')
    end do
    if (nerr > 0) return
 
@@ -1606,8 +1690,8 @@ contains
    subroutine write_resolved_deck(lu)
    implicit none
    integer, intent(in) :: lu
-   integer(kind=int32) :: id, im, l, it
-   character(len=:), allocatable :: where
+   integer(kind=int32) :: id, im, l, it, j
+   character(len=:), allocatable :: where, prof
 
    write(lu,'(a)') '#'//repeat('*',70)//'#'
    write(lu,'(a)') '#  Resolved deck, from '//trim(deck_file)
@@ -1727,6 +1811,19 @@ contains
                'km/s, from define '//trim(y%xvel_from))
          else
             call kv(lu, 3, 'xvel', fmt_real(y%xvel), 'km/s')
+         end if
+         if (len_trim(y%prof_name) > 0) then
+            prof = trim(y%prof_name)
+            do j = 1, y%prof_np
+               prof = prof//' '//fmt_real(y%prof_par(j))
+            end do
+            call kv(lu, 3, 'xvel_profile', prof, 'the shape across the layer')
+            if (y%have_amp) then
+               call kv(lu, 3, 'xvel_amplitude', fmt_real(y%xamp), 'km/s')
+            else
+               call kv(lu, 3, 'xvel_amplitude', fmt_real(y%xvel), &
+                  'km/s (xvel, the default)')
+            end if
          end if
          call kv(lu, 3, 'zones', itoa(y%zones), 'cells '//itoa(y%kfirst)// &
             ' to '//itoa(y%klast)//', dx = '// &
@@ -2053,12 +2150,12 @@ contains
            index(val, '=') == 0)
    end subroutine split_kv
 
-   !*** Split text into up to 4 blank-separated words (nw counts all of
-   !*** them, so nw > 4 means "too many").
+   !*** Split text into up to size(words) blank-separated words (nw
+   !*** counts all of them, so nw > size(words) means "too many").
    subroutine split_words(text, words, nw)
    implicit none
    character(len=*), intent(in) :: text
-   character(len=wordlen), intent(out) :: words(4)
+   character(len=wordlen), intent(out) :: words(:)
    integer(kind=int32), intent(out) :: nw
    integer(kind=int32) :: i, n, i0
 
@@ -2077,7 +2174,7 @@ contains
          i = i + 1
       end do
       nw = nw + 1
-      if (nw <= 4) words(nw) = text(i0:min(i-1, i0+wordlen-1))
+      if (nw <= size(words)) words(nw) = text(i0:min(i-1, i0+wordlen-1))
    end do
    end subroutine split_words
 

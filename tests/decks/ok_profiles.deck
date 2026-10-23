@@ -1,0 +1,87 @@
+# expect: ok
+# Velocity profiles (xvel_profile, xvel_amplitude): every distribution,
+# parameters as numbers and as defines, names in any case, an explicit
+# uniform (the same as none), and a layer at rest on average that
+# stretches (xvel = 0, amplitude 0.2). Must read cleanly and survive
+# the resolved-deck round trip.
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00
+ define spread = 0.15
+ Begin Run
+  t_end = 1.0
+ End Run
+ Begin Material Al
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ End Material
+ Begin Material PMMA
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90
+ End Material
+ Begin Stack
+  resolution = 10
+  Begin Layer
+   name = A1
+   material = Al
+   width = 2.0
+   xvel = u_fly
+   xvel_profile = beta 2 5
+  End Layer
+  Begin Layer
+   name = A2
+   material = Al
+   width = 2.0
+   xvel = 1.0
+   xvel_profile = Linear -0.5
+   xvel_amplitude = 0.4
+  End Layer
+  Begin Layer
+   name = P1
+   material = PMMA
+   width = 2.0
+   xvel_profile = normal 0.5 spread
+   xvel_amplitude = 0.3
+  End Layer
+  Begin Layer
+   name = P2
+   material = PMMA
+   width = 2.0
+   xvel = 0.5
+   xvel_profile = split_normal 0.3 0.05 0.2
+  End Layer
+  Begin Layer
+   name = A3
+   material = Al
+   width = 2.0
+   xvel = 0.5
+   xvel_profile = sinh_arcsinh 0.5 0.2 -0.8 1.0
+  End Layer
+  Begin Layer
+   name = P3
+   material = PMMA
+   width = 2.0
+   xvel = 0.0
+   xvel_profile = linear 1.0
+   xvel_amplitude = 0.2
+  End Layer
+  Begin Layer
+   name = A4
+   material = Al
+   width = 2.0
+   xvel = -0.3
+   xvel_profile = CAUCHY 0.5 0.1
+  End Layer
+  Begin Layer
+   name = P4
+   material = PMMA
+   width = 2.0
+   xvel = 0.2
+   xvel_profile = uniform
+  End Layer
+ End Stack
+End bitwhiz

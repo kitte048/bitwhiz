@@ -1,0 +1,35 @@
+# expect: beta takes 2 parameters (a b), not 1
+# xvel_profile: too few parameters for the name.
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00
+ define spread = 0.15
+ Begin Run
+  t_end = 1.0
+ End Run
+ Begin Material Al
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ End Material
+ Begin Material PMMA
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90
+ End Material
+ Begin Stack
+  resolution = 10
+  Begin Layer
+   material = Al
+   width = 2.0
+   xvel = u_fly
+   xvel_profile = beta 2
+  End Layer
+  Begin Layer
+   material = PMMA
+   width = 2.0
+  End Layer
+ End Stack
+End bitwhiz

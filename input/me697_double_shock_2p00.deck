@@ -174,6 +174,12 @@ Notes (ignored by the parser):
 #                                                if a material is used twice)
 #      width        mm                          (required)
 #      xvel         km/s, + is to the right     (0.0)
+#      xvel_profile   the velocity's shape across the layer (uniform):
+#                     uniform | linear s | beta a b | normal mu sigma |
+#                     split_normal m sl sr | sinh_arcsinh loc scale eps
+#                     delta | cauchy x0 gamma (positions in widths;
+#                     xvel stays the layer's mean velocity)
+#      xvel_amplitude km/s, how strongly the shape varies u (xvel)
 #      zones        cells in this layer         (or from a resolution)
 #      resolution   zones/mm, overrides the Stack's
 #**********************************************************************#
