@@ -29,9 +29,11 @@ program test_eos
 !                                     smoothness through V0
 !    10/15/26    D. E. Kittell        Reference state for densities
 !                (with Claude)        whose R0*(1/R0) is not exactly 1
+!    10/23/26    D. E. Kittell        Exits through quit (module bits),
+!                (with Claude)        for gfortran 9 and 10
 !
 !**********************************************************************!
-use bits, only: dp, int32, zero, one, two
+use bits, only: dp, int32, zero, one, two, quit
 use shock, only: not_finite
 use eos, only: mg_eos, mg_soundspeed, eos_message, eos_ok, &
    eos_bad_density, eos_too_compressed, eos_bad_soundspeed
@@ -487,7 +489,7 @@ call check( ierr == eos_too_compressed .and. not_finite(p) .and. &
 if ( nfail > 0 ) then
    write(*,'(a,i0,a,i0,a)') ' test_eos: ', nfail, ' of ', ncheck, &
       ' checks FAILED'
-   stop 1, quiet=.true.
+   call quit( 1 )
 end if
 write(*,'(a,i0,a)') ' test_eos: all ', ncheck, ' checks passed'
 

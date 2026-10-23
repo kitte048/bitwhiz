@@ -34,9 +34,11 @@ program test_hist
 !    10/20/26    D. E. Kittell        DMG (int8, cells) and the variable
 !                (with Claude)        type field; the text's plot_dt and
 !                                     plot_every lines; B line
+!    10/23/26    D. E. Kittell        Exits through quit (module bits),
+!                (with Claude)        for gfortran 9 and 10
 !
 !**********************************************************************!
-use bits, only: sp, dp, int8, int32, int64
+use bits, only: sp, dp, int8, int32, int64, quit
 implicit none
 
 !*** The fixed part (64 bytes).
@@ -64,7 +66,7 @@ logical :: printing
 nbad = 0
 if ( command_argument_count() < 2 ) then
    write( *, '(a)' ) 'usage: test_hist <file> <status> [<face> <cell>]'
-   stop 1, quiet=.true.
+   call quit( 1 )
 end if
 call get_command_argument( 1, fname )
 call get_command_argument( 2, arg ); read( arg, * ) want_status
@@ -207,8 +209,8 @@ contains
    end subroutine fail
 
    subroutine finish()
-   if ( nbad > 0 ) stop 1, quiet=.true.
-   stop 0, quiet=.true.
+   if ( nbad > 0 ) call quit( 1 )
+   call quit( 0 )
    end subroutine finish
 
    !*** NaN or infinity: all 8 exponent bits set (IEEE 754 single).
