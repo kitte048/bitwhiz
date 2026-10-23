@@ -318,3 +318,11 @@ Decided while coding phase 1; the code's comments say the same.
   history test `profile_frame1` (frame 1's face velocities against F written
   again in awk, linear and Cauchy, including a stretching layer); the
   profile deck also runs in the OpenMP and release tests (bit for bit).
+- **Example decks** (Oct 23, 2026): `input/ramp_linear.deck`,
+  `ramp_beta.deck`, `ramp_sinh_arcsinh.deck` and `pulse_split_normal.deck`,
+  layer A with a profile against layer B at rest (input/README.md, Layer
+  block). They are a first look at shaping a ramp-wave drive with a
+  profile, the forward model an inverse problem would fit to a measured
+  drive (a Z-machine ramp wave, say). Being in `input/`, each also runs in
+  the deck tests, which adds about 30 s to `make test` (three debug runs
+  per deck: the run and the resolved-deck round trip).

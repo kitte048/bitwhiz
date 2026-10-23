@@ -1,0 +1,75 @@
+#**********************************************************************#
+#  Ramp drive from a velocity profile: linear.                         #
+#                                                                      #
+#  Layer A (aluminum, 4 mm) moves toward layer B (PMMA, 10 mm, at      #
+#  rest) with a velocity that falls linearly across it, from 2.0 km/s  #
+#  at its back to 0 at the contact (xvel_profile = linear -1,          #
+#  f = 2(1 - xi)).                                                     #
+#  A carries the momentum of a uniform 1.0 km/s flyer, but nothing     #
+#  strikes B at t = 0: A's faster back catches up with its front, so   #
+#  the contact speeds up smoothly and B is loaded by a ramp, not a     #
+#  shock. The ramp steepens as it runs (its fast end travels faster);  #
+#  watch for it to become a shock in B (BITWHIZ PRESSURE VIEW, and the #
+#  mid_b and fs scope views).                                          #
+#                                                                      #
+#  One of four decks with a different profile each: ramp_linear,       #
+#  ramp_beta, ramp_sinh_arcsinh, pulse_split_normal (input/README.md,  #
+#  Layer block). Units: mm, us, g/cc, km/s, GPa. Later, A breaks near  #
+#  its back (spall): the default spall strength, 0.01 GPa, is low.     #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+
+ Begin Run
+  title = ramp_linear
+  t_end = 4.0                   # us: the ramp crosses B and reaches its
+                                # free surface
+ End Run
+
+ Begin Output
+  plot_dt   = 0.01              # us between snapshots
+  tracer_dt = 0.005             # us between tracer rows
+  colormap  = viridis
+
+  tracer = drive  A:B           # the interface: the drive B feels
+  tracer = mid_b  B@0.5         # halfway through B
+  tracer = fs     B@1           # B's free surface
+ End Output
+
+ Begin Solver
+  method = AV
+ End Solver
+
+ Begin Material Al              # aluminum (the ME 697 class deck's values)
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ End Material
+
+ Begin Material PMMA            # window; Lacina et al. (2018) linear fit
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90                     # (the ME 697 class deck's values)
+ End Material
+
+ Begin Stack
+  resolution = 25               # zones/mm: 100 + 250 = 350 cells
+  origin     = A:B              # x = 0 at the contact
+
+  Begin Layer
+   name     = A
+   material = Al
+   width    = 4.0               # mm
+   xvel           = 1.0         # km/s: A's mean velocity (its momentum)
+   xvel_profile   = linear -1.0  # u = 2.0 km/s at the back, 0 at B
+  End Layer
+
+  Begin Layer
+   name     = B
+   material = PMMA
+   width    = 10.0              # at rest
+  End Layer
+ End Stack
+End bitwhiz

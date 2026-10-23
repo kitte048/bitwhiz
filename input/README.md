@@ -231,6 +231,21 @@ over the cell, so the momentum is exact to round-off, and the setup checks
 The screen's section 5 gives each profile's velocity range. The design, and
 what is planned next (random draws), is in `doc/design/distributions.md`.
 
+**Example decks** in this folder, each a layer A (aluminum, 4 mm) with a
+velocity profile against a layer B (PMMA, 10 mm) at rest, with tracers at the
+interface (`drive`), halfway through B and at B's free surface:
+
+| Deck | Profile | What B feels |
+|---|---|---|
+| `ramp_linear.deck` | `linear -1`: 2.0 km/s at A's back, 0 at the contact | a linear ramp, about 0.5 us |
+| `ramp_beta.deck` | `beta 1 3`: 3.0 km/s at the back, 0 with zero slope at the contact | a ramp with a soft foot and a steep top |
+| `ramp_sinh_arcsinh.deck` | `sinh_arcsinh -0.1 0.25 1.0 1.0`: a long tail toward the contact | a small shock (the foot), then a ramp |
+| `pulse_split_normal.deck` | `split_normal 0.75 0.05 0.25`, `xvel = 0`, amplitude 0.6: a bump in a layer at rest on average | a compression pulse; A spalls at once |
+
+The three ramp decks give A the same momentum (a uniform 1.0 km/s flyer's)
+and differ only in its shape, so their drives (the `drive` scope view) can
+be compared directly.
+
 **Keep the origin near the problem.** Positions are stored as plain numbers, so
 round-off in x grows with the size of x: a cell's width is the difference of
 its two face positions. With the origin in or near the stack (the usual
