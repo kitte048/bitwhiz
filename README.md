@@ -130,13 +130,70 @@ must print the same results, bit for bit (see Build).
 
 Run it before every commit.
 
+## Releases and nanoHUB
+bitwhiz runs on nanoHUB as the tool **bitwhiz**
+(https://nanohub.org/tools/bitwhiz): a Jupyter notebook in front of the
+optimized executable. The tool has its own git repository on nanoHUB (cloned
+here as `~/Documents/Academic/bitwhiz`), with the notebook, the
+`middleware/invoke` script that starts it, and a small `src/Makefile` around a
+copy of this code in `src/bitwhiz/`.
+
+**The rule: changes flow one way.** Code is changed here, never in the nanoHUB
+copy:
+```
+fix on shock  ->  make test, make release  ->  tag vX.Y.Z  ->  export to the
+nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
+```
+- **Branches.** `shock` is the release line: every tag, and so every nanoHUB
+  version, is a commit on it. New work goes on its own branch (e.g.
+  `distributions`), which takes fixes from `shock` by `git merge shock` and goes
+  back into `shock` when it is finished.
+- **Tags** are `vMAJOR.MINOR.PATCH`: PATCH for fixes (v1.0.2), MINOR for new
+  features (v1.1.0). The banner prints the tag through `git describe`.
+- **Export** with `sh src/utils/export_nanohub.sh vX.Y.Z
+  ~/Documents/Academic/bitwhiz`: it copies exactly that tag into the clone's
+  `src/bitwhiz/` (no `doc/`), lists files the tag no longer has, and prints the
+  commands to commit, tag and push. Then, in the clone, run those commands.
+- **Push once.** nanoHUB has blocked this machine's address for hours after git
+  pushes (support ticket open, Oct 2026), so send the commit and its tag in one
+  `git push origin master vX.Y.Z`, with git's credential helper set
+  (`git config --global credential.helper osxkeychain`).
+- **Install.** On the tool's status page, mark the code uploaded (status
+  Uploaded) with a short note; nanoHUB's staff run `make install` in the tool's
+  `src/` and set it to Installed. Check what was installed from a notebook cell,
+  `!ls -la /apps/bitwhiz/dev /apps/bitwhiz/dev/bin` (`dev` points to the
+  newest revision, e.g. `r5`; its `bin/` must hold `bitwhiz`), then launch the
+  tool fresh and test it: Run, Redraw pictures only, an error on purpose, the
+  history plot. Approve it on the status page when it works.
+
+**nanoHUB's compiler is gfortran 8.3** (Debian 10). Keep the code to what
+gfortran 8 accepts; Fortran 2018 features it lacks, and their replacements
+here, are:
+
+| Not in gfortran 8 | Use instead |
+|---|---|
+| zero-width `ES`/`EN` edit descriptors (`es0.16e3`) | a fixed width, leading blanks dropped (`trace_mod`, `num17`) |
+| `stop code, quiet=.true.` | `call quit(code)` (module bits) |
+| `random_init` | `random_seed` with a fixed seed (`draw_colormaps`) |
+
+To check before a release, build with gfortran 8 if you can (`make clean;
+make FC=gfortran-8 test`); v1.0.2 was tested with gfortran 8.4, 9, 10, 12
+and 13.
+
+**How the tool runs** (for the notebook, `bitwhiz.ipynb` in the clone):
+nanoHUB copies the notebook into the session's results folder and starts it
+there, so it finds the installed tool through the `TOOLDIR` environment variable
+(`/apps/bitwhiz/dev`), not through its own folder. Runs are written to
+`~/bitwhiz_runs/<title>`. A session sees 24 processors with no CPU limit, shared
+with other users: `num_threads = 1` for class decks, 4 to 8 for large meshes.
+
 ## Layout
 | Folder | What |
 |---|---|
 | `src/main` | `maincode.f95` (the run, section by section), `bmpmaker.f95` |
 | `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `av_mod` (the artificial viscosity method, one place at a time), `rs_mod` (the Riemann solver method), `trace_mod` (the tracer file), `hist_mod` (the history file), `pics_mod` (the pictures), `bit_mod` (kinds and constants), colormap data |
 | `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_tx` and `draw_trace` (a run's pictures), `draw_colormaps` (demo, kept in the build) |
-| `src/utils` | `make_build_info.sh` (writes the build record), `timestamp` (not used by the run), `random` |
+| `src/utils` | `make_build_info.sh` (writes the build record), `export_nanohub.sh` (copies a tag into the nanoHUB clone), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |
 | `tests` | unit tests (`test_*.f95`), deck, OpenMP, history file and release tests, `verification/` reference tracer data |
 | `bin` | the executables: `bitwhiz` (debug), `bitwhiz_release` (optimized) |
