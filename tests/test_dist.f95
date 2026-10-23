@@ -34,6 +34,12 @@ program test_dist
 !      ====       ==========          =====================
 !    10/22/26    D. E. Kittell        Original code
 !                (with Claude)
+!    10/23/26    D. E. Kittell        Tolerances follow each value's
+!                (with Claude)        condition number (row_tol), not
+!                                     one number: the sinh-arcsinh
+!                                     mirror check, deep in a tail,
+!                                     failed on macOS by round-off;
+!                                     its grid is now exact in binary
 !
 !**********************************************************************!
 use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -162,9 +168,14 @@ type(mref_t), parameter, dimension(5) :: mref = (/ &
 !**********************************************************************!
 ! Data dictionary: everything else.
 !**********************************************************************!
-!*** Tolerances, relative: closed forms to a few units in the last
-!*** place; the incomplete beta's continued fraction stops at 1e-15
-!*** per step, so a little looser.
+!*** Tolerances, relative. tol_closed for values that are a few
+!*** operations from their inputs. Values far in a tail, or built from
+!*** large logarithms, are ill-conditioned: one unit in the last place
+!*** of an intermediate result becomes many in the answer, and how
+!*** many depends on the machine's math library (macOS and Linux
+!*** differ). row_tol scales the tolerance by each reference value's
+!*** condition number (see there), so the check is as tight as the
+!*** arithmetic allows, on any machine, and no tighter.
 real(kind=wp), parameter :: tol_closed = 1.0e-13_wp
 real(kind=wp), parameter :: tol_beta   = 1.0e-12_wp
 real(kind=wp), parameter :: tol_quad   = 1.0e-9_wp    ! Simpson, n = 4000
@@ -207,8 +218,7 @@ do j = 1, size( ref )
       call check( .false., 'reference '//itoa(j)//': '//trim(msg) )
       cycle
    end if
-   tol = tol_closed
-   if ( ref(j)%name == 'beta' ) tol = tol_beta
+   tol = row_tol( ref(j) )
    ok = near_rel( dist_pdf( d, ref(j)%x ), ref(j)%f, tol ) .and. &
         near_rel( dist_cdf( d, ref(j)%x ), ref(j)%cdf, tol ) .and. &
         near_rel( dist_sf( d, ref(j)%x ), ref(j)%sf, tol )
@@ -293,9 +303,13 @@ call check( same_on_grid( d, d2, tol_closed ), &
    'sinh_arcsinh with eps = 0, delta = 1 is normal' )
 call dist_set( d, 'sinh_arcsinh', (/ 0.5_wp, 0.2_wp, 0.9_wp, 1.7_wp /), ierr, msg )
 call dist_set( d2, 'sinh_arcsinh', (/ 0.5_wp, 0.2_wp, -0.9_wp, 1.7_wp /), ierr, msg )
+! On y = -1/2, -7/16, ..., 1/2: 1/2 + y and 1/2 - y are exact in
+! binary, so the two sides see exactly opposite arguments, and must
+! agree to round-off even far in the tails (F down to 1e-91 here,
+! where any difference in the argument is amplified by z^2 ~ 400).
 ok = .true.
-do j = 0, 20
-   y = -half + real( j, wp )/20.0_wp
+do j = 0, 16
+   y = -half + real( j, wp )/16.0_wp
    if ( .not. near_rel( dist_cdf( d, 0.5_wp + y ), dist_sf( d2, 0.5_wp - y ), &
         tol_closed ) ) ok = .false.
 end do
@@ -405,21 +419,67 @@ contains
       ( abs( want ) < tiny( one ) .and. abs( got ) < tiny( one ) )
    end function near_rel
 
-   !*** F and f of two distributions agree on a grid from -0.5 to 1.5.
+   !*** F and f of a distribution d1 and a normal d2 agree on a grid
+   !*** from -0.5 to 1.5, to tol times 1 + z^2, z = (x - mu)/sigma (the
+   !*** two compute z by different routes, and a tail value's relative
+   !*** error is about z^2 times z's).
    logical function same_on_grid( d1, d2, tol )
    type(dist_t), intent(in) :: d1, d2
    real(kind=wp), intent(in) :: tol
    integer(kind=int32) :: i
-   real(kind=wp) :: xx
+   real(kind=wp) :: xx, t
    same_on_grid = .true.
    do i = 0, 40
       xx = -half + real( i, wp )/20.0_wp
-      if ( .not. ( near_rel( dist_cdf( d1, xx ), dist_cdf( d2, xx ), tol ) .and. &
-           near_rel( dist_sf( d1, xx ), dist_sf( d2, xx ), tol ) .and. &
-           near_rel( dist_pdf( d1, xx ), dist_pdf( d2, xx ), tol ) ) ) &
+      t  = tol*( one + ( ( xx - d2%p(1) )/d2%p(2) )**2 )
+      if ( .not. ( near_rel( dist_cdf( d1, xx ), dist_cdf( d2, xx ), t ) .and. &
+           near_rel( dist_sf( d1, xx ), dist_sf( d2, xx ), t ) .and. &
+           near_rel( dist_pdf( d1, xx ), dist_pdf( d2, xx ), t ) ) ) &
          same_on_grid = .false.
    end do
    end function same_on_grid
+
+   !******************************************************************!
+   ! The tolerance for one reference row, from its condition number:  !
+   !  - normal family (normal, split_normal): a tail value's relative !
+   !    error is about z^2 times z's, z = (x - center)/spread;        !
+   !  - sinh_arcsinh: z = sinh(w), w = delta asinh(y) - eps, and w's  !
+   !    error grows with |w|: z^2 (1 + |w|);                          !
+   !  - beta: f and F are exp( a ln x + b ln(1-x) - ln B(a,b) ); each !
+   !    term's rounding is about its size times epsilon, so the sum   !
+   !    of their sizes (ln B from three log_gamma) sets the error;    !
+   !    1e-14 per unit, never below tol_closed;                       !
+   !  - the rest (uniform, linear, cauchy): tol_closed.               !
+   !******************************************************************!
+   real(kind=wp) function row_tol( r )
+   type(ref_t), intent(in) :: r
+   real(kind=wp) :: z, w, yy, terms
+   select case ( trim( r%name ) )
+   case ( 'normal' )
+      z = ( r%x - r%p(1) )/r%p(2)
+      row_tol = tol_closed*( one + z*z )
+   case ( 'split_normal' )
+      if ( r%x < r%p(1) ) then
+         z = ( r%x - r%p(1) )/r%p(2)
+      else
+         z = ( r%x - r%p(1) )/r%p(3)
+      end if
+      row_tol = tol_closed*( one + z*z )
+   case ( 'sinh_arcsinh' )
+      yy = ( r%x - r%p(1) )/r%p(2)
+      w  = min( abs( r%p(4)*asinh( yy ) - r%p(3) ), 30.0_wp )
+      z  = sinh( w )
+      row_tol = tol_closed*( one + z*z*( one + w ) )
+   case ( 'beta' )
+      terms = abs( log_gamma( r%p(1) ) ) + abs( log_gamma( r%p(2) ) ) + &
+         abs( log_gamma( r%p(1) + r%p(2) ) )
+      if ( r%x > zero .and. r%x < one ) terms = terms + &
+         abs( r%p(1)*log( r%x ) ) + abs( r%p(2)*log( one - r%x ) )
+      row_tol = max( tol_closed, 1.0e-14_wp*terms )
+   case default
+      row_tol = tol_closed
+   end select
+   end function row_tol
 
    !*** Simpson's rule for the integral of f over [a, b], n even.
    real(kind=wp) function simpson( d, a, b, n )

@@ -65,6 +65,9 @@ module distributions
 !                (with Claude)        distributions.md): uniform,
 !                                     linear, beta, normal, split
 !                                     normal, sinh-arcsinh, Cauchy
+!    10/23/26    D. E. Kittell        ibeta takes 1 - x from its
+!                (with Claude)        caller: beta's S keeps its digits
+!                                     for small x
 !
 !**********************************************************************!
 use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -325,7 +328,7 @@ contains
       else if ( x >= one ) then
          dist_cdf = one
       else
-         dist_cdf = ibeta( d%p(1), d%p(2), d%lnb, x )
+         dist_cdf = ibeta( d%p(1), d%p(2), d%lnb, x, one - x )
       end if
    case ( d_normal )
       dist_cdf = phic( -( x - d%p(1) )/d%p(2) )
@@ -385,7 +388,7 @@ contains
       else if ( x >= one ) then
          dist_sf = zero
       else
-         dist_sf = ibeta( d%p(2), d%p(1), d%lnb, one - x )
+         dist_sf = ibeta( d%p(2), d%p(1), d%lnb, one - x, x )
       end if
    case ( d_normal )
       dist_sf = phic( ( x - d%p(1) )/d%p(2) )
@@ -472,15 +475,21 @@ contains
    ! where K is the continued fraction of A&S 26.5.8. It converges    !
    ! fast for x < (a+1)/(a+b+2); above that, the symmetry             !
    ! I_x(a,b) = 1 - I_(1-x)(b,a) is used instead.                     !
+   !                                                                  !
+   ! The caller passes 1 - x as well, as omx, computed from the x it  !
+   ! has. (For S, ibeta is called with the roles swapped: x = 1 - x0, !
+   ! omx = x0. Recomputing 1 - x inside would turn x0 into            !
+   ! 1 - (1 - x0), which has lost digits when x0 is small: 1e-10 of   !
+   ! x0 = 1e-6, say.)                                                 !
    !******************************************************************!
-   elemental real(kind=wp) function ibeta( a, b, lnb, x )
-   real(kind=wp), intent(in) :: a, b, lnb, x
+   elemental real(kind=wp) function ibeta( a, b, lnb, x, omx )
+   real(kind=wp), intent(in) :: a, b, lnb, x, omx
    real(kind=wp) :: front
-   front = exp( a*log( x ) + b*log( one - x ) - lnb )
+   front = exp( a*log( x ) + b*log( omx ) - lnb )
    if ( x < ( a + one )/( a + b + 2.0_wp ) ) then
       ibeta = front/( a*betacf( a, b, x ) )
    else
-      ibeta = one - front/( b*betacf( b, a, one - x ) )
+      ibeta = one - front/( b*betacf( b, a, omx ) )
    end if
    end function ibeta
 
