@@ -40,14 +40,28 @@ program test_dist
 !                                     mirror check, deep in a tail,
 !                                     failed on macOS by round-off;
 !                                     its grid is now exact in binary
+!    10/23/26    D. E. Kittell        Exits through the C library's
+!                (with Claude)        exit(), for gfortran 9 and 10
 !
 !**********************************************************************!
 use, intrinsic :: iso_fortran_env, only: real64, int32
+use, intrinsic :: iso_c_binding, only: c_int
 use distributions, only: dist_t, dist_set, dist_nparam, dist_pdf, &
    dist_cdf, dist_sf, dist_mean, dist_support
 implicit none
 
 integer, parameter :: wp = real64
+
+!*** The C library's exit(), to end with status 1 quietly (no "STOP 1"
+!*** line). Fortran 2018's "stop 1, quiet=.true." says the same, but
+!*** gfortran before version 11 rejects it. Declared here, not taken
+!*** from bitwhiz, so this test stays self-contained.
+interface
+   subroutine c_exit( status ) bind( c, name='exit' )
+   import :: c_int
+   integer(kind=c_int), value :: status
+   end subroutine c_exit
+end interface
 
 !**********************************************************************!
 ! Data dictionary: reference points and means (tests/dist_reference.py).
@@ -393,7 +407,7 @@ call refused( 'cauchy', (/ 0.5_wp, zero /), 3, 'gamma must be' )
 if ( nfail > 0 ) then
    write(*,'(a,i0,a,i0,a)') ' test_dist: ', nfail, ' of ', ncheck, &
       ' checks FAILED'
-   stop 1, quiet=.true.
+   call c_exit( 1_c_int )
 end if
 write(*,'(a,i0,a)') ' test_dist: all ', ncheck, ' checks passed'
 
