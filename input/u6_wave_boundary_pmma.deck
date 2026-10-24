@@ -1,0 +1,92 @@
+#**********************************************************************#
+#  U6 example 3: wave-boundary interaction, 2024 Al into PMMA          #
+#                                                                      #
+#  The same incident shock as u6_wave_boundary_cu (u_1 = 0.5 km/s,     #
+#  P_1 = 8.351 GPa in 2024 Al, "A"), now reaching a bonded interface   #
+#  with PMMA ("B") at rest. U6 equation sheet, Fig. 6:                 #
+#                                                                      #
+#     u_2 = 0.778 km/s,  P_2 = 3.483 GPa,  U_B = 3.777 km/s            #
+#                                                                      #
+#  PMMA has the lower impedance, so a RELEASE (a rarefaction fan, not  #
+#  a shock) reflects back into A, and P drops from 8.35 to 3.48 GPa.   #
+#  Here the sheet's mirrored Hugoniot stands in for A's release        #
+#  isentrope; the exact isentrope gives P_2 = 3.486 GPa, which is what #
+#  bitwhiz computes.                                                   #
+#                                                                      #
+#  The source of the shock is the same: a 2024 Al driver at 2u_1 =     #
+#  1.0 km/s strikes A at x = 1 mm at t = 0, and the shock reaches the  #
+#  interface, x = 10, at t = 1.50 us.                                  #
+#                                                                      #
+#      | driver 10.0 =>| A 9.0 | B 8.0 |                               #
+#     x=-9.0         x=1.0  x=10.0  x=18.0                             #
+#                                                                      #
+#  Hugoniots: the U6 sheet's values.                                   #
+#  Units: mm, us, g/cc, km/s, GPa. Syntax: input/README.md.            #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_drive = 1.0           # km/s, the driver: 2 u_1, u_1 = 0.5
+
+ Begin Run
+  title = u6_wave_boundary_pmma
+  t_end = 2.8                   # us, the sheet's Fig. 7 window
+ End Run
+
+ Begin Output
+  plot_dt   = 0.005             # us between snapshots
+  tracer_dt = 0.005             # us between tracer rows
+  colormap  = viridis
+
+  tracer = in_a       A@0.75    # x = 7.75: u_1, then u_2 (reflected wave)
+  tracer = interface  A:B       # u_2 from t = 1.50 us
+  tracer = in_b       B@0.25    # x = 12.0: u_2 behind the transmitted shock
+ End Output
+
+ Begin Solver
+  method = AV
+ End Solver
+
+ Begin Material Al2024          # 2024 aluminum, the U6 sheet's Hugoniot
+  R0 = 2.785
+  C0 = 5.328
+  S1 = 1.338
+  G0 = 2.00
+  spall_strength = 1.0          # GPa, a round value for aluminum alloys.
+                                # At the default (0.01 GPa) the free
+                                # surfaces break off a few cells as they
+                                # release (the AV overshoot), and those
+                                # fly off as debris.
+ End Material
+
+ Begin Material PMMA
+  R0 = 1.186
+  C0 = 2.598
+  S1 = 1.516
+  G0 = 0.90                     # the ME 697 class deck's value; it enters
+                                # only off the principal Hugoniot
+ End Material
+
+ Begin Stack
+  resolution = 25               # zones/mm: 250 + 225 + 200 = 675 cells
+  x_left     = -9.0             # driver:A at x = 1, A:B at x = 10
+
+  Begin Layer
+   name     = driver
+   material = Al2024
+   width    = 10.0
+   xvel     = u_drive
+  End Layer
+
+  Begin Layer
+   name     = A
+   material = Al2024
+   width    = 9.0               # at rest
+  End Layer
+
+  Begin Layer
+   name     = B
+   material = PMMA
+   width    = 8.0               # at rest
+  End Layer
+ End Stack
+End bitwhiz
