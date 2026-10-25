@@ -40,7 +40,7 @@ module pics
 !    to min + hi*(max - min) of the data (plot_u_lo, ...), values
 !    beyond saturating. White: open spall (D = 1 and P = 0) and
 !    outside the material, in both; in P also every cell no wave has
-!    reached yet (its |P| has not yet exceeded 1e-6 of the run's
+!    reached yet (its |P| has not yet exceeded 1e-3 of the run's
 !    largest |P|). Each cell is drawn between its faces at that time
 !    (u linear between them), pixels averaging the cells over them
 !    and shaded by how much of them is colored (anti-aliasing,
@@ -75,6 +75,12 @@ module pics
 !    10/21/26    D. E. Kittell        Comments: the t-x diagrams get
 !                (with Claude)        the scope view's frame, a title,
 !                                     a color bar, anti-aliasing
+!    10/24/26    D. E. Kittell        A tracer plot of a flat line,
+!                (with Claude)        flat to round-off (an interface
+!                                     at a steady u), gets the flat
+!                                     line's axis, not one stretched
+!                                     over its round-off; the white
+!                                     rule's 1e-3 (draw_tx)
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
@@ -263,7 +269,7 @@ contains
    real(kind=dp), allocatable :: row(:), t(:), u(:,:)
    integer(kind=int32), allocatable :: col(:)
    integer(kind=int32) :: lu, ios, ncol, nrow, it, ktime, n
-   logical :: eof, bad
+   logical :: eof, bad, flat
    real(kind=dp) :: umin, umax, del
 
    fname = trim(title)//'.tracers.csv'
@@ -325,8 +331,11 @@ contains
    close( lu )
 
    !*** One plot per tracer: x from the first to the last time, y from
-   !*** min - 5% to max + 5% of the range (a flat line: +-5% of its
-   !*** value, or +-0.05 km/s at 0).
+   !*** min - 5% to max + 5% of the range. A flat line gets +-5% of its
+   !*** value, at least +-0.05 km/s; flat means flat to round-off (a
+   !*** range under 1e-9 of its values, as at an interface whose u is
+   !*** steady, 0.5 km/s +- 1e-13), so the axis is never stretched over
+   !*** round-off.
    !*** The pictures announced once; then one line per tracer, its
    !*** velocity range and the plot's y axis (what a reader needs to
    !*** read a plot whose only text is its title).
@@ -338,7 +347,9 @@ contains
    do it = 1, ntrc
       umin = minval(u(:,it)); umax = maxval(u(:,it))
       del  = 0.05_dp*( umax - umin )
-      if ( .not. ( del > zero ) ) del = 0.05_dp*max( abs(umax), one )
+      flat = .not. ( umax - umin > &
+         1.0e-9_dp*max( abs(umin), abs(umax), one ) )
+      if ( flat ) del = 0.05_dp*max( abs(umax), one )
       write( kpt6, fl ) 'Tracer '//trim(tracer(it)%name)//' u (km/s)', &
          num(real(umin,sp))//' to '//num(real(umax,sp))//', y axis '// &
          num(real(umin - del,sp))//' to '//num(real(umax + del,sp))

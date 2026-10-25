@@ -437,12 +437,16 @@ The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
   default. Values beyond the window take its end colors. **White:** everything
   outside the material, and open spall (a broken cell, D = 1, at P = 0; closed
   again, it carries pressure and is colored), in both; in P also material no
-  wave has reached yet. A cell counts as reached once its |P| exceeds 10⁻⁶ of
+  wave has reached yet. A cell counts as reached once its |P| exceeds 10⁻³ of
   the run's largest |P| in any frame so far; material a release has brought
   back to about zero pressure stays colored. In u, untouched material is
   colored too: a moving flyer has its velocity, material at rest u = 0. (Why not "P = 0 exactly": in the
   lab frame a moving flyer's faces move every step, so its untouched cells pick
-  up round-off pressures of about 10⁻¹⁴ GPa.)
+  up round-off pressures of about 10⁻¹⁴ GPa. And why 10⁻³: ahead of a shock an
+  explicit scheme leaves a foot of tiny pressures, falling about 4 times per
+  cell; at 10⁻⁶ its first few cells were colored, at the colormap's dark end,
+  and looked like a precursor. A wave weaker than 10⁻³ of the largest |P|
+  stays white until a stronger one arrives.)
 - **How a t-x diagram is drawn** (`src/drawings/draw_tx.f95`): like the
   mixed cells of an Eulerian hydrocode. Each pixel row is 4 sub-rows, each at
   its own time. The face positions are interpolated in time between the two

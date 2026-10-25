@@ -30,10 +30,18 @@ subroutine draw_tx( var, bout, cmap, clo, chi )
 !      - in open spall: a broken cell (D = 1) at P = 0 (|P| <= pzero). !
 !        Squeezed shut again it carries pressure and is colored.       !
 !    Material that a release has brought back to about zero pressure   !
-!    stays colored: it has been shocked. pzero is 1e-6 of the run's    !
-!    largest |P|, not 0: in the lab frame a moving, unshocked flyer's  !
+!    stays colored: it has been shocked. pzero is 1e-3 of the run's    !
+!    largest |P| (a quarter of one color step of a 256-color map), not !
+!    0, for two reasons. In the lab frame a moving, unshocked flyer's  !
 !    faces move every step, so its cell widths, and its densities,     !
-!    pick up round-off, and its P is ~1e-14 GPa, not exactly 0.        !
+!    pick up round-off, and its P is ~1e-14 GPa, not exactly 0. And    !
+!    ahead of a shock an explicit scheme leaves a foot: P falls by     !
+!    about 4 times per cell, to round-off, because the scheme passes   !
+!    a signal one cell per step, faster than the shock moves. At 1e-6  !
+!    the foot's first 4 or 5 cells were colored, at the colormap's     !
+!    dark end, and read as a precursor; at 1e-3 the colored edge is    !
+!    the shock's own rise (2 to 3 cells). A wave weaker than 1e-3 of   !
+!    the largest |P| stays white until a stronger one arrives.         !
 !                                                                      !
 !    Velocity: the deck's colormap over its window, and WHITE only     !
 !    where there is no material and in open spall (as above). The u of !
@@ -90,6 +98,9 @@ subroutine draw_tx( var, bout, cmap, clo, chi )
 !                                     module strokes); the plot area   !
 !                                     anti-aliased by coverage (ns     !
 !                                     sub-rows per row); scheme 1 gone !
+!    10/24/26    D. E. Kittell        pzero 1e-3 of the largest |P|    !
+!                (with Claude)        (was 1e-6): the white rule no    !
+!                                     longer colors a shock's foot     !
 !                                                                      !
 !**********************************************************************!
 use bits, only: int8,int32,dp,kpt6,zero,half,one
@@ -127,7 +138,7 @@ real(kind=dp), parameter :: cbl=300.0_dp, cbr=900.0_dp
 real(kind=dp), parameter :: cbt=842.0_dp, cbb=860.0_dp
 real(kind=dp), parameter :: cbw=1.5_dp, cbrad=5.0_dp
 real(kind=dp), parameter :: lth=12.0_dp, lsw=1.8_dp, lgap=16.0_dp
-real(kind=dp), parameter :: zero_frac=1.0e-6_dp  ! pzero / largest |P|
+real(kind=dp), parameter :: zero_frac=1.0e-3_dp  ! pzero / largest |P|
 integer(kind=int32) :: i,j,k,s,ii,jj          ! loop indices
 integer(kind=int32) :: i1,i2                  ! pixels a cell covers
 integer(kind=int32) :: ilo,ihi                ! pixels the plot area touches

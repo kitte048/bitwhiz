@@ -8,14 +8,19 @@
 #     u_1 = 0.500 km/s,  P_1 = 8.351 GPa                               #
 #     U_LAB,B = +5.997 km/s,  U_LAB,A = -4.997 km/s                    #
 #                                                                      #
-#      | A (flyer) 3.0 =>| B (target) 6.0 |                            #
-#     x=-3.0         x=0 (impact)       x=6.0                          #
+#  The t-x diagram of the sheet's Fig. 3: t = 0 here is the impact     #
+#  (t = 1.5 us there), and t_end = 1.0 us is the top of its window.    #
+#  Both slabs are 7 mm, so neither shock reaches a free surface by     #
+#  then (at 7/5.997 = 1.17 us): no release enters the picture, as in   #
+#  the figure, where both slabs run off the window.                    #
 #                                                                      #
-#  Here t = 0 is the impact (t = 1.5 us in the sheet's Fig. 3, where   #
-#  the flyer first closes a gap). After the sheet's window: the shock  #
-#  reaches B's free surface at t = 1.0 us (u jumps to 1.0 km/s, about  #
-#  2 u_1), and the releases from the two free surfaces meet inside B,  #
-#  3 mm from the impact plane, at t = 1.5 us; B spalls there.          #
+#      | A (flyer) 7.0 =>| B (target) 7.0 |                            #
+#     x=-7.0         x=0 (impact)       x=7.0                          #
+#                                                                      #
+#  RS (second order) keeps each shock about 2 cells wide; AV spreads   #
+#  it over about 3.5. On the P t-x diagram, the dark edge on the       #
+#  outside of each shock is its numerical width, the low end of the    #
+#  colormap, not a precursor: there is no strength in this model.      #
 #                                                                      #
 #  Hugoniot: the U6 sheet's values.                                    #
 #  Units: mm, us, g/cc, km/s, GPa. Syntax: input/README.md.            #
@@ -26,22 +31,29 @@ Begin bitwhiz
 
  Begin Run
   title = u6_boundary_boundary
-  t_end = 2.5                   # us: impact, both free surfaces, spall
+  t_end = 1.0                   # us, the top of the sheet's Fig. 3
  End Run
 
  Begin Output
-  plot_dt   = 0.005             # us between snapshots
-  tracer_dt = 0.005             # us between tracer rows
+  plot_dt   = 0.001             # us between snapshots: under a pixel
+                                # row of the t-x diagrams (1.0 us over
+                                # 775 rows), so the fronts are not
+                                # drawn as stairs
+  tracer_dt = 0                 # every cycle (about 390 rows)
   colormap  = viridis
+  plot_p_hi = 0.94              # P colors up to 0.94 of the run's
+                                # range: the range's top is a start-up
+                                # spike at the impact (8.88 GPa, first
+                                # 0.05 us), so this puts P_1 = 8.351 GPa
+                                # at the top color
 
   tracer = impact  A:B          # u_1 = 0.500 km/s, P_1 = 8.351 GPa
-  tracer = mid_a   A@0.5        # state 1 in A, until the release
-  tracer = mid_b   B@0.5        # state 1 in B; the spall plane
-  tracer = fs      B@1          # free surface: 2 u_1 = 1.0 km/s
+  tracer = in_a    A@0.5        # x = -3.5: u from 1.0 to u_1 at 0.58 us
+  tracer = in_b    B@0.5        # x = +3.5: u from 0 to u_1 at 0.58 us
  End Output
 
  Begin Solver
-  method = AV
+  method = RS                   # Riemann solver, second order
  End Solver
 
  Begin Material Al2024          # 2024 aluminum, the U6 sheet's Hugoniot
@@ -49,28 +61,23 @@ Begin bitwhiz
   C0 = 5.328
   S1 = 1.338
   G0 = 2.00
-  spall_strength = 1.0          # GPa, a round value for aluminum alloys.
-                                # At the default (0.01 GPa) the free
-                                # surfaces break off a few cells as they
-                                # release (the AV overshoot), and those
-                                # fly off as debris.
  End Material
 
  Begin Stack
-  resolution = 25               # zones/mm: 75 + 150 = 225 cells
+  resolution = 35               # zones/mm: 245 + 245 = 490 cells
   origin     = A:B              # x = 0 at the impact plane
 
   Begin Layer
    name     = A
    material = Al2024
-   width    = 3.0
+   width    = 7.0
    xvel     = u_0A
   End Layer
 
   Begin Layer
    name     = B
    material = Al2024
-   width    = 6.0               # at rest
+   width    = 7.0               # at rest
   End Layer
  End Stack
 End bitwhiz
