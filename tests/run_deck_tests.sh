@@ -10,13 +10,39 @@
 #  Every "ok" deck, and every deck in input/, is also round-tripped:   #
 #  its resolved deck is read back in and must resolve to the same      #
 #  statements (comments aside).                                        #
+#                                                                      #
+#  One line per test as it finishes, so a long run can be watched:     #
+#     [ 37/134] ok    tests/decks/bad_cfl.deck              0.1 s      #
+#     [126/134] FAIL  input/foo.deck: <what went wrong>                #
+#  then the totals and the time taken.                                 #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 npass=0; nfail=0
 
-fail() { echo "FAIL  $1: $2"; nfail=$((nfail+1)); }
+# The tests, counted up front for the counter: the decks in tests/decks/
+# and input/, then the 4 command-line cases at the end.
+ntest=4
+for deck in tests/decks/*.deck input/*.deck; do
+   [ -e "$deck" ] && ntest=$((ntest+1))
+done
+itest=0; w=${#ntest}
+
+# The clock, in seconds: to 1 us where the shell or date can say it,
+# else whole seconds (macOS date has no %N).
+now() {
+   if [ -n "${EPOCHREALTIME:-}" ]; then echo "$EPOCHREALTIME" | tr ',' '.'; return; fi
+   t=$(date +%s.%N 2>/dev/null)
+   case $t in *[!0-9.]*|'') date +%s ;; *) echo "$t" ;; esac
+}
+start() { itest=$((itest+1)); t0=$(now); }   # at the start of each test
+pass() {   # $1 = the test
+   dt=$(awk -v a="$t0" -v b="$(now)" 'BEGIN { printf "%.1f", b - a }')
+   printf "[%*d/%d] ok    %-40s %6s s\n" "$w" "$itest" "$ntest" "$1" "$dt"
+   npass=$((npass+1))
+}
+fail() { printf "[%*d/%d] FAIL  %s: %s\n" "$w" "$itest" "$ntest" "$1" "$2"; nfail=$((nfail+1)); }
 
 # The resolved deck, as printed between its header and "End bitwhiz".
 resolved() { awk '/^#\*+#$/ && !on {on=1} on {print} /^End bitwhiz/ && on {exit}'; }
@@ -34,6 +60,7 @@ roundtrip() {   # $1 = a deck that reads cleanly
 }
 
 for deck in tests/decks/*.deck; do
+   start
    expect=$(head -1 "$deck" | tr -d '\r' | sed -n 's/^# expect: //p')
    if [ -z "$expect" ]; then fail "$deck" "no '# expect:' line"; continue; fi
    out=$("$BIN" "$deck" 2>&1); rc=$?
@@ -49,24 +76,26 @@ for deck in tests/decks/*.deck; do
          fail "$deck" "expected \"$expect\", got:"; echo "$out" | grep error | head -3; continue
       fi
    fi
-   npass=$((npass+1))
+   pass "$deck"
 done
 
 for deck in input/*.deck; do
    [ -e "$deck" ] || continue
+   start
    if ! "$BIN" "$deck" > /dev/null 2>&1; then fail "$deck" "does not read cleanly"; continue; fi
-   roundtrip "$deck" && npass=$((npass+1))
+   roundtrip "$deck" && pass "$deck"
 done
 
 # Command-line cases: no file to read, or a bad thing in place of a deck.
 # Each must stop cleanly (exit code not 0) with the message shown.
 : > "$TMP/empty.deck"
 cmdline() {   # $1 = the argument, $2 = part of the expected message
+   start
    out=$("$BIN" "$1" 2>&1); rc=$?
    if [ $rc -eq 0 ] || ! echo "$out" | grep -qF -- "$2"; then
       fail "bitwhiz '$1'" "expected \"$2\""
    else
-      npass=$((npass+1))
+      pass "bitwhiz '$1'"
    fi
 }
 cmdline ""                   "usage"
@@ -74,5 +103,5 @@ cmdline "no_such_file.deck"  "cannot open the deck file"
 cmdline "tests"              "is a folder, not a deck file"
 cmdline "$TMP/empty.deck"    "the deck file is empty"
 
-echo "deck tests: $npass passed, $nfail failed"
+echo "deck tests: $npass passed, $nfail failed ($SECONDS s)"
 [ $nfail -eq 0 ]
