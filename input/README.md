@@ -120,7 +120,8 @@ whole block may be left out.
 | `plot_every` | integer | 0 (off) | write a snapshot (a frame of the history file, section 9) every N cycles |
 | `plot_dt` | number, us | 0 (off) | also write a snapshot every plot_dt |
 | `colormap` | name | `viridis` | for bitmap pictures: `grayscale`, `viridis`, `plasma`, `inferno`, `blackbody`, `kindlmann`, `extendedkindlmann`, `smoothcoolwarm`, `bentcoolwarm` |
-| `plot_u_lo`, `plot_u_hi` | number, 0 to 1 | 0, 1 | the u t-x diagram's color window, as fractions of the data's range (lo below hi; section 9b) |
+| `plot_range` | `robust` or `full` | `robust` | each t-x diagram's color range: `full` is the data's min to its max; `robust` the min to the top the run held for 50 cycles, when the max is a spike above that (section 9b) |
+| `plot_u_lo`, `plot_u_hi` | number, 0 to 1 | 0, 1 | the u t-x diagram's color window, as fractions of its color range (lo below hi; section 9b) |
 | `plot_p_lo`, `plot_p_hi` | number, 0 to 1 | 0, 1 | the same for the P t-x diagram |
 
 When snapshots are on, a snapshot is written whenever either `plot_every` or
@@ -432,9 +433,20 @@ The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
   the same numbers.
 - **t-x diagrams, lab frame:** x across, from the smallest to the largest face
   position of the whole run; t up, from 0 to the last frame. The colors are the deck's `colormap` over a window of
-  the data: from min + lo·(max − min) to min + hi·(max − min), with lo and hi
+  the data: from min + lo·(top − min) to min + hi·(top − min), with lo and hi
   from `plot_u_lo`, `plot_u_hi` (or `plot_p_lo`, `plot_p_hi`), 0 and 1 by
-  default. Values beyond the window take its end colors. **White:** everything
+  default. Values beyond the window take its end colors.
+- **The top of the color range** (`plot_range`). `full`: the data's max.
+  `robust` (the default): the largest value the run *held*. Frame by frame,
+  take the largest value on the mesh; the top is the highest level those
+  reach for at least 50 cycles in all, if the max is more than 2% of the range
+  above it, and the max if not. So a start-up spike, the few tens of cycles of
+  overshoot where two slabs meet at an impact (6% at the RS impact of
+  `u6_boundary_boundary`), does not set the colors, a state that lasts does,
+  and a run without a spike keeps its full range. The screen names what lies
+  above the top (how high, where and when, for how many cycles); it is drawn
+  in the top color. The bottom is always the data's min: tension, the spall
+  signal, is never trimmed. **White:** everything
   outside the material, and open spall (a broken cell, D = 1, at P = 0; closed
   again, it carries pressure and is colored), in both; in P also material no
   wave has reached yet. A cell counts as reached once its |P| exceeds 10⁻³ of

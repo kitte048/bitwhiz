@@ -27,7 +27,13 @@
 #     plot_dt it reports the same ranges as the run did, leaves the    #
 #     run's files untouched and says the deck's plot_dt is not used;   #
 #     a deck with a different mesh, or a folder without the run's      #
-#     files, stops it with an error.                                   #
+#     files, stops it with an error;                                   #
+#   - plot_range: u6_boundary_boundary (RS, whose impact starts with   #
+#     a 6% spike) with the default, robust, reports the spike above    #
+#     the P range and tops the P colors at P_1 = 8.351 GPa (8.35 to    #
+#     8.36); with full, no report, the colors top at the max, and the  #
+#     P t-x diagram differs. The class run (no spike) keeps its full   #
+#     range under robust.                                              #
 #                                                                      #
 #  Pictures (section 9 of a run): every run that finishes must write   #
 #  exactly its pictures, by name (<title>.tx_u.bmp and .tx_p.bmp with  #
@@ -63,7 +69,7 @@ CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 . "$(dirname "$0")/report.sh"
-plan 16 "history tests"
+plan 17 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -450,6 +456,41 @@ elif ! grep -q 'cannot open double_shock_2p00.hist' "$TMP/$c/screen.out" ||
    fail $c "the errors do not name the missing files"
 else
    pass $c
+fi
+
+
+# Case: plot_range. The RS impact of u6_boundary_boundary starts with a
+# spike (8.88 GPa for about 50 cycles; P_1 = 8.351). robust (the
+# default) must leave it above the P colors and say so; full must not.
+# The class run has no spike: robust keeps its range (no report).
+begin
+c=plot_range
+top() { awk -F: '/P colors \(GPa\)/ {split($2, v, " to "); print v[2] + 0}' "$1"; }
+if ! run ${c}_robust input/u6_boundary_boundary.deck; then
+   fail $c "the robust run did not finish"
+else
+   setkeys input/u6_boundary_boundary.deck Output "plot_range = full" > "$TMP/$c.deck"
+   if ! run ${c}_full "$TMP/$c.deck"; then
+      fail $c "the full run did not finish"
+   else
+      r="$TMP/${c}_robust"; f="$TMP/${c}_full"
+      tr=$(top "$r/screen.out"); tf=$(top "$f/screen.out")
+      pmax=$(awk -F: '/P in the run \(GPa\)/ {split($2, v, " to "); print v[2] + 0}' "$f/screen.out")
+      if ! grep -q 'Color ranges *: robust' "$r/screen.out" ||
+         ! grep -q 'P above the range (GPa) *: up to' "$r/screen.out"; then
+         fail $c "robust does not report the spike above the P range"
+      elif ! awk -v t="$tr" 'BEGIN { exit !(t > 8.35 && t < 8.36) }'; then
+         fail $c "robust: the P colors top at ${tr:-?} GPa, not P_1 (8.35 to 8.36)"
+      elif grep -q 'above the range' "$f/screen.out" || [ "$tf" != "$pmax" ]; then
+         fail $c "full: the P colors top at ${tf:-?}, not the max ${pmax:-?} (or a report)"
+      elif cmp -s "$r/u6_boundary_boundary.tx_p.bmp" "$f/u6_boundary_boundary.tx_p.bmp"; then
+         fail $c "the P t-x diagram is the same with robust and full"
+      elif grep -q 'above the range' "$TMP/class_av/screen.out"; then
+         fail $c "robust trimmed the class run, which has no spike"
+      else
+         pass $c
+      fi
+   fi
 fi
 
 summary

@@ -22,6 +22,11 @@
 #  outside of each shock is its numerical width, the low end of the    #
 #  colormap, not a precursor: there is no strength in this model.      #
 #                                                                      #
+#  RS starts with a spike at the impact: 8.88 GPa, 6% high, gone       #
+#  within about 50 cycles (0.05 us). The default color range           #
+#  (plot_range = robust) leaves it out, so P_1 is the top color; the   #
+#  screen reports it. plot_range = full shows it.                      #
+#                                                                      #
 #  Hugoniot: the U6 sheet's values.                                    #
 #  Units: mm, us, g/cc, km/s, GPa. Syntax: input/README.md.            #
 #**********************************************************************#
@@ -41,11 +46,6 @@ Begin bitwhiz
                                 # drawn as stairs
   tracer_dt = 0                 # every cycle (about 390 rows)
   colormap  = viridis
-  plot_p_hi = 0.94              # P colors up to 0.94 of the run's
-                                # range: the range's top is a start-up
-                                # spike at the impact (8.88 GPa, first
-                                # 0.05 us), so this puts P_1 = 8.351 GPa
-                                # at the top color
 
   tracer = impact  A:B          # u_1 = 0.500 km/s, P_1 = 8.351 GPa
   tracer = in_a    A@0.5        # x = -3.5: u from 1.0 to u_1 at 0.58 us

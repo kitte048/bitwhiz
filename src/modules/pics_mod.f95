@@ -36,10 +36,20 @@ module pics
 !    last frame, inside a frame like the tracer plots', titled
 !    BITWHIZ PRESSURE VIEW or BITWHIZ VELOCITY VIEW, with a color bar
 !    (0 to 1 of the window) below. Colors:
-!    the deck's colormap over the color window, min + lo*(max - min)
-!    to min + hi*(max - min) of the data (plot_u_lo, ...), values
-!    beyond saturating. White: open spall (D = 1 and P = 0) and
-!    outside the material, in both; in P also every cell no wave has
+!    the deck's colormap over the color window, min + lo*(top - min)
+!    to min + hi*(top - min) of the data (plot_u_lo, ...), values
+!    beyond saturating. The top is the data's max with plot_range =
+!    full; with robust (the default) it is the largest value the run
+!    HELD: the highest level the mesh's largest value reaches for at
+!    least nhold = 50 cycles in all (held_top), if the max is more
+!    than 2% (spike) of the range above that; else the max. A start-up
+!    spike, like the few tens of cycles of overshoot where two slabs
+!    meet at an impact, then does not set the colors; a state that
+!    lasts does, and a run without a spike keeps its full range. What
+!    lies above the top is reported (how high, where, how many cycles)
+!    and drawn in the top color. The min is always the data's own:
+!    tension, the spall signal, is never trimmed.
+!    White: open spall (D = 1 and P = 0) and outside the material, in both; in P also every cell no wave has
 !    reached yet (its |P| has not yet exceeded 1e-3 of the run's
 !    largest |P|). Each cell is drawn between its faces at that time
 !    (u linear between them), pixels averaging the cells over them
@@ -81,15 +91,20 @@ module pics
 !                                     line's axis, not one stretched
 !                                     over its round-off; the white
 !                                     rule's 1e-3 (draw_tx)
+!    10/24/26    D. E. Kittell        plot_range: the t-x color ranges
+!                (with Claude)        run to the top the run held for
+!                                     50 cycles (robust, the default)
+!                                     or to the max (full); what lies
+!                                     above is reported
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
 use shock, only: title, layer, nlay, method, rs_order, plot_every, &
-   plot_dt, plots_only, tracer, ntrc, colormap, plot_u_lo, plot_u_hi, &
-   plot_p_lo, plot_p_hi
+   plot_dt, plots_only, tracer, ntrc, colormap, plot_range, plot_u_lo, &
+   plot_u_hi, plot_p_lo, plot_p_hi
 use hist,  only: read_history, free_history, hr_nframes, hr_status, &
    hr_kmax, hr_nlay, hr_method, hr_order, hr_lname, hr_lmat, hr_kfirst, &
-   hr_klast, hr_text, hr_time, hr_x, hr_u, hr_p
+   hr_klast, hr_text, hr_time, hr_cycle, hr_x, hr_u, hr_p
 use deck,  only: fmt_real, get_line
 implicit none
 private
@@ -97,6 +112,10 @@ private
 public :: make_pictures
 
 character(len=*), parameter :: fl = '(3x,a,t40,'': '',a)'   ! label : text
+integer(kind=int32), parameter :: nhold = 50   ! cycles a robust top is held
+real(kind=sp), parameter :: spike = 0.02_sp     ! a max this far (a fraction
+                                                ! of the range) above it is
+                                                ! a spike; less is kept
 
 !*** The drawing routines (src/drawings; external, like bmpmaker).
 !*** The interface lets the compiler check every call.
@@ -158,9 +177,9 @@ contains
    implicit none
    integer(kind=int32), intent(inout) :: nerr
    character(len=:), allocatable :: fname, msg, what
-   real(kind=sp) :: umin, umax, pmin, pmax
+   real(kind=sp) :: umin, umax, pmin, pmax, utop, ptop
    real(kind=dp) :: ulo, uhi, plo, phi
-   integer(kind=int32) :: l, ord
+   integer(kind=int32) :: l, ord, j
 
    fname = trim(title)//'.hist'
    call read_history( fname, msg )
@@ -226,22 +245,43 @@ contains
          'whole frames are used'
    end select
 
-   !*** Ranges and color windows (fractions of each range).
+   !*** Ranges, their tops (plot_range) and the color windows
+   !*** (fractions of min to top).
    umin = minval(hr_u); umax = maxval(hr_u)
    pmin = minval(hr_p); pmax = maxval(hr_p)
-   ulo = real(umin,dp) + plot_u_lo*real(umax - umin,dp)
-   uhi = real(umin,dp) + plot_u_hi*real(umax - umin,dp)
-   plo = real(pmin,dp) + plot_p_lo*real(pmax - pmin,dp)
-   phi = real(pmin,dp) + plot_p_hi*real(pmax - pmin,dp)
+   utop = umax; ptop = pmax
+   if ( plot_range == 'robust' ) then
+      utop = held_top( [( maxval(hr_u(:,j)), j = 1, hr_nframes )] )
+      ptop = held_top( [( maxval(hr_p(:,j)), j = 1, hr_nframes )] )
+      ! Only a spike is left out: a max within 2% (spike) of the range
+      ! above what was held is kept, so a run without one keeps its
+      ! full range.
+      if ( .not. ( umax - utop > spike*( utop - umin ) ) ) utop = umax
+      if ( .not. ( pmax - ptop > spike*( ptop - pmin ) ) ) ptop = pmax
+   end if
+   ulo = real(umin,dp) + plot_u_lo*real(utop - umin,dp)
+   uhi = real(umin,dp) + plot_u_hi*real(utop - umin,dp)
+   plo = real(pmin,dp) + plot_p_lo*real(ptop - pmin,dp)
+   phi = real(pmin,dp) + plot_p_hi*real(ptop - pmin,dp)
    write( kpt6, fl ) 'x across (mm)', num(minval(hr_x))//' to '// &
       num(maxval(hr_x))
    write( kpt6, fl ) 't up (us)', num(real(hr_time(1),sp))//' to '// &
       num(real(hr_time(hr_nframes),sp))
+   if ( plot_range == 'robust' ) then
+      write( kpt6, fl ) 'Color ranges', 'robust: min to the top held '// &
+         'for '//itoa(nhold)//' cycles'
+   else
+      write( kpt6, fl ) 'Color ranges', 'full: min to max'
+   end if
    write( kpt6, fl ) 'u in the run (km/s)', num(umin)//' to '//num(umax)
+   if ( utop < umax ) call above( 'u above the range (km/s)', hr_u, &
+      .true., utop )
    write( kpt6, fl ) 'u colors (km/s)', num(real(ulo,sp))//' to '// &
       num(real(uhi,sp))//'  (window '//fmt_real(plot_u_lo)//' to '// &
       fmt_real(plot_u_hi)//')'
    write( kpt6, fl ) 'P in the run (GPa)', num(pmin)//' to '//num(pmax)
+   if ( ptop < pmax ) call above( 'P above the range (GPa)', hr_p, &
+      .false., ptop )
    write( kpt6, fl ) 'P colors (GPa)', num(real(plo,sp))//' to '// &
       num(real(phi,sp))//'  (window '//fmt_real(plot_p_lo)//' to '// &
       fmt_real(plot_p_hi)//')'
@@ -256,6 +296,104 @@ contains
    call tx_file( 'P', trim(title)//'.tx_p', plo, phi, nerr )
    call free_history()
    end subroutine tx_pictures
+
+   !******************************************************************!
+   ! plot_range = robust: the top of a color range, the largest value !
+   ! the run HELD. fmax(j) is the largest value on the mesh in frame  !
+   ! j, and each frame stands for the cycles around it (half of those !
+   ! to each neighbor; frames need not be evenly spaced). The top is  !
+   ! the highest level the frame maxima reach for at least nhold      !
+   ! cycles in all: the largest L with                                !
+   !    sum of the cycles of the frames with fmax >= L  >=  nhold,    !
+   ! one of the fmax values, found by bisection (64 halvings, each a  !
+   ! pass over the frames; no sort). A run of fewer than 2*nhold      !
+   ! cycles keeps its max: too short to tell a spike from a state.    !
+   !******************************************************************!
+   function held_top( fmax ) result(top)
+   implicit none
+   real(kind=sp), intent(in) :: fmax(:)
+   real(kind=sp) :: top
+   real(kind=dp) :: w(size(fmax)), a, b, c
+   integer(kind=int32) :: n, j, it
+
+   n = size(fmax)
+   top = maxval(fmax)
+   if ( n < 2 ) return
+   w(1) = half_gap( 1, 2 )
+   w(n) = half_gap( n-1, n )
+   do j = 2, n-1
+      w(j) = half_gap( j-1, j ) + half_gap( j, j+1 )
+   end do
+   if ( sum(w) < real(2*nhold,dp) ) return
+   ! held(a) >= nhold (a = the smallest frame max: every frame), and
+   ! held(b) < nhold just above the largest; halve until they meet.
+   a = real(minval(fmax),dp)
+   b = real(top,dp)
+   if ( held(b) >= real(nhold,dp) ) return     ! the max itself is held
+   do it = 1, 64
+      c = a + 0.5_dp*( b - a )
+      if ( .not. ( c > a .and. c < b ) ) exit
+      if ( held(c) >= real(nhold,dp) ) then
+         a = c
+      else
+         b = c
+      end if
+   end do
+   ! The frame max at or just above a: held for nhold cycles, and no
+   ! frame max above it is.
+   top = minval( fmax, mask = real(fmax,dp) >= a )
+
+   contains
+
+      real(kind=dp) function half_gap( j1, j2 )   ! half the cycles between
+      integer(kind=int32), intent(in) :: j1, j2
+      half_gap = 0.5_dp*real( hr_cycle(j2) - hr_cycle(j1), dp )
+      end function half_gap
+
+      real(kind=dp) function held( level )    ! cycles at or above level
+      real(kind=dp), intent(in) :: level
+      held = sum( w, mask = real(fmax,dp) >= level )
+      end function held
+
+   end function held_top
+
+   !******************************************************************!
+   ! What lies above a robust top: one screen line, how high (the     !
+   ! run's max, where and when) and for how many cycles the mesh had  !
+   ! something above the top. v is hr_u (at faces) or hr_p (cells).   !
+   !******************************************************************!
+   subroutine above( label, v, at_faces, top )
+   implicit none
+   character(len=*), intent(in) :: label
+   real(kind=sp), intent(in) :: v(:,:), top
+   logical, intent(in) :: at_faces
+   integer(kind=int32) :: m(2), k, j, n
+   real(kind=sp) :: x
+   real(kind=dp) :: ncyc
+
+   m = maxloc( v )
+   k = m(1); j = m(2)
+   if ( at_faces ) then
+      x = hr_x(k,j)
+   else
+      x = 0.5_sp*( hr_x(k,j) + hr_x(k+1,j) )
+   end if
+   ! Cycles with something above the top: each frame above it stands
+   ! for the cycles around it, as in held_top.
+   n = hr_nframes
+   ncyc = zero
+   do j = 1, n
+      if ( maxval(v(:,j)) > top ) then
+         if ( j > 1 ) ncyc = ncyc + &
+            0.5_dp*real( hr_cycle(j) - hr_cycle(j-1), dp )
+         if ( j < n ) ncyc = ncyc + &
+            0.5_dp*real( hr_cycle(j+1) - hr_cycle(j), dp )
+      end if
+   end do
+   write( kpt6, fl ) label, 'up to '//num(v(m(1),m(2)))//' at t = '// &
+      num(real(hr_time(m(2)),sp))//' us, x = '//num(x)//' mm; above for '// &
+      'about '//itoa(nint(ncyc,int32))//' cycles; drawn in the top color'
+   end subroutine above
 
    !******************************************************************!
    ! One plot per tracer, velocity against time, from the tracer      !
