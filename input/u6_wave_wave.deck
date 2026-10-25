@@ -17,12 +17,21 @@
 #  (symmetric impacts give u_1 and u_2 exactly). The impact planes,    #
 #  x = 1.0 and 19.2 mm, are placed so that the shocks (U_1 = 5.997,    #
 #  U_2 = 6.131 km/s) meet at x = 10 at t = 1.50 us, as in Fig. 10.     #
+#  The drivers are 17 mm thick, so neither shock sent back into them   #
+#  reaches a free surface before t_end (at 2.83 and 2.77 us): no       #
+#  release enters the picture, as in the figure, whose ends are breaks.#
 #                                                                      #
-#      | left 10.0 =>| A 18.2 (at rest) |<= right 10.0 |               #
-#     x=-9.0       x=1.0              x=19.2         x=29.2            #
+#      | left 17.0 =>| A 18.2 (at rest) |<= right 17.0 |               #
+#     x=-16.0      x=1.0              x=19.2         x=36.2            #
 #                                                                      #
-#  colormap: a diverging map, so that u > 0 and u < 0 read apart in    #
-#  the u t-x diagram. Hugoniot: the U6 sheet's values.                 #
+#  Colors: a diverging map (smoothcoolwarm) with the u window from     #
+#  -1.0 to +1.0 km/s (plot_u_lo), so u = 0 is the map's neutral middle:#
+#  A at rest is gray, u_1 > 0 red, u_2 < 0 blue, and u_3 = -0.1 a      #
+#  faint blue, as the sheet's velocity arrows. The right driver        #
+#  (-1.2 km/s) takes the blue end color. RS (second order) keeps the   #
+#  shocks sharp; plot_dt is under a pixel row.                         #
+#                                                                      #
+#  Hugoniot: the U6 sheet's values.                                    #
 #  Units: mm, us, g/cc, km/s, GPa. Syntax: input/README.md.            #
 #**********************************************************************#
 Begin bitwhiz
@@ -36,9 +45,16 @@ Begin bitwhiz
  End Run
 
  Begin Output
-  plot_dt   = 0.005             # us between snapshots
-  tracer_dt = 0.005             # us between tracer rows
+  plot_dt   = 0.002             # us between snapshots: under a pixel
+                                # row of the t-x diagrams (2.8 us over
+                                # 775 rows), so the fronts are not
+                                # drawn as stairs
+  tracer_dt = 0                 # every cycle
   colormap  = smoothcoolwarm
+  plot_u_lo = 0.090909          # u colors from -1.0 km/s: 0.2/2.2 of
+                                # the u range (-1.2 to 1.0), so the
+                                # window is -1.0 to 1.0 and u = 0 is
+                                # its middle
 
   tracer = left     A@0.25      # x = 5.55: u_1, then u_3
   tracer = collide  10.0        # the collision point: u_3 from 1.50 us
@@ -46,7 +62,8 @@ Begin bitwhiz
  End Output
 
  Begin Solver
-  method = AV
+  method = RS                   # Riemann solver, second order: each
+                                # shock about 2 cells wide
  End Solver
 
  Begin Material Al2024          # 2024 aluminum, the U6 sheet's Hugoniot
@@ -54,21 +71,16 @@ Begin bitwhiz
   C0 = 5.328
   S1 = 1.338
   G0 = 2.00
-  spall_strength = 1.0          # GPa, a round value for aluminum alloys.
-                                # At the default (0.01 GPa) the free
-                                # surfaces break off a few cells as they
-                                # release (the AV overshoot), and those
-                                # fly off as debris.
  End Material
 
  Begin Stack
-  resolution = 25               # zones/mm: 250 + 455 + 250 = 955 cells
-  x_left     = -9.0             # left:A at x = 1.0, A:right at x = 19.2
+  resolution = 35               # zones/mm: 595 + 637 + 595 = 1827 cells
+  x_left     = -16.0            # left:A at x = 1.0, A:right at x = 19.2
 
   Begin Layer
    name     = left
    material = Al2024
-   width    = 10.0
+   width    = 17.0
    xvel     = u_left
   End Layer
 
@@ -81,7 +93,7 @@ Begin bitwhiz
   Begin Layer
    name     = right
    material = Al2024
-   width    = 10.0
+   width    = 17.0
    xvel     = u_right
   End Layer
  End Stack

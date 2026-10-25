@@ -13,12 +13,20 @@
 #  isentrope; the exact isentrope gives P_2 = 3.486 GPa, which is what #
 #  bitwhiz computes.                                                   #
 #                                                                      #
-#  The source of the shock is the same: a 2024 Al driver at 2u_1 =     #
-#  1.0 km/s strikes A at x = 1 mm at t = 0, and the shock reaches the  #
-#  interface, x = 10, at t = 1.50 us.                                  #
+#  The source of the shock is the same as in u6_wave_boundary_cu: a    #
+#  2024 Al driver at 2u_1 = 1.0 km/s strikes A at x = 1 mm at t = 0,   #
+#  and the shock reaches the interface, x = 10, at t = 1.50 us. The    #
+#  driver is 17 mm thick, so the shock it sends back reaches its free  #
+#  surface only at t = 2.83 us, after t_end: no release enters the     #
+#  picture.                                                            #
 #                                                                      #
-#      | driver 10.0 =>| A 9.0 | B 8.0 |                               #
-#     x=-9.0         x=1.0  x=10.0  x=18.0                             #
+#      | driver 17.0 =>| A 9.0 | B 8.0 |                               #
+#     x=-16.0        x=1.0  x=10.0  x=18.0                             #
+#                                                                      #
+#  RS (second order) keeps the shocks sharp; plot_dt is under a pixel  #
+#  row. RS starts with a spike at the driver's impact (8.88 GPa for    #
+#  about 50 cycles); the default color range (plot_range = robust)     #
+#  leaves it out, and the screen reports it.                           #
 #                                                                      #
 #  Hugoniots: the U6 sheet's values.                                   #
 #  Units: mm, us, g/cc, km/s, GPa. Syntax: input/README.md.            #
@@ -29,12 +37,15 @@ Begin bitwhiz
 
  Begin Run
   title = u6_wave_boundary_pmma
-  t_end = 2.8                   # us, the sheet's Fig. 7 window
+  t_end = 2.8                   # us, the window of the sheet's Fig. 7
  End Run
 
  Begin Output
-  plot_dt   = 0.005             # us between snapshots
-  tracer_dt = 0.005             # us between tracer rows
+  plot_dt   = 0.002             # us between snapshots: under a pixel
+                                # row of the t-x diagrams (2.8 us over
+                                # 775 rows), so the fronts are not
+                                # drawn as stairs
+  tracer_dt = 0                 # every cycle
   colormap  = viridis
 
   tracer = in_a       A@0.75    # x = 7.75: u_1, then u_2 (reflected wave)
@@ -43,7 +54,8 @@ Begin bitwhiz
  End Output
 
  Begin Solver
-  method = AV
+  method = RS                   # Riemann solver, second order: each
+                                # shock about 2 cells wide
  End Solver
 
  Begin Material Al2024          # 2024 aluminum, the U6 sheet's Hugoniot
@@ -51,11 +63,6 @@ Begin bitwhiz
   C0 = 5.328
   S1 = 1.338
   G0 = 2.00
-  spall_strength = 1.0          # GPa, a round value for aluminum alloys.
-                                # At the default (0.01 GPa) the free
-                                # surfaces break off a few cells as they
-                                # release (the AV overshoot), and those
-                                # fly off as debris.
  End Material
 
  Begin Material PMMA
@@ -67,13 +74,13 @@ Begin bitwhiz
  End Material
 
  Begin Stack
-  resolution = 25               # zones/mm: 250 + 225 + 200 = 675 cells
-  x_left     = -9.0             # driver:A at x = 1, A:B at x = 10
+  resolution = 35               # zones/mm: 595 + 315 + 280 = 1190 cells
+  x_left     = -16.0            # driver:A at x = 1, A:B at x = 10
 
   Begin Layer
    name     = driver
    material = Al2024
-   width    = 10.0
+   width    = 17.0
    xvel     = u_drive
   End Layer
 

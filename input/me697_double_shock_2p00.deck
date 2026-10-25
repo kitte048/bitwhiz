@@ -24,7 +24,8 @@ Begin bitwhiz
  End Run
 
  Begin Output                   # nothing listed here = nothing written
-  plot_dt     = 0.01            # us between snapshots
+  plot_dt     = 0.005           # us between snapshots: under a
+                                # pixel row of the t-x diagrams
   tracer_dt   = 0.005           # us between tracer rows (the
                                 # reference's spacing); 0 = every cycle
   colormap    = viridis         # for bitmap pictures
