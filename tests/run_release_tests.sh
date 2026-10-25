@@ -20,6 +20,8 @@
 #  -ffp-contract=off, no -ffast-math). A difference in the last digit  #
 #  means a flag changed the arithmetic, or the code reads something    #
 #  it never set (the debug build fills those with NaN).                #
+#                                                                      #
+#  One line per deck as it finishes, with a counter (tests/report.sh). #
 #**********************************************************************#
 DEBUG=${DEBUG:-./bin/bitwhiz}
 RELEASE=${RELEASE:-./bin/bitwhiz_release}
@@ -27,7 +29,7 @@ DEBUG=$(cd "$(dirname "$DEBUG")" && pwd)/$(basename "$DEBUG")         # absolute
 RELEASE=$(cd "$(dirname "$RELEASE")" && pwd)/$(basename "$RELEASE")
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-npass=0; nfail=0
+. "$(dirname "$0")/report.sh"
 
 DECKS="input/me697_double_shock_2p00.deck
 tests/decks/ok_setup_counter.deck
@@ -35,7 +37,7 @@ tests/decks/ok_plate_spall.deck
 tests/decks/ok_method_rs.deck
 tests/decks/ok_method_rs_order1.deck"
 
-fail() { echo "FAIL  $1: $2"; nfail=$((nfail+1)); }
+plan $(echo "$DECKS" | wc -w | tr -d ' ') "release tests"
 
 # The three filters below are the OpenMP tests' (run_omp_tests.sh).
 # Everything printed from section 6 on, without the clock times.
@@ -78,6 +80,7 @@ pics_same() {  # $1, $2 = folders of two runs
 }
 
 for deck in $DECKS; do
+   begin
    name=$(basename "$deck" .deck)
    ok=1
    for b in debug release; do
@@ -90,7 +93,7 @@ for deck in $DECKS; do
          tolower($0) ~ /^[ \t]*begin[ \t]+run[ \t]*(#.*)?$/ { print "  num_threads = 1" }
       ' "$deck" > "$d/run.deck"
       if ! (cd "$d" && "$exe" run.deck > screen.out 2>&1); then
-         fail "$deck" "the $b build's run did not finish"; ok=0
+         [ $ok -eq 1 ] && fail "$deck" "the $b build's run did not finish"; ok=0
       fi
    done
    [ $ok -eq 1 ] || continue
@@ -100,15 +103,15 @@ for deck in $DECKS; do
    fi
    if ! diff <(results "$a/screen.out") <(results "$b/screen.out") > "$b/diff"; then
       fail "$deck" "the release build prints different results:"
-      head -4 "$b/diff"; continue
+      head -4 "$b/diff" | detail; continue
    fi
    if ! diff <(beats "$(ls "$a"/*.heartbeat)") <(beats "$(ls "$b"/*.heartbeat)") > "$b/diff"; then
       fail "$deck" "the release build's heartbeat differs:"
-      head -4 "$b/diff"; continue
+      head -4 "$b/diff" | detail; continue
    fi
    if ! diff <(rows "$a") <(rows "$b") > "$b/diff"; then
       fail "$deck" "the release build's tracer file differs:"
-      head -4 "$b/diff" | cut -c1-120; continue
+      head -4 "$b/diff" | cut -c1-120 | detail; continue
    fi
    if ! cmp -s <(hbody "$a") <(hbody "$b"); then
       fail "$deck" "the release build's history file differs"; continue
@@ -117,8 +120,7 @@ for deck in $DECKS; do
    if [ -n "$bad" ]; then
       fail "$deck" "the release build's pictures: $bad"; continue
    fi
-   npass=$((npass+1))
+   pass "$deck"
 done
 
-echo "release tests: $npass passed, $nfail failed (debug and release, bit for bit)"
-[ $nfail -eq 0 ]
+summary "debug and release, bit for bit"
