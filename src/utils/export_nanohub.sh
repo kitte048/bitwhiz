@@ -15,7 +15,9 @@
 #     with no uncommitted changes;                                     #
 #   - writes every file of <tag> into <clone>/src/bitwhiz/, with       #
 #     git's file modes, except doc/ (the equation sheets, not          #
-#     published; set DOC=yes to include them);                         #
+#     published; set DOC=yes to include them), and a VERSION file      #
+#     holding the tag, which the build's banner prints (the clone is   #
+#     not this repository, so git describe cannot say);                #
 #   - lists files that are in <clone>/src/bitwhiz/ but not in the tag  #
 #     (removed or renamed since): it never deletes anything, you do;   #
 #   - shows what changed in the clone, and the commands to commit,     #
@@ -24,7 +26,7 @@
 #  The rule this serves: fixes are made here (branch shock), tagged,   #
 #  and exported; never made in the nanoHUB clone first.                #
 #                                                                      #
-#  D. E. Kittell (with Claude), 10/23/26.                              #
+#  D. E. Kittell (with Claude), 10/23/26; VERSION file, 10/24/26.      #
 #**********************************************************************#
 set -e
 
@@ -77,10 +79,13 @@ while read -r mode type hash path; do
       chmod 644 "$dest/src/bitwhiz/$path"
    fi
 done < "$tmp/list"
+printf '%s\n' "$tag" > "$dest/src/bitwhiz/VERSION"
+chmod 644 "$dest/src/bitwhiz/VERSION"
 
 # Files the clone has under src/bitwhiz/ that the tag does not.
+# (VERSION is written here, not taken from the tag.)
 git -C "$dest" ls-files src/bitwhiz | sed 's|^src/bitwhiz/||' |
-   LC_ALL=C sort > "$tmp/clone"
+   grep -vx VERSION | LC_ALL=C sort > "$tmp/clone"
 LC_ALL=C comm -13 "$tmp/tag" "$tmp/clone" > "$tmp/stale"
 
 echo "Exported $tag ($(git -C "$repo" rev-parse --short "$tag^{commit}")) into $dest/src/bitwhiz/"
@@ -107,4 +112,7 @@ else
    echo "   git commit -m \"bitwhiz $tag\""
    echo "   git tag $tag"
    echo "   git push origin master $tag"
+   echo
+   echo "Then, on the tool's status page, \"Wait! I've made more changes\""
+   echo "tells nanoHUB the new code is ready to install."
 fi

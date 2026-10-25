@@ -17,13 +17,11 @@ nanoHUB.
 5. Throughout: no bloat. Cost per cycle stays the same or improves, and
    `make test` stays a few minutes.
 
-## 1. nanoHUB tool (next release: 1.0.3)
+## 1. nanoHUB tool (after 1.0.3)
 These change the tool's notebook (`bitwhiz.ipynb` in the nanoHUB clone) and
-the export; the Fortran is unchanged.
+the export; the Fortran is unchanged. 1.0.3 brought App Mode, the deck
+picker, the Plot history button and the VERSION file.
 
-- [ ] **History-plot cell:** when no run has made a history file yet, print
-      "No run yet: press Run above, then run this cell" instead of a
-      FileNotFoundError (it happens on Run All, before Run is pressed).
 - [ ] **Upload your own deck:** an upload button (ipywidgets `FileUpload`)
       that loads a `.deck` file from the user's computer into the editor.
 - [ ] **Download this run:** a link under the pictures to the run's folder,
@@ -36,13 +34,6 @@ the export; the Fortran is unchanged.
       empty deck, a deck with no `title`, a title with spaces or slashes, a
       run stopped halfway, two runs started at once, Run All on a fresh
       session) and make each one end in a plain message, not a traceback.
-- [ ] **Version on nanoHUB:** the banner says `version: unknown` there (the
-      install folder is not a git checkout). Have `export_nanohub.sh` write a
-      `VERSION` file with the tag, and `make_build_info.sh` read it when
-      `git describe` finds nothing.
-- [ ] **README release steps:** name the status page's "Wait! I've made more
-      changes" link, which tells nanoHUB that new code is ready to install
-      (we could not find it on Oct 23).
 - [ ] **num_threads note** in the example decks' comments: 1 for class
       problems; 4 to 8 for large meshes on nanoHUB (24 shared processors, no
       CPU limit).
