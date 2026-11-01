@@ -40,48 +40,29 @@ Design and status: `doc/design/distributions.md`.
       (ensembles for uncertainty quantification).
 - [ ] Later distributions: gamma, Weibull, log-normal.
 
-## 2. nanoHUB tool (after 1.0.3)
+## 2. nanoHUB tool (after 1.1.0)
 These change the tool's notebook (`bitwhiz.ipynb` in the nanoHUB clone) and
 the export; the Fortran is unchanged. 1.0.3 brought App Mode, the deck
-picker, the Plot history button and the VERSION file.
+picker, the Plot history button and the VERSION file. 1.1.0 brought every
+release deck in the picker and the version in the banner (the export now
+puts them in `examples/` and `bin/`: an installed tool's `src/` is
+`drwxr-s---`), Upload a deck, Deck reference, captioned pictures (title,
+run time, build; a file name under each), a run's old files cleared before
+it runs, Files (a run, a kind, a file: Download, pictures as PNG; or the
+run zipped), and plain messages for an empty deck, a bad title, a failed
+run and an error inside a button (tests/test_notebook.py in the clone).
 
-- [ ] **Bug: the deck picker offers only the class deck.** The notebook
-      lists `$TOOLDIR/src/bitwhiz/input/*.deck`, then `$TOOLDIR/examples/`;
-      1.0.3 has the four U6 decks in `input/`, yet only the class deck (the
-      one in `examples/`) shows. Likely the installed tool
-      (`/apps/bitwhiz/dev`) has no `src/`. Check from a notebook cell:
-      `!ls -R /apps/bitwhiz/dev | head -40`. Fix it so it cannot come back:
-      the export copies `input/*.deck` into the clone's `examples/`, and the
-      notebook offers the decks from there.
 - [ ] **More example decks** in the picker, each with a one-line label at
-      the top of its comment box: the U6 decks, the velocity-profile decks
-      (1.1.0), a spall deck, AV against RS, later an HVRB deck.
-- [ ] **Old pictures outlive their run.** Run, then turn outputs down or
-      change the deck and run again: the earlier run's files stay beside the
-      new ones. Before each Run (not before Redraw pictures only), clear the
-      run's outputs from its folder (pictures, tracer CSV, history,
-      heartbeat), and show only the files this run wrote.
-- [ ] **Say which run a picture is from.** With little text in the
-      figures, an old picture passes for a new one. Put the deck title and
-      the run's date and time with every picture: in the notebook, a
-      caption above each; in the pictures themselves (`pics_mod`), only if
-      the pixel tests are updated with it.
-- [ ] **Pick one file and download it:** a dropdown of the files in the run
-      folder (newest first, filtered by kind: pictures, tracer CSV,
-      history, deck, heartbeat) and a Download button. It must stay usable
-      with hundreds of files (the movie frames, section 4).
-- [ ] **Upload your own deck:** an upload button (ipywidgets `FileUpload`)
-      that loads a `.deck` file from the user's computer into the editor.
-- [ ] **Download this run:** a link under the pictures to the run's folder,
-      zipped (deck, pictures, tracer CSV, history file). Until then: Jupyter's
-      file browser, `bitwhiz_runs/<title>/`, tick the files, Download.
+      the top of its comment box: a spall deck, AV against RS, later an
+      HVRB deck (the U6 and velocity-profile decks are in, 1.1.0).
 - [ ] **Scripting example:** a cell showing that `bitwhiz` is on the path
       (`!bitwhiz my.deck`), and a short `%%bash` or Python sweep over
       `define u_fly` values.
-- [ ] **Hardening:** try to break the notebook the way a new user would (an
-      empty deck, a deck with no `title`, a title with spaces or slashes, a
-      run stopped halfway, two runs started at once, Run All on a fresh
-      session) and make each one end in a plain message, not a traceback.
+- [ ] **A Stop button:** a run holds the notebook's kernel until it ends,
+      so a button cannot stop it. Run bitwhiz in a thread (or poll the
+      process) so Stop can kill it; until then a long run must finish.
+- [ ] **Two sessions, one title:** two browser tabs running decks with the
+      same title write the same folder. Rare; a lock file would catch it.
 - [ ] **num_threads note** in the example decks' comments: 1 for class
       problems; 4 to 8 for large meshes on nanoHUB (24 shared processors, no
       CPU limit).
@@ -103,6 +84,9 @@ picker, the Plot history button and the VERSION file.
       precedents for public 1D teaching hydrocodes.
 - [ ] **Description page:** check it on the live tool page once published
       (version 1.0.2, license, references 1-9, screenshots).
+- [ ] **GitHub's default branch is `main`**, at the year-old commit this
+      clone's history starts from: a new clone lands there, not on
+      `shock`. Make `shock` the default in the repository's settings.
 - [ ] **Tag v1.0.1** is in the nanoHUB clone but not here (v1.0, v1.0.2
       and v1.0.3 are in both). Find the commit it names and tag it here, or
       record why there is none.

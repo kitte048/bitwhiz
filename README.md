@@ -160,9 +160,11 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   on nanoHUB through the `VERSION` file the export writes.
 - **Export** with `sh src/utils/export_nanohub.sh vX.Y.Z
   ~/Documents/Academic/bitwhiz`: it copies exactly that tag into the clone's
-  `src/bitwhiz/` (no `doc/`), writes `src/bitwhiz/VERSION` with the tag, lists
-  files the tag no longer has, and prints the commands to commit, tag and push.
-  Then, in the clone, run those commands.
+  `src/bitwhiz/` (no `doc/`), writes `src/bitwhiz/VERSION` with the tag, copies
+  the decks and `input/README.md` into the clone's `examples/` and `VERSION`
+  into its `bin/` (an installed tool's `src/` is not readable by its users),
+  lists files the tag no longer has, and prints the commands to commit, tag and
+  push. Then, in the clone, run those commands.
 - **Push once.** nanoHUB has blocked this machine's address for hours after git
   pushes (support ticket open, Oct 2026), so send the commit and its tag in one
   `git push origin master vX.Y.Z`, with git's credential helper set
@@ -199,8 +201,9 @@ there, so it finds the installed tool through the `TOOLDIR` environment variable
 (`start_jupyter -A` in `middleware/invoke`): every cell runs, the code is
 hidden, and the user sees the text, the deck picker and the editor; "Edit App"
 shows the code. Since every cell runs at launch, none may fail before a run.
-The picker offers the installed release's `src/bitwhiz/input/*.deck`, so a deck
-added to `input/` here reaches nanoHUB with the next export. Runs are written to
+The picker offers the decks in the tool's `examples/`, which the export fills
+from `input/`, so a deck added to `input/` here reaches nanoHUB with the next
+export. (The installed tool's `src/` is `drwxr-s---`: users cannot read it.) Runs are written to
 `~/bitwhiz_runs/<title>`. A session sees 24 processors with no CPU limit, shared
 with other users: `num_threads = 1` for class decks, 4 to 8 for large meshes.
 

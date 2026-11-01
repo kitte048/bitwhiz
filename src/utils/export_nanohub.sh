@@ -18,15 +18,23 @@
 #     published; set DOC=yes to include them), and a VERSION file      #
 #     holding the tag, which the build's banner prints (the clone is   #
 #     not this repository, so git describe cannot say);                #
+#   - copies the tag's decks (input/*.deck) and the deck reference     #
+#     (input/README.md) into <clone>/examples/, and the VERSION file   #
+#     into <clone>/bin/: an installed tool's src/ cannot be read by    #
+#     its users (nanoHUB, r8: drwxr-s---), but examples/ and bin/ can, #
+#     so the notebook takes its decks and its version from there;      #
 #   - lists files that are in <clone>/src/bitwhiz/ but not in the tag  #
-#     (removed or renamed since): it never deletes anything, you do;   #
+#     (removed or renamed since), and decks in <clone>/examples/ that  #
+#     the tag does not have: it never deletes anything, you do;        #
 #   - shows what changed in the clone, and the commands to commit,     #
 #     tag and push it. It does not commit or push.                     #
 #                                                                      #
 #  The rule this serves: fixes are made here (branch shock), tagged,   #
 #  and exported; never made in the nanoHUB clone first.                #
 #                                                                      #
-#  D. E. Kittell (with Claude), 10/23/26; VERSION file, 10/24/26.      #
+#  D. E. Kittell (with Claude), 10/23/26; VERSION file, 10/24/26;     #
+#  decks, deck reference and VERSION where users can read them,      #
+#  11/01/26.                                                           #
 #**********************************************************************#
 set -e
 
@@ -82,11 +90,30 @@ done < "$tmp/list"
 printf '%s\n' "$tag" > "$dest/src/bitwhiz/VERSION"
 chmod 644 "$dest/src/bitwhiz/VERSION"
 
+# What the notebook reads, where users can read it: the decks and the
+# deck reference in examples/, the version in bin/.
+mkdir -p "$dest/examples" "$dest/bin"
+for f in "$tmp/x"/input/*.deck "$tmp/x/input/README.md"; do
+   [ -f "$f" ] || continue
+   cp "$f" "$dest/examples/$(basename "$f")"
+   chmod 644 "$dest/examples/$(basename "$f")"
+done
+cp "$dest/src/bitwhiz/VERSION" "$dest/bin/VERSION"
+chmod 644 "$dest/bin/VERSION"
+
 # Files the clone has under src/bitwhiz/ that the tag does not.
 # (VERSION is written here, not taken from the tag.)
 git -C "$dest" ls-files src/bitwhiz | sed 's|^src/bitwhiz/||' |
    grep -vx VERSION | LC_ALL=C sort > "$tmp/clone"
 LC_ALL=C comm -13 "$tmp/tag" "$tmp/clone" > "$tmp/stale"
+
+# Decks in the clone's examples/ that the tag's input/ does not have
+# (an extra kept on purpose, or one the code has since dropped).
+grep '^input/[^/]*\.deck$' "$tmp/tag" | sed 's|^input/||' > "$tmp/tagdecks"
+git -C "$dest" ls-files examples | sed -n 's|^examples/\([^/]*\.deck\)$|\1|p' |
+   LC_ALL=C sort > "$tmp/exdecks"
+LC_ALL=C sort -o "$tmp/tagdecks" "$tmp/tagdecks"
+LC_ALL=C comm -13 "$tmp/tagdecks" "$tmp/exdecks" > "$tmp/extra"
 
 echo "Exported $tag ($(git -C "$repo" rev-parse --short "$tag^{commit}")) into $dest/src/bitwhiz/"
 if [ -s "$tmp/stale" ]; then
@@ -94,6 +121,12 @@ if [ -s "$tmp/stale" ]; then
    echo "These files are in the clone but not in $tag (removed or renamed"
    echo "since). Remove them before committing:"
    sed 's|^|   git rm src/bitwhiz/|' "$tmp/stale"
+fi
+if [ -s "$tmp/extra" ]; then
+   echo
+   echo "These decks are in the clone's examples/ but not in $tag's input/"
+   echo "(kept; the notebook offers them). If one is no longer wanted:"
+   sed 's|^|   git rm examples/|' "$tmp/extra"
 fi
 echo
 if [ -z "$(git -C "$dest" status --porcelain)" ]; then
@@ -108,7 +141,7 @@ else
    echo
    echo "To publish it (one push: nanoHUB may block an address that pushes"
    echo "often), from $dest:"
-   echo "   git add -A src/bitwhiz"
+   echo "   git add -A src/bitwhiz examples bin/VERSION"
    echo "   git commit -m \"bitwhiz $tag\""
    echo "   git tag $tag"
    echo "   git push origin master $tag"
