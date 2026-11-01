@@ -18,7 +18,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Second method, `method = RS` (Godunov's method, acoustic Riemann solver), in the same code; `order = 2` (MUSCL-Hancock, Van Leer, the default) or `1` | done (`src/modules/rs_mod.f95`, maincode section 7; equation sheet `doc/Hydrocode_RS_Eqns_v4`) |
 | History file `<title>.hist`: x, u, P and damage on the whole mesh, one frame per snapshot (`plot_every`, `plot_dt`) | done (`src/modules/hist_mod.f95`; format in `input/README.md`, section 9) |
 | Pictures: t-x diagrams of u and P, one plot per tracer; `plots_only = yes` re-draws them without running | done: both t-x diagrams (lab frame; white outside the material and in open spall, and in P where no wave has reached) and the tracer plots (velocity against time); each framed and titled (BITWHIZ PRESSURE, VELOCITY and SCOPE VIEW), the t-x diagrams with a color bar, all anti-aliased (`src/modules/pics_mod.f95`, `src/drawings/draw_tx.f95`, `draw_trace.f95`, `src/modules/strk_mod.f95`; `input/README.md` section 9b) |
-| Velocity profiles: a layer's starting velocity shaped by a probability density (`xvel_profile`, `xvel_amplitude`; uniform, linear, beta, normal, split normal, sinh-arcsinh, Cauchy), momentum exact | done on branch `distributions` (`src/modules/dist_mod.f95`, with unit test; `input/README.md`, Layer block; design `doc/design/distributions.md`) |
+| Velocity profiles: a layer's starting velocity shaped by a probability density (`xvel_profile`, `xvel_amplitude`; uniform, linear, beta, normal, split normal, sinh-arcsinh, Cauchy), momentum exact | done, 1.1.0 (`src/modules/dist_mod.f95`, with unit test; `input/README.md`, Layer block; design `doc/design/distributions.md`; example decks `input/ramp_*.deck`, `input/pulse_split_normal.deck`, checked against exact linear acoustics) |
 | Comparison with reference data | data in `tests/verification/` |
 
 ## Build
@@ -151,9 +151,10 @@ fix on shock  ->  make test, make release  ->  tag vX.Y.Z  ->  export to the
 nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
 ```
 - **Branches.** `shock` is the release line: every tag, and so every nanoHUB
-  version, is a commit on it. New work goes on its own branch (e.g.
-  `distributions`), which takes fixes from `shock` by `git merge shock` and goes
-  back into `shock` when it is finished.
+  version, is a commit on it. New work goes on its own branch (as the velocity
+  profiles did on `distributions`, released in 1.1.0), which takes fixes from
+  `shock` by `git merge shock`, goes back into `shock` when it is finished, and
+  is then deleted.
 - **Tags** are `vMAJOR.MINOR.PATCH`: PATCH for fixes (v1.0.2), MINOR for new
   features (v1.1.0). The banner prints the tag: here through `git describe`,
   on nanoHUB through the `VERSION` file the export writes.
@@ -188,7 +189,8 @@ here, are:
 
 To check before a release, build with gfortran 8 if you can (`make clean;
 make FC=gfortran-8 test`); v1.0.2 was tested with gfortran 8.4, 9, 10, 12
-and 13.
+and 13; v1.1.0 with 13 and 15.2, its gfortran 8 check left to nanoHUB's
+install (8.3).
 
 **How the tool runs** (for the notebook, `bitwhiz.ipynb` in the clone):
 nanoHUB copies the notebook into the session's results folder and starts it

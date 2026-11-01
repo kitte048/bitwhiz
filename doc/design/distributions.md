@@ -1,6 +1,7 @@
 # Distributions: design note
 
-Branch `distributions`, started from `v1.0` (108762f), Oct 22, 2026.
+Branch `distributions`, started from `v1.0` (108762f), Oct 22, 2026; merged
+into `shock` and released in v1.1.0 (Nov 1, 2026).
 Status: **phase 1 implemented** (Oct 22, 2026): module `distributions`,
 its unit test, `xvel_profile` and `xvel_amplitude`, deck and history tests,
 documentation. Phase 2 (sampling) is not started. The note below is the plan

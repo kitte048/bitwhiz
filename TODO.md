@@ -25,14 +25,9 @@ again, the nanoHUB tool, gold-standard data, movies, HVRB, graded materials.
 8. Throughout: no bloat. Cost per cycle stays the same or improves, and
    `make test` stays a few minutes.
 
-## 1. Velocity profiles (branch `distributions`, toward 1.1.0)
-Design and status: `doc/design/distributions.md` (on that branch).
+## 1. Velocity profiles (released in 1.1.0)
+Design and status: `doc/design/distributions.md`.
 
-- [ ] Merge `distributions` into `shock`; release as 1.1.0, with
-      the four example decks (`input/ramp_*.deck`,
-      `input/pulse_split_normal.deck`) in the nanoHUB examples. Then delete
-      `distributions` (here and on GitHub): `shock` is the one branch, and
-      new work branches from it and comes back.
 - [ ] **Ramp decks that stay in compression,** as experiments are
       designed: realistic spall strengths, and a stack that never puts
       either layer in tension before `t_end` (a thicker window, an earlier
