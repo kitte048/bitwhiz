@@ -241,11 +241,17 @@ interface (`drive`), halfway through B and at B's free surface:
 | `ramp_linear.deck` | `linear -1`: 2.0 km/s at A's back, 0 at the contact | a linear ramp, about 0.5 us |
 | `ramp_beta.deck` | `beta 1 3`: 3.0 km/s at the back, 0 with zero slope at the contact | a ramp with a soft foot and a steep top |
 | `ramp_sinh_arcsinh.deck` | `sinh_arcsinh -0.1 0.25 1.0 1.0`: a long tail toward the contact | a small shock (the foot), then a ramp |
-| `pulse_split_normal.deck` | `split_normal 0.75 0.05 0.25`, `xvel = 0`, amplitude 0.6: a bump in a layer at rest on average | a compression pulse; A spalls at once |
+| `pulse_split_normal.deck` | `split_normal 0.75 0.05 0.25`, `xvel = 0`, amplitude 0.6: a bump in a layer at rest on average | a compression pulse; A goes into tension at once |
 
 The three ramp decks give A the same momentum (a uniform 1.0 km/s flyer's)
 and differ only in its shape, so their drives (the `drive` scope view) can
 be compared directly.
+
+Spall is off in all four (`spall_strength = 100` for both materials): they
+are wave demos, not fracture studies. They pull the aluminum to 5 to 11 GPa
+of tension and the PMMA to about 1.1 GPa, far beyond what either holds
+(about 1 to 2 GPa and 0.16 GPa), so at realistic strengths both break and
+the broken pieces knock against each other, ringing in the tracer data.
 
 **Keep the origin near the problem.** Positions are stored as plain numbers, so
 round-off in x grows with the size of x: a cell's width is the difference of

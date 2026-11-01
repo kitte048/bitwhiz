@@ -14,8 +14,8 @@
 #                                                                      #
 #  One of four decks with a different profile each: ramp_linear,       #
 #  ramp_beta, ramp_sinh_arcsinh, pulse_split_normal (input/README.md,  #
-#  Layer block). Units: mm, us, g/cc, km/s, GPa. Later, A breaks near  #
-#  its back (spall): the default spall strength, 0.01 GPa, is low.     #
+#  Layer block). Units: mm, us, g/cc, km/s, GPa. Spall is off: see     #
+#  spall_strength below.                                               #
 #**********************************************************************#
 Begin bitwhiz
  deck_version = 1
@@ -45,6 +45,10 @@ Begin bitwhiz
   C0 = 5.30
   S1 = 1.34
   G0 = 2.00
+  spall_strength = 100          # GPa: spall off. A wave demo, not a
+                                # fracture study: this deck pulls A to
+                                # about 5.9 GPa of tension; real aluminum
+                                # breaks at about 1 to 2 (dynamic)
  End Material
 
  Begin Material PMMA            # window; Lacina et al. (2018) linear fit
@@ -52,6 +56,10 @@ Begin bitwhiz
   C0 = 2.55
   S1 = 1.54
   G0 = 0.90                     # (the ME 697 class deck's values)
+  spall_strength = 100          # GPa: spall off. B reaches about 1.1 GPa
+                                # of tension; PMMA breaks at about 0.16
+                                # (Frawley et al. 2025, J. Dyn. Behav.
+                                # Mater., doi:10.1007/s40870-025-00468-8)
  End Material
 
  Begin Stack

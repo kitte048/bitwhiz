@@ -28,24 +28,17 @@ again, the nanoHUB tool, gold-standard data, movies, HVRB, graded materials.
 ## 1. Velocity profiles (branch `distributions`, toward 1.1.0)
 Design and status: `doc/design/distributions.md` (on that branch).
 
-- [ ] **Ringing in the tracer data:** a sawtooth-like noise on the tracer
-      velocities when the initial condition is a velocity profile. Find
-      whether it comes from the method or from how the profile is put on
-      the mesh: run one profile deck with AV, RS order 1 and RS order 2, at
-      two or three mesh sizes, and see whether the noise changes with the
-      method, scales with the cell size, or follows the cells' initial
-      velocities (faces are set momentum-weighted from the cells).
-- [ ] **Late launch at the free surface:** the t-x diagrams show the free
-      surface sending something off late in the run (spalled or damaged
-      material, debris?). Find out what it is (damage, density and pressure
-      in the history file at those cells) and whether it is physical.
-      Decide whether it holds up the merge or is recorded as known.
-- [ ] Merge `distributions` into `shock` when the ringing and the late
-      launch are understood and phase 1 is settled; release as 1.1.0, with
+- [ ] Merge `distributions` into `shock`; release as 1.1.0, with
       the four example decks (`input/ramp_*.deck`,
       `input/pulse_split_normal.deck`) in the nanoHUB examples. Then delete
       `distributions` (here and on GitHub): `shock` is the one branch, and
       new work branches from it and comes back.
+- [ ] **Ramp decks that stay in compression,** as experiments are
+      designed: realistic spall strengths, and a stack that never puts
+      either layer in tension before `t_end` (a thicker window, an earlier
+      `t_end`, a backing behind A). The four decks now turn spall off
+      instead; `pulse_split_normal` cannot be fixed this way (its tension
+      starts at t = 0).
 - [ ] Verification: a linear compression ramp against the shock formation
       time from characteristics (derive it first, acoustic limit).
 - [ ] Phase 2: sampling, `dist_inv_cdf`, and random velocity draws per cell
@@ -207,6 +200,12 @@ decks.
 - [ ] **Strength:** elastic-perfectly-plastic, von Mises yield, with thermal
       softening (needs T from the model above): deviatoric stress and
       plasticity.
+- [ ] **Spall: is the knocking physical?** With spall on, the profile
+      decks break the aluminum in many cells, and the broken pieces knock
+      against each other: a sawtooth in the tracer velocities (period about
+      0.07 us at 25 zones/mm). Find whether it is physical (scabs
+      colliding) or numerical (broken cells reopening and closing): mesh
+      and method dependence, and a comparison with a damage model.
 - [ ] **History-variable reactive burn (HVRB)**, following the equation
       sheet (`Equation_Sheets/HVRB_rev-0/HVRB_Eqns_v8.tex`, published as
       `Class_Project/HVRB_Eqns_rev-0.pdf`; a frozen copy into `doc/`, as
@@ -249,6 +248,18 @@ decks.
       L1 slope near 2 for RS order 2 and near 1 for order 1; L-infinity
       lower for order 2, where Van Leer clips the slopes at extrema. Keep it
       as a test, and use it with the ramp verification for 1.1.0.
+- [ ] **AV energy at a free surface:** with AV, the energy error jumps
+      when a shock reaches a free surface (ramp_linear: -6.8e-4 at 25
+      zones/mm, first order, -4.3e-5 at 400), and is flat otherwise; RS
+      conserves energy to round-off. Find which term does it (the
+      free-surface face, q in the last cell) and whether it can be made
+      conservative.
+- [ ] **Acoustic verification as a test:** the four profile decks at 1e-4
+      of their amplitude against exact linear acoustics (invariants
+      p +/- Z u, impedance matching at the contact, p = 0 at the free
+      surfaces) matched in L1 to 0.01-0.5 % with AV and RS2 at 200
+      zones/mm (Nov 1, 2026). Keep it as a test; it also measures the
+      order of accuracy on smooth parts of the solution.
 - [ ] **Faster deck tests:** every deck in `input/` runs three times (the run
       and the resolved-deck round trip). Make the round trip a reading check
       (read the deck back, compare the resolved statements) without a full
