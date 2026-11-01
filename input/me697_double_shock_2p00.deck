@@ -24,7 +24,8 @@ Begin bitwhiz
  End Run
 
  Begin Output                   # nothing listed here = nothing written
-  plot_dt     = 0.01            # us between snapshots
+  plot_dt     = 0.005           # us between snapshots: under a
+                                # pixel row of the t-x diagrams
   tracer_dt   = 0.005           # us between tracer rows (the
                                 # reference's spacing); 0 = every cycle
   colormap    = viridis         # for bitmap pictures
@@ -147,6 +148,9 @@ Notes (ignored by the parser):
 #    colormap       viridis (default), plasma, inferno, blackbody,
 #                   kindlmann, extendedkindlmann, smoothcoolwarm,
 #                   bentcoolwarm, grayscale
+#    plot_range     robust (default): colors from the min to the top
+#                   the run held for 50 cycles (a start-up spike does
+#                   not set them) | full: from the min to the max
 #    plot_u_lo      u color window, fraction 0 to 1 of the u range (0)
 #    plot_u_hi                                                      (1)
 #    plot_p_lo      P color window, fraction 0 to 1 of the P range (0)

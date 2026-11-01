@@ -30,12 +30,16 @@
 #                                                                      #
 #  A serial build (make OMPFLAGS=) or a one-processor machine has      #
 #  nothing to compare, so the script says so and passes.               #
+#                                                                      #
+#  One line per deck and thread count as it finishes, with a counter   #
+#  (tests/report.sh); the first count's time includes the 1-thread     #
+#  run it is compared with.                                            #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")    # absolute
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-npass=0; nfail=0
+. "$(dirname "$0")/report.sh"
 
 DECKS="input/me697_double_shock_2p00.deck
 tests/decks/ok_setup_counter.deck
@@ -43,8 +47,6 @@ tests/decks/ok_plate_spall.deck
 tests/decks/ok_method_rs.deck
 tests/decks/ok_method_rs_order1.deck
 tests/decks/ok_profile_hist.deck"
-
-fail() { echo "FAIL  $1: $2"; nfail=$((nfail+1)); }
 
 # The thread counts to try: 2, 3, 4, 8, but no more than the processors.
 # (NPROCS=8 ./tests/run_omp_tests.sh overrides the count; only useful
@@ -119,48 +121,53 @@ if [ -z "$counts" ]; then
    exit 0
 fi
 
+plan $(( $(echo "$DECKS" | wc -w) * $(echo $counts | wc -w) )) "omp tests"
+
 for deck in $DECKS; do
    name=$(basename "$deck" .deck)
-   for n in 1 $counts; do
+   ref="$TMP/$name/t1"; first=1
+   for n in $counts; do
+      begin
+      t="$deck, $n threads"
+      if [ $first -eq 1 ]; then        # the 1-thread run, to compare with
+         first=0; mkdir -p "$ref"
+         with_threads "$deck" 1 > "$ref/run.deck"
+         (cd "$ref" && "$BIN" run.deck > screen.out 2>&1) || touch "$ref/failed"
+      fi
+      if [ -f "$ref/failed" ]; then
+         fail "$t" "the run on 1 thread did not finish (nothing to compare)"; continue
+      fi
       d="$TMP/$name/t$n"; mkdir -p "$d"
       with_threads "$deck" "$n" > "$d/run.deck"
       if ! (cd "$d" && "$BIN" run.deck > screen.out 2>&1); then
-         fail "$deck" "the run on $n thread(s) did not finish"
-         touch "$d/failed"
+         fail "$t" "the run did not finish"; continue
       fi
-   done
-   ref="$TMP/$name/t1"
-   [ -f "$ref/failed" ] && continue           # nothing to compare against
-   for n in $counts; do
-      d="$TMP/$name/t$n"
-      [ -f "$d/failed" ] && continue           # already reported
       used=$(grep 'Threads in the time loop' "$d/screen.out" | awk -F: '{print $2+0}')
       if [ "$used" != "$n" ]; then
-         fail "$deck" "asked for $n threads, the time loop used ${used:-?}"; continue
+         fail "$t" "the time loop used ${used:-?} threads"; continue
       fi
       if ! diff <(results "$ref/screen.out") <(results "$d/screen.out") > "$d/diff" ; then
-         fail "$deck" "$n threads print different results than 1 thread:"
-         head -4 "$d/diff"; continue
+         fail "$t" "prints different results than 1 thread:"
+         head -4 "$d/diff" | detail; continue
       fi
       hb1=$(ls "$ref"/*.heartbeat); hbn=$(ls "$d"/*.heartbeat)
       if ! diff <(beats "$hb1") <(beats "$hbn") > "$d/diff" ; then
-         fail "$deck" "$n threads: the heartbeat differs from 1 thread:"
-         head -4 "$d/diff"; continue
+         fail "$t" "the heartbeat differs from 1 thread:"
+         head -4 "$d/diff" | detail; continue
       fi
       if ! diff <(rows "$ref") <(rows "$d") > "$d/diff" ; then
-         fail "$deck" "$n threads: the tracer file differs from 1 thread:"
-         head -4 "$d/diff" | cut -c1-120; continue
+         fail "$t" "the tracer file differs from 1 thread:"
+         head -4 "$d/diff" | cut -c1-120 | detail; continue
       fi
       if ! cmp -s <(hbody "$ref") <(hbody "$d"); then
-         fail "$deck" "$n threads: the history file differs from 1 thread"; continue
+         fail "$t" "the history file differs from 1 thread"; continue
       fi
       bad=$(pics_same "$ref" "$d")
       if [ -n "$bad" ]; then
-         fail "$deck" "$n threads: $bad"; continue
+         fail "$t" "$bad"; continue
       fi
-      npass=$((npass+1))
+      pass "$t"
    done
 done
 
-echo "omp tests: $npass passed, $nfail failed (threads:$counts; $nprocs processors)"
-[ $nfail -eq 0 ]
+summary "threads:$counts; $nprocs processors"

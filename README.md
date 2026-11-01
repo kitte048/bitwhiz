@@ -155,16 +155,20 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   `distributions`), which takes fixes from `shock` by `git merge shock` and goes
   back into `shock` when it is finished.
 - **Tags** are `vMAJOR.MINOR.PATCH`: PATCH for fixes (v1.0.2), MINOR for new
-  features (v1.1.0). The banner prints the tag through `git describe`.
+  features (v1.1.0). The banner prints the tag: here through `git describe`,
+  on nanoHUB through the `VERSION` file the export writes.
 - **Export** with `sh src/utils/export_nanohub.sh vX.Y.Z
   ~/Documents/Academic/bitwhiz`: it copies exactly that tag into the clone's
-  `src/bitwhiz/` (no `doc/`), lists files the tag no longer has, and prints the
-  commands to commit, tag and push. Then, in the clone, run those commands.
+  `src/bitwhiz/` (no `doc/`), writes `src/bitwhiz/VERSION` with the tag, lists
+  files the tag no longer has, and prints the commands to commit, tag and push.
+  Then, in the clone, run those commands.
 - **Push once.** nanoHUB has blocked this machine's address for hours after git
   pushes (support ticket open, Oct 2026), so send the commit and its tag in one
   `git push origin master vX.Y.Z`, with git's credential helper set
   (`git config --global credential.helper osxkeychain`).
-- **Install.** On the tool's status page, mark the code uploaded (status
+- **Install.** On the tool's status page, follow the link **"Wait! I've made
+  more changes"** (for a tool already installed or approved; it tells nanoHUB
+  that new code is in the repository), or mark the code uploaded (status
   Uploaded) with a short note; nanoHUB's staff run `make install` in the tool's
   `src/` and set it to Installed. Check what was installed from a notebook cell,
   `!ls -la /apps/bitwhiz/dev /apps/bitwhiz/dev/bin` (`dev` points to the
@@ -189,7 +193,12 @@ and 13.
 **How the tool runs** (for the notebook, `bitwhiz.ipynb` in the clone):
 nanoHUB copies the notebook into the session's results folder and starts it
 there, so it finds the installed tool through the `TOOLDIR` environment variable
-(`/apps/bitwhiz/dev`), not through its own folder. Runs are written to
+(`/apps/bitwhiz/dev`), not through its own folder. It starts in App Mode
+(`start_jupyter -A` in `middleware/invoke`): every cell runs, the code is
+hidden, and the user sees the text, the deck picker and the editor; "Edit App"
+shows the code. Since every cell runs at launch, none may fail before a run.
+The picker offers the installed release's `src/bitwhiz/input/*.deck`, so a deck
+added to `input/` here reaches nanoHUB with the next export. Runs are written to
 `~/bitwhiz_runs/<title>`. A session sees 24 processors with no CPU limit, shared
 with other users: `num_threads = 1` for class decks, 4 to 8 for large meshes.
 

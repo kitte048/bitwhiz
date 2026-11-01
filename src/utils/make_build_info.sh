@@ -19,8 +19,16 @@ when=$(date '+%Y-%m-%d %H:%M:%S %z')
 # "-dirty" if tracked files have uncommitted changes, e.g.
 #    v0.3-12-g9f2c1ab-dirty
 # --no-optional-locks makes git only READ its index, never rewrite it.
-# Outside a git checkout (e.g. a student's tarball) this is "unknown".
-what=$(git --no-optional-locks describe --tags --always --dirty 2>/dev/null)
+# A release exported by export_nanohub.sh carries a VERSION file with
+# its tag (e.g. v1.0.3), and that wins: on nanoHUB the folder is not
+# this repository's checkout (or is the tool's own, whose tags are
+# not ours). Outside a git checkout and without VERSION (e.g. a
+# student's tarball) this is "unknown".
+if [ -s VERSION ]; then
+   what=$(head -1 VERSION | tr -d ' \r\n')
+else
+   what=$(git --no-optional-locks describe --tags --always --dirty 2>/dev/null)
+fi
 [ -n "$what" ] || what=unknown
 
 cat > "$out" <<EOF_FORTRAN

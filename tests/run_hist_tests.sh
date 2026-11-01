@@ -31,7 +31,13 @@
 #     plot_dt it reports the same ranges as the run did, leaves the    #
 #     run's files untouched and says the deck's plot_dt is not used;   #
 #     a deck with a different mesh, or a folder without the run's      #
-#     files, stops it with an error.                                   #
+#     files, stops it with an error;                                   #
+#   - plot_range: u6_boundary_boundary (RS, whose impact starts with   #
+#     a 6% spike) with the default, robust, reports the spike above    #
+#     the P range and tops the P colors at P_1 = 8.351 GPa (8.35 to    #
+#     8.36); with full, no report, the colors top at the max, and the  #
+#     P t-x diagram differs. The class run (no spike) keeps its full   #
+#     range under robust.                                              #
 #                                                                      #
 #  Pictures (section 9 of a run): every run that finishes must write   #
 #  exactly its pictures, by name (<title>.tx_u.bmp and .tx_p.bmp with  #
@@ -56,15 +62,18 @@
 #  where u = 0 falls on the pdv plot's y axis, early on, before the    #
 #  shock arrives; and the title BITWHIZ SCOPE VIEW above the box (the  #
 #  stem of its first I slate, the gap after it white).                 #
+#                                                                      #
+#  One line per case as it finishes, with a counter (tests/report.sh). #
+#  A new case: begin, then exactly one pass or fail, and one more in   #
+#  the plan below.                                                     #
 #**********************************************************************#
 BIN=${BIN:-./bin/bitwhiz}
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")    # absolute
 CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-npass=0; nfail=0
-
-fail() { echo "FAIL  $1: $2"; nfail=$((nfail+1)); }
+. "$(dirname "$0")/report.sh"
+plan 18 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -109,10 +118,11 @@ tracer_cols() {
 }
 
 # test_hist on folder $1's history file, expected status $2, face and
-# cell $3 $4: its F lines into $1/frames, its B count into $1/broken.
+# cell $3 $4: its F lines into $1/frames, its B count into $1/broken,
+# and what it found wrong (if anything) into $1/chk.fail.
 check_file() {
    if ! "$CHK" "$1"/*.hist "$2" "$3" "$4" > "$1/chk.out"; then
-      grep FAIL "$1/chk.out" | head -3; return 1
+      grep FAIL "$1/chk.out" | head -3 > "$1/chk.fail"; return 1
    fi
    grep '^F ' "$1/chk.out" > "$1/frames"
    awk '/^B / {print $2}' "$1/chk.out" > "$1/broken"
@@ -166,11 +176,12 @@ sums() { (cd "$1" && cksum *.hist *.tracers.csv *.heartbeat 2>/dev/null); }
 # Case: tracer_dt = plot_dt, so frames and tracer rows share their
 # cycles; compare an interface tracer with the file at its face/cell.
 against_tracer() {   # $1 case name, $2 deck, $3 dt, $4 tracer
+   begin
    setkeys "$2" Output "plot_dt = $3" "tracer_dt = $3" > "$TMP/$1.deck"
    if ! run "$1" "$TMP/$1.deck"; then fail "$1" "the run did not finish"; return; fi
    local d="$TMP/$1" place
    place=$(tracer_place "$d" "$4")
-   if ! check_file "$d" 1 $place; then fail "$1" "test_hist (above)"; return; fi
+   if ! check_file "$d" 1 $place; then fail "$1" "test_hist:"; detail < "$d/chk.fail"; return; fi
    tracer_cols "$d" "$4" > "$d/rows"
    if ! paste -d' ' "$d/frames" "$d/rows" | awk '
          # (+0 makes every value a number: mawk leaves a field like
@@ -188,7 +199,7 @@ against_tracer() {   # $1 case name, $2 deck, $3 dt, $4 tracer
    local bad
    bad=$(pics_ok "$d")
    [ -z "$bad" ] || { fail "$1" "$bad"; return; }
-   npass=$((npass+1))
+   pass "$1"
 }
 
 against_tracer class_av  input/me697_double_shock_2p00.deck 0.01 pdv
@@ -201,6 +212,7 @@ against_tracer class_av  input/me697_double_shock_2p00.deck 0.01 pdv
 # row 85 is just after t = 0, row 838 just before t_end. Columns 60 and
 # 1140 and rows 95 and 830 are near the plot area's corners, clear of
 # the spines, the rounded corners and the ticks.
+begin
 c=tx_p_class
 f="$TMP/class_av/double_shock_2p00.tx_p.bmp"
 if [ ! -f "$f" ]; then
@@ -220,7 +232,7 @@ else
         [ "$(pixel "$f" "$i15" 838 1200)" = ffffff ]; then
       fail $c "the PMMA at x = 15 mm (column ${i15:-?}) is not white at t = 0 and colored near t_end"
    else
-      npass=$((npass+1))
+      pass $c
    fi
 fi
 
@@ -228,6 +240,7 @@ fi
 # moving or not (the flyer and the PMMA at t = 0), white where there is
 # none (beyond the PMMA's rear at t = 0, beyond the flyer's rear by
 # t_end).
+begin
 c=tx_u_class
 f="$TMP/class_av/double_shock_2p00.tx_u.bmp"
 if [ ! -f "$f" ]; then
@@ -237,7 +250,7 @@ elif [ "$(pixel "$f" 60 95 1200)" = ffffff ] || [ "$(pixel "$f" "$i15" 85 1200)"
 elif [ "$(pixel "$f" 1140 95 1200)" != ffffff ] || [ "$(pixel "$f" 60 830 1200)" != ffffff ]; then
    fail $c "a place with no material is not white"
 else
-   npass=$((npass+1))
+   pass $c
 fi
 
 # Case: the t-x diagram's frame, title and color bar, in the scope
@@ -251,6 +264,7 @@ fi
 # 842 to 860 down, has a 1.5-pixel slate outline (its top fills row 58)
 # and the colormap inside, from 0 at the left to 1 at the right (row
 # 50: two different colors near its ends, neither white).
+begin
 c=tx_frame
 f="$TMP/class_av/double_shock_2p00.tx_p.bmp"
 lft=$(pixel "$f" 305 50 1200); rgt=$(pixel "$f" 895 50 1200)
@@ -263,13 +277,14 @@ elif [ "$(pixel "$f" 600 58 1200)" != 503e2c ] || [ "$lft" = ffffff ] ||
      [ "$rgt" = ffffff ] || [ "$lft" = "$rgt" ]; then
    fail $c "the color bar: no slate outline, or no colormap inside ($lft to $rgt)"
 else
-   npass=$((npass+1))
+   pass $c
 fi
 
 # Case: a tracer plot's frame (800 x 600, margin 40, spine 2.5 pixels).
 # Rows from the bottom: the bottom spine covers rows 41 and 42 fully
 # and half of row 43. Column 380 is clear of the ticks. Bytes are blue,
 # green, red, as a bitmap stores them.
+begin
 c=tr_frame
 f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
 if [ ! -f "$f" ]; then
@@ -281,7 +296,7 @@ elif [ "$(pixel "$f" 380 43 800)" != a89f96 ] || [ "$(pixel "$f" 380 44 800)" !=
 elif [ "$(pixel "$f" 41 41 800)" != ffffff ]; then
    fail $c "the box's outer corner pixel is not white (rounded corners)"
 else
-   npass=$((npass+1))
+   pass $c
 fi
 
 # Case: the pdv curve. Until the first shock (about 2 us) the PDV
@@ -289,6 +304,7 @@ fi
 # height of u = 0 on the plot's y axis (from the screen line "Tracer
 # pdv u (km/s) : ..., y axis ylo to yhi"); its middle pixel must be
 # full vermilion (bytes 00 5e d5: blue, green, red).
+begin
 c=tr_curve
 f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
 r0=$(awk -F'y axis ' '/Tracer pdv u \(km\/s\)/ {split($2, v, " to "); lo = v[1] + 0; hi = v[2] + 0;
@@ -300,19 +316,20 @@ done
 if [ -z "$r0" ] || [ -z "$found" ]; then
    fail $c "no full-vermilion pixel at column 100 near row ${r0:-?} (u = 0)"
 else
-   npass=$((npass+1))
+   pass $c
 fi
 
 # Case: the title, BITWHIZ SCOPE VIEW, 16 pixels tall, centered over the
 # box in the 40-pixel margin. The stem of the first I (a straight
 # stroke, 2.2 pixels wide, at x = 284.8) fills column 285 at mid-height
 # (row 581 from the bottom); column 288, between I and T, is white.
+begin
 c=tr_title
 f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
 if [ "$(pixel "$f" 285 581 800)" != 503e2c ] || [ "$(pixel "$f" 288 581 800)" != ffffff ]; then
    fail $c "the title's first I is not where it belongs (slate stem, white gap)"
 else
-   npass=$((npass+1))
+   pass $c
 fi
 against_tracer rs_order2 tests/decks/ok_method_rs.deck        0.05 impact
 against_tracer rs_order1 tests/decks/ok_method_rs_order1.deck 0.05 impact
@@ -326,6 +343,7 @@ against_tracer rs_order1 tests/decks/ok_method_rs_order1.deck 0.05 impact
 # (cell masses R0*width/zones). F here is the textbook one, written
 # again in awk (linear: x + s(x^2 - x); Cauchy: 1/2 + atan(y)/pi), not
 # taken from bitwhiz. The layers are tests/decks/ok_profile_hist.deck's.
+begin
 c=profile_frame1
 if run $c tests/decks/ok_profile_hist.deck; then
    d="$TMP/$c"
@@ -377,7 +395,7 @@ if run $c tests/decks/ok_profile_hist.deck; then
    elif ! grep -q 'Profile P1 (linear): u from  -0.1933 to   0.1933 km/s' "$d/screen.out"; then
       fail $c "the screen does not report P1's velocity range"
    else
-      npass=$((npass+1))
+      pass $c
    fi
 else
    fail $c "the run did not finish"
@@ -386,39 +404,42 @@ fi
 # Case: plot_every = 7 (the deck's own setting): cycles 0, 7, 14, ...
 # and the last; the plate spalls, and the last frame's broken cells
 # are the run's count.
+begin
 c=plot_every
 if run $c tests/decks/ok_plate_spall.deck; then
    d="$TMP/$c"
    last=$(grep '^ *Cycles  ' "$d/screen.out" | awk -F: '{print $2+0}')
    nbrk=$(grep 'Cells broken by the end' "$d/screen.out" | awk -F: '{print $2+0}')
    if ! check_file "$d" 1 1 1; then
-      fail $c "test_hist (above)"
+      fail $c "test_hist:"; detail < "$d/chk.fail"
    elif ! diff <(awk '{print $2}' "$d/frames") \
                <(awk -v n="$last" 'BEGIN { for (i = 0; i < n; i += 7) print i; print n }') > /dev/null; then
       fail $c "the frames are not cycles 0, 7, 14, ... and the last ($last)"
    elif [ -z "$nbrk" ] || [ "$nbrk" -eq 0 ] || [ "$(cat "$d/broken")" != "$nbrk" ]; then
       fail $c "broken cells in the last frame: $(cat "$d/broken"), the run: ${nbrk:-none}"
    else
-      npass=$((npass+1))
+      pass $c
    fi
 else
    fail $c "the run did not finish"
 fi
 
 # Case: stopped at cycle_max = 100: status 2, the last frame at 100.
+begin
 c=cycle_max
 setkeys input/me697_double_shock_2p00.deck Run "cycle_max = 100" > "$TMP/$c.deck"
 run $c "$TMP/$c.deck"                       # stops early; exit code not 0
 d="$TMP/$c"
 if ! check_file "$d" 2 1 1; then
-   fail $c "test_hist (above)"
+   fail $c "test_hist:"; detail < "$d/chk.fail"
 elif [ "$(tail -1 "$d/frames" | awk '{print $2}')" != 100 ]; then
    fail $c "the last frame is not cycle 100"
 else
-   npass=$((npass+1))
+   pass $c
 fi
 
 # Case: no snapshot keys, no history file.
+begin
 c=no_snapshots
 if run $c tests/decks/ok_setup_counter.deck; then
    if ls "$TMP/$c"/*.hist > /dev/null 2>&1; then
@@ -428,13 +449,14 @@ if run $c tests/decks/ok_setup_counter.deck; then
    elif ! grep -q 'History file *: none' "$TMP/$c/screen.out"; then
       fail $c "the screen does not say there is no history file"
    else
-      npass=$((npass+1))
+      pass $c
    fi
 else
    fail $c "the run did not finish"
 fi
 
 # Case: tracers but no snapshots: tracer plots only, no t-x diagrams.
+begin
 c=tracers_only
 setkeys tests/decks/ok_method_rs.deck Output "plot_dt = 0" "plot_every = 0" > "$TMP/$c.deck"
 if ! run $c "$TMP/$c.deck"; then
@@ -444,13 +466,14 @@ elif ls "$TMP/$c"/*.hist > /dev/null 2>&1; then
 elif bad=$(pics_ok "$TMP/$c") && [ -n "$bad" ]; then
    fail $c "$bad"
 else
-   npass=$((npass+1))
+   pass $c
 fi
 
 # Cases: plots_only = yes, in a copy of the class_av run's folder.
 # The ranges it reports must be the run's own (same numbers, read the
 # same way), and the run's files must not change.
 ranges() { grep -E '^ +(x across|t up|u in the run|P in the run|Rows|Tracer [a-z_]+ u )' "$1"; }
+begin
 c=plots_only
 d="$TMP/$c"; mkdir -p "$d"
 cp "$TMP"/class_av/*.hist "$TMP"/class_av/*.tracers.csv "$TMP"/class_av/*.heartbeat "$d"/
@@ -459,7 +482,7 @@ setkeys "$TMP/class_av.deck" Run "plots_only = yes" > "$TMP/$c.1"
 setkeys "$TMP/$c.1" Output "colormap = inferno" "plot_p_lo = 0.1" \
    "plot_p_hi = 0.6" "plot_dt = 0.5" "tracer_dt = 0.5" > "$TMP/$c.deck"
 if ! run $c "$TMP/$c.deck"; then
-   fail $c "the plots_only run did not finish:"; grep 'bitwhiz:' "$d/screen.out" | head -3
+   fail $c "the plots_only run did not finish:"; grep 'bitwhiz:' "$d/screen.out" | head -3 | detail
 elif [ "$(sums "$d")" != "$before" ]; then
    fail $c "it changed the run's files"
 elif ! diff <(ranges "$TMP/class_av/screen.out") <(ranges "$d/screen.out") > /dev/null; then
@@ -477,10 +500,11 @@ elif cmp -s "$d/double_shock_2p00.tx_u.bmp" "$TMP/class_av/double_shock_2p00.tx_
 elif ! cmp -s "$d/double_shock_2p00.tr_pdv.bmp" "$TMP/class_av/double_shock_2p00.tr_pdv.bmp"; then
    fail $c "the pdv tracer plot changed with the colormap"
 else
-   npass=$((npass+1))
+   pass $c
 fi
 
 # The same folder, a deck with a different mesh: an error, no change.
+begin
 c=plots_only_other_mesh
 setkeys "$TMP/plots_only.deck" Stack "resolution = 30" > "$TMP/$c.deck"
 if run plots_only "$TMP/$c.deck"; then
@@ -490,10 +514,11 @@ elif ! grep -q 'was not made by this deck: 945 cells, not 810' "$d/screen.out"; 
 elif [ "$(sums "$d")" != "$before" ]; then
    fail $c "it changed the run's files"
 else
-   npass=$((npass+1))
+   pass $c
 fi
 
 # A folder without the run's files: an error naming them.
+begin
 c=plots_only_no_files
 if run $c "$TMP/plots_only.deck"; then
    fail $c "it finished without the run's files"
@@ -501,8 +526,42 @@ elif ! grep -q 'cannot open double_shock_2p00.hist' "$TMP/$c/screen.out" ||
      ! grep -q 'cannot open double_shock_2p00.tracers.csv' "$TMP/$c/screen.out"; then
    fail $c "the errors do not name the missing files"
 else
-   npass=$((npass+1))
+   pass $c
 fi
 
-echo "history tests: $npass passed, $nfail failed"
-[ $nfail -eq 0 ]
+
+# Case: plot_range. The RS impact of u6_boundary_boundary starts with a
+# spike (8.88 GPa for about 50 cycles; P_1 = 8.351). robust (the
+# default) must leave it above the P colors and say so; full must not.
+# The class run has no spike: robust keeps its range (no report).
+begin
+c=plot_range
+top() { awk -F: '/P colors \(GPa\)/ {split($2, v, " to "); print v[2] + 0}' "$1"; }
+if ! run ${c}_robust input/u6_boundary_boundary.deck; then
+   fail $c "the robust run did not finish"
+else
+   setkeys input/u6_boundary_boundary.deck Output "plot_range = full" > "$TMP/$c.deck"
+   if ! run ${c}_full "$TMP/$c.deck"; then
+      fail $c "the full run did not finish"
+   else
+      r="$TMP/${c}_robust"; f="$TMP/${c}_full"
+      tr=$(top "$r/screen.out"); tf=$(top "$f/screen.out")
+      pmax=$(awk -F: '/P in the run \(GPa\)/ {split($2, v, " to "); print v[2] + 0}' "$f/screen.out")
+      if ! grep -q 'Color ranges *: robust' "$r/screen.out" ||
+         ! grep -q 'P above the range (GPa) *: up to' "$r/screen.out"; then
+         fail $c "robust does not report the spike above the P range"
+      elif ! awk -v t="$tr" 'BEGIN { exit !(t > 8.35 && t < 8.36) }'; then
+         fail $c "robust: the P colors top at ${tr:-?} GPa, not P_1 (8.35 to 8.36)"
+      elif grep -q 'above the range' "$f/screen.out" || [ "$tf" != "$pmax" ]; then
+         fail $c "full: the P colors top at ${tf:-?}, not the max ${pmax:-?} (or a report)"
+      elif cmp -s "$r/u6_boundary_boundary.tx_p.bmp" "$f/u6_boundary_boundary.tx_p.bmp"; then
+         fail $c "the P t-x diagram is the same with robust and full"
+      elif grep -q 'above the range' "$TMP/class_av/screen.out"; then
+         fail $c "robust trimmed the class run, which has no spike"
+      else
+         pass $c
+      fi
+   fi
+fi
+
+summary

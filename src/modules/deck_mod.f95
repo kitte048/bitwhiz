@@ -41,6 +41,8 @@ module deck
 !                (with Claude)        xvel_amplitude (module
 !                                     distributions); split_words takes
 !                                     any number of words
+!    10/24/26    D. E. Kittell        Output block: plot_range (robust,
+!                (with Claude)        full)
 !
 !**********************************************************************!
 !
@@ -985,6 +987,16 @@ contains
             'grayscale, viridis, plasma, inferno, blackbody, kindlmann, '// &
             'extendedkindlmann, smoothcoolwarm, bentcoolwarm')
       end select
+   case ('plot_range')
+      ! What a t-x diagram's color range is (module pics): the data's
+      ! min to max, or to the largest value the run held (robust).
+      select case (lower(val))
+      case ('robust', 'full')
+         plot_range = lower(val)
+      case default
+         call deck_error(ln, 'plot_range = '//trim(val)//' is not '// &
+            'robust or full')
+      end select
    case ('plot_u_lo', 'plot_u_hi', 'plot_p_lo', 'plot_p_hi')
       ! A t-x diagram's color window, as a fraction of the data's range
       ! (0 = its min, 1 = its max). lo below hi is checked once the
@@ -1026,8 +1038,8 @@ contains
       tracer(ntrc)%line = ln
    case default
       call unknown_key(ln, key, 'in the Output block', &
-         'tracer, tracer_dt, plot_every, plot_dt, colormap, plot_u_lo, '// &
-         'plot_u_hi, plot_p_lo, plot_p_hi')
+         'tracer, tracer_dt, plot_every, plot_dt, colormap, plot_range, '// &
+         'plot_u_lo, plot_u_hi, plot_p_lo, plot_p_hi')
    end select
    end subroutine key_output
 
@@ -1334,7 +1346,7 @@ contains
          'plots_only')
       b = 'the Run block'
    case ('tracer', 'tracer_dt', 'plot_every', 'plot_dt', 'colormap', &
-         'plot_u_lo', 'plot_u_hi', 'plot_p_lo', 'plot_p_hi')
+         'plot_range', 'plot_u_lo', 'plot_u_hi', 'plot_p_lo', 'plot_p_hi')
       b = 'the Output block'
    case ('method', 'bl', 'bq', 'cfl', 'order')
       b = 'the Solver block'
@@ -1732,6 +1744,10 @@ contains
    call kv(lu, 2, 'plot_dt',     fmt_real(plot_dt), &
       merge('off', 'us ', plot_dt <= zero))
    call kv(lu, 2, 'colormap',    trim(colormap))
+   call kv(lu, 2, 'plot_range',  trim(plot_range), &
+      merge('color ranges: min to the top held 50 cycles', &
+            'color ranges: min to max                   ', &
+            plot_range == 'robust'))
    call kv(lu, 2, 'plot_u_lo',   fmt_real(plot_u_lo), &
       'u colors: fractions of the u range')
    call kv(lu, 2, 'plot_u_hi',   fmt_real(plot_u_hi))

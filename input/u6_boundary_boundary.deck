@@ -1,0 +1,83 @@
+#**********************************************************************#
+#  U6 example 1: boundary-boundary interaction (symmetric impact)      #
+#                                                                      #
+#  Flyer A (2024 Al, 1.0 km/s) strikes target B (2024 Al, at rest).    #
+#  U6 equation sheet, Figs. 1-3: one shock state on both sides of the  #
+#  impact plane, from the impact match P_A(u_0A - u_1) = P_B(u_1):     #
+#                                                                      #
+#     u_1 = 0.500 km/s,  P_1 = 8.351 GPa                               #
+#     U_LAB,B = +5.997 km/s,  U_LAB,A = -4.997 km/s                    #
+#                                                                      #
+#  The t-x diagram of the sheet's Fig. 3: t = 0 here is the impact     #
+#  (t = 1.5 us there), and t_end = 1.0 us is the top of its window.    #
+#  Both slabs are 7 mm, so neither shock reaches a free surface by     #
+#  then (at 7/5.997 = 1.17 us): no release enters the picture, as in   #
+#  the figure, where both slabs run off the window.                    #
+#                                                                      #
+#      | A (flyer) 7.0 =>| B (target) 7.0 |                            #
+#     x=-7.0         x=0 (impact)       x=7.0                          #
+#                                                                      #
+#  RS (second order) keeps each shock about 2 cells wide; AV spreads   #
+#  it over about 3.5. On the P t-x diagram, the dark edge on the       #
+#  outside of each shock is its numerical width, the low end of the    #
+#  colormap, not a precursor: there is no strength in this model.      #
+#                                                                      #
+#  RS starts with a spike at the impact: 8.88 GPa, 6% high, gone       #
+#  within about 50 cycles (0.05 us). The default color range           #
+#  (plot_range = robust) leaves it out, so P_1 is the top color; the   #
+#  screen reports it. plot_range = full shows it.                      #
+#                                                                      #
+#  Hugoniot: the U6 sheet's values.                                    #
+#  Units: mm, us, g/cc, km/s, GPa. Syntax: input/README.md.            #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_0A = 1.0              # km/s, flyer velocity
+
+ Begin Run
+  title = u6_boundary_boundary
+  t_end = 1.0                   # us, the top of the sheet's Fig. 3
+ End Run
+
+ Begin Output
+  plot_dt   = 0.001             # us between snapshots: under a pixel
+                                # row of the t-x diagrams (1.0 us over
+                                # 775 rows), so the fronts are not
+                                # drawn as stairs
+  tracer_dt = 0                 # every cycle (about 390 rows)
+  colormap  = viridis
+
+  tracer = impact  A:B          # u_1 = 0.500 km/s, P_1 = 8.351 GPa
+  tracer = in_a    A@0.5        # x = -3.5: u from 1.0 to u_1 at 0.58 us
+  tracer = in_b    B@0.5        # x = +3.5: u from 0 to u_1 at 0.58 us
+ End Output
+
+ Begin Solver
+  method = RS                   # Riemann solver, second order
+ End Solver
+
+ Begin Material Al2024          # 2024 aluminum, the U6 sheet's Hugoniot
+  R0 = 2.785
+  C0 = 5.328
+  S1 = 1.338
+  G0 = 2.00
+ End Material
+
+ Begin Stack
+  resolution = 35               # zones/mm: 245 + 245 = 490 cells
+  origin     = A:B              # x = 0 at the impact plane
+
+  Begin Layer
+   name     = A
+   material = Al2024
+   width    = 7.0
+   xvel     = u_0A
+  End Layer
+
+  Begin Layer
+   name     = B
+   material = Al2024
+   width    = 7.0               # at rest
+  End Layer
+ End Stack
+End bitwhiz

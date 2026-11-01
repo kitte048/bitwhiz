@@ -42,6 +42,8 @@ module shock
 !    10/20/26    D. E. Kittell        Pictures: plots_only (Run block);
 !                (with Claude)        plot_u_lo, plot_u_hi, plot_p_lo,
 !                                     plot_p_hi (Output block)
+!    10/24/26    D. E. Kittell        plot_range (Output block): robust
+!                (with Claude)        (default) or full
 !
 !**********************************************************************!
 !
@@ -382,9 +384,13 @@ real(kind=dp)       :: tracer_dt  = zero       ! us, between rows of the
 character(len=80)   :: colormap   = 'viridis'  ! for bitmap pictures; a
                                                ! name bmpmaker knows
                                                ! (tracers: tracer table)
-!*** The color window of each t-x diagram, as fractions of the data's
-!*** own range: the colors run from min + lo*(max - min) to
-!*** min + hi*(max - min), and values beyond saturate. 0 <= lo < hi <= 1.
+!*** The color range of each t-x diagram: from the data's min to its
+!*** max (plot_range = full), or to the largest value the run held for
+!*** 50 cycles (robust, the default: a start-up spike at an impact does
+!*** not set the colors; module pics). The color window is a fraction
+!*** of that range: the colors run from min + lo*(top - min) to
+!*** min + hi*(top - min), and values beyond saturate. 0 <= lo < hi <= 1.
+character(len=8)    :: plot_range = 'robust'   ! robust or full
 real(kind=dp)       :: plot_u_lo  = zero       ! velocity, low end
 real(kind=dp)       :: plot_u_hi  = one        ! velocity, high end
 real(kind=dp)       :: plot_p_lo  = zero       ! pressure, low end
