@@ -40,3 +40,12 @@ interpolate on the TIME column). Mixed units, as the code writes them:
 - This code allows tension (negative pressures in the Ta and PMMA). bitwhiz
   floors P at 0 (project Sec. 3), so late-time releases will differ.
 - The reference code is deliberately not named here.
+
+## Gold-standard sets (subfolders)
+- `inert_gauges/`: the same problem, Material X inert, with 13 tracers (every
+  1 mm through Material X) and density and temperature: set G1.
+- `hvrb/`: Material X with the HVRB burn model, sets G2-G5, the reference for a
+  burn model.
+
+Both come from the same independent code (Oct 30, 2026), byte for byte, each
+with its own README and `SHA256SUMS`. Neither is exported to nanoHUB.

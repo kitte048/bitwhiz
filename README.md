@@ -160,7 +160,8 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   on nanoHUB through the `VERSION` file the export writes.
 - **Export** with `sh src/utils/export_nanohub.sh vX.Y.Z
   ~/Documents/Academic/bitwhiz`: it copies exactly that tag into the clone's
-  `src/bitwhiz/` (no `doc/`), writes `src/bitwhiz/VERSION` with the tag, copies
+  `src/bitwhiz/` (no `doc/`, and none of the gold-standard data in
+  `tests/verification/inert_gauges/` and `hvrb/`), writes `src/bitwhiz/VERSION` with the tag, copies
   the decks and `input/README.md` into the clone's `examples/` and `VERSION`
   into its `bin/` (an installed tool's `src/` is not readable by its users),
   lists files the tag no longer has, and prints the commands to commit, tag and

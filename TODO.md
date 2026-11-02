@@ -82,8 +82,6 @@ run and an error inside a button (tests/test_notebook.py in the clone).
 - [ ] **Export control:** a written determination from Purdue's export
       control office, now that the tool is public. KO, pyko and CAV_KO are
       precedents for public 1D teaching hydrocodes.
-- [ ] **Description page:** check it on the live tool page once published
-      (version 1.0.2, license, references 1-9, screenshots).
 - [ ] **GitHub's default branch is `main`**, at the year-old commit this
       clone's history starts from: a new clone lands there, not on
       `shock`. Make `shock` the default in the repository's settings.
@@ -92,36 +90,30 @@ run and an error inside a button (tests/test_notebook.py in the clone).
       record why there is none.
 
 ## 3. Verification: the gold-standard data
-Source: `Equation_Sheets/HVRB_rev-0/verification/` in the course folder
-(20 files and a README; run plan in `../GOLD_STANDARD_DATASET.md`), from
-DK's independent Eulerian code, Oct 30, 2026. The format is that of
+In the repository since Nov 2, 2026, byte for byte with `SHA256SUMS`, and left
+out of the nanoHUB export: `tests/verification/inert_gauges/` (G1, inert) and
+`tests/verification/hvrb/` (G2-G5), each with a README (provenance, tracers,
+format, trust windows, suggested tolerances). From DK's independent Eulerian
+code, Oct 30, 2026; the originals and the derived results are in the course
+folder's `Equation_Sheets/HVRB_rev-0/verification/`. The format is that of
 `tests/verification/`, with more per tracer: DENS, TK (temperature), XRN3
-(reaction progress, lambda); MJKG is written but empty. Its README, section
-6, proposes how bitwhiz uses it.
+(reaction progress, lambda); MJKG is written but empty. (Thinning the rows was
+tried and dropped: the reactive files keep 94-100 % of their rows, and git
+stores the twenty files compressed, about 7 MB.)
 
-- [ ] **Size first:** 35 MB in all (1.6 to 3.1 MB per file, a row every
-      5 ns). Decide what goes into git: every file as delivered, a thinned
-      copy (fewer rows, fewer columns), compressed, or a README that says
-      where to get them. Files that are copied stay byte for byte as
-      delivered, with a README for their provenance (reference code
-      unnamed, as in `tests/verification/`; Material X parameters
-      notional).
-- [ ] **G1 now (inert):** five sweeps, 1.00 to 2.00 km/s, the class stack,
-      eleven gauges in Material X with T and density, into
-      `tests/verification/inert_gauges/`. A deck with tracers at the G1
-      positions, and a comparison of derived quantities at 100 zones/mm
-      with the README's tolerances: first-shock P and u at 1 mm within
-      0.1 %; arrivals before the Ta reshock and PDV arrival within 5 ns;
-      total energy drift within 0.01 % before outflow. A comparison, not a
-      regression test: the codes differ (Eulerian against Lagrangian, a
-      P >= 0 floor against spall). Temperature waits for bitwhiz to compute
-      T (section 6).
 - [ ] **One reader:** a small Python reader for this format, serving both
-      sets, with the derived-quantity definitions of the README's section 4
-      used unchanged.
-- [ ] **G2-G5 (reactive), with HVRB** (section 6): into
-      `tests/verification/hvrb/`, with decks for the class stack and the
-      thick-flyer stack.
+      sets, with the derived-quantity definitions of the dataset's README
+      (section 4) used unchanged.
+- [ ] **G1 now (inert):** a class deck with tracers at the G1 positions
+      (`inert_gauges/README.md`), run at 100 zones/mm, and a comparison of
+      derived quantities with that README's tolerances: first-shock P and u
+      at 1 mm within 0.1 %; arrivals before the Ta reshock and the PDV
+      arrival within 5 ns; total energy drift within 0.01 % before outflow.
+      A comparison, not a regression test: the codes differ (Eulerian
+      against Lagrangian, no tension floor against spall). Temperature waits
+      for bitwhiz to compute T (section 6).
+- [ ] **G2-G5 (reactive), with HVRB** (section 6): decks for the class stack
+      and the thick-flyer stack, compared with `hvrb/README.md`'s tolerances.
 - [ ] Check that the data's HVRB inputs match the equation sheet bitwhiz
       will follow: the dataset's README cites `HVRB_Eqns_v3.tex`; the sheet
       is now at v8, published as `Class_Project/HVRB_Eqns_rev-0.pdf`.

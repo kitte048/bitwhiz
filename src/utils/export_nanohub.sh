@@ -15,7 +15,9 @@
 #     with no uncommitted changes;                                     #
 #   - writes every file of <tag> into <clone>/src/bitwhiz/, with       #
 #     git's file modes, except doc/ (the equation sheets, not          #
-#     published; set DOC=yes to include them), and a VERSION file      #
+#     published; set DOC=yes to include them) and the gold-standard    #
+#     reference data, tests/verification/inert_gauges/ and hvrb/       #
+#     (DK's independent code; never published), and a VERSION file    #
 #     holding the tag, which the build's banner prints (the clone is   #
 #     not this repository, so git describe cannot say);                #
 #   - copies the tag's decks (input/*.deck) and the deck reference     #
@@ -34,7 +36,7 @@
 #                                                                      #
 #  D. E. Kittell (with Claude), 10/23/26; VERSION file, 10/24/26;     #
 #  decks, deck reference and VERSION where users can read them,      #
-#  11/01/26.                                                           #
+#  11/01/26; gold-standard data left out, 11/02/26.                    #
 #**********************************************************************#
 set -e
 
@@ -69,7 +71,8 @@ fi
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 git -C "$repo" ls-tree -r "$tag" |
-   { if [ "$DOC" = yes ]; then cat; else grep -v '	doc/'; fi; } > "$tmp/list"
+   { if [ "$DOC" = yes ]; then cat; else grep -v '	doc/'; fi; } |
+   grep -v -E '	tests/verification/(inert_gauges|hvrb)/' > "$tmp/list"
 cut -f2 "$tmp/list" | LC_ALL=C sort > "$tmp/tag"
 
 # Export: unpack the tag in a scratch folder, then copy each file over
