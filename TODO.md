@@ -7,22 +7,24 @@ README.md, "Releases and nanoHUB".
 Started Oct 23, 2026, the day bitwhiz 1.0.2 was approved for publication on
 nanoHUB. Reordered Oct 31, 2026, after 1.0.3, from a brainstorm: one branch
 again, the nanoHUB tool, gold-standard data, movies, HVRB, graded materials.
+Reordered again Nov 2, 2026, after 1.1.0 (velocity profiles and the new
+nanoHUB notebook, published) and the gold-standard data and its reader.
 
 ## Priorities
-1. Velocity profiles: finish branch `distributions` and merge it into
-   `shock` (1.1.0), so there is one branch to maintain again.
-2. The nanoHUB tool: a smoother, harder-to-break user experience.
-3. Verification: the gold-standard inert data (G1) in the repository and
-   compared, before any change to the material models.
-4. Movies: a third kind of output, profiles along x at their own interval.
-5. Material models: the architecture, design note first. A default model
+1. Verification: compare bitwhiz with the gold-standard inert data (G1),
+   before any change to the material models (section 3).
+2. Movies: a third kind of output, profiles along x at their own interval
+   (section 4).
+3. Material models: the architecture, design note first. A default model
    with add-ons (burn, rate law), and constants that can vary cell by cell;
-   Mie-Grüneisen kept as the default.
-6. HVRB, checked against the gold-standard reactive data (G2-G5); then the
-   burn models from the 2025 survey.
-7. Graded materials: constants (Gamma_0, P_R, ...) graded through a layer,
-   as velocity is now. Research, toward publication.
-8. Throughout: no bloat. Cost per cycle stays the same or improves, and
+   Mie-Grüneisen kept as the default (section 5).
+4. HVRB, checked against the gold-standard reactive data (G2-G5); then the
+   burn models from the 2025 survey (section 6).
+5. Graded materials: constants (Gamma_0, P_R, ...) graded through a layer,
+   as velocity is now. Research, toward publication (section 7).
+6. In the background, between releases: the nanoHUB tool (section 2) and
+   the velocity profiles' next steps (section 1).
+7. Throughout: no bloat. Cost per cycle stays the same or improves, and
    `make test` stays a few minutes.
 
 ## 1. Velocity profiles (released in 1.1.0)
@@ -54,7 +56,12 @@ run and an error inside a button (tests/test_notebook.py in the clone).
 
 - [ ] **More example decks** in the picker, each with a one-line label at
       the top of its comment box: a spall deck, AV against RS, later an
-      HVRB deck (the U6 and velocity-profile decks are in, 1.1.0).
+      HVRB deck (the U6 and velocity-profile decks are in, 1.1.0). And
+      **wave overtake**: the class stack with a much thicker Ta backing and
+      a thick Al target in place of Material X, so the reshock from the Ta
+      overtakes the first shock in the Al: one stronger shock goes on, with
+      a contact and a weak reflected rarefaction behind it (third order in
+      shock strength: RS order 2 on a fine mesh, tracers through the Al).
 - [ ] **Scripting example:** a cell showing that `bitwhiz` is on the path
       (`!bitwhiz my.deck`), and a short `%%bash` or Python sweep over
       `define u_fly` values.
@@ -77,6 +84,9 @@ run and an error inside a button (tests/test_notebook.py in the clone).
       (Oct 22 evening, Oct 23 morning) and also repeated page visits (Oct 23
       afternoon, no git). Follow up with the browsing case before sending
       testers; ask what triggers it and how to push without tripping it.
+      No block during the 1.1.0 release (Nov 1-2: one push of two commits
+      and a tag, the install, one test session, approval): one push per
+      release, with its tag, seems to be safe.
 - [ ] **Copyright holder** on the license line (Apache 2.0, "custom" on
       nanoHUB): David E. Kittell, or the Purdue Research Foundation? Ask OTC.
 - [ ] **Export control:** a written determination from Purdue's export
@@ -101,9 +111,15 @@ folder's `Equation_Sheets/HVRB_rev-0/verification/`. The format is that of
 tried and dropped: the reactive files keep 94-100 % of their rows, and git
 stores the twenty files compressed, about 7 MB.)
 
-- [ ] **One reader:** a small Python reader for this format, serving both
-      sets, with the derived-quantity definitions of the dataset's README
-      (section 4) used unchanged.
+The reader, `tests/verification/gold.py` (Python 3, NumPy), reads every file
+in `tests/verification/` (the five `ME697_*.dat` too) and computes the
+derived quantities with the dataset README's definitions: arrival, shock
+speed fit, run distance, first-shock state, trust window, energy drift, and
+the exact impedance match. `python3 tests/verification/gold.py` reproduces
+that README's published tables (76 checks, Nov 2, 2026). One slip there: its
+G5 energy drift at 100 zones/mm reads 0.004 %; the file gives 0.0035 %
+(correct it in the course folder).
+
 - [ ] **G1 now (inert):** a class deck with tracers at the G1 positions
       (`inert_gauges/README.md`), run at 100 zones/mm, and a comparison of
       derived quantities with that README's tolerances: first-shock P and u

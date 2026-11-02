@@ -41,6 +41,14 @@ interpolate on the TIME column). Mixed units, as the code writes them:
   floors P at 0 (project Sec. 3), so late-time releases will differ.
 - The reference code is deliberately not named here.
 
+## Reading them
+`gold.py` here reads any of these files (and those in the subfolders) and
+computes the quantities bitwhiz is compared on, with the gold-standard
+dataset's definitions; run it to check it against that dataset's published
+results (Python 3 and NumPy; not part of `make test`):
+
+    python3 tests/verification/gold.py
+
 ## Gold-standard sets (subfolders)
 - `inert_gauges/`: the same problem, Material X inert, with 13 tracers (every
   1 mm through Material X) and density and temperature: set G1.

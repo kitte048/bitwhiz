@@ -8,7 +8,8 @@ in `../inert_gauges/`.
 The files are copied byte for byte from the course folder,
 `Equation_Sheets/HVRB_rev-0/verification/` (`SHA256SUMS` here checks them);
 that folder's README holds the derived results (run distances, the Pop plot,
-D_CJ). Not exported to nanoHUB (`src/utils/export_nanohub.sh`). Material X and
+D_CJ). Not exported to nanoHUB (`src/utils/export_nanohub.sh`); read with
+`../gold.py`. Material X and
 its HVRB parameters are notional.
 
 | Files | Set | Case | Stack | u_fly (km/s) |

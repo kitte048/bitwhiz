@@ -7,7 +7,8 @@ reference code is deliberately not named here.
 The files are copied byte for byte from the course folder,
 `Equation_Sheets/HVRB_rev-0/verification/` (`SHA256SUMS` here checks them);
 that folder's README holds the derived results, and
-`Equation_Sheets/HVRB_rev-0/GOLD_STANDARD_DATASET.md` the run plan. Not exported to nanoHUB (`src/utils/export_nanohub.sh`).
+`Equation_Sheets/HVRB_rev-0/GOLD_STANDARD_DATASET.md` the run plan. Not
+exported to nanoHUB (`src/utils/export_nanohub.sh`). Read with `../gold.py`.
 
 | File | Flyer velocity | P1 exact (impedance match) | U_S exact |
 |---|---|---|---|
