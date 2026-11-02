@@ -49,6 +49,14 @@ TK.n (K), KMPS.n (km/s), GPA.n (GPa).
   conserved to 0.006 % before that.
 - This code allows tension (no P >= 0 floor, no spall); late-time releases in
   bitwhiz will differ.
+- **bitwhiz against this set:** `g1_inert.deck` here (the class deck at
+  100 zones/mm, t_end 6.5 us, with tracers at these positions, exactly on the
+  interfaces), run and checked by `../compare_g1.py`. Nov 2, 2026, all five
+  velocities (AV, 25 checks, all pass): the first shock at 1 mm (P, u, rho)
+  within 0.001 % of the exact impedance match; arrivals 1-9 mm and at the PDV
+  node 0 to 4.4 ns after the reference's; energy drift 0.0011-0.0017 %
+  (the reference: 0.0021-0.0033 %); the Ta reshock at 1 mm within 2.2 ns and
+  the PDV's first plateau the same to 4 digits.
 - **Compare derived quantities, not traces point by point** (the codes differ:
   Eulerian against Lagrangian). Suggested acceptance at 100 zones/mm: the
   first-shock P and u at 1 mm within 0.1 %; arrivals (first u > 0.05 km/s,

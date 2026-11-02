@@ -1,0 +1,133 @@
+#**********************************************************************#
+#  G1 comparison: the class problem, Material X inert, against the     #
+#  gold-standard data in this folder (G1_inert_<v>_kmps.dat).          #
+#                                                                      #
+#  The class deck (input/me697_double_shock_2p00.deck), changed only   #
+#  where the reference was run differently: 100 zones/mm, t_end =      #
+#  6.5 us, and its 13 tracers. bitwhiz is Lagrangian, so the tracers   #
+#  sit exactly on the interfaces (the reference's sit 1 um inside      #
+#  them, in mixed cells: there, compare u only).                       #
+#                                                                      #
+#      Ta:Al  Al:MatX  MatX@0.1 ... MatX@0.9  MatX:PMMA  PMMA@0.1      #
+#      -4.0   0.0      1, 2, ... 9 mm         10.0 (PDV) 11.0          #
+#                                                                      #
+#  The five cases differ only in "define u_fly" and the title.         #
+#  ../compare_g1.py runs all five and compares them with the data.     #
+#  Units: mm, us, g/cc, km/s, GPa.                                     #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00            # km/s, flyer velocity
+
+ Begin Run
+  plots_only = no    # yes or no
+  title       = g1_inert_2p00
+  t_end       = 6.5             # us, as the reference (its mass is
+                                # constant to 5.2 us at 2.00 km/s)
+  num_threads = 1
+ End Run
+
+ Begin Output                   # nothing listed here = nothing written
+  plot_dt     = 0               # no history file (it is not compared)
+  tracer_dt   = 0.005           # us between tracer rows (the
+                                # reference's spacing); 0 = every cycle
+  colormap    = viridis         # for bitmap pictures
+
+  tracer = ta_al   Ta:Al        # x0 = -4.0 mm (the reference: -3.999)
+  tracer = impact  Al:MatX      #       0.0       (0.001)
+  tracer = x1      MatX@0.1     #       1.0
+  tracer = x2      MatX@0.2     #       2.0
+  tracer = x3      MatX@0.3     #       3.0
+  tracer = x4      MatX@0.4     #       4.0
+  tracer = x5      MatX@0.5     #       5.0
+  tracer = x6      MatX@0.6     #       6.0
+  tracer = x7      MatX@0.7     #       7.0
+  tracer = x8      MatX@0.8     #       8.0
+  tracer = x9      MatX@0.9     #       9.0
+  tracer = pdv     MatX:PMMA    #      10.0, PDV  (9.999)
+  tracer = pmma11  PMMA@0.1     #      11.0
+ End Output
+
+ Begin Solver
+  method = AV
+  BL     = 0.1                  # linear viscosity coefficient
+  BQ     = 2.0                  # quadratic viscosity coefficient
+                                # (the equation sheet's defaults; leave
+                                # them alone unless you are studying q)
+  CFL    = 0.6
+ End Solver
+
+ # Mie-Gruneisen on the principal Hugoniot (rev-0, Eqs. 4 and 6):
+ #   Us = C0 + S1*up + (S2/C0)*up^2,   rho*Gamma = R0*G0
+ Begin Material Ta              # tantalum, backing plate
+  R0 = 16.65                    # g/cm^3, initial density
+  C0 = 3.40                     # km/s, Hugoniot intercept
+  S1 = 1.20                     # -,    Us-up slope
+  S2 = 0.0                      # -,    Us-up curvature (default 0)
+  G0 = 1.60                     # -,    Gruneisen coefficient
+  spall_strength = 5.0          # GPa, dynamic. Tantalum is strong in
+                                # tension (spall strengths of several
+                                # GPa are reported); at 5.0 the Ta here
+                                # holds its ~2 GPa tension, as in the
+                                # reference data. Other materials take
+                                # the default, 0.01 GPa (input/README.md)
+ End Material
+
+ Begin Material Al              # aluminum, flyer face
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  S2 = 0.0
+  G0 = 2.00
+ End Material
+
+ Begin Material MatX            # notional HE surrogate, inert here
+  R0 = 1.60
+  C0 = 2.50
+  S1 = 1.80
+  S2 = -0.10
+  G0 = 1.20
+ End Material
+
+ Begin Material PMMA            # window; Lacina et al. (2018) linear fit
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  S2 = 0.0
+  G0 = 0.90                     # estimated from Plexiglass (rev-0 Table 1)
+ End Material
+
+ Begin Stack
+  resolution = 100              # zones/mm, as the reference: 2700 cells
+  origin     = Al:MatX          # x = 0 at the impact plane
+
+  Begin Layer
+   material = Ta
+   width    = 3.0               # mm
+   xvel     = u_fly             # km/s, + is to the right
+  End Layer
+
+  Begin Layer
+   material = Al
+   width    = 4.0
+   xvel     = u_fly
+  End Layer
+
+  Begin Layer
+   material = MatX
+   width    = 10.0
+  End Layer
+
+  Begin Layer
+   material = PMMA
+   width    = 10.0
+  End Layer
+ End Stack
+End bitwhiz
+
+Notes (ignored by the parser):
+- Everything else is the class deck's: AV with BL = 0.1, BQ = 2.0, CFL =
+  0.6; Ta holds 5 GPa of tension, the others the default 0.01. The
+  reference allows tension everywhere, so compare before the late
+  releases (tests/verification/inert_gauges/README.md, trust window).
+- Its key reference: input/me697_double_shock_2p00.deck, after End bitwhiz.

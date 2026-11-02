@@ -4,16 +4,22 @@ compute the quantities bitwhiz is compared on (Python 3 and NumPy).
 
 One reader for every file here: the five ME697_<v>_kmps.dat (5 tracers,
 x, u, P) and the gold-standard sets, inert_gauges/G1_* and hvrb/G2_* to G5_*
-(13 to 41 tracers, adding density, temperature and reaction progress). They
-share one format: line 1 the column names, line 2 their units, then one row
-per output time; globals first, then NAME.n for tracer n.
+(13 to 41 tracers, adding density, temperature and reaction progress), and
+bitwhiz's own tracer files, <title>.tracers.csv, so that both codes are
+measured by the same lines of code. They share one format: line 1 the
+column names, line 2 their units, then one row per output time; globals
+first, then NAME.n for tracer n (a number in the reference files, the
+deck's tracer name in bitwhiz's).
 
-Units, converted on reading to the course's (the files mix the code's own):
-   t           us        (TIME, DTIME in s)
-   x0, XPOS    mm        (cm)
-   KMPS        km/s      GPA     GPa       DENS    g/cm^3
+Units, converted on reading to the course's. The reference files mix the
+code's own (TIME and DTIME in s, XPOS in cm); bitwhiz writes the course's
+already (input/README.md, section 8). Line 2 says which:
+   t           us        x0, XPOS    mm
+   KMPS        km/s      GPA     GPa       DENS    g/cm^3 (bitwhiz: RHO)
    TK          K         XRN3    lambda    MJKG    MJ/kg (written, never filled)
+   bitwhiz's   SIE kJ/g, Q GPa, CS km/s, DMG (0 intact, 1 broken)
    globals     as written: MTOT g, ETOT/EK/EINT erg, VTOT cm^3, XMOM g cm/s
+               in the reference; per cm^2 and mm in bitwhiz (GPa mm)
 
     import gold
     r = gold.read('tests/verification/inert_gauges/G1_inert_2p00_kmps.dat')
@@ -58,7 +64,16 @@ U_ARRIVE = 0.05                    # km/s, the arrival threshold
 X_ARRIVE = 1.0e-4                  # mm (0.1 um), first motion for G4
 GLOBALS = ('TIME', 'CYCLE', 'DTIME', 'MTOT', 'ETOT', 'EK', 'EINT', 'VTOT',
            'XMOM')
-SCALE = {'XPOS': 10.0}             # cm -> mm; the rest are kept as written
+ALIAS = {'RHO': 'DENS'}            # bitwhiz's name -> the reference's
+
+def _scale(var, unit):
+    # The factor to the course's units, from the file's own unit label.
+    if var in ('TIME', 'DTIME'):
+        return 1.0e6 if unit.startswith('Time (s)') or unit.startswith(
+            'Dt (s)') else 1.0
+    if var == 'XPOS':
+        return 10.0 if '(cm)' in unit else 1.0
+    return 1.0
 
 class Run:
     """One file: r.t (us), r.x0 {n: mm}, r.g {name: column}, r[var, n]."""
@@ -72,15 +87,17 @@ class Run:
         if a.shape[1] != len(names):
             raise ValueError(f'{path}: {len(names)} names, '
                              f'{a.shape[1]} columns')
-        self.t = a[:, names.index('TIME')] * 1.0e6          # s -> us
+        k = names.index('TIME')
+        self.t = a[:, k] * _scale('TIME', self.units[k])     # -> us
         self.g = {n: a[:, j] for j, n in enumerate(names) if n in GLOBALS}
         self.cols = {}
         for j, n in enumerate(names):
             if '.' not in n:
                 continue
             var, tr = n.split('.', 1)
+            var = ALIAS.get(var, var)
             tr = int(tr) if tr.isdigit() else tr
-            self.cols[var, tr] = a[:, j] * SCALE.get(var, 1.0)
+            self.cols[var, tr] = a[:, j] * _scale(var, self.units[j])
         self.tracers = sorted({tr for _, tr in self.cols},
                               key=lambda k: (str(type(k)), k))
         self.vars = sorted({v for v, _ in self.cols})

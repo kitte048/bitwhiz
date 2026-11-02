@@ -11,20 +11,20 @@ Reordered again Nov 2, 2026, after 1.1.0 (velocity profiles and the new
 nanoHUB notebook, published) and the gold-standard data and its reader.
 
 ## Priorities
-1. Verification: compare bitwhiz with the gold-standard inert data (G1),
-   before any change to the material models (section 3).
-2. Movies: a third kind of output, profiles along x at their own interval
+1. Movies: a third kind of output, profiles along x at their own interval
    (section 4).
-3. Material models: the architecture, design note first. A default model
+2. Material models: the architecture, design note first. A default model
    with add-ons (burn, rate law), and constants that can vary cell by cell;
-   Mie-Grüneisen kept as the default (section 5).
-4. HVRB, checked against the gold-standard reactive data (G2-G5); then the
+   Mie-Grüneisen kept as the default (section 5). Its first case:
+   Mie-Grüneisen with temperature, a separate model (section 6), so G1's
+   temperatures can be compared too (talk through the T calculation first).
+3. HVRB, checked against the gold-standard reactive data (G2-G5); then the
    burn models from the 2025 survey (section 6).
-5. Graded materials: constants (Gamma_0, P_R, ...) graded through a layer,
+4. Graded materials: constants (Gamma_0, P_R, ...) graded through a layer,
    as velocity is now. Research, toward publication (section 7).
-6. In the background, between releases: the nanoHUB tool (section 2) and
+5. In the background, between releases: the nanoHUB tool (section 2) and
    the velocity profiles' next steps (section 1).
-7. Throughout: no bloat. Cost per cycle stays the same or improves, and
+6. Throughout: no bloat. Cost per cycle stays the same or improves, and
    `make test` stays a few minutes.
 
 ## 1. Velocity profiles (released in 1.1.0)
@@ -120,14 +120,19 @@ that README's published tables (76 checks, Nov 2, 2026). (That README's G5
 energy drift at 100 zones/mm read 0.004 %, 0.00346 rounded twice; corrected
 to 0.0035 % there, Nov 2.)
 
-- [ ] **G1 now (inert):** a class deck with tracers at the G1 positions
-      (`inert_gauges/README.md`), run at 100 zones/mm, and a comparison of
-      derived quantities with that README's tolerances: first-shock P and u
-      at 1 mm within 0.1 %; arrivals before the Ta reshock and the PDV
-      arrival within 5 ns; total energy drift within 0.01 % before outflow.
-      A comparison, not a regression test: the codes differ (Eulerian
-      against Lagrangian, no tension floor against spall). Temperature waits
-      for bitwhiz to compute T (section 6).
+bitwhiz against G1 (Nov 2, 2026): `inert_gauges/g1_inert.deck`, run and
+checked by `tests/verification/compare_g1.py` at the five velocities, AV, 100
+zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
+0.001 % of the exact impedance match; arrivals within 5 ns; energy drift
+0.0011-0.0017 %, half the reference's. Results in `inert_gauges/README.md`.
+
+- [ ] **The arrival offset:** bitwhiz's arrivals are 0 to 4.4 ns later than
+      the reference's at every gauge and velocity, never earlier (within
+      the 5 ns tolerance and the output spacing). Likely how each code
+      spreads the shock's foot, which the 0.05 km/s threshold reads. Rerun
+      with RS order 2 and at 200 zones/mm: does the offset follow the
+      method, the mesh, or neither?
+- [ ] **Temperature at the G1 gauges,** once bitwhiz computes T (section 6).
 - [ ] **G2-G5 (reactive), with HVRB** (section 6): decks for the class stack
       and the thick-flyer stack, compared with `hvrb/README.md`'s tolerances.
 - [ ] Check that the data's HVRB inputs match the equation sheet bitwhiz

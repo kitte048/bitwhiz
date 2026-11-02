@@ -49,6 +49,12 @@ results (Python 3 and NumPy; not part of `make test`):
 
     python3 tests/verification/gold.py
 
+`compare_g1.py` runs bitwhiz on `inert_gauges/g1_inert.deck` at the five
+velocities and checks it against the inert set G1 with the same code (after
+`make release`; about 15 s):
+
+    python3 tests/verification/compare_g1.py
+
 ## Gold-standard sets (subfolders)
 - `inert_gauges/`: the same problem, Material X inert, with 13 tracers (every
   1 mm through Material X) and density and temperature: set G1.
