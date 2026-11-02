@@ -116,9 +116,9 @@ in `tests/verification/` (the five `ME697_*.dat` too) and computes the
 derived quantities with the dataset README's definitions: arrival, shock
 speed fit, run distance, first-shock state, trust window, energy drift, and
 the exact impedance match. `python3 tests/verification/gold.py` reproduces
-that README's published tables (76 checks, Nov 2, 2026). One slip there: its
-G5 energy drift at 100 zones/mm reads 0.004 %; the file gives 0.0035 %
-(correct it in the course folder).
+that README's published tables (76 checks, Nov 2, 2026). (That README's G5
+energy drift at 100 zones/mm read 0.004 %, 0.00346 rounded twice; corrected
+to 0.0035 % there, Nov 2.)
 
 - [ ] **G1 now (inert):** a class deck with tracers at the G1 positions
       (`inert_gauges/README.md`), run at 100 zones/mm, and a comparison of

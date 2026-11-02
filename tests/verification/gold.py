@@ -200,10 +200,11 @@ def energy_drift(r, t_end=None):
 #*** The self-test: the dataset README's published results (section 4),
 #*** recomputed from the files with the definitions above.
 
-# u_fly (km/s) -> published value. Arrivals and fits are given to 1 ns or
-# 1 m/s, so they must agree to half the last digit; "P at 1 mm" to 0.002
-# GPa, its plateau's own scatter (first_shock); energy drifts are bounds
-# (the README's 0.004 % at 100 zones/mm is 0.0035 % in the file).
+# u_fly (km/s) -> published value. Arrivals, fits and energy drifts are
+# given to 1 ns, 1 m/s or their last digit, so they must agree to half that
+# digit; "P at 1 mm" to 0.002 GPa, its plateau's own scatter (first_shock).
+# (The README's G5 drift at 100 zones/mm read 0.004 % until Nov 2, 2026:
+# 0.00346 rounded twice. It now reads 0.0035 %, as the file gives.)
 G1 = {1.00: dict(P1=4.371, Us=3.780, P1mm=4.371, Usfit=3.778, pdv=2.640),
       1.25: dict(P1=5.793, Us=4.070, P1mm=5.793, Usfit=4.069, pdv=2.451),
       1.50: dict(P1=7.331, Us=4.351, P1mm=7.330, Usfit=4.356, pdv=2.292),
@@ -215,7 +216,7 @@ G3 = {1.25: 12.5, 1.50: 7.5, 1.75: 4.75, 2.00: 3.75, 2.25: 2.375}
 POP = (6.158, -2.074)              # ln x_run = a + b ln P1   (mm, GPa)
 G4 = {(10, 20): 7.505, (10, 15): 7.505, (15, 20): 7.506}
 G5 = {25: (1.5194, 0.583, 0.731, 0.015), 50: (1.5201, 0.589, 0.729, 0.007),
-      100: (1.5203, 0.591, 0.729, 0.004), 200: (1.5201, 0.592, 0.730, 0.002),
+      100: (1.5203, 0.591, 0.729, 0.0035), 200: (1.5201, 0.592, 0.730, 0.002),
       400: (1.5201, 0.595, 0.730, 0.001)}
       # zones/mm: PDV arrival, arrivals at 3 and 4 mm (us), energy drift (%)
 TRUST = {'G1': {1.00: 6.5, 1.25: 6.5, 2.00: 5.2}, 'G2': {1.00: 6.0, 2.00: 4.6},
@@ -223,6 +224,9 @@ TRUST = {'G1': {1.00: 6.5, 1.25: 6.5, 2.00: 5.2}, 'G2': {1.00: 6.0, 2.00: 4.6},
 
 def _velocity(name):               # 'G2_react_1p75_kmps.dat' -> 1.75
     return float(name.split('_')[2].replace('p', '.'))
+
+def _half_digit(x):                # half a unit in x's last printed digit
+    return 0.51 * 10.0 ** -len(repr(x).split('.')[1])
 
 def _near(r, x):                   # the tracer starting closest to x (mm)
     return min(r.tracers, key=lambda n: abs(r.x0[n] - x))
@@ -287,9 +291,8 @@ def main():
                       f'100 zones/mm: arrivals at 3 and 4 mm '
                       f'{a3:.4f}, {a4:.4f} us')
                 got = 100 * energy_drift(r)
-                check(got <= dr + 5.1e-4, f'100 zones/mm: energy drift '
-                      f'{got:.4f} % (README {dr}, a bound; the file gives '
-                      f'0.0035)')
+                check(close(got, dr, _half_digit(dr)), f'100 zones/mm: '
+                      f'energy drift {got:.5f} % (README {dr})')
         elif g == 'G3':
             got = run_distance(r, 20.0)
             check(got == G3[v], f'run distance {got} mm (README {G3[v]})')
@@ -310,8 +313,8 @@ def main():
             check(close(a3, t3, 5.1e-4) and close(a4, t4, 5.1e-4),
                   f'{z} zones/mm: arrivals at 3 and 4 mm {a3:.4f}, {a4:.4f} us')
             got = 100 * energy_drift(r)
-            check(got <= dr + 5.1e-4, f'{z} zones/mm: energy drift '
-                  f'{got:.4f} % (README {dr}, a bound)')
+            check(close(got, dr, _half_digit(dr)), f'{z} zones/mm: energy '
+                  f'drift {got:.5f} % (README {dr})')
             check(run_distance(r, 10.0) == 3.5,
                   f'{z} zones/mm: run distance 3.5 mm')
     if len(pop) == len(G3):
