@@ -255,7 +255,31 @@ decks.
       1 and 4 threads) before and after each material-model change, and
       keep the numbers in the commit message. A change that slows the
       default Mie-Grüneisen path needs a reason.
-- [ ] **Test-time budget:** `make test` stays a few minutes. A new model
+- [x] **Bitmaps written a row at a time** (Nov 3): `bmpmaker` packed
+      each row and its padding, one write per row instead of per pixel.
+      Every bitmap byte for byte the same (103 pictures, debug and
+      release); the class run 1.5-1.8 s to 1.17 s, `plots_only` 1.40 s
+      to 1.06 s (release, 2-core Linux).
+- [ ] **Pictures still cost more than the physics:** the class run's
+      time loop is 0.29 s of its 1.17 s. The colormaps search the table
+      by bisection for every subsample of every pixel (`cmap_viridis`,
+      38 % of the profile, then `draw_tx`, 22 %); a table lookup would be
+      faster but may move a color by one level, so the picture tests'
+      expected values would change on purpose.
+- [ ] **The screen, for an impatient reader** (Nov 3 tour): about 250
+      lines, 100 of them the resolved deck before the run starts, so the
+      results scroll past it. Write the resolved deck to
+      `<title>.resolved.deck` and say so in one line (the run log);
+      section 8 (closing files) prints nothing, so the numbers jump from
+      7 to 9; two rules between sections; human-sized numbers in E
+      format (wall time per cycle 1.11655783E+02 us); a usage error
+      prints the 20-line banner first.
+- [ ] **History file size:** 12.3 MB for the class deck, 123 MB at 10
+      times its resolution (plot_dt = 0.005 us, 1001 frames). Say the
+      size on screen at the start, or warn above some size, before a
+      student fills a nanoHUB quota.
+- [ ] **Test-time budget:** `make test` stays a few minutes (about 4.5
+      on 2 cores, Nov 3; over 10 would be too long). A new model
       brings unit tests and one or two short decks, not long runs.
 - [ ] **Measure the order of accuracy:** a refinement study on a smooth
       problem (a small-amplitude sine wave, or a gentle ramp before the
