@@ -47,8 +47,10 @@
 #                                                                      #
 #  Pictures (section 9 of a run): every run that finishes must write   #
 #  exactly its pictures, by name (<title>.tx_u.bmp and .tx_p.bmp with  #
-#  snapshots, <title>.tr_<tracer>.bmp per tracer) and size (t-x        #
-#  1200 x 900, tracer plots 800 x 600), and no other bitmap. A         #
+#  snapshots, <title>.tr_<tracer>.bmp per tracer, and as many          #
+#  <title>.mv_p_<cycle>.bmp as the screen's pressure movie line says)  #
+#  and size (t-x 1200 x 900, tracer plots and movie frames 800 x 600), #
+#  and no other bitmap. A                                              #
 #  plots_only run with another colormap must redraw the t-x diagrams   #
 #  differently and the tracer plots (no colormap) the same. The class  #
 #  run's P t-x diagram must be in the lab frame with the white rule:   #
@@ -143,8 +145,10 @@ bmp_dim() { od -An -t d4 -j "$2" -N 4 "$1" | tr -d ' '; }
 
 # Folder $1 holds exactly the pictures its run should make, each a
 # bitmap ("BM") of the right size: the t-x pair if it has a history
-# file (or if $2 is "tx"), and one plot per tracer in its tracer file.
-# Prints what is wrong, if anything.
+# file (or if $2 is "tx"), one plot per tracer in its tracer file, and
+# the pressure movie's frames when its screen (screen.out) reports one,
+# as many as it says (their names carry cycles, checked by the movie
+# case). Prints what is wrong, if anything.
 pics_ok() {
    local d=$1 t f w h want=""
    t=$(basename "$(ls "$d"/*.heartbeat "$d"/*.tracers.csv 2>/dev/null | head -1)")
@@ -157,6 +161,17 @@ $t.tx_p.bmp 1200 900"
       for f in $(sed -n 's/^# tracer [0-9]* \([^ ]*\) :.*/\1/p' "$d"/*.tracers.csv); do
          want="$want${want:+
 }$t.tr_$f.bmp 800 600"
+      done
+   fi
+   nmv=$(sed -n 's/^ *Pressure movie *: \([0-9]*\) frames.*/\1/p' "$d/screen.out" 2>/dev/null)
+   if [ -n "$nmv" ]; then
+      if [ "$(cd "$d" && ls "$t".mv_p_*.bmp 2>/dev/null | wc -l | tr -d ' ')" != "$nmv" ]; then
+         echo "pressure movie: not the $nmv frames the screen reports"
+         return
+      fi
+      for f in $(cd "$d" && ls "$t".mv_p_*.bmp); do
+         want="$want${want:+
+}$f 800 600"
       done
    fi
    if [ "$(cd "$d" && ls *.bmp 2>/dev/null | sort)" != "$(echo "$want" | awk 'NF {print $1}' | sort)" ]; then

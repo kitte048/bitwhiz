@@ -26,6 +26,7 @@ Begin bitwhiz
  Begin Output                   # nothing listed here = nothing written
   plot_dt     = 0.005           # us between snapshots: under a
                                 # pixel row of the t-x diagrams
+  movie_frames = 35             # the pressure movie, 0 to 5.0 us
   tracer_dt   = 0.005           # us between tracer rows (the
                                 # reference's spacing); 0 = every cycle
   colormap    = viridis         # for bitmap pictures

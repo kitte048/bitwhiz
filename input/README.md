@@ -556,7 +556,15 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
   gives both axes. A frame costs about as much as a tracer plot
   (a tenth of a second in the release build); 20 to 25 frames make a good
   preview. Make a movie from them with any tool that takes a sequence of
-  pictures (ffmpeg, which nanoHUB has, for one).
+  pictures; with ffmpeg (nanoHUB has it, with libx264), from the folder the
+  run wrote them in:
+
+      ffmpeg -y -framerate 7 -pattern_type glob -i '<title>.mv_p_*.bmp' \
+             -c:v libx264 -pix_fmt yuv420p -crf 20 <title>.mv_p.mp4
+
+  (7 frames a second: 35 frames make 5 s; `yuv420p` so browsers play it).
+  The class deck, `pulse_split_normal.deck` and `steepening_hump.deck` make
+  movies (35, 35 and 25 frames).
 
 - **Read from the files, never from memory.** The t-x diagrams come from
   `<title>.hist` and the tracer plots from `<title>.tracers.csv`, so a picture

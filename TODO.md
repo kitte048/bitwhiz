@@ -280,6 +280,16 @@ decks.
       downloads, and check that its run log reads well at 132 lines
       (with the next release); add `steepening_hump.deck` (shock
       formation, Nov 3) to the picker, with its movie.
+- [ ] **nanoHUB: the movie as a movie** (1.2.0; decided Nov 3): after a
+      run with `<title>.mv_p_*.bmp`, the notebook encodes them with
+      ffmpeg (nanoHUB's has libx264: `-framerate 7 -pattern_type glob
+      -c:v libx264 -pix_fmt yuv420p -crf 20`, input/README.md section
+      9b), shows `<title>.mv_p.mp4` inline (`IPython.display.Video`,
+      embed), leaves the frames out of the pictures and the download
+      list (the .mp4 there instead), and deletes them once the movie is
+      written (tried Nov 3: steepening_hump's 25 frames, 35 MB of
+      bitmaps, make a 66 KB movie; kept if the encode fails). The class
+      deck makes 35 frames since Nov 3.
 - [ ] **History file size:** 12.3 MB for the class deck, 123 MB at 10
       times its resolution (plot_dt = 0.005 us, 1001 frames). Section 8
       now reports it at the end (Nov 3); still to do: say it at the
