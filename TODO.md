@@ -165,34 +165,29 @@ history file.
       as different as Ta and PMMA). Removed Nov 3 to keep the code small.
 
 ## 5. Material models: the architecture
-- [ ] **A default model, and add-ons.** Each material has one equation of
-      state, Mie-Grüneisen unless a key in `Begin Material` / `End
-      Material` changes it (name to settle: `eos`, `swap_eos` or
-      `change_eos`), and optional add-ons on top of it: a burn
-      (`add_burn =`) and its rate law (`add_rate_law =`), later strength.
-      Without these keys, the material is Mie-Grüneisen, read and computed
-      exactly as now, so every existing deck gives the same results, bit
-      for bit. With them, the parser reads that model's own parameter keys,
-      and the cell update calls that model's driver.
-- [ ] Keep the choice out of the inner loop: dispatch once per layer (or
-      per material), not per cell per cycle, so the default runs no slower.
-- [ ] **Constants per cell.** Plan the database so that any material
-      constant can vary from cell to cell (section 7), while a material
-      with uniform constants costs no more than now.
-- [ ] Extra state per model (temperature, plastic strain, reaction
-      progress) as optional database rows, allocated only when a deck uses
-      that model, and written to the history file when present.
-- [ ] Write the design note first (`doc/design/materials.md`), as for the
-      velocity profiles: deck keys, database rows, the driver interface,
-      per-cell constants, and the tests that keep old decks unchanged.
+Design note `doc/design/materials.md`, approved Nov 3, 2026: one equation of
+state per material, `eos = mie_gruneisen` (the default: read and computed
+exactly as now, every existing deck bit for bit) or `eos =
+mie_gruneisen_t` (the same P and c, plus temperature: `CV`, `T0`); add-ons
+later in the same pattern (`burn = hvrb`). The model is chosen once per
+layer, never per cell per cycle. Extra state (here e_c and T) lives in
+optional database rows, allocated only when a deck uses the model, and goes
+to the tracer and history files when present. Each cell carries its own
+cold energy e_c ("plan C"), so constants graded cell by cell (section 7)
+need no tables.
+
+- [ ] **Phase 2: Mie-Grüneisen with temperature** (the note's keys,
+      rows, per-step update, outputs and six tests); then 1.2.0.
+- [ ] **Constants per cell** for grading (section 7): the database's
+      layout for them, when grading starts.
 
 ## 6. Material models: new ones
 Each one checked against the commercial reference code on a small set of
 decks.
 
-- [ ] **Mie-Grüneisen with temperature:** adds T as a variable (a specific
-      heat, and a reference temperature). HVRB needs it: its closure puts
-      reactant and products at one density and one temperature.
+- [ ] **Mie-Grüneisen with temperature:** section 5, phase 2, and
+      `doc/design/materials.md`. HVRB needs it: its closure puts reactant
+      and products at one density and one temperature.
 - [ ] **Strength:** elastic-perfectly-plastic, von Mises yield, with thermal
       softening (needs T from the model above): deviatoric stress and
       plasticity.
