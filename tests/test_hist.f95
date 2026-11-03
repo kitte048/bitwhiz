@@ -15,8 +15,12 @@ program test_hist
 !
 !       F  cycle  time  x(face)  u(face)  P(cell)  D(cell)
 !
-!    which the script compares with the same run's tracer file. The
-!    last line it prints is always
+!    which the script compares with the same run's tracer file, and, in
+!    a run whose materials carry T (the file has TK), one more per frame,
+!
+!       T  cycle  TK(cell)
+!
+!    The last line it prints is always
 !
 !       B  <cells broken (D = 1) in the last frame>
 !
@@ -36,6 +40,9 @@ program test_hist
 !                                     plot_every lines; B line
 !    10/23/26    D. E. Kittell        Exits through quit (module bits),
 !                (with Claude)        for gfortran 9 and 10
+!    11/03/26    D. E. Kittell        TK (real32, cells), the 5th
+!                (with Claude)        variable when some material carries
+!                                     T: checked, and its T lines
 !
 !**********************************************************************!
 use bits, only: sp, dp, int8, int32, int64, quit
@@ -57,6 +64,8 @@ real(kind=dp) :: time, tprev
 integer(kind=int32) :: cycle, frame, cprev
 real(kind=sp), allocatable :: x(:), u(:), p(:)
 integer(kind=int8), allocatable :: d(:)
+real(kind=sp), allocatable :: tk(:)             ! TK (cells), if present
+logical :: with_t                               ! the file has TK
 
 character(len=256) :: fname, arg
 integer(kind=int32) :: lu, ios, j, k, want_status, face, cell, nbad, nbytes
@@ -101,13 +110,17 @@ call check( header_bytes == 64 + 32*nvar + 72*nlayer + text_bytes, &
 if ( nbad > 0 ) call finish()
 
 !*** 2. Variables: this version's four, in this order, at these places,
-!*** of these types (0 real32, 1 int8).
+!*** of these types (0 real32, 1 int8), and TK after them when some
+!*** material carries T.
 allocate( vname(nvar), vunit(nvar), vwhere(nvar), vtype(nvar), nval(nvar) )
 do j = 1, nvar
    read( lu ) vname(j), vunit(j), vwhere(j), vtype(j)
 end do
-call check( nvar == 4, 'nvar is 4' )
+call check( nvar == 4 .or. nvar == 5, 'nvar is 4 (or 5, with TK)' )
 if ( nbad > 0 ) call finish()
+with_t = ( nvar == 5 )
+if ( with_t ) call check( vname(5) == 'TK' .and. vunit(5) == 'K' .and. &
+   vwhere(5) == 1 .and. vtype(5) == 0, 'variable 5 is TK, K, cells, real32' )
 call check( vname(1) == 'XPOS' .and. vunit(1) == 'mm' .and. &
    vwhere(1) == 0 .and. vtype(1) == 0, 'variable 1 is XPOS, mm, faces, real32' )
 call check( vname(2) == 'KMPS' .and. vunit(2) == 'km/s' .and. &
@@ -155,13 +168,18 @@ call check( fsize == int(header_bytes,int64) + &
 if ( nbad > 0 ) call finish()
 
 !*** Frames.
-allocate( x(kmax+1), u(kmax+1), p(kmax), d(kmax) )
+allocate( x(kmax+1), u(kmax+1), p(kmax), d(kmax), tk(kmax) )
+tk = 0.0_sp
 if ( printing ) call check( face >= 1 .and. face <= kmax + 1 .and. &
    cell >= 1 .and. cell <= kmax, 'the face and cell asked for exist' )
 if ( nbad > 0 ) call finish()
 cprev = -1; tprev = -1.0_dp
 do j = 1, nframes
-   read( lu, iostat=ios ) time, cycle, frame, x, u, p, d
+   if ( with_t ) then
+      read( lu, iostat=ios ) time, cycle, frame, x, u, p, d, tk
+   else
+      read( lu, iostat=ios ) time, cycle, frame, x, u, p, d
+   end if
    if ( ios /= 0 ) call fail( 'cannot read frame '//itoa(j) )
    if ( frame /= j ) call fail( 'frame '//itoa(j)//' is numbered '// &
       itoa(frame) )
@@ -182,9 +200,15 @@ do j = 1, nframes
       call fail( 'frame 1: P is not 0 everywhere at t = 0' )
    if ( j == 1 .and. any( d /= 0_int8 ) ) &
       call fail( 'frame 1: a cell is broken at t = 0' )
+   if ( any( not_finite32(tk) ) ) call fail( 'frame '//itoa(j)// &
+      ': a TK value is not a finite number' )
+   if ( any( tk < 0.0_sp ) ) call fail( 'frame '//itoa(j)// &
+      ': a TK value is negative' )
    if ( printing ) write( *, '(a,i0,4(1x,es24.16e3),1x,i0)' ) 'F ', &
       cycle, time, real( x(face), dp ), real( u(face), dp ), &
       real( p(cell), dp ), int( d(cell), int32 )
+   if ( printing .and. with_t ) write( *, '(a,i0,1x,es24.16e3)' ) 'T ', &
+      cycle, real( tk(cell), dp )
    cprev = cycle; tprev = time
 end do
 close( lu )

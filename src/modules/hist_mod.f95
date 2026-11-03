@@ -36,11 +36,17 @@ module hist
 !                (with Claude)        variable has a type (0 real32,
 !                                     1 int8); plot_dt and plot_every in
 !                                     the text; read_history
+!    11/03/26    D. E. Kittell        TK (real32, cells) as a 5th
+!                (with Claude)        variable when some material carries
+!                                     T (module temperature); read_history
+!                                     skips it, as any variable it does
+!                                     not use
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int8, int32, int64, zero
 use shock, only: jx, ju, jp, jdam, ju_star, database, iface, icell, &
    layer, nlay, method, rs_order, plot_every, plot_dt
+use temperature, only: temp_in_run, tk
 implicit none
 private
 
@@ -69,6 +75,13 @@ character(len=16), parameter, dimension(nhv) :: hv_unit = (/ &
 integer(kind=int32), parameter, dimension(nhv) :: hv_where = (/ 0, 0, 1, 1 /)
 integer(kind=int32), parameter, dimension(nhv) :: hv_type  = (/ 0, 0, 0, 1 /)
 
+!*** TK, the 5th variable, only when some material carries T (eos =
+!*** mie_gruneisen_t): real32 at the cells, K, from module temperature
+!*** (not a database slot), 0 in a cell without a temperature model. A
+!*** run without T writes the four above, byte for byte as before.
+character(len=8),  parameter :: tk_name = 'TK      '
+character(len=16), parameter :: tk_unit = 'K               '
+
 !*** Format constants (input/README.md, section 9).
 character(len=8),    parameter :: magic      = 'BWHIST  '
 integer(kind=int32), parameter :: version    = 1
@@ -82,6 +95,7 @@ integer(kind=int32) :: hst_frames = 0          ! frames written so far
 integer(kind=int32) :: kh         = 0          ! cells in the file
 real(kind=dp)       :: tnext      = zero       ! us, next plot_dt time
 integer(kind=int32) :: slot(nhv)               ! this run's slots
+logical             :: with_t     = .false.    ! TK follows DMG
 
 !*** One frame's values: the real32 variables, then the int8 ones.
 !*** Sized when the file opens.
@@ -124,7 +138,7 @@ contains
    character(len=*), intent(in) :: title
    character(len=*), dimension(:), intent(in) :: info
    integer(kind=int32), intent(out) :: ios
-   integer(kind=int32) :: j, n, ni, header_bytes, frame_bytes, order
+   integer(kind=int32) :: j, n, ni, nv, header_bytes, frame_bytes, order
    character(len=8) :: meth
    character(len=text_bytes) :: text
 
@@ -146,9 +160,11 @@ contains
       order = 0
    end if
    meth = method
+   with_t = temp_in_run()
+   nv = nhv + merge( 1, 0, with_t )
 
    !*** The sizes. A face variable has kh + 1 values, a cell one kh;
-   !*** a real32 value is 4 bytes, an int8 one 1.
+   !*** a real32 value is 4 bytes, an int8 one 1. (TK: kh real32.)
    n  = 0
    ni = 0
    do j = 1, nhv
@@ -158,9 +174,10 @@ contains
          ni = ni + kh + 1 - hv_where(j)
       end if
    end do
+   if ( with_t ) n = n + kh
    allocate( buf(n), ibuf(ni) )
    frame_bytes  = 16 + 4*n + ni
-   header_bytes = 64 + 32*nhv + 72*nlay + text_bytes
+   header_bytes = 64 + 32*nv + 72*nlay + text_bytes
 
    !*** The text block: the lines, then spaces to the end.
    text = ' '
@@ -174,11 +191,12 @@ contains
    !*** 1. Fixed part, 64 bytes. nframes and status are 0 until
    !*** close_history fills them in.
    write( khs ) magic, version, header_bytes, frame_bytes, 0_int32, &
-      0_int32, kh, nhv, nlay, meth, order, text_bytes, 0_int32, 0_int32
+      0_int32, kh, nv, nlay, meth, order, text_bytes, 0_int32, 0_int32
    !*** 2. Variables, 32 bytes each.
    do j = 1, nhv
       write( khs ) hv_name(j), hv_unit(j), hv_where(j), hv_type(j)
    end do
+   if ( with_t ) write( khs ) tk_name, tk_unit, 1_int32, 0_int32
    !*** 3. Layers, 72 bytes each, left to right.
    do j = 1, nlay
       write( khs ) layer(j)%name, layer(j)%matname, layer(j)%kfirst, &
@@ -240,6 +258,12 @@ contains
          ni = ni + nv
       end if
    end do
+   if ( with_t ) then                     ! TK, cells 1 to kh
+      do k = 1, kh
+         buf(n+k) = real( tk(k), sp )
+      end do
+      write( khs ) buf(n+1:n+kh)
+   end if
    flush( khs )
    end subroutine history_frame
 

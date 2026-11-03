@@ -47,6 +47,11 @@ module shock
 !    11/02/26    D. E. Kittell        movie_frames (Output block): a
 !                (with Claude)        pressure movie from the snapshots,
 !                                     2 to max_movie_frames (50), 0 = off
+!    11/03/26    D. E. Kittell        Material models: eos (Material
+!                (with Claude)        block), mie_gruneisen (the default)
+!                                     or mie_gruneisen_t, which also
+!                                     carries T (CV, T0; module
+!                                     temperature)
 !
 !**********************************************************************!
 !
@@ -433,9 +438,20 @@ logical             :: have_x_left = .false.   ! x_left given in the deck
 !
 !  Mie-Gruneisen referenced to the principal Hugoniot (project rev-0,
 !  Eq. 4), with Us = C0 + S1*up + (S2/C0)*up**2 and rho*Gamma = R0*G0.
+!
+!  The model (deck key eos; doc/design/materials.md). Both have the same
+!  P and c, from the same code (module eos); mie_gruneisen_t also
+!  carries each cell's temperature (module temperature), so it needs
+!  CV and T0. The names are the deck's, in eos_names(model).
 !**********************************************************************!
+integer(kind=int32), parameter :: eos_mie_gruneisen   = 1  ! the default
+integer(kind=int32), parameter :: eos_mie_gruneisen_t = 2  ! ... plus T
+character(len=16), parameter, dimension(2) :: eos_names = (/ &
+   'mie_gruneisen   ', 'mie_gruneisen_t ' /)
+
 type :: material_t
    character(len=32)   :: name   = ' '    ! from "Begin Material <name>"
+   integer(kind=int32) :: eos    = eos_mie_gruneisen ! the model
    real(kind=dp)       :: R0     = unset  ! g/cm^3            REQUIRED
    real(kind=dp)       :: C0     = unset  ! km/s              REQUIRED
    real(kind=dp)       :: S1     = unset  ! -                 REQUIRED
@@ -444,6 +460,10 @@ type :: material_t
    real(kind=dp)       :: spall_strength = 0.01_dp ! GPa      optional
                                           ! tension it holds before
                                           ! it breaks (a magnitude)
+   real(kind=dp)       :: CV     = unset  ! J/(g K), as the deck gives
+                                          ! it; mie_gruneisen_t only,
+                                          ! and REQUIRED there
+   real(kind=dp)       :: T0     = unset  ! K, at R0 and e = 0; ditto
    integer(kind=int32) :: nused  = 0      ! layers that use it
    integer(kind=int32) :: line   = 0      ! deck line of its Begin
 end type material_t
@@ -483,6 +503,11 @@ type :: layer_t
    real(kind=dp)       :: S2         = zero   ! -
    real(kind=dp)       :: G0         = unset  ! -
    real(kind=dp)       :: spall_strength = 0.01_dp ! GPa
+   integer(kind=int32) :: eos        = eos_mie_gruneisen ! the model
+   real(kind=dp)       :: cv         = zero   ! kJ/(g K): the deck's CV
+                                              ! over 1000 (bitwhiz's e is
+                                              ! in kJ/g); 0 = no T
+   real(kind=dp)       :: T0         = zero   ! K; 0 = no T
    ! Filled in once the whole deck is read:
    real(kind=dp)       :: xleft      = zero   ! mm, left face position
    integer(kind=int32) :: kfirst     = 0      ! first cell k of layer

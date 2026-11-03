@@ -11,6 +11,9 @@
 #      Ta:Al  Al:MatX  MatX@0.1 ... MatX@0.9  MatX:PMMA  PMMA@0.1      #
 #      -4.0   0.0      1, 2, ... 9 mm         10.0 (PDV) 11.0          #
 #                                                                      #
+#  Every material carries its temperature, as the reference's do       #
+#  (eos = mie_gruneisen_t, with the reference's C_V and T0), so TK     #
+#  can be compared too; P and c are the same either way, bit for bit.  #
 #  The five cases differ only in "define u_fly" and the title.         #
 #  ../compare_g1.py runs all five and compares them with the data.     #
 #  Units: mm, us, g/cc, km/s, GPa.                                     #
@@ -60,6 +63,7 @@ Begin bitwhiz
  # Mie-Gruneisen on the principal Hugoniot (rev-0, Eqs. 4 and 6):
  #   Us = C0 + S1*up + (S2/C0)*up^2,   rho*Gamma = R0*G0
  Begin Material Ta              # tantalum, backing plate
+  eos = mie_gruneisen_t         # Mie-Gruneisen, plus temperature
   R0 = 16.65                    # g/cm^3, initial density
   C0 = 3.40                     # km/s, Hugoniot intercept
   S1 = 1.20                     # -,    Us-up slope
@@ -71,30 +75,43 @@ Begin bitwhiz
                                 # holds its ~2 GPa tension, as in the
                                 # reference data. Other materials take
                                 # the default, 0.01 GPa (input/README.md)
+  CV = 1.1633418                # J/(g K), the reference's C_V for every
+                                # material: 1.35e11 erg/(g eV) / 11604.5 K/eV
+  T0 = 298.0                    # K, at R0 and e = 0 (the reference
+                                # starts at 298.0014 K: a known offset)
  End Material
 
  Begin Material Al              # aluminum, flyer face
+  eos = mie_gruneisen_t
   R0 = 2.78
   C0 = 5.30
   S1 = 1.34
   S2 = 0.0
   G0 = 2.00
+  CV = 1.1633418
+  T0 = 298.0
  End Material
 
  Begin Material MatX            # notional HE surrogate, inert here
+  eos = mie_gruneisen_t
   R0 = 1.60
   C0 = 2.50
   S1 = 1.80
   S2 = -0.10
   G0 = 1.20
+  CV = 1.1633418
+  T0 = 298.0
  End Material
 
  Begin Material PMMA            # window; Lacina et al. (2018) linear fit
+  eos = mie_gruneisen_t
   R0 = 1.187
   C0 = 2.55
   S1 = 1.54
   S2 = 0.0
   G0 = 0.90                     # estimated from Plexiglass (rev-0 Table 1)
+  CV = 1.1633418
+  T0 = 298.0
  End Material
 
  Begin Stack

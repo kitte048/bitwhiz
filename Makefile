@@ -34,6 +34,8 @@
 #Revision: 1.18 (11-02-26, with Claude: draw_profile, the line plot
 #                under draw_trace and the movies; 'tidy' removes the
 #                movie frames, *.mv_*.bmp)
+#Revision: 1.19 (11-03-26, with Claude: temperature module, and its
+#                unit test, test_temp, in 'make test')
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -163,8 +165,12 @@ $(1)src/modules/deck_mod.o:  $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod
 $(1)src/modules/eos_mod.o:   $(1)src/modules/bit_mod.o
 $(1)src/modules/av_mod.o:    $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
                              $(1)src/modules/bit_mod.o
-$(1)src/modules/trace_mod.o: $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
-$(1)src/modules/hist_mod.o:  $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
+$(1)src/modules/temp_mod.o:  $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
+                             $(1)src/modules/bit_mod.o
+$(1)src/modules/trace_mod.o: $(1)src/modules/temp_mod.o $(1)src/modules/shock_mod.o \
+                             $(1)src/modules/bit_mod.o
+$(1)src/modules/hist_mod.o:  $(1)src/modules/temp_mod.o $(1)src/modules/shock_mod.o \
+                             $(1)src/modules/bit_mod.o
 $(1)src/modules/strk_mod.o:  $(1)src/modules/bit_mod.o
 $(1)src/modules/pics_mod.o:  $(1)src/modules/hist_mod.o $(1)src/modules/deck_mod.o \
                              $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
@@ -191,7 +197,7 @@ $(eval $(call MOD_ORDER,))
 ###  pics calls the drawing routines (src/drawings), which
 ###  call bmpmaker and the colormaps.
 ############################################################
-UNIT_TESTS = ./bin/test_eos ./bin/test_hist ./bin/test_dist
+UNIT_TESTS = ./bin/test_eos ./bin/test_hist ./bin/test_dist ./bin/test_temp
 
 ./bin/test_%: tests/test_%.f95 $(MOD_OBJS) $(LIB_OBJS)
 	@mkdir -p ./bin
@@ -200,6 +206,7 @@ UNIT_TESTS = ./bin/test_eos ./bin/test_hist ./bin/test_dist
 test: $(EXECS) $(UNIT_TESTS)
 	./bin/test_eos
 	./bin/test_dist
+	./bin/test_temp
 	BIN=$(EXECS) ./tests/run_deck_tests.sh
 	BIN=$(EXECS) ./tests/run_omp_tests.sh
 	BIN=$(EXECS) ./tests/run_hist_tests.sh

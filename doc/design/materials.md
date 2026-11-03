@@ -1,7 +1,7 @@
 # Material models: design note
 
 Started Nov 3, 2026, on `shock` after `f81f2b7` (movies). Status: **approved
-Nov 3, 2026** (decisions below); no code yet. TODO.md, sections 5 and 6, is
+Nov 3, 2026** (decisions below); phase 2 built Nov 3 (As built, below). TODO.md, sections 5 and 6, is
 the brief: room in the code for more than one material model, Mie-Grüneisen
 kept as the default and unchanged, bit for bit; the first new model is
 Mie-Grüneisen with temperature, so that G1's temperatures can be compared;
@@ -222,6 +222,76 @@ setup: the cell loop gets a per-layer flag, not a per-cell branch on a name.
 4. **The run log:** T's range and the hottest cell (where and when).
 5. **The tracer file's G1 offset:** G1 starts at 298.0014 K, not 298: a
    known offset of 0.0014 K, not tracked further.
+
+## As built (Nov 3, 2026)
+
+Phase 2 as approved, with these choices made in the code (all in
+`src/modules/temp_mod.f95`, module `temperature`, and its header):
+
+- **Its own arrays, not database rows.** The database's slots are fixed
+  at compile time (`nvar`), so "optional rows" would have meant a second
+  database layout. Instead the module holds arrays by cell (k = 1 to
+  k_max: e_c, T, C_V, T0, and the list of cells with T), allocated only
+  when some material uses `mie_gruneisen_t`. The database, its audit and
+  every old deck are untouched (checked bit for bit: heartbeat, tracer
+  rows and history frames of all 34 decks; only the resolved deck's new
+  `eos =` line differs on screen).
+- **Each cell also keeps eta_c,** the eta its e_c belongs to. The update
+  goes from eta_c to the cell's eta now, so it needs nothing from how AV
+  or RS keep their old state.
+- **Pi is module eos's own:** `mg_pressure` at e = 0 returns R0 G0 0 +
+  phi = phi, bit for bit. No second copy of the Hugoniot or the cubic
+  (and `eos_mod.f95` is unchanged).
+- **The pieces:** at most 0.005 in eta (times 1 - eta in tension). One
+  step of 0.1 from V0, against 50 digits: 3e-11 with pieces of 0.02,
+  4e-13 with 0.01, 6e-15 with 0.005. Almost every step of a run is one
+  piece; a step across eta = 0 is two (Pi's 4th derivative jumps there).
+- **Back from far tension, start again at V0.** Compressing multiplies
+  the carried e_c's error by exp(G0 Delta eta). Within the class
+  problem's range that is a factor of 2 or 3, but a broken cell
+  stretched to 21 V0 and squeezed back multiplied its round-off by about
+  1e17 (7e2 relative error, measured): the isentropes' spread shrinks as
+  exp(G0 eta) on the way out, so a carried value forgets where it came
+  from. A cell whose e_c lies beyond 2 V0 (eta < -1) and is compressed
+  integrates from V0 instead (at most 200 pieces, only such cells): back
+  on the curve to 1e-13.
+- **When:** once per cycle, after the hydro step of either method, on the
+  time loop's team of threads (each cell writes only its own k: any
+  number of threads gives the same bits, checked in the OpenMP tests). At
+  t = 0 the setup audit checks eta = 0 and T = T0 exactly in every cell.
+- **Outputs:** `TK.<tracer>` closes each tracer's block in the tracer
+  file; `TK` (real32, cells) follows `DMG` in the history file; the run
+  log gives the T range over the whole run and the hottest cell (cell,
+  layer, time, x). A deck without T writes exactly what it did before.
+- **The log's range is over intact cells.** A broken cell's T is written
+  as computed (Edges, above), and it falls as the cell opens: its P is
+  floored at 0, so the opening does no work, while e_c climbs the cold
+  curve. In G1 at 2.00 km/s the PMMA's free-surface cell, spalled and
+  stretched, reaches -4,693 K, which is the temperature of nothing; so
+  the range and the hottest cell skip broken cells. (A question for
+  later, with HVRB or a damage model: what T should a broken cell carry?)
+
+**Tests:** `tests/test_temp.f95` against `tests/temp_reference.py` (24
+cold energies in one step and in 997; the hard path, 2,061 steps; out to
+21 V0 and back; 12 Hugoniot temperatures; units by hand through the deck
+reader): every one within 1e-13 relative. Deck tests: `ok_temperature`,
+`ok_temperature_rs` and eight error decks. History tests: `TK` in the file
+is the tracer file's. OpenMP and release tests: the two `ok_temperature`
+decks, bit for bit.
+
+**G1 (`compare_g1.py`, 40 checks, all pass),** every material the same way:
+
+| u_fly (km/s) | TK - formula, 13 tracers, every row | TK at 1 mm - exact T_H | PMMA 11 mm: formula at the reference's state - its TK | MatX 1/5/9 mm: the same |
+|---|---|---|---|---|
+| 1.00 | 3.8e-12 K | +0.001 K | +0.0001 K | -0.89 to -0.88 K |
+| 1.25 | 4.5e-12 | +0.009 | +0.0027 | -1.79 to -1.78 |
+| 1.50 | 5.9e-12 | -0.029 | +0.0036 | -2.81 to -2.80 |
+| 1.75 | 1.1e-11 | -0.018 | -0.0039 | -3.79 to -3.76 |
+| 2.00 | 1.4e-11 | +0.012 | +0.0014 | -4.58 to -4.50 |
+
+bitwhiz's own first-shock TK against the reference's, reported: PMMA
+-0.028 to +0.016 K (the two codes' plateau states differ slightly), Material
+X the -0.9 to -4.6 K above, as predicted before any code.
 
 ## Phases
 

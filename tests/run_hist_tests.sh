@@ -27,6 +27,9 @@
 #   - with plot_every = 7, the frames are cycles 0, 7, 14, ... and the #
 #     last, and the cells broken in the last frame are the run's       #
 #     count;                                                           #
+#   - with materials that carry T (eos = mie_gruneisen_t), the file    #
+#     has TK after DMG, and a tracer's TK in it is the tracer file's,  #
+#     to single precision, 298 K (T0) at t = 0;                        #
 #   - a run stopped by cycle_max ends its file with status 2 and a     #
 #     frame at that cycle;                                             #
 #   - a deck with no snapshot keys writes no history file;             #
@@ -76,7 +79,7 @@ CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 . "$(dirname "$0")/report.sh"
-plan 19 "history tests"
+plan 21 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -336,6 +339,34 @@ else
 fi
 against_tracer rs_order2 tests/decks/ok_method_rs.deck        0.05 impact
 against_tracer rs_order1 tests/decks/ok_method_rs_order1.deck 0.05 impact
+
+# Case: materials that carry T (tests/decks/ok_temperature.deck: MatX and
+# PMMA with eos = mie_gruneisen_t, Al without). Everything above holds
+# with TK in the file; then TK at the tracer's cell is the tracer file's
+# TK, to single precision, at every frame, 298 K (T0) at t = 0.
+against_tracer temperature tests/decks/ok_temperature.deck 0.05 pdv
+begin
+c=temperature_tk
+d="$TMP/temperature"
+if [ ! -f "$d/chk.out" ]; then
+   fail $c "no run (see the case above)"
+else
+   awk '/^T / {print $2, $3}' "$d/chk.out" > "$d/tk_hist"
+   awk -F', *' 'NR == 1 { for (i = 1; i <= NF; i++) c[$i] = i; next }
+      NR == 2 || /^#/ { next } { print $(c["CYCLE"]), $(c["TK.pdv"]) }' \
+      "$d"/*.tracers.csv > "$d/tk_trc"
+   if [ ! -s "$d/tk_hist" ]; then
+      fail $c "the history file has no TK (no T lines from test_hist)"
+   elif ! paste -d' ' "$d/tk_hist" "$d/tk_trc" | awk '
+         function rel(a, b) { a += 0; b += 0; d = a - b; if (d < 0) d = -d; return d / (b > 1 ? b : 1) }
+         NF != 4 || $1 != $3 || rel($2, $4) > 1e-6 { exit 1 }
+         NR == 1 && rel($2, 298) > 0 { exit 1 }
+         END { if (NR < 2) exit 1 }'; then
+      fail $c "TK in the history file is not the tracer file's TK (or not 298 K at t = 0)"
+   else
+      pass $c
+   fi
+fi
 
 # Case: velocity profiles (xvel_profile, xvel_amplitude). Frame 1 is
 # t = 0, so its face velocities (KMPS, real32) must be what the deck

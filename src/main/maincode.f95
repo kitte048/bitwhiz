@@ -82,6 +82,12 @@ program bitwhiz
 !    10/23/26    D. E. Kittell        Exits through quit (module bits),
 !                (with Claude)        not "stop n, quiet=.true.", so
 !                                     gfortran 9 and 10 compile it
+!    11/03/26    D. E. Kittell        Temperature (module temperature),
+!                (with Claude)        for materials with eos =
+!                                     mie_gruneisen_t: set in 5e,
+!                                     checked in 6, updated every cycle
+!                                     after the hydro step; the run's T
+!                                     range and hottest cell reported
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one,quit
@@ -95,6 +101,8 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads,method, &
    kcell,t_end,cycle_max,CFL,BL,BQ,omp_min_zones, &
    alloc_database,dealloc_database,dealloc_layers, &
    dealloc_materials,dealloc_tracers,plots_only,plot_dt,plot_every
+use temperature, only: alloc_temperature,dealloc_temperature, &
+   temp_update,nt,kt,tk,etac,tmin_run,tmax_run,hot_k,hot_time,hot_x
 use deck, only: read_deck,write_resolved_deck,fmt_real
 use pics, only: make_pictures
 use eos, only: mg_eos,eos_message,eos_ok
@@ -210,6 +218,8 @@ logical :: running = .false.            ! the time loop has started
 211 format(3x,a,t40,': ',es15.8)        ! label : real
 212 format(3x,a,t40,': ',i0,' (',a,'), t =',f9.4,' us') ! tensile event
 213 format(3x,a,f9.4,a,f9.4,a)          ! a profile's velocity range
+214 format(3x,a,t40,': ',f0.3,' to ',f0.3) ! label : a range
+215 format(3x,a,t40,': ',i0,' (',a,'), t =',f9.4,' us, x =',f9.4,' mm')
 
 !*** Start the clocks. Two different times are kept, because with
 !*** OpenMP they tell different stories:
@@ -691,6 +701,19 @@ face_loop: do k = 0, kmax
    database(jp_star,i) = zero
 end do face_loop
 
+!*** 5e. Temperature (module temperature), only if some material's
+!*** model carries it (eos = mie_gruneisen_t): each such cell's cold
+!*** energy, the eta it holds at, and T, from the t = 0 state above
+!*** (eta = 0, e_c = 0, T = T0; checked in 6). Its own arrays, not
+!*** database slots: a deck without it allocates nothing more.
+call alloc_temperature( kerr )
+if ( kerr > 0 ) then
+   write( kpt6, 202 ) 'bitwhiz: cannot allocate the temperatures '// &
+      '(out of memory?)'
+   call close_outputs( 'could not allocate the temperatures' )
+   call quit( 1 )
+end if
+
 !*** Report.
 write( kpt6, 202 ) repeat('=',56)
 write( kpt6, 202 ) ' 5. Data arrays'
@@ -703,6 +726,8 @@ write( kpt6, 205 ) 'Database places (imax)', imax
 write( buf, '(f12.1)' ) 8.0_dp*real(nvar,dp)*real(imax,dp)/1024.0_dp**2
 write( kpt6, 203 ) 'Database slots (nvar)', nvar, &
    '('//trim(adjustl(buf))//' MB)'
+if ( nt > 0 ) write( kpt6, 203 ) 'Cells carrying T', nt, &
+   '(eos = mie_gruneisen_t)'
 write( kpt6, 202 ) repeat('-',56)
 write( kpt6, 202 ) '  layer     '//'    zones'//'    dx (mm)'// &
    '  x left (mm)'//'  u (km/s)'
@@ -885,6 +910,18 @@ end if
 if ( abs( xmom0 - pdeck ) > tol*max( abs(pdeck), abs(xmom0), xabs0 ) ) then
    call setup_fail( 'total momentum does not match the deck' )
 end if
+
+! (7) Temperature, in the cells that carry it: at the reference state
+!     eta = 0 and T = T0, exactly (e = 0 and e_c = 0, so T is T0 times
+!     exp(0) = 1). This ties module temperature to the t = 0 state.
+nz = 0
+do j = 1, nt
+   k = kt(j)
+   if ( abs( etac(k) ) > zero .or. abs( tk(k) - &
+        layer(ilay(icell(k)))%T0 ) > zero ) nz = nz + 1
+end do
+if ( nz > 0 ) call setup_fail( 'T is not T0 at the reference state in '// &
+   itoa(nz)//' cells' )
 
 if ( nbad > 0 ) then
    write( kpt6, '(1x,i0,a)' ) nbad, ' setup check(s) failed; stopping. '// &
@@ -1216,6 +1253,22 @@ time_loop: do while ( .not. done )
       call quit( 1 )
    end if
 
+   !*** Temperature (module temperature; nothing to do without it):
+   !*** each cell that carries T moves its cold energy to its new
+   !*** volume and takes its new T, after the hydro step of either
+   !*** method, on the same team of threads. Its cold-curve integral
+   !*** evaluates Pi with the EOS at points between two volumes the
+   !*** hydro accepted, so it can not fail; if it ever does, it stops
+   !*** the run as an EOS failure would.
+   call temp_update( use_team, time, ncycle, kbad )
+   if ( kbad < huge(kbad) ) then
+      write( kpt6, '(1x,a,i0,3a,i0)' ) 'bitwhiz: the cold curve '// &
+         '(temperature) failed in cell ', kbad, ' (layer ', &
+         trim(layer(ilay(icell(kbad)))%name), ') on cycle ', ncycle
+      call close_outputs( 'cold curve failure in cell '//itoa(kbad) )
+      call quit( 1 )
+   end if
+
    !*** Step f: one heartbeat line per cycle, a screen line every 10%.
    call heartbeat_line( dt_used, kdt_used, pmax )
    if ( .not. ( time < tnext ) .or. last ) then
@@ -1276,6 +1329,12 @@ if ( void_k > 0 ) then
       trim(layer(ilay(icell(void_k)))%name), void_time
    write( kpt6, 205 ) 'Most void cells at one time', nvoid_max
 end if
+if ( nt > 0 ) then
+   write( kpt6, 214 ) 'T range, intact cells (K)', tmin_run, &
+      tmax_run
+   write( kpt6, 215 ) 'Hottest intact cell', hot_k, &
+      trim(layer(ilay(icell(hot_k)))%name), hot_time, hot_x
+end if
 call system_clock( tick1 )
 write( kpt6, 211 ) 'Wall time per cycle (us)', &
    1.0e6_dp*real(tick1-tick0,dp)/real(rate,dp)/real(max(ncycle,1),dp)
@@ -1323,6 +1382,7 @@ contains
    implicit none
    integer(kind=int32) :: kfree
    kfree = 0
+   call dealloc_temperature( kfree )
    call dealloc_database( kfree )
    call dealloc_tracers( kfree )
    call dealloc_layers( kfree )

@@ -31,6 +31,8 @@ already (input/README.md, section 8). Line 2 says which:
     gold.run_distance(r, 10.0)    # mm, or None if no transition in 10 mm
     gold.trust_end(r)             # us: last time MTOT is still constant
     gold.impedance_match(2.00)    # exact (u1, P1, U_S): Al onto Material X
+    gold.temperature('PMMA', rho, e)        # K, the model of eos =
+    gold.hugoniot_temperature('MatX', rho)  # mie_gruneisen_t; on the Hugoniot
 
     python3 tests/verification/gold.py
 
@@ -199,6 +201,69 @@ def impedance_match(u_fly, flyer='Al', target='MatX'):
             hi = u
     p, us = hugoniot(target, u)
     return u, p, us
+
+#*** Temperature, for the materials with eos = mie_gruneisen_t
+#*** (doc/design/materials.md): T = T0 exp(G0 eta) + (e - e_c(eta))/C_V,
+#*** eta = 1 - rho0/rho. The cold energy here is the integral from V0,
+#***    e_c(eta) = integral from 0 to eta of exp(G0 (eta - s)) Pi(s)/rho0 ds,
+#*** by 16-point Gauss-Legendre on 8 pieces: not bitwhiz's step-by-step
+#*** method, so the two check each other. Pi = P_H (1 - G0 eta/2) in
+#*** compression, and bitwhiz's own cubic in rho - rho0 in tension (its
+#*** rule there, src/modules/eos_mod.f95). Agrees with the 50-digit
+#*** tests/temp_reference.py to 1e-14.
+
+GRUNEISEN = {'Ta': 1.60, 'Al': 2.00, 'MatX': 1.20, 'PMMA': 0.90}  # G0
+CV = 1.1633418e-3        # kJ/(g K): 1.35e11 erg/(g eV) / 11604.5 K/eV, as
+                         # in the G1 deck (CV = 1.1633418 J/(g K))
+T0 = 298.0               # K, every material in G1-G5
+_XG, _WG = np.polynomial.legendre.leggauss(16)
+
+def _pi(mat, s):
+    # Pi(eta) = P(V, e = 0), GPa, for an array of eta.
+    r0, c0, s1, s2 = MATERIALS[mat]
+    g0 = GRUNEISEN[mat]
+    s = np.asarray(s, dtype=float)
+    out = np.empty_like(s)
+    c = s >= 0
+    a = 1.0 - s1 * s[c]
+    us = 2.0 * c0 / (a + np.sqrt(a * a - 4.0 * s2 * s[c] ** 2))
+    out[c] = r0 * s[c] * us * us * (1.0 - 0.5 * g0 * s[c])
+    x = r0 / (1.0 - s[~c]) - r0
+    a1 = c0 * c0
+    a2 = (c0 * c0 / r0) * (4.0 * s1 - 2.0 - g0)
+    a3 = (6.0 * c0 * c0 / r0 ** 2) * (3 * s1 * s1 - 4 * s1 - g0 * s1 + g0
+                                      + 2 * s2 + 1)
+    out[~c] = x * (a1 + x * (0.5 * a2 + x * a3 / 6.0))
+    return out
+
+def cold_energy(mat, eta):
+    """e_c (kJ/g) on mat's cold curve at eta (scalar or array)."""
+    r0, g0 = MATERIALS[mat][0], GRUNEISEN[mat]
+    eta = np.atleast_1d(np.asarray(eta, dtype=float))[:, None]
+    edges = np.linspace(0.0, 1.0, 9)
+    tot = 0.0
+    for a, b in zip(edges[:-1], edges[1:]):    # piece [a, b] of [0, eta]
+        s = eta * (0.5 * (a + b) + 0.5 * (b - a) * _XG)
+        f = np.exp(g0 * (eta - s)) * _pi(mat, s.ravel()).reshape(s.shape)
+        tot = tot + 0.5 * (b - a) * eta[:, 0] * (f @ _WG)
+    return tot / r0
+
+def temperature(mat, rho, e):
+    """T (K) at density rho (g/cm^3) and energy e (kJ/g), arrays or not."""
+    r0, g0 = MATERIALS[mat][0], GRUNEISEN[mat]
+    rho = np.asarray(rho, dtype=float)
+    eta = (rho - r0) / rho
+    return T0 * np.exp(g0 * eta) + (np.asarray(e) - cold_energy(mat, eta)
+                                    .reshape(eta.shape)) / CV
+
+def hugoniot_temperature(mat, rho):
+    """T (K) on mat's principal Hugoniot at density rho (g/cm^3): the state
+    a single shock from rest gives, e = e_H = (eta U_S)^2/2."""
+    r0, c0, s1, s2 = MATERIALS[mat]
+    eta = (rho - r0) / rho
+    a = 1.0 - s1 * eta
+    us = 2.0 * c0 / (a + np.sqrt(a * a - 4.0 * s2 * eta * eta))
+    return float(temperature(mat, rho, 0.5 * (eta * us) ** 2))
 
 def trust_end(r, rel=1.0e-6):
     """The last output time (us) at which total mass is still its initial

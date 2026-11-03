@@ -37,11 +37,16 @@ module trace
 !    10/23/26    D. E. Kittell        Rows written as es24.16e3 with
 !                (with Claude)        leading blanks dropped (es0.16e3,
 !                                     the same text, needs gfortran 10)
+!    11/03/26    D. E. Kittell        TK, each tracer's temperature, when
+!                (with Claude)        some material carries T (module
+!                                     temperature); 0 in a cell without
+!                                     a temperature model
 !
 !**********************************************************************!
 use bits,  only: dp, int32, zero
 use shock, only: jx, ju, jrho, je, jp, jq, jc, jdam, ju_star, face_slots, &
    database, iface, icell, ilay, layer, tracer, ntrc, tracer_dt, method
+use temperature, only: temp_in_run, tk
 use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
 implicit none
 private
@@ -66,6 +71,12 @@ public :: open_tracers, tracer_row, close_tracers, trc_open, trc_file
 ! A face slot (x, u) is interpolated between the tracer's two faces
 ! with its weight w; a cell slot is read from the tracer's cell kval
 ! (shock_mod, tracer table).
+!
+! One more column, TK (K), closes each tracer's block when some
+! material carries T (eos = mie_gruneisen_t): the cell's temperature,
+! from module temperature, not a database slot. 0 where the cell's
+! material has no temperature model (doc/design/materials.md, decision
+! 2). A run without T writes exactly the eight columns above, as before.
 !**********************************************************************!
 integer(kind=int32), parameter :: ncol = 8
 integer(kind=int32), parameter, dimension(ncol) :: col_av = (/ &   ! AV
@@ -108,6 +119,7 @@ real(kind=dp)       :: tnext    = zero         ! us, next output time
 integer(kind=int32) :: col_slot(ncol)          ! this run's slots (the
                                                ! method's list), 0 = NaN
 logical             :: isface(ncol)            ! column is a face slot
+logical             :: with_t   = .false.      ! TK closes each block
 real(kind=dp)       :: nan                     ! a quiet NaN
 
 !*** One row: 8 totals (CYCLE goes out as an integer) and ncol values
@@ -145,7 +157,8 @@ contains
       isface(j) = any( face_slots == col_slot(j) )
    end do
    nan = ieee_value( 1.0_dp, ieee_quiet_nan )
-   allocate( row( ntot - 1 + ncol*ntrc ) )
+   with_t = temp_in_run()
+   allocate( row( ntot - 1 + ( ncol + merge(1, 0, with_t) )*ntrc ) )
 
    !*** Line 1, short names: a tracer's columns carry its name, e.g.
    !*** KMPS.pdv (the verification data number them instead: KMPS.4).
@@ -158,6 +171,8 @@ contains
          write( ktr, '(a)', advance='no' ) ', '//trim(col_short(j))// &
             '.'//trim(tracer(it)%name)
       end do
+      if ( with_t ) write( ktr, '(a)', advance='no' ) ', TK.'// &
+         trim(tracer(it)%name)
    end do
    write( ktr, '(a)' ) ''
 
@@ -170,6 +185,7 @@ contains
       do j = 1, ncol
          write( ktr, '(a)', advance='no' ) ', '//trim(col_long(j))
       end do
+      if ( with_t ) write( ktr, '(a)', advance='no' ) ', Temperature (K)'
    end do
    write( ktr, '(a)' ) ''
    end subroutine open_tracers
@@ -232,6 +248,10 @@ contains
             row(n) = database( col_slot(j), ia )   ! exactly on a node
          end if
       end do
+      if ( with_t ) then
+         n = n + 1
+         row(n) = tk( tracer(it)%kval )            ! 0: no T model there
+      end if
    end do
 
    !*** One write per row: TIME, then CYCLE as an integer, then the
@@ -288,6 +308,8 @@ contains
       'the half step before TIME (n+1/2), as the method carries it'
    if ( method == 'RS' ) write( ktr, '(a)' ) '# method RS: KMPS is u* '// &
       '(the Riemann solution at the faces); Q is NaN (RS has no q)'
+   if ( with_t ) write( ktr, '(a)' ) '# TK       : the cell''s temperature '// &
+      'at TIME (eos = mie_gruneisen_t); 0 where its material has none'
    do it = 1, ntrc
       associate ( t => tracer(it) )
          write( buf, '(i0)' ) it

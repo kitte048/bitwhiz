@@ -171,13 +171,24 @@ exactly as now, every existing deck bit for bit) or `eos =
 mie_gruneisen_t` (the same P and c, plus temperature: `CV`, `T0`); add-ons
 later in the same pattern (`burn = hvrb`). The model is chosen once per
 layer, never per cell per cycle. Extra state (here e_c and T) lives in
-optional database rows, allocated only when a deck uses the model, and goes
+the model's own module (`src/modules/temp_mod.f95`, arrays by cell, the
+database untouched), allocated only when a deck uses the model, and goes
 to the tracer and history files when present. Each cell carries its own
 cold energy e_c ("plan C"), so constants graded cell by cell (section 7)
 need no tables.
 
-- [ ] **Phase 2: Mie-Grüneisen with temperature** (the note's keys,
-      rows, per-step update, outputs and six tests); then 1.2.0.
+- [x] **Phase 2: Mie-Grüneisen with temperature** (Nov 3): keys, the
+      temperature module, the per-step update, `TK` in the tracer and
+      history files, T range and hottest cell (intact cells) in the log,
+      the six tests;
+      every old deck bit for bit; G1's temperatures checked
+      (`compare_g1.py`, 40 checks). Notes on the build in the design note.
+- [ ] **Release 1.2.0** (MG+T), with the nanoHUB tool.
+- [ ] **A broken cell's temperature:** written as computed, it falls as
+      the cell opens (P floored at 0, e_c following V): -4,693 K in G1's
+      spalled PMMA at 2.00 km/s. The log skips broken cells. Decide what
+      a broken cell should carry (freeze e_c at the break? report 0?)
+      with HVRB or a damage model.
 - [ ] **Constants per cell** for grading (section 7): the database's
       layout for them, when grading starts.
 
@@ -185,9 +196,9 @@ need no tables.
 Each one checked against the commercial reference code on a small set of
 decks.
 
-- [ ] **Mie-Grüneisen with temperature:** section 5, phase 2, and
-      `doc/design/materials.md`. HVRB needs it: its closure puts reactant
-      and products at one density and one temperature.
+- [x] **Mie-Grüneisen with temperature** (Nov 3): section 5, phase 2,
+      and `doc/design/materials.md`. HVRB needs it: its closure puts
+      reactant and products at one density and one temperature.
 - [ ] **Strength:** elastic-perfectly-plastic, von Mises yield, with thermal
       softening (needs T from the model above): deviatoric stress and
       plasticity.

@@ -145,14 +145,39 @@ being compressed (Δu > 0 and ρ increasing), and q = 0 otherwise.
 Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
 | Key | Units | Default |
 |---|---|---|
+| `eos` | `mie_gruneisen` or `mie_gruneisen_t` | `mie_gruneisen` |
 | `R0` | g/cm^3 | required |
 | `C0` | km/s | required |
 | `S1` | - | required |
 | `S2` | - | 0.0 |
 | `G0` | - | required |
 | `spall_strength` | GPa | 0.01 |
+| `CV` | J/(g K) | required with `mie_gruneisen_t`; not allowed without it |
+| `T0` | K | required with `mie_gruneisen_t`; not allowed without it |
 
 A material that no layer uses gets a warning, not an error.
+
+**Temperature (`eos = mie_gruneisen_t`).** The same Mie-Gruneisen, the same
+pressure and sound speed to the last bit, plus each cell's temperature:
+
+    T = T0 exp(G0 eta) + (e - e_c(V))/C_V,      eta = 1 - R0 V
+
+with `CV` the constant specific heat (J/(g K), as the literature gives it) and
+`T0` the temperature at R0 and e = 0, the state every cell starts in. e_c is
+the cold curve, the isentrope through (V0, e = 0); each cell carries its own,
+from step to step (`doc/design/materials.md` has the method and its checks).
+T does not change P in this model: it is written to the tracer file (`TK`,
+section 8) and the history file (`TK`, section 9), and the run log gives the
+T range and the hottest cell over the run, among intact cells. (A broken
+cell's T is written as computed, but means nothing: its pressure is floored
+at 0, so opening it does no work, while its cold energy keeps following its
+volume, and its T falls, below 0 K if it opens far.) The resolved deck writes every
+material's `eos`, so the model is always on record. Example, the
+gold-standard data's values for every material:
+
+    eos = mie_gruneisen_t
+    CV  = 1.1633418          # J/(g K): 1.35e11 erg/(g eV) / 11604.5 K/eV
+    T0  = 298.0              # K
 
 **Expansion and spall (bitwhiz's own rules).** U_S-u_p data exist only in
 compression. For expansion (V > V0) bitwhiz continues the Hugoniot form with a
@@ -317,7 +342,9 @@ Written in the folder the run starts from, laid out like the verification data
   - then, for each tracer in deck order: `XPOS` (mm), `KMPS` (velocity,
     km/s), `GPA` (pressure), `RHO` (g/cm^3), `SIE` (specific internal energy,
     kJ/g), `Q` (artificial viscosity, GPa), `CS` (sound speed, km/s), `DMG`
-    (damage: 0 intact, 1 broken).
+    (damage: 0 intact, 1 broken), and, when some material carries T
+    (`eos = mie_gruneisen_t`), `TK` (temperature, K; 0 for a tracer whose
+    cell's material has no temperature model).
 - **When:** cycle 0, then the first cycle at or after each multiple of
   `tracer_dt`, at that cycle's own time (nothing is interpolated), and always
   the last cycle. `tracer_dt = 0` writes every cycle: about 1 KB per row with
@@ -385,8 +412,13 @@ fraction of a second.
   Ghost cells are not stored. `DMG` is 1 wherever the cell's damage is above
   0 (bitwhiz's damage is only ever 0 or 1); a continuous damage model would
   get a new real32 variable instead.
-- **Size:** 13 k_max + 24 bytes per frame. The class problem (945 cells,
-  `plot_dt = 0.01` to 5 us, 501 frames) writes 6.2 MB.
+  When some material carries T (`eos = mie_gruneisen_t`), a fifth variable
+  follows: `TK`, K, cells, real32, k_max values (0 in a cell whose material
+  has no temperature model). A run without T writes the four, byte for byte
+  as before.
+- **Size:** 13 k_max + 24 bytes per frame (17 k_max + 24 with `TK`). The
+  class problem (945 cells, `plot_dt = 0.01` to 5 us, 501 frames) writes
+  6.2 MB.
 
 ### Layout
 Little-endian on every machine (bitwhiz is compiled with
@@ -408,7 +440,7 @@ a frame may be any number of bytes long.
    | 20 | int32 | `nframes` | frames written; 0 until the run ends (see Ending) |
    | 24 | int32 | `status` | how the run ended: 0 not ended (or crashed), 1 reached `t_end`, 2 reached `cycle_max`, 3 stopped by an error |
    | 28 | int32 | `kmax` | cells |
-   | 32 | int32 | `nvar` | variables per frame (4) |
+   | 32 | int32 | `nvar` | variables per frame (4; 5 with `TK`) |
    | 36 | int32 | `nlayer` | layers |
    | 40 | 8 chars | `method` | `AV` or `RS` |
    | 48 | int32 | `order` | 1 or 2 for `RS`; 0 for `AV` |
@@ -636,6 +668,7 @@ so the heartbeat, tracer and history files it reads are never touched.
 | `Layer` keys `width`, `xvel`, `zones`, `resolution`, `name` | `layer(l)%...` (same names) |
 | `xvel_profile`, `xvel_amplitude` | `layer(l)%prof_name`, `prof_np`, `prof_par`; `xamp`, `have_amp` |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
+| `Material` keys `eos`, `CV`, `T0` | `material(m)%eos` (`eos_mie_gruneisen`, `eos_mie_gruneisen_t`), `CV` (J/(g K)), `T0`; copied into `layer(l)%eos`, `cv` (kJ/(g K): `CV`/1000), `T0`, then into module `temperature` (`src/modules/temp_mod.f95`), cell by cell |
 | `num_threads` | `nproc` |
 | `Run`, `Output`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `plot_dt`, `colormap`, `CFL`, `stack_resolution`, ...) |
 | `tracer` | `tracer(n)%...`: name, location, `x0`, `kface`, `w`, `kcell` |
@@ -675,6 +708,20 @@ colored at t = 0, and the places with no material white. The P t-x diagram's
 frame, title and color bar are checked at known pixels too. With velocity
 profiles, frame 1's face velocities must be the profiles' cell averages, from
 the textbook F computed again in the test, to single precision.
+
+With materials that carry T (`tests/decks/ok_temperature.deck`), the file
+has `TK` after `DMG`, and the tracer's `TK` in it is the tracer file's, to
+single precision, 298 K (T0) at t = 0.
+
+The temperature (module `temperature`) has a unit test, `bin/test_temp`, also
+run by `make test`: the cold energy against 50-digit values from
+`tests/temp_reference.py` (mpmath, the integral from V0 by its own
+quadrature), in one step and in 997, along a 2,000-step path through a shock,
+ringing and release into tension and back, and out to 21 V0 and back (on the
+curve to 1e-13 every time); temperatures on the Hugoniot; and the units, from
+the deck's `CV` in J/(g K) to 100 K by hand. The G1 comparison
+(`tests/verification/compare_g1.py`) checks every material's `TK` against the
+formula at bitwhiz's own state, every row, to 1e-6 K.
 
 The distributions themselves (module `distributions`) have a unit test,
 `bin/test_dist`, also run by `make test`: f, F and 1 − F at 42 points against

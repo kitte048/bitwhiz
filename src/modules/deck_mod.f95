@@ -46,6 +46,11 @@ module deck
 !    11/02/26    D. E. Kittell        Output block: movie_frames (2 to
 !                (with Claude)        50; needs snapshots, checked in
 !                                     resolve_deck)
+!    11/03/26    D. E. Kittell        Material block: eos (mie_gruneisen,
+!                (with Claude)        mie_gruneisen_t), and CV and T0,
+!                                     which mie_gruneisen_t needs and
+!                                     only it takes (checked as the
+!                                     block closes)
 !
 !**********************************************************************!
 !
@@ -184,6 +189,10 @@ integer(kind=int32) :: line_origin  = 0, line_xleft = 0
 integer(kind=int32) :: line_ulo = 0, line_uhi = 0  ! color windows
 integer(kind=int32) :: line_plo = 0, line_phi = 0
 integer(kind=int32) :: line_movie = 0              ! movie_frames' line
+integer(kind=int32) :: line_cv = 0, line_t0 = 0    ! the Material block's
+                                                   ! CV and T0 (0 = not
+                                                   ! given, or not valid)
+logical             :: bad_eos = .false.           ! its eos was not valid
 integer(kind=int32) :: imat_now = 0, ilay_now = 0  ! block being filled
 logical             :: tend_given = .false.        ! t_end appeared
 
@@ -747,8 +756,29 @@ contains
          if (.not. seen('c0')) call missing(lb, 'C0', 'Material '//m%name)
          if (.not. seen('s1')) call missing(lb, 'S1', 'Material '//m%name)
          if (.not. seen('g0')) call missing(lb, 'G0', 'Material '//m%name)
+         !*** CV and T0 go with eos = mie_gruneisen_t, and only with it
+         !*** (in any order in the block, so checked here, at its end).
+         !*** An eos that was not valid has been reported already.
+         if (bad_eos) then
+            ! nothing more to say about this block's eos
+         else if (m%eos == eos_mie_gruneisen_t) then
+            if (.not. seen('cv')) call missing(lb, 'CV', 'Material '// &
+               trim(m%name)//' with eos = mie_gruneisen_t')
+            if (.not. seen('t0')) call missing(lb, 'T0', 'Material '// &
+               trim(m%name)//' with eos = mie_gruneisen_t')
+         else
+            if (line_cv > 0) call deck_error(line_cv, 'CV is only for '// &
+               'eos = mie_gruneisen_t (Material '//trim(m%name)//' is '// &
+               'eos = mie_gruneisen, the default, which has no temperature)')
+            if (line_t0 > 0) call deck_error(line_t0, 'T0 is only for '// &
+               'eos = mie_gruneisen_t (Material '//trim(m%name)//' is '// &
+               'eos = mie_gruneisen, the default, which has no temperature)')
+         end if
       end associate
       imat_now = 0
+      line_cv  = 0
+      line_t0  = 0
+      bad_eos  = .false.
    case (bk_layer)
       if (.not. seen('material')) call missing(lb, 'material', 'Layer')
       if (.not. seen('width'))    call missing(lb, 'width', 'Layer')
@@ -1151,9 +1181,37 @@ contains
          return
       end if
       material(imat_now)%spall_strength = x
+   case ('eos')
+      ! The material model (doc/design/materials.md). Both have the same
+      ! P and c; mie_gruneisen_t also carries each cell's temperature.
+      select case (lower(val))
+      case ('mie_gruneisen')
+         material(imat_now)%eos = eos_mie_gruneisen
+      case ('mie_gruneisen_t')
+         material(imat_now)%eos = eos_mie_gruneisen_t
+      case default
+         bad_eos = .true.
+         call deck_error(ln, 'eos = '//trim(val)//' is not one of '// &
+            'mie_gruneisen (the default), mie_gruneisen_t (Mie-Gruneisen '// &
+            'with temperature)')
+      end select
+   case ('cv', 't0')
+      ! CV in J/(g K), as the literature gives it (converted to kJ/(g K)
+      ! in resolve_deck); T0 in K. Whether this material's eos takes
+      ! them is checked when the block closes (close_block).
+      call get_real(ln, key, val, x, ok)
+      if (ok) call positive(ln, key, x, ok)
+      if (.not. ok) return
+      if (k == 'cv') then
+         material(imat_now)%CV = x
+         line_cv = ln
+      else
+         material(imat_now)%T0 = x
+         line_t0 = ln
+      end if
    case default
       call unknown_key(ln, key, 'in a Material block', &
-         'R0, C0, S1, S2, G0, spall_strength')
+         'eos, R0, C0, S1, S2, G0, spall_strength, CV, T0')
    end select
    end subroutine key_material
 
@@ -1371,7 +1429,7 @@ contains
       b = 'the Output block'
    case ('method', 'bl', 'bq', 'cfl', 'order')
       b = 'the Solver block'
-   case ('r0', 'c0', 's1', 's2', 'g0', 'spall_strength')
+   case ('eos', 'r0', 'c0', 's1', 's2', 'g0', 'spall_strength', 'cv', 't0')
       b = 'a Material block'
    case ('origin', 'x_left')
       b = 'the Stack block'
@@ -1419,6 +1477,11 @@ contains
       layer(l)%S2 = material(im)%S2
       layer(l)%G0 = material(im)%G0
       layer(l)%spall_strength = material(im)%spall_strength
+      layer(l)%eos = material(im)%eos
+      if (material(im)%eos == eos_mie_gruneisen_t) then
+         layer(l)%cv = material(im)%CV/1000.0_dp   ! J/(g K) to kJ/(g K)
+         layer(l)%T0 = material(im)%T0
+      end if
    end do
    if (nerr > 0) return
 
@@ -1826,6 +1889,10 @@ contains
          write(lu,'(a)') ''
          write(lu,'(a)') ' Begin Material '//trim(m%name)// &
             '      # used by '//itoa(m%nused)//' layer(s)'
+         call kv(lu, 2, 'eos', trim(eos_names(m%eos)), &
+            merge('Mie-Gruneisen (the default)  ', &
+                  'Mie-Gruneisen, plus T        ', &
+                  m%eos == eos_mie_gruneisen))
          call kv(lu, 2, 'R0', fmt_real(m%R0), 'g/cm^3')
          call kv(lu, 2, 'C0', fmt_real(m%C0), 'km/s')
          call kv(lu, 2, 'S1', fmt_real(m%S1))
@@ -1833,6 +1900,10 @@ contains
          call kv(lu, 2, 'G0', fmt_real(m%G0))
          call kv(lu, 2, 'spall_strength', fmt_real(m%spall_strength), &
             'GPa; breaks below -this pressure')
+         if (m%eos == eos_mie_gruneisen_t) then
+            call kv(lu, 2, 'CV', fmt_real(m%CV), 'J/(g K), constant')
+            call kv(lu, 2, 'T0', fmt_real(m%T0), 'K, at R0 and e = 0')
+         end if
          write(lu,'(a)') ' End Material'
       end associate
    end do

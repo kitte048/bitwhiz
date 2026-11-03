@@ -19,7 +19,8 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | History file `<title>.hist`: x, u, P and damage on the whole mesh, one frame per snapshot (`plot_every`, `plot_dt`) | done (`src/modules/hist_mod.f95`; format in `input/README.md`, section 9) |
 | Pictures: t-x diagrams of u and P, one plot per tracer, a pressure movie, P against x (`movie_frames`, 2 to 50); `plots_only = yes` re-draws them without running || done: both t-x diagrams (lab frame; white outside the material and in open spall, and in P where no wave has reached) and the tracer plots (velocity against time); each framed and titled (BITWHIZ PRESSURE, VELOCITY and SCOPE VIEW), the t-x diagrams with a color bar, all anti-aliased (`src/modules/pics_mod.f95`, `src/drawings/draw_tx.f95`, `draw_trace.f95`, `draw_profile.f95`, `src/modules/strk_mod.f95`; `input/README.md` section 9b) |
 | Velocity profiles: a layer's starting velocity shaped by a probability density (`xvel_profile`, `xvel_amplitude`; uniform, linear, beta, normal, split normal, sinh-arcsinh, Cauchy), momentum exact | done, 1.1.0 (`src/modules/dist_mod.f95`, with unit test; `input/README.md`, Layer block; design `doc/design/distributions.md`; example decks `input/ramp_*.deck`, `input/pulse_split_normal.deck`, checked against exact linear acoustics) |
-| Comparison with reference data | data in `tests/verification/` (the class problem; gold-standard sets G1, inert, and G2-G5, HVRB); `tests/verification/gold.py` reads it and reproduces the gold standard's published results; bitwhiz against G1 (inert): `tests/verification/compare_g1.py`, all pass (P, u, rho at 1 mm within 0.001 % of exact; arrivals within 5 ns) |
+| Material models: `eos = mie_gruneisen` (the default) or `mie_gruneisen_t`, the same P and c plus each cell's temperature (`CV`, `T0`; the cold curve carried cell by cell), `TK` in the tracer and history files, the T range and hottest cell (intact cells) in the log | done, for 1.2.0 (`src/modules/temp_mod.f95`, with unit test; `input/README.md`, Material block; design `doc/design/materials.md`; checked against G1's temperatures by `compare_g1.py`) |
+| Comparison with reference data | data in `tests/verification/` (the class problem; gold-standard sets G1, inert, and G2-G5, HVRB); `tests/verification/gold.py` reads it and reproduces the gold standard's published results; bitwhiz against G1 (inert): `tests/verification/compare_g1.py`, all pass (P, u, rho at 1 mm within 0.001 % of exact; arrivals within 5 ns; TK the formula's at bitwhiz's own state to 1e-11 K, and within 0.011 % of the exact Hugoniot rise at 1 mm) |
 
 ## Build
 Needs gfortran and make.
@@ -40,7 +41,7 @@ the class problem, with the run-time checks and floating-point traps left out
 (a NaN still stops the run, through the heartbeat's finite check). It builds
 in `build/release/`, so the debug build is never touched, and then runs the
 deck and OpenMP tests on it, plus `tests/run_release_tests.sh`: the class deck
-and four test decks must give the debug build's results, heartbeat and
+and seven test decks must give the debug build's results, heartbeat and
 tracer rows bit for bit. Develop and run `make test` with the debug build;
 run `make release` before handing an executable out.
 

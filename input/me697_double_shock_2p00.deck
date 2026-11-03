@@ -168,9 +168,11 @@ Notes (ignored by the parser):
 #    CFL            Courant safety factor, 0 < CFL <= 1       (0.6)
 #
 #  Begin Material <name>
+#    eos            mie_gruneisen (default) | mie_gruneisen_t (plus T)
 #    R0, C0, S1, G0 g/cm^3, km/s, -, -          (required)
 #    S2             -                           (0.0)
 #    spall_strength GPa, tension held before a cell breaks (0.01)
+#    CV, T0         mie_gruneisen_t only: J/(g K), K   (required there)
 #
 #  Begin Stack
 #    resolution     zones/mm for every layer    (none: each layer's own)
