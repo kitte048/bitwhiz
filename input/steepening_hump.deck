@@ -1,0 +1,100 @@
+#**********************************************************************#
+#  Shock formation: a velocity hump steepens into a shock.             #
+#                                                                      #
+#  Three layers of aluminum, all at rest but the middle one, which     #
+#  holds a Gaussian hump of velocity: 1.0 km/s at its center, 0 at     #
+#  its faces (normal 0.5 0.125, a spread of 0.5 mm in a 4 mm layer).   #
+#  The layers are one material, so their contacts reflect nothing:     #
+#  they only mark where the hump is. At t = 0 the pressure is 0, and   #
+#  the hump splits in two (the Riemann invariants u + P/Z and          #
+#  u - P/Z): a compression pulse running right (u about 0.5 km/s, P    #
+#  about 8 GPa) and a tension pulse running left (P about -7 GPa).     #
+#                                                                      #
+#  The compression pulse steepens on its way through C. Its top runs   #
+#  faster than its foot (wave speed c + u grows with u, about c0 +     #
+#  2 S1 u for weak waves), so its front tilts forward until it is a    #
+#  shock, while its back tilts the other way and spreads: the pulse    #
+#  becomes a triangle with a shock at its front, and decays as it      #
+#  runs. The front's steepest slope, about 0.30 km/s per 0.5 mm,       #
+#  closes in t = 1/(2 S1 slope), about 0.6 us: a shock by x = 3 mm.    #
+#                                                                      #
+#  Watch it in the pressure movie (25 frames, <title>.mv_p_*.bmp) and  #
+#  in the scope views of C's tracers at 1, 3, 6, 10 and 15 mm: the     #
+#  rise sharpens from one to the next. Units: mm, us, g/cc, km/s,      #
+#  GPa. Spall is off (see spall_strength below).                       #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+
+ Begin Run
+  title = steepening_hump
+  t_end = 3.5                   # us: the pulse's front nears C's free
+                                # surface (20 mm at about 5.6 km/s)
+ End Run
+
+ Begin Output
+  plot_dt      = 0.01           # us between snapshots
+  movie_frames = 25             # the pressure movie, 0 to 3.5 us
+  tracer_dt    = 0.002          # us between tracer rows (a shock's rise
+                                # is a few ns at this mesh)
+  colormap     = viridis
+
+  tracer = c01  C@0.05          # x =  1 mm: the pulse as it leaves B
+  tracer = c03  C@0.15          #       3 mm: about where it turns a shock
+  tracer = c06  C@0.3           #       6 mm
+  tracer = c10  C@0.5           #      10 mm
+  tracer = c15  C@0.75          #      15 mm
+ End Output
+
+ Begin Solver
+  method = AV                   # BL, BQ, CFL: the equation sheet's
+ End Solver
+
+ Begin Material Al              # aluminum (the ME 697 class deck's values)
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+  spall_strength = 100          # GPa: spall off. A wave demo, not a
+                                # fracture study: the tension pulse in A
+                                # is about 7 GPa; real aluminum breaks at
+                                # about 1 to 2 (dynamic)
+ End Material
+
+ Begin Stack
+  resolution = 50               # zones/mm: 300 + 200 + 1000 = 1500
+                                # cells, 25 across the hump's spread
+  origin     = B:C              # x = 0 where C begins (the hump's front
+                                # foot)
+
+  Begin Layer
+   name     = A                 # at rest: the tension pulse runs into
+   material = Al                # it, and its free surface throws it
+   width    = 6.0               # back as compression, well behind
+  End Layer
+
+  Begin Layer
+   name     = B                 # the hump
+   material = Al
+   width    = 4.0
+   xvel           = 0.3133      # km/s: B's mean velocity. With the
+                                # amplitude left at xvel, u = xvel*f, and
+                                # f's peak is 1/(0.125*sqrt(2*pi)) =
+                                # 3.1915, so the hump's top is 1.000 km/s
+                                # and its feet (4 spreads out) 0.0001
+   xvel_profile   = normal 0.5 0.125
+  End Layer
+
+  Begin Layer
+   name     = C                 # at rest: where the shock forms
+   material = Al
+   width    = 20.0
+  End Layer
+ End Stack
+End bitwhiz
+
+Notes (ignored by the parser):
+- Try a wider hump (normal 0.5 0.25) or a lower one (xvel 0.15): the
+  shock forms later and farther, t about 1/(2 S1 slope).
+- Turn spall on (delete spall_strength) to see the tension pulse break A.
+- method = RS steepens it the same way, with a sharper front.

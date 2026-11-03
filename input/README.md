@@ -283,6 +283,16 @@ of tension and the PMMA to about 1.1 GPa, far beyond what either holds
 (about 1 to 2 GPa and 0.16 GPa), so at realistic strengths both break and
 the broken pieces knock against each other, ringing in the tracer data.
 
+**Shock formation,** `steepening_hump.deck`: three layers of aluminum, A
+(6 mm), B (4 mm) and C (20 mm), at rest but for a Gaussian hump of velocity
+in B (`normal 0.5 0.125`, `xvel = 0.3133`: 1.0 km/s at its top, 0 at its
+feet). The hump splits into a compression pulse running right (about
+0.5 km/s, 8 GPa) and a tension pulse running left; the compression pulse's
+front steepens into a shock within about 0.6 us (3 mm), and the pulse turns
+into a triangle that decays as it crosses C. A pressure movie (25 frames)
+and scope views at 1, 3, 6, 10 and 15 mm into C are built in; spall is off,
+as above.
+
 **Keep the origin near the problem.** Positions are stored as plain numbers, so
 round-off in x grows with the size of x: a cell's width is the difference of
 its two face positions. With the origin in or near the stack (the usual

@@ -278,7 +278,8 @@ decks.
       Every heartbeat, tracer row, history frame and picture the same.
 - [ ] **nanoHUB:** list `<title>.resolved` among the notebook's
       downloads, and check that its run log reads well at 132 lines
-      (with the next release).
+      (with the next release); add `steepening_hump.deck` (shock
+      formation, Nov 3) to the picker, with its movie.
 - [ ] **History file size:** 12.3 MB for the class deck, 123 MB at 10
       times its resolution (plot_dt = 0.005 us, 1001 frames). Section 8
       now reports it at the end (Nov 3); still to do: say it at the
