@@ -38,6 +38,8 @@
 #                unit test, test_temp, in 'make test')
 #Revision: 1.20 (11-03-26, with Claude: 'tidy' removes the resolved
 #                decks, *.resolved)
+#Revision: 1.21 (11-03-26, with Claude: pics_mod uses strk_mod, for
+#                the axis ends, nice_ends)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -175,7 +177,8 @@ $(1)src/modules/hist_mod.o:  $(1)src/modules/temp_mod.o $(1)src/modules/shock_mo
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/strk_mod.o:  $(1)src/modules/bit_mod.o
 $(1)src/modules/pics_mod.o:  $(1)src/modules/hist_mod.o $(1)src/modules/deck_mod.o \
-                             $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
+                             $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o \
+                             $(1)src/modules/strk_mod.o
 $(1)src/modules/rs_mod.o:    $(1)src/modules/av_mod.o $(1)src/modules/eos_mod.o \
                              $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o
 endef

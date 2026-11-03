@@ -67,7 +67,9 @@
 #  pixel white (rounded); and the curve drawn: vermilion (#D55E00)     #
 #  where u = 0 falls on the pdv plot's y axis, early on, before the    #
 #  shock arrives; and the title BITWHIZ SCOPE VIEW above the box (the  #
-#  stem of its first I slate, the gap after it white).                 #
+#  stem of its first I slate, the gap after it white); and the axis    #
+#  ends: the y axis's rounded to -0.1 and 2.1, and ink at all four     #
+#  numbers' places, none in an empty margin.                           #
 #                                                                      #
 #  One line per case as it finishes, with a counter (tests/report.sh). #
 #  A new case: begin, then exactly one pass or fail, and one more in   #
@@ -79,7 +81,7 @@ CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 . "$(dirname "$0")/report.sh"
-plan 21 "history tests"
+plan 22 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -286,27 +288,29 @@ else
    pass $c
 fi
 
-# Case: a tracer plot's frame (800 x 600, margin 40, spine 2.5 pixels).
-# Rows from the bottom: the bottom spine covers rows 41 and 42 fully
-# and half of row 43. Column 380 is clear of the ticks. Bytes are blue,
-# green, red, as a bitmap stores them.
+# Case: a tracer plot's frame (800 x 600; the box 100 pixels from the
+# left, 60 from the right, 40 from the top and 70 from the bottom;
+# spine 2.5 pixels). Rows from the bottom: the bottom spine covers rows
+# 71 and 72 fully and half of row 73. Column 380 is clear of the ticks.
+# Bytes are blue, green, red, as a bitmap stores them.
 begin
 c=tr_frame
 f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
 if [ ! -f "$f" ]; then
    fail $c "no pdv tracer plot"
-elif [ "$(pixel "$f" 380 41 800)" != 503e2c ] || [ "$(pixel "$f" 380 42 800)" != 503e2c ]; then
+elif [ "$(pixel "$f" 380 71 800)" != 503e2c ] || [ "$(pixel "$f" 380 72 800)" != 503e2c ]; then
    fail $c "the bottom spine is not slate (#2C3E50)"
-elif [ "$(pixel "$f" 380 43 800)" != a89f96 ] || [ "$(pixel "$f" 380 44 800)" != ffffff ]; then
+elif [ "$(pixel "$f" 380 73 800)" != a89f96 ] || [ "$(pixel "$f" 380 74 800)" != ffffff ]; then
    fail $c "the spine's inner edge is not a half shade, then white (anti-aliasing)"
-elif [ "$(pixel "$f" 41 41 800)" != ffffff ]; then
+elif [ "$(pixel "$f" 101 71 800)" != ffffff ]; then
    fail $c "the box's outer corner pixel is not white (rounded corners)"
 else
    pass $c
 fi
 
 # Case: the pdv curve. Until the first shock (about 2 us) the PDV
-# velocity is 0, so at column 100 the curve is a 3-pixel line at the
+# velocity is 0, so at column 150 (t = 0.37 us) the curve is a 3-pixel
+# line at the
 # height of u = 0 on the plot's y axis (from the screen line "Tracer
 # pdv u (km/s) : ..., y axis ylo to yhi"); its middle pixel must be
 # full vermilion (bytes 00 5e d5: blue, green, red).
@@ -314,19 +318,20 @@ begin
 c=tr_curve
 f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
 r0=$(awk -F'y axis ' '/Tracer pdv u \(km\/s\)/ {split($2, v, " to "); lo = v[1] + 0; hi = v[2] + 0;
-     yb = 557.5; ya = 42.5; y = yb - (0 - lo)/(hi - lo)*(yb - ya); print 600 - int(y)}' "$TMP/class_av/screen.out")
+     yb = 527.5; ya = 42.5; y = yb - (0 - lo)/(hi - lo)*(yb - ya); print 600 - int(y)}' "$TMP/class_av/screen.out")
 found=""
 for r in $((r0 - 1)) $r0 $((r0 + 1)); do
-   [ "$(pixel "$f" 100 "$r" 800)" = 005ed5 ] && found=$r
+   [ "$(pixel "$f" 150 "$r" 800)" = 005ed5 ] && found=$r
 done
 if [ -z "$r0" ] || [ -z "$found" ]; then
-   fail $c "no full-vermilion pixel at column 100 near row ${r0:-?} (u = 0)"
+   fail $c "no full-vermilion pixel at column 150 near row ${r0:-?} (u = 0)"
 else
    pass $c
 fi
 
-# Case: the title, BITWHIZ SCOPE VIEW, 16 pixels tall, centered over the
-# box in the 40-pixel margin. The stem of the first I (a straight
+# Case: the title, BITWHIZ SCOPE VIEW, 16 pixels tall, centered on the
+# page in the 40-pixel top margin (where it was before the box's sides
+# moved in for the numbers). The stem of the first I (a straight
 # stroke, 2.2 pixels wide, at x = 284.8) fills column 285 at mid-height
 # (row 581 from the bottom); column 288, between I and T, is white.
 begin
@@ -334,6 +339,40 @@ c=tr_title
 f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
 if [ "$(pixel "$f" 285 581 800)" != 503e2c ] || [ "$(pixel "$f" 288 581 800)" != ffffff ]; then
    fail $c "the title's first I is not where it belongs (slate stem, white gap)"
+else
+   pass $c
+fi
+
+# Case: the axis ends. The pdv plot's y axis is rounded out to clean
+# ends, -0.1 to 2.1 km/s (the data, 0 to 1.9921, padded 5 %), as the
+# screen reports; the numbers are drawn (some slate ink) where they
+# belong: xlo and xhi under the box's bottom corners (x = 102.5 and
+# 737.5, rows 49-61 from the bottom), ylo and yhi left of its left side
+# (columns 70-90, level with the plot area's bottom and top), and
+# nothing beyond them in the margins (columns 1-60, rows 1-40).
+ink() {   # $1 file, $2 $3 columns, $4 $5 rows from the bottom: any not white?
+   local r
+   for r in $(seq "$4" "$5"); do
+      od -v -An -t x1 -j $((54 + 3*((r - 1)*800 + $2 - 1))) -N $((3*($3 - $2 + 1))) "$1" |
+         tr -s ' \n' '\n' | grep -qv -e '^ff$' -e '^$' && return 0
+   done
+   return 1
+}
+begin
+c=tr_numbers
+f="$TMP/class_av/double_shock_2p00.tr_pdv.bmp"
+if ! grep -q 'Tracer pdv u (km/s).*y axis -0.1 to 2.1$' "$TMP/class_av/screen.out"; then
+   fail $c "the pdv plot's y axis is not -0.1 to 2.1 on the screen"
+elif ! ink "$f" 97 108 49 61; then
+   fail $c "no number under the box's bottom-left corner (xlo)"
+elif ! ink "$f" 732 743 49 61; then
+   fail $c "no number under the box's bottom-right corner (xhi)"
+elif ! ink "$f" 70 90 67 79; then
+   fail $c "no number left of the plot area's bottom (ylo)"
+elif ! ink "$f" 70 90 552 564; then
+   fail $c "no number left of the plot area's top (yhi)"
+elif ink "$f" 1 60 1 40; then
+   fail $c "ink in the bottom-left margin, where nothing is drawn"
 else
    pass $c
 fi

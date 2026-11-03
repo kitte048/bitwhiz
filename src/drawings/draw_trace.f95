@@ -12,11 +12,12 @@ subroutine draw_trace( bout, n, t, u, ylo, yhi )
 !    the plot area, framed by a box with rounded outside corners (the  !
 !    spines) and tick marks at tenths of each axis, pointing in; in    !
 !    it, the tracer's velocity against time, a line through its n      !
-!    points. Time runs across, from the first point (the left edge of  !
-!    the plot area) to the last (the right edge); velocity up, from    !
-!    ylo (the bottom edge) to yhi (the top edge). The only text is a   !
-!    title engraved in the margin above the box, BITWHIZ SCOPE VIEW;   !
-!    the screen gives the ranges.                                      !
+!    points. Time runs across, from the first point's time to the      !
+!    last's, each rounded out to a clean number (nice_ends, module     !
+!    strokes: 0 to 5 us stays 0 to 5); velocity up, from ylo (the      !
+!    bottom edge) to yhi (the top edge), which module pics rounds the  !
+!    same way. The text is a title engraved in the margin above the    !
+!    box, BITWHIZ SCOPE VIEW, and the four axis ends (draw_profile).   !
 !                                                                      !
 !    THE TITLE is drawn with strokes, like the curve: each letter is a !
 !    few straight lines and elliptical arcs in a cell one cap height   !
@@ -83,9 +84,14 @@ subroutine draw_trace( bout, n, t, u, ylo, yhi )
 !                                     as arguments), shared with the   !
 !                                     movies; the picture is the same, !
 !                                     byte for byte                    !
+!    11/03/26    D. E. Kittell        The time axis's ends rounded out !
+!                (with Claude)        to clean numbers (nice_ends), as !
+!                                     the y axis's are (module pics);  !
+!                                     draw_profile writes all four     !
 !                                                                      !
 !**********************************************************************!
 use bits, only: int32,dp
+use strokes, only: nice_ends
 implicit none
 
 !**********************************************************************!
@@ -107,8 +113,11 @@ interface
    end subroutine draw_profile
 end interface
 
-!*** Time across, from the first point to the last.
-call draw_profile( bout, n, t, u, t(1), t(n), ylo, yhi, &
+real(kind=dp) :: tlo, thi, step           ! the time axis, and its step
+
+!*** Time across, from the first point to the last, rounded out.
+call nice_ends( t(1), t(n), tlo, thi, step )
+call draw_profile( bout, n, t, u, tlo, thi, ylo, yhi, &
    'BITWHIZ SCOPE VIEW' )
 
 return

@@ -328,13 +328,23 @@ decks.
       could be a reading check without a full run: about 30 s more.
 
 ## Ideas (further out)
-- **Values and units on every plot** (design note first): the axes' ends
-  (xmin, xmax, ymin, ymax) written on the t-x diagrams, tracer plots and
-  movie frames, the bitmaps kept at their size and the plot area shrunk to
-  make room. Lengths in the unit that keeps them under 1000 without
-  exponents (Angstrom, nm, um, mm, cm, m, km), anything beyond that flagged
-  and not plotted; pressure in GPa (or Pa with a prefix). The stroke font
-  needs lower case for units, and mu.
+- **Values and units on every plot:** the axes' ends (xmin, xmax, ymin,
+  ymax) written on the t-x diagrams, tracer plots and movie frames, the
+  bitmaps kept at their size and the plot area shrunk to make room.
+  - [x] Tracer plots and movie frames (Nov 3): the box's left, right and
+    bottom sides moved in (100, 60, 70 pixels; the top and the title as
+    before), the four ends printed in 12-pixel figures (`axis_text`,
+    module strokes), each axis rounded out to clean ends first
+    (`nice_ends`: two significant figures of the span), in bitwhiz's own
+    units, no unit or axis name yet.
+  - [ ] The t-x diagrams (x and t ends; the color bar's 0 and 1 as data
+    values).
+  - [ ] Axis names and units, with the unit chosen to fit (decided Nov 3:
+    with the labels, not before, so no scaled number appears without its
+    unit). Lengths in the unit that keeps them under 1000 without
+    exponents (Angstrom, nm, um, mm, cm, m, km), anything beyond that
+    flagged and not plotted; pressure in GPa (or Pa with a prefix). The
+    stroke font needs lower case for units, and mu.
 - **Z-machine ramp drive by inverse problem:** fit a velocity profile's
   parameters (sinh-arcsinh, say) so the drive at an interface matches a
   measured ramp-wave drive.

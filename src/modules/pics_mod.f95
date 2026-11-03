@@ -123,6 +123,10 @@ module pics
 !    11/03/26    D. E. Kittell        Section 9 opens with its rule and
 !                (with Claude)        leaves the closing one to the run's
 !                                     end (one rule between sections)
+!    11/03/26    D. E. Kittell        The tracer plots' and the movie's
+!                (with Claude)        axes rounded out to clean ends
+!                                     (nice_ends, module strokes), which
+!                                     the pictures now print
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
@@ -133,6 +137,7 @@ use hist,  only: read_history, free_history, hr_nframes, hr_status, &
    hr_kmax, hr_nlay, hr_method, hr_order, hr_lname, hr_lmat, hr_kfirst, &
    hr_klast, hr_text, hr_time, hr_cycle, hr_x, hr_u, hr_p
 use deck,  only: fmt_real, get_line
+use strokes, only: nice_ends
 implicit none
 private
 
@@ -346,6 +351,7 @@ contains
    integer(kind=int32) :: pick(movie_frames)
    real(kind=dp), allocatable :: xc(:), v(:)
    real(kind=dp) :: xlo, xhi, plo, phi, del, tm, tlast
+   real(kind=dp) :: step                    ! nice_ends' step (not used)
    integer(kind=int32) :: nf, kmax, nm, m, j, jn
    character(len=16) :: tstr
    character(len=6) :: cyc
@@ -380,15 +386,16 @@ contains
 
    !*** The axes, for the whole movie: x as the t-x diagrams', y from
    !*** min - 5% to top + 5% of P's range (a flat range: +-5% of its
-   !*** value, at least +-0.05, as the tracer plots).
-   xlo = real( minval(hr_x), dp )
-   xhi = real( maxval(hr_x), dp )
+   !*** value, at least +-0.05, as the tracer plots), then each rounded
+   !*** out to clean ends.
    del = 0.05_dp*real( ptop - pmin, dp )
    if ( .not. ( real( ptop - pmin, dp ) > 1.0e-9_dp* &
         max( abs(real(pmin,dp)), abs(real(ptop,dp)), one ) ) ) &
       del = 0.05_dp*max( abs(real(ptop,dp)), one )
-   plo = real( pmin, dp ) - del
-   phi = real( ptop, dp ) + del
+   call nice_ends( real( minval(hr_x), dp ), real( maxval(hr_x), dp ), &
+      xlo, xhi, step )
+   call nice_ends( real( pmin, dp ) - del, real( ptop, dp ) + del, plo, phi, &
+      step )
    write( kpt6, fl ) 'Pressure movie', itoa(nm)//' frames (movie_frames '// &
       '= '//itoa(movie_frames)//') of the '//itoa(nf)//' snapshots'
    if ( nm < movie_frames ) write( kpt6, fl ) '', '(fewer: some movie '// &
@@ -529,6 +536,7 @@ contains
    integer(kind=int32) :: lu, ios, ncol, nrow, it, ktime, n
    logical :: eof, bad, flat
    real(kind=dp) :: umin, umax, del
+   real(kind=dp) :: ylo, yhi, step          ! the y axis (nice_ends)
 
    fname = trim(title)//'.tracers.csv'
    open( newunit=lu, file=fname, status='old', action='read', iostat=ios )
@@ -589,14 +597,16 @@ contains
    close( lu )
 
    !*** One plot per tracer: x from the first to the last time, y from
-   !*** min - 5% to max + 5% of the range. A flat line gets +-5% of its
-   !*** value, at least +-0.05 km/s; flat means flat to round-off (a
-   !*** range under 1e-9 of its values, as at an interface whose u is
-   !*** steady, 0.5 km/s +- 1e-13), so the axis is never stretched over
-   !*** round-off.
+   !*** min - 5% to max + 5% of the range, both rounded out to clean
+   !*** ends (nice_ends, module strokes; draw_trace rounds the time
+   !*** axis), which the plot prints at its corners. A flat line gets
+   !*** +-5% of its value, at least +-0.05 km/s; flat means flat to
+   !*** round-off (a range under 1e-9 of its values, as at an interface
+   !*** whose u is steady, 0.5 km/s +- 1e-13), so the axis is never
+   !*** stretched over round-off.
    !*** The pictures announced once; then one line per tracer, its
-   !*** velocity range and the plot's y axis (what a reader needs to
-   !*** read a plot whose only text is its title).
+   !*** velocity range and the plot's y axis (the numbers at the plot's
+   !*** left side; its own text names no axis or unit).
    write( kpt6, fl ) 'Tracer file', fname
    write( kpt6, fl ) 'Rows', itoa(nrow)//', t = '//fmt_real(t(1))// &
       ' to '//fmt_real(t(nrow))//' us'
@@ -608,11 +618,12 @@ contains
       flat = .not. ( umax - umin > &
          1.0e-9_dp*max( abs(umin), abs(umax), one ) )
       if ( flat ) del = 0.05_dp*max( abs(umax), one )
+      call nice_ends( umin - del, umax + del, ylo, yhi, step )
       write( kpt6, fl ) 'Tracer '//trim(tracer(it)%name)//' u (km/s)', &
          num(real(umin,sp))//' to '//num(real(umax,sp))//', y axis '// &
-         num(real(umin - del,sp))//' to '//num(real(umax + del,sp))
+         num(real(ylo,sp))//' to '//num(real(yhi,sp))
       call trace_file( trim(title)//'.tr_'//trim(tracer(it)%name), t, &
-         u(:,it), umin - del, umax + del, nerr )
+         u(:,it), ylo, yhi, nerr )
    end do
    end subroutine tracer_pictures
 

@@ -9,24 +9,32 @@ subroutine draw_profile( bout, n, x, y, xlo, xhi, ylo, yhi, title_text )
 !    x range and a title of its own (11/02/26); a tracer plot is the   !
 !    same, byte for byte.                                              !
 !                                                                      !
-!    The picture: a white page, a margin of nm pixels, and inside it   !
-!    the plot area, framed by a box with rounded outside corners (the  !
-!    spines) and tick marks at tenths of each axis, pointing in; in    !
-!    it, a line through the n points, x across from xlo (the left      !
-!    edge of the plot area) to xhi (the right edge), y up from ylo     !
-!    (the bottom edge) to yhi (the top edge). A point beyond the y     !
-!    axis is drawn at the box's edge, as a t-x diagram's colors        !
-!    saturate. The only text is title_text, engraved in the margin     !
-!    above the box; the screen gives the ranges.                       !
+!    The picture: a white page, and inside it the plot area, framed by !
+!    a box with rounded outside corners (the spines) and tick marks at !
+!    tenths of each axis, pointing in; in it, a line through the n     !
+!    points, x across from xlo (the left edge of the plot area) to xhi !
+!    (the right edge), y up from ylo (the bottom edge) to yhi (the top !
+!    edge). A point beyond the y axis is drawn at the box's edge, as a !
+!    t-x diagram's colors saturate. The box sits nmt pixels below the  !
+!    top (the title's margin, as it always was), nml from the left,    !
+!    nmr from the right and nmb from the bottom, so there is room for  !
+!    the text: title_text, engraved above the box, and the four axis   !
+!    ends, in smaller figures: xlo and xhi centered under the box's    !
+!    bottom corners, ylo and yhi right-aligned left of its left side,  !
+!    level with the plot area's bottom and top. They are written by    !
+!    axis_text (module strokes) with the decimals of the axis's step,  !
+!    so a caller gives clean ends (nice_ends) and the text is exact.   !
+!    No units and no axis names: the screen says what each axis is.    !
 !                                                                      !
 !    THE TITLE is drawn with strokes, like the curve: each letter is a !
 !    few straight lines and elliptical arcs in a cell one cap height   !
 !    tall, from bitwhiz's own small stroke font (module strokes, which !
 !    also draws the frame, so draw_tx's pictures share this look), set !
-!    at th pixels with strokes tsw wide, in slate, centered over the   !
-!    box and in the margin's height. A stroke font keeps the letters   !
-!    anti-aliased the same way as everything else, with no font file.  !
-!    Letters the font does not have are left blank.                    !
+!    at th pixels with strokes tsw wide, in slate, centered on the     !
+!    page (where the box was centered before its sides moved in for    !
+!    the numbers) and in the top margin's height. A stroke font keeps  !
+!    the letters anti-aliased the same way as everything else, with no !
+!    font file. Letters the font does not have are left blank.         !
 !                                                                      !
 !    Colors, from the equation sheets' figures (the Okabe-Ito palette, !
 !    which colorblind readers can tell apart, beside a dark ink): the  !
@@ -72,11 +80,17 @@ subroutine draw_profile( bout, n, x, y, xlo, xhi, ylo, yhi, title_text )
 !                                     point beyond the y axis is drawn !
 !                                     at the box's edge (for the       !
 !                                     movie); draw_trace calls it      !
+!    11/03/26    D. E. Kittell        The axis ends as numbers: the    !
+!                (with Claude)        box's left, right and bottom     !
+!                                     sides moved in (nml 100, nmr 60, !
+!                                     nmb 70; the top and the title    !
+!                                     as before), xlo and xhi under    !
+!                                     it, ylo and yhi left of it       !
 !                                                                      !
 !**********************************************************************!
 use bits, only: int8,int32,dp,kpt6,zero,half,one
 use strokes, only: frame_t,frame_set,frame_ink,frame_near,stamp,engrave, &
-   slate_rgb
+   slate_rgb,nice_ends,axis_text
 implicit none
 
 !**********************************************************************!
@@ -95,12 +109,23 @@ character(len=*), intent(in) :: title_text ! engraved above the box
 !**********************************************************************!
 integer(kind=int32), parameter :: nx=800      ! pixels across (x)
 integer(kind=int32), parameter :: ny=600      ! pixels up (y)
-integer(kind=int32), parameter :: nm=40       ! margin, pixels
+!*** The box's distance from each side of the page, pixels: the top's
+!*** is the title's (as it was when all four were 40); the others make
+!*** room for the axis ends' numbers.
+integer(kind=int32), parameter :: nmt=40      ! top: the title
+integer(kind=int32), parameter :: nml=100     ! left: ylo and yhi
+integer(kind=int32), parameter :: nmr=60      ! right: half of xhi
+integer(kind=int32), parameter :: nmb=70      ! bottom: xlo and xhi
 integer(kind=int32), parameter :: ns=4        ! samples per pixel, each way
 real(kind=dp), parameter :: cw=3.0_dp         ! curve width, pixels
 !*** The title: its cap height and stroke width (pixels).
 real(kind=dp), parameter :: th=16.0_dp        ! cap height, pixels
 real(kind=dp), parameter :: tsw=2.2_dp        ! stroke width, pixels
+!*** The axis ends' numbers: cap height, stroke width, and their gap
+!*** from the box (pixels).
+real(kind=dp), parameter :: nh=12.0_dp        ! cap height, pixels
+real(kind=dp), parameter :: nsw=1.7_dp        ! stroke width, pixels
+real(kind=dp), parameter :: ngap=10.0_dp      ! gap to the box, pixels
 !*** The curve's ink, as red, green, blue (0 to 255): Okabe-Ito
 !*** vermilion, #D55E00. (The frame's and the title's, slate #2C3E50,
 !*** is module strokes' slate_rgb.)
@@ -121,6 +146,8 @@ character(len=1), dimension(:,:,:), allocatable :: RGB  ! the colors
 integer(kind=int8), dimension(:,:), allocatable :: crv  ! samples: 1
                                               ! curve, 2 title, 0 neither
 character(len=80) :: cmap                     ! 'rgb': no colormap
+real(kind=dp) :: a,b,stx,sty                  ! nice_ends: the ends (as
+                                              ! given) and each axis's step
 
 !*** Allocate the image arrays (too large for the stack). bmpmaker
 !*** takes fcn too, but with no colormap it never reads it.
@@ -137,11 +164,11 @@ hs   = one/real( ns, dp )
 !*** The geometry, in pixels from the image's top-left corner (pixel
 !*** (i, j) covers x from i-1 to i and y from j-1 to j; bmpmaker writes
 !*** row j = ny first, the bottom of the image). The box's outside
-!*** edges, a margin in from the image's; frame_set puts the plot area
-!*** inside the spines (f%xa..f%xb across, x; f%ya..f%yb down, y) and
-!*** the ticks at its tenths.
-call frame_set( f, real( nm, dp ), real( nx - nm, dp ), real( nm, dp ), &
-   real( ny - nm, dp ) )
+!*** edges, the margins in from the image's; frame_set puts the plot
+!*** area inside the spines (f%xa..f%xb across, x; f%ya..f%yb down, y)
+!*** and the ticks at its tenths.
+call frame_set( f, real( nml, dp ), real( nx - nmr, dp ), real( nmt, dp ), &
+   real( ny - nmb, dp ) )
 
 !*** The points in pixels: xlo at the plot area's left edge, xhi at
 !*** its right; ylo at its bottom edge, yhi at its top. A point beyond
@@ -170,10 +197,26 @@ do k=1,max( n - 1, 1 ),1
    call stamp( crv, ns, px(k), py(k), px(m), py(m), cw, 1_int8 )
 end do
 
-!*** The title's samples (marked 2): centered over the box, its cap
-!*** height centered in the margin.
-call engrave( crv, ns, title_text, half*( f%bl + f%br ), half*f%bt, th, &
+!*** The title's samples (marked 2): centered on the page, its cap
+!*** height centered in the top margin.
+call engrave( crv, ns, title_text, half*real( nx, dp ), half*f%bt, th, &
    tsw, 2_int8 )
+
+!*** The axis ends (marked 2, slate like the title), with each axis's
+!*** decimals (nice_ends' step; the ends given are already clean): xlo
+!*** and xhi centered under the plot area's left and right edges, ylo
+!*** and yhi ending ngap left of the box, level with the plot area's
+!*** bottom and top.
+call nice_ends( xlo, xhi, a, b, stx )
+call nice_ends( ylo, yhi, a, b, sty )
+call engrave( crv, ns, axis_text( xlo, stx ), f%xa, f%bb + ngap + half*nh, &
+   nh, nsw, 2_int8 )
+call engrave( crv, ns, axis_text( xhi, stx ), f%xb, f%bb + ngap + half*nh, &
+   nh, nsw, 2_int8 )
+call engrave( crv, ns, axis_text( ylo, sty ), f%bl - ngap, f%yb, nh, nsw, &
+   2_int8, 'r' )
+call engrave( crv, ns, axis_text( yhi, sty ), f%bl - ngap, f%ya, nh, nsw, &
+   2_int8, 'r' )
 
 !*** The page: white. Then each pixel that has ink: its coverages from
 !*** its ns x ns samples, the frame first. The title is slate, so its

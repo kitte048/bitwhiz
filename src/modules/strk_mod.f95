@@ -19,6 +19,9 @@ module strokes
 !           ten digits, and . = + - for the movie's times)
 !       in_rounded, seg_dist2
 !           the geometry under them
+!       nice_ends, axis_text
+!           an axis's ends rounded out to clean numbers, and a number
+!           at an axis end as the text to engrave there
 !
 !    Coordinates are in pixels from the image's top-left corner: pixel
 !    (i, j) covers x from i-1 to i and y from j-1 to j. Pictures are
@@ -38,14 +41,18 @@ module strokes
 !                (with Claude)        AT TIME = +1.234 US): letters A
 !                                     and M, the digits 2 to 9, and
 !                                     . = + -
+!    11/03/26    D. E. Kittell        Numbers at the axis ends: engrave
+!                (with Claude)        aligns left, center or right
+!                                     (optional argument), nice_ends
+!                                     and axis_text
 !
 !**********************************************************************!
-use bits, only: int8, int32, dp, zero, half, one
+use bits, only: int8, int32, int64, dp, zero, half, one
 implicit none
 private
 
 public :: frame_t, frame_set, frame_ink, frame_near, stamp, engrave, &
-   in_rounded, seg_dist2, slate_rgb
+   in_rounded, seg_dist2, slate_rgb, nice_ends, axis_text
 
 !*** The ink of every frame and title: slate, #2C3E50, the equation
 !*** sheets' ink, as red, green, blue (0 to 255).
@@ -189,6 +196,8 @@ contains
    ! A title, text, in capitals th pixels tall with strokes tsw wide, !
    ! centered across on xc with its cap height centered on yc, marked !
    ! (as val) in mask. A character not in the font is left blank.     !
+   ! align = 'l' or 'r' (optional) puts the text's left or right end  !
+   ! at xc instead of its middle (the numbers at the axis ends).      !
    !                                                                  !
    ! THE FONT. Each letter in a cell one cap height tall: x from 0    !
    ! (its left) to its advance width, y from 0 (cap top) to 1         !
@@ -198,12 +207,13 @@ contains
    ! (0 to the right, 90 up), in nar segments. A new letter is a case !
    ! in advance and in glyph.                                         !
    !******************************************************************!
-   subroutine engrave( mask, ns, text, xc, yc, th, tsw, val )
+   subroutine engrave( mask, ns, text, xc, yc, th, tsw, val, align )
    integer(kind=int8), dimension(:,:), intent(inout) :: mask
    integer(kind=int32), intent(in) :: ns
    character(len=*), intent(in) :: text
    real(kind=dp), intent(in) :: xc, yc, th, tsw
    integer(kind=int8), intent(in) :: val
+   character(len=1), intent(in), optional :: align
    real(kind=dp) :: gx, gy, wt
    integer(kind=int32) :: k
 
@@ -213,6 +223,10 @@ contains
    end do
    wt = wt - tgap
    gx = xc - wt*th/2.0_dp
+   if ( present( align ) ) then
+      if ( align == 'l' ) gx = xc
+      if ( align == 'r' ) gx = xc - wt*th
+   end if
    gy = yc - half*th
    do k=1,len( text ),1
       call glyph( text(k:k) )
@@ -408,5 +422,85 @@ contains
       end subroutine ga
 
    end subroutine engrave
+
+   !******************************************************************!
+   ! An axis from lo to hi with its ends rounded OUT to clean         !
+   ! numbers: multiples of step = 10**(floor(log10(hi - lo)) - 1),    !
+   ! one tenth of the largest power of ten in the span, so the ends   !
+   ! keep two significant figures of the span (-0.0996 to 2.0917 is   !
+   ! -0.1 to 2.1; 1.0421 to 1.8152 is 1.04 to 1.82). An end already   !
+   ! on a multiple stays (0 to 5 is 0 to 5). axis_text writes the     !
+   ! ends with step's decimals, so the text is exact. hi <= lo: as    !
+   ! given, step 0 (the caller has a flat range to widen first).      !
+   !******************************************************************!
+   subroutine nice_ends( lo, hi, alo, ahi, step )
+   real(kind=dp), intent(in)  :: lo, hi
+   real(kind=dp), intent(out) :: alo, ahi, step
+   alo  = lo
+   ahi  = hi
+   step = zero
+   if ( .not. ( hi > lo ) ) return
+   step = 10.0_dp**( floor( log10( hi - lo ) ) - 1 )
+   !*** A hair of slack (1e-9 of a step) so an end that is a multiple
+   !*** to round-off (2.1000000000000001) is not pushed a step out.
+   alo = real( floor( lo/step + 1.0e-9_dp, kind=int64 ), dp )*step
+   ahi = real( ceiling( hi/step - 1.0e-9_dp, kind=int64 ), dp )*step
+   end subroutine nice_ends
+
+   !******************************************************************!
+   ! A number at an axis end, as text for engrave: with the decimals  !
+   ! of step (nice_ends), trailing zeros and a bare point dropped, so !
+   ! 2.1 is "2.1", 5.0 is "5" and -7 is "-7"; 0 (to half a step) is   !
+   ! "0", never "-0". Too large or too small for that to read (step   !
+   ! of 1e5 and up, or below 1e-4), it is 3 significant figures and   !
+   ! a power of ten, "2.62E4", "-1.5E-5". Only characters the font    !
+   ! has: digits, . - E.                                              !
+   !******************************************************************!
+   function axis_text( v, step ) result( s )
+   real(kind=dp), intent(in) :: v, step
+   character(len=:), allocatable :: s
+   character(len=32) :: b
+   integer(kind=int32) :: d, e, k
+   real(kind=dp) :: m
+
+   if ( step > zero ) then
+      if ( abs( v ) < half*step ) then
+         s = '0'
+         return
+      end if
+   end if
+   if ( step >= 1.0e-4_dp .and. step < 1.0e5_dp ) then
+      d = max( 0, -nint( log10( step ) ) )
+      write( b, '(f32.'//char( ichar('0') + min( d, 9 ) )//')' ) v
+      s = trim( adjustl( b ) )
+      if ( index( s, '.' ) > 0 ) then
+         k = len( s )
+         do while ( s(k:k) == '0' )
+            k = k - 1
+         end do
+         if ( s(k:k) == '.' ) k = k - 1
+         s = s(1:k)
+      end if
+      if ( s == '-0' ) s = '0'
+   else if ( abs( v ) > zero ) then
+      e = floor( log10( abs( v ) ) )
+      m = v/10.0_dp**e
+      if ( abs( nint( 100.0_dp*m ) ) >= 1000 ) then   ! 9.996 rounds up
+         e = e + 1
+         m = v/10.0_dp**e
+      end if
+      write( b, '(f8.2)' ) m
+      s = trim( adjustl( b ) )
+      k = len( s )
+      do while ( s(k:k) == '0' )
+         k = k - 1
+      end do
+      if ( s(k:k) == '.' ) k = k - 1
+      write( b, '(i0)' ) e
+      s = s(1:k)//'E'//trim( b )
+   else
+      s = '0'
+   end if
+   end function axis_text
 
 end module strokes

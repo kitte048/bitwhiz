@@ -540,8 +540,10 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
   time, PRESSURE AT TIME = +1.000 US. The axes hold for the whole movie: x as
   the t-x diagrams' (the run's smallest to largest face position, lab
   frame), y from min − 5% to top + 5% of the run's P, the top as for the P
-  t-x diagram (`plot_range`); a value above it is drawn at the box's edge.
-  The screen gives both axes. A frame costs about as much as a tracer plot
+  t-x diagram (`plot_range`), each axis's ends rounded out to clean numbers
+  (as the tracer plots'); a value above the top is drawn at the box's edge.
+  Each frame prints its axis ends, as a tracer plot does, and the screen
+  gives both axes. A frame costs about as much as a tracer plot
   (a tenth of a second in the release build); 20 to 25 frames make a good
   preview. Make a movie from them with any tool that takes a sequence of
   pictures (ffmpeg, which nanoHUB has, for one).
@@ -605,12 +607,21 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
   (`KMPS`) against time, a line through every row of the tracer file, 3.0
   pixels wide, in Okabe-Ito vermilion (#D55E00). x runs from the first to the
   last time, y from the smallest to the largest velocity, widened by 5% of the
-  range at each end. The only text is the title **BITWHIZ SCOPE VIEW**,
-  engraved in slate in the margin above the box: 16-pixel capitals in
-  bitwhiz's own stroke font (each letter a few straight strokes and elliptical
-  arcs; only the titles' letters and the color bar's 0 and 1 are defined),
-  drawn and anti-aliased like the curve. The frame: slate (#2C3E50, the sheets' ink) spines 2.5 pixels wide
-  around a 40-pixel margin, outside corners rounded to a 12-pixel radius, and
+  range at each end; then each axis's ends are rounded out to clean numbers,
+  two significant figures of the axis's span (the class deck's pdv: data 0 to
+  1.9921 km/s, axis −0.1 to 2.1; time 0 to 5 us stays 0 to 5). The text: the
+  title **BITWHIZ SCOPE VIEW**, engraved in slate in the margin above the box,
+  16-pixel capitals in bitwhiz's own stroke font (each letter a few straight
+  strokes and elliptical arcs; only the titles' letters, the digits and
+  `. = + - E` are defined), drawn and anti-aliased like the curve; and the
+  four axis ends in 12-pixel figures, x's under the box's bottom corners and
+  y's left of its left side, at the plot area's bottom and top, in the
+  axis's own units (us, km/s; for a movie mm, GPa) and with no unit or axis
+  name printed (yet). A number too large or small to read in plain figures is
+  written with a power of ten, `2.62E4`. The frame: slate (#2C3E50, the
+  sheets' ink) spines 2.5 pixels wide, the box 40 pixels from the top (the
+  title's margin), 100 from the left, 60 from the right and 70 from the
+  bottom (room for the numbers), outside corners rounded to a 12-pixel radius, and
   tick marks at tenths of each axis pointing in; where the curve meets a
   spine, the spine is on top. The colors follow the equation sheets' figures
   (the Okabe-Ito palette, which colorblind readers can tell apart). Everything
@@ -620,7 +631,8 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
   corners are smooth, not stair-stepped, and a line does not jump from ink to
   white within one pixel.
 - **The screen gives every range** (x, t, the data, each color window and
-  each tracer's y axis), so the pictures can be read without text on them.
+  each tracer's y axis), with the axes' names and units the pictures do not
+  print yet.
 
 **`plots_only = yes`** (Run block) re-draws the pictures without running: a
 new `colormap` or color window takes about a second. It reads the deck as
