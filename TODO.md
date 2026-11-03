@@ -266,20 +266,27 @@ decks.
       38 % of the profile, then `draw_tx`, 22 %); a table lookup would be
       faster but may move a color by one level, so the picture tests'
       expected values would change on purpose.
-- [ ] **The screen, for an impatient reader** (Nov 3 tour): about 250
-      lines, 100 of them the resolved deck before the run starts, so the
-      results scroll past it. Write the resolved deck to
-      `<title>.resolved.deck` and say so in one line (the run log);
-      section 8 (closing files) prints nothing, so the numbers jump from
-      7 to 9; two rules between sections; human-sized numbers in E
-      format (wall time per cycle 1.11655783E+02 us); a usage error
-      prints the 20-line banner first.
+- [x] **The screen, for an impatient reader** (Nov 3): 250 lines down
+      to 132 for the class deck. The resolved deck goes to
+      `<title>.resolved` (not `.deck`, so `input/*.deck`, the tests and
+      the nanoHUB picker never take it for a deck; `plots_only` keeps
+      the run's), and section 2 names it; deck errors print under
+      section 2's heading; one rule between sections; section 8 lists
+      the files written with their sizes (the history file's frames
+      too); times and wall time per cycle as plain numbers; the command
+      line is read before the banner, so a usage error prints alone.
+      Every heartbeat, tracer row, history frame and picture the same.
+- [ ] **nanoHUB:** list `<title>.resolved` among the notebook's
+      downloads, and check that its run log reads well at 132 lines
+      (with the next release).
 - [ ] **History file size:** 12.3 MB for the class deck, 123 MB at 10
-      times its resolution (plot_dt = 0.005 us, 1001 frames). Say the
-      size on screen at the start, or warn above some size, before a
-      student fills a nanoHUB quota.
+      times its resolution (plot_dt = 0.005 us, 1001 frames). Section 8
+      now reports it at the end (Nov 3); still to do: say it at the
+      start, or warn above some size, before a student fills a nanoHUB
+      quota.
 - [ ] **Test-time budget:** `make test` stays a few minutes (about 4.5
-      on 2 cores, Nov 3; over 10 would be too long). A new model
+      on 2 cores, Nov 3; 2.8 after the deck tests' change below; over 10
+      would be too long). A new model
       brings unit tests and one or two short decks, not long runs.
 - [ ] **Measure the order of accuracy:** a refinement study on a smooth
       problem (a small-amplitude sine wave, or a gentle ramp before the
@@ -314,10 +321,11 @@ decks.
       surfaces) matched in L1 to 0.01-0.5 % with AV and RS2 at 200
       zones/mm (Nov 1, 2026). Keep it as a test; it also measures the
       order of accuracy on smooth parts of the solution.
-- [ ] **Faster deck tests:** every deck in `input/` runs three times (the run
-      and the resolved-deck round trip). Make the round trip a reading check
-      (read the deck back, compare the resolved statements) without a full
-      run: about 30 s off `make test`.
+- [ ] **Faster deck tests:** every clean deck ran three times (the run and
+      the resolved-deck round trip); since Nov 3 twice, the round trip
+      using the `<title>.resolved` the first run wrote (deck tests 160 s
+      to 105 s on 2 cores), each in its own scratch folder. The second run
+      could be a reading check without a full run: about 30 s more.
 
 ## Ideas (further out)
 - **Values and units on every plot** (design note first): the axes' ends

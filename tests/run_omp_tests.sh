@@ -72,9 +72,12 @@ with_threads() {   # $1 = deck, $2 = n
       }' "$1"
 }
 
-# Everything printed from section 6 on, without the clock times.
+# Everything printed from section 6 on, without the clock times and
+# without section 8 (the files' sizes on disk: the files hold build and
+# clock lines, which are meant to differ).
 results() {   # $1 = screen output
-   awk '/ 6\. Initialization/ {on=1} /run end/ {on=0} on' "$1" |
+   awk '/ 6\. Initialization/ {on=1} / 8\. Output files/ {on=0}
+        / 9\. Pictures/ {on=1} /run end/ {on=0} on' "$1" |
       grep -vE 'Wall time|wall clock|CPU time|Threads in the time loop'
 }
 # The heartbeat, without time stamps, build lines and the wall column.

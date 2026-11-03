@@ -36,6 +36,8 @@
 #                movie frames, *.mv_*.bmp)
 #Revision: 1.19 (11-03-26, with Claude: temperature module, and its
 #                unit test, test_temp, in 'make test')
+#Revision: 1.20 (11-03-26, with Claude: 'tidy' removes the resolved
+#                decks, *.resolved)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -270,6 +272,7 @@ $(eval $(call MOD_ORDER,$(RDIR)/))
 ############################################################
 RUN_FILES = *.heartbeat input/*.heartbeat *.tracers.csv \
             input/*.tracers.csv *.hist input/*.hist input/*.bmp \
+            *.resolved input/*.resolved \
             *.tx_u.bmp *.tx_p.bmp *.tr_*.bmp *.mv_*.bmp
 
 ############################################################

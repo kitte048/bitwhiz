@@ -120,6 +120,9 @@ module pics
 !                                     the snapshots nearest N times
 !                                     spread over the run, drawn by
 !                                     draw_profile
+!    11/03/26    D. E. Kittell        Section 9 opens with its rule and
+!                (with Claude)        leaves the closing one to the run's
+!                                     end (one rule between sections)
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
@@ -198,7 +201,6 @@ contains
    if ( plots_only .and. nerr > 0 ) write( kpt6, '(a)' ) ' bitwhiz: '// &
       'plots_only re-draws from the files a run of this deck wrote; '// &
       'run it once with plots_only = no first'
-   write( kpt6, '(1x,a)' ) repeat('=',56)
    end subroutine make_pictures
 
    !******************************************************************!

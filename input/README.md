@@ -14,7 +14,11 @@ the two ever disagree, fix one of them on purpose.
 ```
 The command line takes only the deck name. Everything about a run (threads,
 solver, materials, geometry, tracers, output) is in the deck, so the deck is the
-complete record of what was run.
+complete record of what was run. The run writes, in the folder it starts
+from: `<title>.resolved` (the deck with every default filled in, section 10),
+`<title>.heartbeat`, and, when the deck asks for them, the tracer file
+(section 8), the history file (section 9) and the pictures (section 9b).
+`make tidy` removes them all.
 
 ---
 
@@ -654,10 +658,13 @@ so the heartbeat, tracer and history files it reads are never touched.
   problem (for example, all of the missing required keys), not just the first.
 - **Warnings:** unused materials, rounded zone counts, and `zones` overriding a
   resolution.
-- **The resolved deck is echoed to the log:** every key with its final value
-  (defaults filled in, defines substituted), and every tracer's resolved x.
-  Re-running the echo reproduces the run. Until the run log exists, it is
-  printed to the terminal.
+- **The resolved deck is written to `<title>.resolved`,** in the folder the
+  run starts from: every key with its final value (defaults filled in,
+  defines substituted), and every tracer's resolved x. `bitwhiz
+  <title>.resolved` repeats the run exactly. The screen names the file
+  (section 2), and at the end lists every file the run wrote with its size
+  (section 8). The name does not end in `.deck`, so nothing that looks for
+  decks takes it for one. A `plots_only` run writes none: it keeps the run's.
 - **Notes** (not warnings) say when `zones` overrides a resolution.
 
 ---
@@ -683,7 +690,8 @@ make
 Each deck in `tests/decks/` begins with `# expect: ok` (it must read cleanly)
 or `# expect: <part of the message>` (it must fail with that message). Clean
 decks, and every deck in this folder, are also round-tripped: the resolved
-deck must read back to the same statements. To add a case, drop in a deck
+deck the run writes (`<title>.resolved`) must run and resolve to the same
+statements. Each run is in its own scratch folder. To add a case, drop in a deck
 with an `# expect:` line.
 
 The history file (section 9) has its own tests, `tests/run_hist_tests.sh`,

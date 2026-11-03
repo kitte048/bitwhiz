@@ -177,7 +177,7 @@ pixel() {   # $1 file, $2 i, $3 r, $4 nx
 
 # A checksum of each of the run's own files in folder $1 (cksum is in
 # every POSIX system; md5sum is not on macOS).
-sums() { (cd "$1" && cksum *.hist *.tracers.csv *.heartbeat 2>/dev/null); }
+sums() { (cd "$1" && cksum *.hist *.tracers.csv *.heartbeat *.resolved 2>/dev/null); }
 
 # Case: tracer_dt = plot_dt, so frames and tracer rows share their
 # cycles; compare an interface tracer with the file at its face/cell.
@@ -505,12 +505,14 @@ fi
 
 # Cases: plots_only = yes, in a copy of the class_av run's folder.
 # The ranges it reports must be the run's own (same numbers, read the
-# same way), and the run's files must not change.
+# same way), and the run's files must not change (its resolved deck
+# among them: plots_only writes none).
 ranges() { grep -E '^ +(x across|t up|u in the run|P in the run|Rows|Tracer [a-z_]+ u )' "$1"; }
 begin
 c=plots_only
 d="$TMP/$c"; mkdir -p "$d"
-cp "$TMP"/class_av/*.hist "$TMP"/class_av/*.tracers.csv "$TMP"/class_av/*.heartbeat "$d"/
+cp "$TMP"/class_av/*.hist "$TMP"/class_av/*.tracers.csv "$TMP"/class_av/*.heartbeat \
+   "$TMP"/class_av/*.resolved "$d"/
 before=$(sums "$d")
 setkeys "$TMP/class_av.deck" Run "plots_only = yes" > "$TMP/$c.1"
 setkeys "$TMP/$c.1" Output "colormap = inferno" "plot_p_lo = 0.1" \

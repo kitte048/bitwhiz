@@ -51,6 +51,9 @@ module deck
 !                                     which mie_gruneisen_t needs and
 !                                     only it takes (checked as the
 !                                     block closes)
+!    11/03/26    D. E. Kittell        The resolved deck is written to
+!                (with Claude)        <title>.resolved (maincode), not
+!                                     the screen; its header says so
 !
 !**********************************************************************!
 !
@@ -1799,8 +1802,8 @@ contains
    write(lu,'(a)') '#'//repeat('*',70)//'#'
    write(lu,'(a)') '#  Resolved deck, from '//trim(deck_file)
    write(lu,'(a)') '#  Every default is filled in and every define is '// &
-      'substituted. Reading'
-   write(lu,'(a)') '#  this deck gives exactly the same run.'
+      'substituted. Running'
+   write(lu,'(a)') '#  this file (bitwhiz <file>) gives exactly the same run.'
    write(lu,'(a)') '#'//repeat('*',70)//'#'
    write(lu,'(a)') 'Begin bitwhiz'
    write(lu,'(a)') ' deck_version = 1'

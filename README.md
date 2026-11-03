@@ -57,9 +57,11 @@ version a readable name; `-dirty` marks a build with uncommitted changes.
 ```
 The command line takes only the deck. Everything else (threads, solver,
 materials, geometry, output) is in the deck; see `input/README.md`. A run
-writes `<title>.heartbeat` in the current folder, one line per cycle (time
-step and the cell that set it, largest pressure, mass and energy errors, total
-momentum); watch it with `tail -f`. The heartbeat also records the first cell
+writes `<title>.resolved` in the current folder (the deck with every default
+filled in: `bitwhiz <title>.resolved` repeats the run), and
+`<title>.heartbeat`, one line per cycle (time step and the cell that set it,
+largest pressure, mass and energy errors, total momentum); watch it with
+`tail -f`. The heartbeat also records the first cell
 to go tensile, the first cell to break (spall: its pressure fell below
 `-spall_strength`, set per material), and the first void cell, if any. A deck
 with tracers also writes `<title>.tracers.csv`: one row per `tracer_dt`, laid
@@ -67,7 +69,9 @@ out like the verification data in `tests/verification/`. A deck with snapshots
 (`plot_dt` or `plot_every`) also writes `<title>.hist`, the whole mesh over
 time, and every run ends by drawing its pictures: t-x diagrams of u and P
 (`<title>.tx_u.bmp`, `.tx_p.bmp`) and one plot per tracer
-(`<title>.tr_<name>.bmp`); see `input/README.md`, section 9b.
+(`<title>.tr_<name>.bmp`); see `input/README.md`, section 9b. The screen
+says what it is doing in sections 2 to 9 (about 130 lines for the class
+deck), and section 8 lists every file the run wrote, with its size.
 
 ## A typical session
 From the bitwhiz folder, starting cold:

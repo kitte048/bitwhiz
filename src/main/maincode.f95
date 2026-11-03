@@ -6,14 +6,19 @@ program bitwhiz
 !    class project. Usage:   bitwhiz <deck>
 !
 !    The run goes section by section, top to bottom:
-!      0. Loading screen.            5. Allocate the data arrays.
-!      1. Read the command line.     6. Initialization (t = 0).
+!      0. Read the command line.     5. Allocate the data arrays.
+!      1. Loading screen.            6. Initialization (t = 0).
 !      2. Read the input deck.       7. Begin the simulation.
 !      3. Test OpenMP settings.      8. Close the output files.
 !      4. Open the output files.     9. Pictures; free the memory.
 !
 !    A deck with plots_only = yes goes from 2 straight to 9: no run,
 !    only the pictures, from the files an earlier run of it left.
+!
+!    On the screen every section opens with a rule of '=' and the run
+!    ends with one; sections do not close their own, so there is one
+!    rule between two sections. The resolved deck goes to its own file,
+!    <title>.resolved (section 2), not to the screen.
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -88,6 +93,14 @@ program bitwhiz
 !                                     checked in 6, updated every cycle
 !                                     after the hydro step; the run's T
 !                                     range and hottest cell reported
+!!    11/03/26    D. E. Kittell        The screen, for a quick read: the
+!                (with Claude)        resolved deck to <title>.resolved
+!                                     (section 2), one rule between
+!                                     sections, section 8 lists the
+!                                     files written with their sizes,
+!                                     times in us as plain numbers, and
+!                                     the command line read before the
+!                                     banner (a usage error alone)
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one,quit
@@ -128,6 +141,8 @@ integer(kind=int32) :: npic = 0         ! problems making the pictures
 integer(kind=int32) :: nlen             ! full length of the deck path
 character(len=256) :: deckname          ! the deck file, from the
                                         ! command line
+character(len=72) :: rv_file            ! <title>.resolved
+integer :: krv                          ! its unit (newunit)
 !*** Setup (sections 5 and 6). All local: see the RULE in bit_mod.
 integer(kind=int32) :: i,j,k            ! database index, counter, cell
 integer(kind=int32) :: l,ll,lr          ! layer; layers left/right of a face
@@ -220,6 +235,8 @@ logical :: running = .false.            ! the time loop has started
 213 format(3x,a,f9.4,a,f9.4,a)          ! a profile's velocity range
 214 format(3x,a,t40,': ',f0.3,' to ',f0.3) ! label : a range
 215 format(3x,a,t40,': ',i0,' (',a,'), t =',f9.4,' us, x =',f9.4,' mm')
+216 format(3x,a,t40,': ',f15.6)          ! label : a time, us
+217 format(3x,a,t40,': ',f15.1)          ! label : wall time per cycle, us
 
 !*** Start the clocks. Two different times are kept, because with
 !*** OpenMP they tell different stories:
@@ -237,39 +254,14 @@ call cpu_time( cpu0 )
 ! in the build (src/drawings), and can still be called from here for a
 ! quick look at every colormap:   call draw_colormaps()
 
-!====================!
-! 0. Loading screen. !
-!====================!
-write( kpt6, 202 ) repeat('=',56)
-write( kpt6, 202 ) '       ---==>>    __    _ __           __    _'
-write( kpt6, 202 ) '        --==>>   / /_  (_) /__      __/ /_  (_)___'
-write( kpt6, 202 ) '         -==>>  / __ \/ / __/ | /| / / __ \/ /_  /'
-write( kpt6, 202 ) '        --==>> / /_/ / / /_ | |/ |/ / / / / / / /_'
-write( kpt6, 202 ) '       ---==>>/_.___/_/\__/ |__/|__/_/ /_/_/ /___/'
-write( kpt6, 202 ) repeat('-',56)
-write( kpt6, 202 ) '        a one-dimensional Lagrangian hydrocode'
-write( kpt6, 202 ) repeat('-',56)
-write( kpt6, 202 ) '   u |                         _______________________'
-write( kpt6, 202 ) '     |                ________/    second shock'
-write( kpt6, 202 ) '     |               /'
-write( kpt6, 202 ) '     |   ___________/   first shock'
-write( kpt6, 202 ) '     |__/____________________________________________ t'
-write( kpt6, 202 ) repeat('-',56)
-!*** Which code this is: the git version and build date come from
-!*** src/modules/build_mod.f95, which 'make' writes on every build; the
-!*** compiler and its options are recorded by the compiler itself.
-write( kpt6, 206 ) 'version',   build_version()
-write( kpt6, 206 ) 'built',     build_date()
-write( kpt6, 206 ) 'compiler',  compiler_version()
-write( kpt6, 206 ) 'build',     build_kind()
-write( kpt6, 206 ) 'run start', clock()
-write( kpt6, 202 ) repeat('=',56)
-
 !=============================!
-! 1. Read the command line.   !
+! 0. Read the command line.   !
 !=============================!
 
 ! Usage:  bitwhiz <deck>
+!
+! Read first, before the loading screen, so a mistake on the command
+! line gets its usage message alone, not under 20 lines of banner.
 !
 ! The command line takes only the input deck's file name. Everything
 ! else about a run (threads, solver, materials, geometry, tracers,
@@ -294,6 +286,33 @@ if ( deckname(1:1) == '-' ) then
 end if
 if ( nargs > 1 ) call usage( 'only one argument (the deck) is allowed' )
 
+!====================!
+! 1. Loading screen. !
+!====================!
+write( kpt6, 202 ) repeat('=',56)
+write( kpt6, 202 ) '       ---==>>    __    _ __           __    _'
+write( kpt6, 202 ) '        --==>>   / /_  (_) /__      __/ /_  (_)___'
+write( kpt6, 202 ) '         -==>>  / __ \/ / __/ | /| / / __ \/ /_  /'
+write( kpt6, 202 ) '        --==>> / /_/ / / /_ | |/ |/ / / / / / / /_'
+write( kpt6, 202 ) '       ---==>>/_.___/_/\__/ |__/|__/_/ /_/_/ /___/'
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 202 ) '        a one-dimensional Lagrangian hydrocode'
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 202 ) '   u |                         _______________________'
+write( kpt6, 202 ) '     |                ________/    second shock'
+write( kpt6, 202 ) '     |               /'
+write( kpt6, 202 ) '     |   ___________/   first shock'
+write( kpt6, 202 ) '     |__/____________________________________________ t'
+write( kpt6, 202 ) repeat('-',56)
+!*** Which code this is: the git version and build date come from
+!*** src/modules/build_mod.f95, which 'make' writes on every build; the
+!*** compiler and its options are recorded by the compiler itself.
+write( kpt6, 206 ) 'version',   build_version()
+write( kpt6, 206 ) 'built',     build_date()
+write( kpt6, 206 ) 'compiler',  compiler_version()
+write( kpt6, 206 ) 'build',     build_kind()
+write( kpt6, 206 ) 'run start', clock()
+
 !=========================!
 ! 2. Read the input deck. !
 !=========================!
@@ -302,20 +321,42 @@ if ( nargs > 1 ) call usage( 'only one argument (the deck) is allowed' )
 ! line against input/README.md and fills the input tables in the shock
 ! module. It lists ALL the problems it finds before giving up, each
 ! with the deck's file name and line number, so one run shows every
-! mistake. If the deck is clean, the "resolved deck" is printed: the
-! same run with every default filled in and every define substituted.
-! It is the record of what this run actually used, and reading it
-! back in gives exactly the same run.
+! mistake, under this section's heading. If the deck is clean, the
+! "resolved deck" is written to <title>.resolved: the same run with
+! every default filled in and every define substituted. It is the
+! record of what this run actually used, and running it gives exactly
+! the same run (bitwhiz <title>.resolved). Its name does not end in
+! .deck, so nothing that looks for decks (input/*.deck, the tests, the
+! nanoHUB picker) ever takes it for one.
+write( kpt6, 202 ) repeat('=',56)
+write( kpt6, 202 ) ' 2. Input deck: '//trim(deckname)
+write( kpt6, 202 ) repeat('-',56)
 call read_deck( trim(deckname), kerr )
 if ( kerr > 0 ) then
    write( kpt6, 202 ) repeat('-',56)
    write( kpt6, '(1x,i0,a)' ) kerr, ' error(s) in the input deck; stopping.'
    call quit( 1 )                       ! exit status 1, quietly (bits)
 end if
-write( kpt6, 202 ) repeat('=',56)
-write( kpt6, 202 ) ' 2. Input deck: '//trim(deckname)
-write( kpt6, 202 ) repeat('=',56)
-call write_resolved_deck( int(kpt6) )
+write( kpt6, 204 ) 'Title', trim(title)
+!*** A plots_only run keeps the resolved deck of the run it draws from
+!*** (that is the record of the run), so it writes none of its own.
+if ( plots_only ) then
+   write( kpt6, 204 ) 'Resolved deck', trim(title)//'.resolved (the '// &
+      'run''s, kept: plots_only writes none)'
+else
+   rv_file = trim(title)//'.resolved'
+   open( newunit=krv, file=trim(rv_file), status='replace', &
+         action='write', iostat=ios )
+   if ( ios /= 0 ) then
+      write( kpt6, 202 ) 'bitwhiz: cannot open the resolved deck '// &
+         trim(rv_file)
+      call quit( 1 )
+   end if
+   call write_resolved_deck( int(krv) )
+   close( krv )
+   write( kpt6, 204 ) 'Resolved deck', trim(rv_file)//' (every '// &
+      'default filled in)'
+end if
 
 !*** plots_only = yes: no run. Straight to the pictures (section 9),
 !*** from the files an earlier run of this deck left. Nothing else is
@@ -399,7 +440,6 @@ if ( nalive /= max_threads ) then
    write( kpt6, 202 ) '  WARNING: fewer threads reported in than were'
    write( kpt6, 202 ) '  requested (check OMP_THREAD_LIMIT / OMP_DYNAMIC).'
 end if
-write( kpt6, 202 ) repeat('=',56)
 
 !==============================!
 ! 4. Open the output files.    !
@@ -487,7 +527,6 @@ if ( hst_open ) then
 else
    write( kpt6, 204 ) 'History file', 'none (no plot_every or plot_dt)'
 end if
-write( kpt6, 202 ) repeat('=',56)
 
 !==============================!
 ! 5. Allocate the data arrays. !
@@ -763,7 +802,6 @@ if ( nimpact > 0 ) then
       end if
    end do
 end if
-write( kpt6, 202 ) repeat('=',56)
 deallocate( ucell, gface )
 
 !===================================================!
@@ -973,7 +1011,7 @@ call history_frame( ncycle, time, .false. )   ! cycle 0, always written
 write( kpt6, 202 ) repeat('=',56)
 write( kpt6, 202 ) ' 6. Initialization'
 write( kpt6, 202 ) repeat('-',56)
-write( kpt6, 211 ) 'Time (us)', time
+write( kpt6, 216 ) 'Time (us)', time
 write( kpt6, 205 ) 'Cycle', ncycle
 write( kpt6, 211 ) 'Total mass (g/cm^3*mm)', mass0
 write( kpt6, 211 ) 'x-momentum (g/cm^3*mm*km/s)', xmom0
@@ -981,7 +1019,6 @@ write( kpt6, 211 ) 'Total energy (GPa*mm)', etot0
 write( kpt6, 211 ) 'First time step (us)', dt
 write( kpt6, 205 ) '... set by cell', kdt
 write( kpt6, 204 ) 'Setup checks', 'all passed'
-write( kpt6, 202 ) repeat('=',56)
 
 !==========================!
 ! 7. Begin the simulation. !
@@ -1301,7 +1338,7 @@ end do time_loop
 !*** Report.
 write( kpt6, 202 ) repeat('-',56)
 write( kpt6, 205 ) 'Cycles', ncycle
-write( kpt6, 211 ) 'Final time (us)', time
+write( kpt6, 216 ) 'Final time (us)', time
 write( kpt6, 211 ) 'Mass error (relative)', merr
 if ( etot0 > zero ) then
    write( kpt6, 211 ) 'Energy error (relative)', eerr
@@ -1336,7 +1373,7 @@ if ( nt > 0 ) then
       trim(layer(ilay(icell(hot_k)))%name), hot_time, hot_x
 end if
 call system_clock( tick1 )
-write( kpt6, 211 ) 'Wall time per cycle (us)', &
+write( kpt6, 217 ) 'Wall time per cycle (us)', &
    1.0e6_dp*real(tick1-tick0,dp)/real(rate,dp)/real(max(ncycle,1),dp)
 if ( stopped ) then
    write( kpt6, 202 ) repeat('-',56)
@@ -1344,13 +1381,26 @@ if ( stopped ) then
       itoa(cycle_max)//' before t_end.'
    endhow = 'cycle_max reached before t_end'
 end if
-if ( hst_open ) write( kpt6, 205 ) 'History frames written', hst_frames
-write( kpt6, 202 ) repeat('=',56)
 
 !=============================!
 ! 8. Close the output files.  !
 !=============================!
 call close_outputs( trim(endhow) )
+
+!*** Report: every file the run wrote, with its size on disk, so a big
+!*** history file (it grows with cells times frames) is seen at once.
+write( kpt6, 202 ) repeat('=',56)
+write( kpt6, 202 ) ' 8. Output files, closed'
+write( kpt6, 202 ) repeat('-',56)
+write( kpt6, 204 ) 'Resolved deck', trim(rv_file)//'  ('// &
+   file_size(rv_file)//')'
+write( kpt6, 204 ) 'Heartbeat file', trim(hb_file)//'  ('// &
+   file_size(hb_file)//')'
+if ( len_trim(trc_file) > 0 ) write( kpt6, 204 ) 'Tracer file', &
+   trim(trc_file)//'  ('//file_size(trc_file)//')'
+if ( len_trim(hst_file) > 0 ) write( kpt6, 204 ) 'History file', &
+   trim(hst_file)//'  ('//file_size(hst_file)//', '//itoa(hst_frames)// &
+   ' frames)'
 
 !========================================!
 ! 9. Pictures (module pics), then free   !
@@ -1723,6 +1773,35 @@ contains
    !*****************************************************!
    ! An integer as text, without padding: 945 -> "945".  !
    !*****************************************************!
+   !*****************************************************!
+   ! A file's size on disk, for people: 812 B, 362 KB,   !
+   ! 12.3 MB, 1.2 GB (1 KB = 1024 B). '?' if it can not  !
+   ! be asked (no such file).                            !
+   !*****************************************************!
+   function file_size( fname ) result(s)
+   implicit none
+   character(len=*), intent(in) :: fname
+   character(len=:), allocatable :: s
+   integer(kind=int64) :: nb
+   character(len=16) :: b
+   inquire( file=trim(fname), size=nb )
+   if ( nb < 0 ) then
+      s = '?'
+   else if ( nb < 1024_int64 ) then
+      write( b, '(i0,a)' ) nb, ' B'
+      s = trim(b)
+   else if ( nb < 1024_int64**2 ) then
+      write( b, '(i0,a)' ) nint( real(nb,dp)/1024.0_dp ), ' KB'
+      s = trim(b)
+   else if ( nb < 1024_int64**3 ) then
+      write( b, '(f0.1,a)' ) real(nb,dp)/1024.0_dp**2, ' MB'
+      s = trim(b)
+   else
+      write( b, '(f0.1,a)' ) real(nb,dp)/1024.0_dp**3, ' GB'
+      s = trim(b)
+   end if
+   end function file_size
+
    function itoa( n ) result(s)
    implicit none
    integer(kind=int32), intent(in) :: n
