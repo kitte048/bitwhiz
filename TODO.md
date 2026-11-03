@@ -285,6 +285,9 @@ decks.
       now reports it at the end (Nov 3); still to do: say it at the
       start, or warn above some size, before a student fills a nanoHUB
       quota.
+- [x] **`make runs`** (Nov 3): every deck in `input/` (release build)
+      into `runs/<deck>/` with its screen and files, one line per deck;
+      `make tidy` removes `runs/`. About 10 s, 240 MB for ten decks.
 - [ ] **Test-time budget:** `make test` stays a few minutes (about 4.5
       on 2 cores, Nov 3; 2.8 after the deck tests' change below; over 10
       would be too long). A new model
@@ -349,6 +352,11 @@ decks.
     exponents (Angstrom, nm, um, mm, cm, m, km), anything beyond that
     flagged and not plotted; pressure in GPa (or Pa with a prefix). The
     stroke font needs lower case for units, and mu.
+- **PNG pictures** (distant future): bitmaps can not be truly see-through
+  (a 32-bit BMP has alpha, but most viewers ignore it), so a "glass" look,
+  or any picture laid over something else, needs PNG: zlib-deflated rows
+  and CRCs (or stored, uncompressed blocks: simple, but as large as the
+  BMPs). Also about 10 times smaller files.
 - **Z-machine ramp drive by inverse problem:** fit a velocity profile's
   parameters (sinh-arcsinh, say) so the drive at an interface matches a
   measured ramp-wave drive.

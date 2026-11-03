@@ -10,4 +10,7 @@ This folder contains the utility functions.
   its `bin/`, where the installed tool's users can read them (its `src/` they
   cannot). Usage: `sh src/utils/export_nanohub.sh v1.1.0
   ~/Documents/Academic/bitwhiz` (details at the top of the script).
+- `run_decks.sh`: runs every deck in `input/`, each in its own folder
+  (`runs/<deck>/`, emptied first), with one line per deck; `make runs` calls
+  it. Usage: `sh src/utils/run_decks.sh <bitwhiz executable> [<folder>]`.
 - `random.f95`, `timestamp.f95`: small routines kept in the build.

@@ -40,6 +40,8 @@
 #                decks, *.resolved)
 #Revision: 1.21 (11-03-26, with Claude: pics_mod uses strk_mod, for
 #                the axis ends, nice_ends)
+#Revision: 1.22 (11-03-26, with Claude: 'make runs', every deck in
+#                input/ into runs/<deck>/; 'tidy' removes runs/)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -271,7 +273,8 @@ $(eval $(call MOD_ORDER,$(RDIR)/))
 ###  A run's pictures are named <title>.tx_u.bmp,
 ###  <title>.tx_p.bmp and <title>.tr_<tracer>.bmp, so only
 ###  those bitmaps go here; any other .bmp in the top folder
-###  is kept (see bmpclean below).
+###  is kept (see bmpclean below). The runs/ folder of
+###  'make runs' (below) goes too.
 ############################################################
 RUN_FILES = *.heartbeat input/*.heartbeat *.tracers.csv \
             input/*.tracers.csv *.hist input/*.hist input/*.bmp \
@@ -289,6 +292,24 @@ RUN_FILES = *.heartbeat input/*.heartbeat *.tracers.csv \
 ############################################################
 tidy:
 	rm -f $(RUN_FILES)
+	rm -rf runs
+
+############################################################
+###  NOTES: 'make runs' runs every deck in input/, each in
+###  its own folder, runs/<deck>/, with a copy of the deck,
+###  its screen (screen.txt) and every file it writes, to
+###  look at the results after a code change. It uses the
+###  release build (built first if needed; the release tests
+###  are 'make release's), and empties runs/ first, so each
+###  'make runs' starts fresh; 'make tidy' removes it. A
+###  different executable:  make runs RUN_EXE=./bin/bitwhiz
+###  The work is src/utils/run_decks.sh; input/ is never
+###  written.
+############################################################
+RUN_EXE = $(REL_EXEC)
+
+runs: $(RUN_EXE)
+	sh src/utils/run_decks.sh $(RUN_EXE) runs
 
 ############################################################
 ###  NOTES: 'make clean' removes the build products (debug
@@ -316,5 +337,5 @@ bmpclean:
 .f95.o:
 	$(FC) $(INCLUDES) -c $(FCFLAGS) $(OMPFLAGS) $< -o $@
 
-.PHONY : bitwhiz test release clean tidy bmpclean FORCE
+.PHONY : bitwhiz test release runs clean tidy bmpclean FORCE
 # End of the makefile

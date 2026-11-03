@@ -28,7 +28,8 @@ Needs gfortran and make.
 make            # bin/bitwhiz, debug build with strict flags and -fopenmp
 make test       # build if needed, then run the unit and deck tests (see Test)
 make release    # bin/bitwhiz_release, optimized (-O2), checked against the debug build
-make tidy       # remove run outputs (heartbeats, tracer and history files, pictures); keep the build
+make runs       # run every deck in input/ (release build), each into runs/<deck>/
+make tidy       # remove run outputs (heartbeats, tracer and history files, pictures, runs/); keep the build
 make clean      # tidy, plus objects, module files and both executables
 make bmpclean   # remove any other bitmaps in this folder (kept by the two above)
 make OMPFLAGS=  # a serial build from the same source
@@ -87,6 +88,14 @@ The run's files land beside the deck, in `input/`. The two builds give the
 same answers bit for bit; the release build is about 3 times faster, so it is
 the one to drive, and the debug build (`../bin/bitwhiz`) the one to develop
 with.
+
+To look at every example after a code change, `make runs` (from the bitwhiz
+folder) builds the release executable if needed and runs each deck in
+`input/` in its own folder, `runs/<deck>/`, beside a copy of the deck, with
+its screen in `screen.txt` and every file it writes: about 10 s and 240 MB
+for the ten decks. One line per deck says how it ended, its wall time, and
+its files' count and size. Each `make runs` starts fresh; `make tidy` removes
+`runs/`. `make runs RUN_EXE=./bin/bitwhiz` uses the debug build instead.
 
 To tune the pictures without running again, add `plots_only = yes` to the
 Run block and change `colormap` or the color windows (`plot_u_lo`,
