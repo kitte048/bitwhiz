@@ -1,6 +1,6 @@
-# expect: needs snapshots to draw its frames from
-# movie_dt without plot_dt or plot_every: there is nothing to draw the
-# frames from.
+# expect: to 50
+# movie_frames = 51: one more than bitwhiz draws (50), so a deck cannot
+# flood its folder with pictures.
 Begin bitwhiz
  deck_version = 1
  Begin Run
@@ -8,7 +8,8 @@ Begin bitwhiz
   plots_only = no
  End Run
  Begin Output
-  movie_dt   = 0.15
+  plot_every   = 10
+  movie_frames = 51
  End Output
  Begin Material Al
   R0 = 2.78

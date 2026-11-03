@@ -145,10 +145,10 @@ Notes (ignored by the parser):
 #    plot_every     cycles between snapshots    (0 = off)
 #                   either one on writes <title>.hist and the t-x
 #                   pictures <title>.tx_u.bmp, <title>.tx_p.bmp
-#    movie_dt       us between movie frames     (0 = off; needs
-#                   snapshots): P, u and density against x from the
-#                   snapshot nearest each time, <title>.mv_p_<cycle>
-#                   .bmp, .mv_u_<cycle>.bmp, .mv_rho_<cycle>.bmp
+#    movie_frames   pressure movie, 2 to 50 frames (0 = off; needs
+#                   snapshots): P against x from the snapshots
+#                   nearest N times spread over the run,
+#                   <title>.mv_p_<cycle>.bmp
 #    colormap       viridis (default), plasma, inferno, blackbody,
 #                   kindlmann, extendedkindlmann, smoothcoolwarm,
 #                   bentcoolwarm, grayscale

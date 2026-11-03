@@ -21,7 +21,7 @@ nanoHUB notebook, published) and the gold-standard data and its reader.
 3. Graded materials: constants (Gamma_0, P_R, ...) graded through a layer,
    as velocity is now. Research, toward publication (section 7).
 4. In the background, between releases: the nanoHUB tool (section 2) and
-   the velocity profiles' next steps (section 1), the movies' (section 4).
+   the velocity profiles' next steps (section 1), the movie's (section 4).
 5. Throughout: no bloat. Cost per cycle stays the same or improves, and
    `make test` stays a few minutes.
 
@@ -139,29 +139,30 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       is now at v8, published as `Class_Project/HVRB_Eqns_rev-0.pdf`.
 
 ## 4. Movies: profiles along x
-Done Nov 2, 2026: `movie_dt` (Output block, us; 0 or absent = none) draws
-three movies, all or none, from the history file: P, u and density against
-x, one frame each from the snapshot nearest each of 0, movie_dt, 2 movie_dt,
-... (so the movie times are a subset of the snapshot times, and plots_only
-redraws them). Files `<title>.mv_p_<cycle>.bmp`, `.mv_u_`, `.mv_rho_`, the
-cycle in six digits; frames titled PRESSURE (VELOCITY, DENSITY) AT TIME =
-+1.234 US (new glyphs in the stroke font); axes fixed for the whole movie
-(x as the t-x diagrams', y by the plot_range rule). Density is R0 dx0/dx
-(the history file has none). The line plot is draw_profile, now under
-draw_trace too (tracer plots unchanged, byte for byte). input/README.md,
-section 9b; the class deck's key reference; deck tests and a history-file
-test (the frames worked out again in awk; plots_only byte for byte).
+Done Nov 2-3, 2026: `movie_frames = N` (Output block; 0 or absent = none; 2
+to 50, so no deck can flood its folder) draws a pressure movie from the
+history file: P against x, one frame from the snapshot nearest each of N
+times spread evenly from 0 to the last snapshot (a subset of the snapshot
+times; plots_only redraws it). Files `<title>.mv_p_<cycle>.bmp`, the cycle
+in six digits; frames titled PRESSURE AT TIME = +1.234 US (new glyphs in the
+stroke font); axes fixed for the whole movie (x as the t-x diagrams', y by
+the plot_range rule). About 0.08 s a frame in the release build. Drawn by
+draw_profile, now under draw_trace too (tracer plots unchanged, byte for
+byte). input/README.md, section 9b; the class deck's key reference; deck
+tests and a history-file test (the frames worked out again in awk;
+plots_only byte for byte). The first version (Nov 2: `movie_dt`, three
+movies, P, u and density) gave no bound on the number of pictures; a
+small movie_dt made hundreds. A movie is a preview: figures come from the
+history file.
 
 - [ ] **The nanoHUB notebook:** clear `<title>.mv_*.bmp` with a run's other
-      outputs before Run; a "Movies" kind in Files; and a movie in the
-      page: an MP4 from the frames with ffmpeg (nanoHUB has it, anaconda-7)
-      or a slider over the frames, P, u and density side by side.
-- [ ] **Density's axis** spans every material, so a heavy one (Ta, 16.6
-      g/cm^3) flattens the others' steps. Consider rho/rho0 (or eta, the
-      house compression variable) as a fourth movie, or a key to choose.
-- [ ] **Cost:** about 0.1 s a frame in the release build (63 frames add
-      6.6 s to the class deck). If long movies matter, draw the frames on
-      the OpenMP threads (each frame is independent).
+      outputs before Run; a "Movie" kind in Files; and the movie shown as
+      one thing, not up to 50 pictures: an MP4 from the frames with ffmpeg
+      (nanoHUB has it, anaconda-7) or a slider over them.
+- [ ] **Velocity or density movies,** if wanted later: re-engineer them
+      then (velocity at the faces; density as R0 dx0/dx, the history file
+      has none; for density, rho/rho0 or eta reads better across materials
+      as different as Ta and PMMA). Removed Nov 3 to keep the code small.
 
 ## 5. Material models: the architecture
 - [ ] **A default model, and add-ons.** Each material has one equation of
@@ -261,6 +262,13 @@ decks.
       run: about 30 s off `make test`.
 
 ## Ideas (further out)
+- **Values and units on every plot** (design note first): the axes' ends
+  (xmin, xmax, ymin, ymax) written on the t-x diagrams, tracer plots and
+  movie frames, the bitmaps kept at their size and the plot area shrunk to
+  make room. Lengths in the unit that keeps them under 1000 without
+  exponents (Angstrom, nm, um, mm, cm, m, km), anything beyond that flagged
+  and not plotted; pressure in GPa (or Pa with a prefix). The stroke font
+  needs lower case for units, and mu.
 - **Z-machine ramp drive by inverse problem:** fit a velocity profile's
   parameters (sinh-arcsinh, say) so the drive at an interface matches a
   measured ramp-wave drive.

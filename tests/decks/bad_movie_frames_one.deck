@@ -1,5 +1,5 @@
-# expect: movie_dt cannot be negative
-# movie_dt = -0.1: an interval cannot be negative (0 turns it off).
+# expect: must be 0 (no movie) or from 2
+# movie_frames = 1: a movie needs at least its first and last frames.
 Begin bitwhiz
  deck_version = 1
  Begin Run
@@ -7,8 +7,8 @@ Begin bitwhiz
   plots_only = no
  End Run
  Begin Output
-  plot_every = 10
-  movie_dt   = -0.1
+  plot_every   = 10
+  movie_frames = 1
  End Output
  Begin Material Al
   R0 = 2.78

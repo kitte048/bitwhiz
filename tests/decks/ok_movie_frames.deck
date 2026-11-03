@@ -1,8 +1,9 @@
 # expect: ok
-# movie_dt: P, u and density movies, drawn from the snapshots
-# (plot_every = 10) nearest t = 0, 0.25, 0.50, 0.75, 1.0 us. Used by the
-# deck tests (read and round trip) and by tests/run_hist_tests.sh (case
-# movies: which frames, their names and sizes, and plots_only).
+# movie_frames = 5: a pressure movie of 5 frames, the snapshots
+# (plot_every = 10) nearest t = 0, 0.25, 0.50, 0.75 and 1.0 us (t_last/4
+# apart). Used by the deck tests (read and round trip) and by
+# tests/run_hist_tests.sh (case movie: which frames, their names and
+# sizes, and plots_only).
 Begin bitwhiz
  deck_version = 1
  Begin Run
@@ -10,8 +11,8 @@ Begin bitwhiz
   plots_only = no
  End Run
  Begin Output
-  plot_every = 10
-  movie_dt   = 0.25
+  plot_every   = 10
+  movie_frames = 5
  End Output
  Begin Material Al
   R0 = 2.78

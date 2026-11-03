@@ -21,9 +21,9 @@
 #     face velocities are the profiles' cell averages, momentum-       #
 #     weighted onto the faces, from F computed here in awk, to single  #
 #     precision; the screen reports each profile's velocity range;     #
-#   - with movie_dt, the movies' frames are the snapshots nearest     #
-#     each movie time (worked out again in awk), three pictures each,  #
-#     named by cycle, and plots_only draws them again byte for byte;   #
+#   - with movie_frames, the pressure movie's frames are the          #
+#     snapshots nearest its times (worked out again in awk), named by  #
+#     cycle, and plots_only draws them again byte for byte;            #
 #   - with plot_every = 7, the frames are cycles 0, 7, 14, ... and the #
 #     last, and the cells broken in the last frame are the run's       #
 #     count;                                                           #
@@ -568,27 +568,27 @@ else
 fi
 
 
-# Case: movies (tests/decks/ok_movie_dt.deck: plot_every = 10, t_end =
-# 1.0, movie_dt = 0.25). The frames must be the snapshots nearest t = 0,
-# 0.25, 0.50, ..., to the last snapshot's (to the nearest), the earlier
-# of two equally near, each once: worked out again here in awk from the
-# file's own frame times (test_hist's F lines), not taken from bitwhiz.
-# Each is three pictures, run.mv_p_, run.mv_u_ and run.mv_rho_<cycle in
-# six digits>.bmp, 800 x 600; and a plots_only run must draw every one
-# of them again, byte for byte.
+# Case: movie (tests/decks/ok_movie_frames.deck: plot_every = 10, t_end
+# = 1.0, movie_frames = 5). The frames must be the snapshots nearest the
+# 5 times spread evenly from 0 to the last snapshot's, t_last*m/4, the
+# earlier of two equally near, each once: worked out again here in awk
+# from the file's own frame times (test_hist's F lines), not taken from
+# bitwhiz. Each is run.mv_p_<cycle in six digits>.bmp, 800 x 600, and
+# there is no other movie picture; and a plots_only run must draw every
+# one of them again, byte for byte.
 begin
-c=movies
-if run $c tests/decks/ok_movie_dt.deck; then
+c=movie
+if run $c tests/decks/ok_movie_frames.deck; then
    d="$TMP/$c"
    if ! check_file "$d" 1 1 1; then
       fail $c "test_hist:"; detail < "$d/chk.fail"
    else
-      want=$(awk -v dt=0.25 '
+      want=$(awk -v nmov=5 '
          { n++; cyc[n] = $2; t[n] = $3 + 0 }
          END {
-            mlast = int(t[n]/dt + 0.5); j = 1; last = 0
-            for (m = 0; m <= mlast; m++) {
-               tm = m*dt
+            j = 1; last = 0
+            for (m = 0; m < nmov; m++) {
+               tm = t[n]*m/(nmov - 1)
                while (j < n) {
                   a = t[j+1] - tm; if (a < 0) a = -a
                   b = t[j] - tm;   if (b < 0) b = -b
@@ -597,13 +597,11 @@ if run $c tests/decks/ok_movie_dt.deck; then
                if (j != last) { printf "%06d\n", cyc[j] % 1000000; last = j }
             }
          }' "$d/frames")
-      got() { (cd "$d" && ls run.mv_"$1"_*.bmp 2>/dev/null | sed "s/^run\.mv_$1_\(.*\)\.bmp$/\1/"); }
+      got=$(cd "$d" && ls run.mv_*.bmp 2>/dev/null | sed 's/^run\.mv_p_\(.*\)\.bmp$/\1/')
       bad=""
-      for v in p u rho; do
-         [ "$(got $v)" = "$want" ] || bad="$bad${bad:+; }mv_$v frames $(got $v | tr '\n' ' ')(wanted $(echo "$want" | tr '\n' ' '))"
-      done
+      [ "$got" = "$want" ] || bad="movie frames $(echo "$got" | tr '\n' ' ')(wanted $(echo "$want" | tr '\n' ' '))"
       if [ -z "$bad" ]; then
-         for f in "$d"/run.mv_*.bmp; do
+         for f in "$d"/run.mv_p_*.bmp; do
             if [ "$(head -c 2 "$f")" != BM ] || [ "$(bmp_dim "$f" 18)" != 800 ] ||
                [ "$(bmp_dim "$f" 22)" != 600 ] ||
                [ "$(wc -c < "$f" | tr -d ' ')" != $((54 + 3*800*600)) ]; then
@@ -614,11 +612,11 @@ if run $c tests/decks/ok_movie_dt.deck; then
       if [ -z "$bad" ]; then
          e="$TMP/${c}_again"; mkdir -p "$e"
          cp "$d"/*.hist "$d"/*.heartbeat "$e"/
-         setkeys tests/decks/ok_movie_dt.deck Run "plots_only = yes" > "$TMP/$c.deck"
+         setkeys tests/decks/ok_movie_frames.deck Run "plots_only = yes" > "$TMP/$c.deck"
          if ! run ${c}_again "$TMP/$c.deck"; then
             bad="the plots_only run did not finish"
          else
-            for f in "$d"/run.mv_*.bmp; do
+            for f in "$d"/run.mv_p_*.bmp; do
                cmp -s "$f" "$e/$(basename "$f")" ||
                   { bad="plots_only drew $(basename "$f") differently"; break; }
             done

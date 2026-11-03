@@ -4,10 +4,10 @@ subroutine draw_profile( bout, n, x, y, xlo, xhi, ylo, yhi, title_text )
 !    DRAW_PROFILE makes one line plot, y against x, as a fixed-size    !
 !    bitmap, nx by ny pixels, and hands it to bmpmaker: the drawing    !
 !    under the tracer plots (draw_trace: velocity against time) and    !
-!    the movie frames (module pics: P, u or density against x at one   !
-!    time). It was draw_trace's own until the movies needed it with    !
-!    an x range and a title of their own (11/02/26); a tracer plot is  !
-!    the same, byte for byte.                                          !
+!    the pressure movie's frames (module pics: P against x at one      !
+!    time). It was draw_trace's own until the movie needed it with an  !
+!    x range and a title of its own (11/02/26); a tracer plot is the   !
+!    same, byte for byte.                                              !
 !                                                                      !
 !    The picture: a white page, a margin of nm pixels, and inside it   !
 !    the plot area, framed by a box with rounded outside corners (the  !
@@ -71,7 +71,7 @@ subroutine draw_profile( bout, n, x, y, xlo, xhi, ylo, yhi, title_text )
 !                                     the title are arguments, and a   !
 !                                     point beyond the y axis is drawn !
 !                                     at the box's edge (for the       !
-!                                     movies); draw_trace calls it     !
+!                                     movie); draw_trace calls it      !
 !                                                                      !
 !**********************************************************************!
 use bits, only: int8,int32,dp,kpt6,zero,half,one

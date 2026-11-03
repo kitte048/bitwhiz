@@ -16,7 +16,7 @@ module strokes
 !           a title in bitwhiz's own stroke font: each letter a few
 !           straight strokes and elliptical arcs in a cell one cap
 !           height tall (only the letters bitwhiz's titles use, the
-!           ten digits, and . = + - for the movies' times)
+!           ten digits, and . = + - for the movie's times)
 !       in_rounded, seg_dist2
 !           the geometry under them
 !
@@ -34,9 +34,9 @@ module strokes
 !                (with Claude)        (frame, stamp, the font), shared
 !                                     with draw_tx; letters R, U, L, Y
 !                                     and the digits 0, 1 added
-!    11/02/26    D. E. Kittell        For the movies' titles (PRESSURE
-!                (with Claude)        AT TIME = +1.234 US): letters A,
-!                                     D, M, N, the digits 2 to 9, and
+!    11/02/26    D. E. Kittell        For the movie's titles (PRESSURE
+!                (with Claude)        AT TIME = +1.234 US): letters A
+!                                     and M, the digits 2 to 9, and
 !                                     . = + -
 !
 !**********************************************************************!
@@ -241,13 +241,11 @@ contains
       case ( 'A' ); advance = 0.76_dp
       case ( 'B' ); advance = 0.72_dp
       case ( 'C' ); advance = 0.78_dp
-      case ( 'D' ); advance = 0.70_dp
       case ( 'E' ); advance = 0.62_dp
       case ( 'H' ); advance = 0.70_dp
       case ( 'I' ); advance = 0.00_dp
       case ( 'L' ); advance = 0.58_dp
       case ( 'M' ); advance = 0.84_dp
-      case ( 'N' ); advance = 0.70_dp
       case ( 'O' ); advance = 0.86_dp
       case ( 'P' ); advance = 0.66_dp
       case ( 'R' ); advance = 0.68_dp
@@ -323,11 +321,6 @@ contains
          call gl( 0.47_dp, 1.0_dp, 0.00_dp, 1.0_dp )
       case ( 'C' )
          call ga( 0.44_dp, 0.5_dp, 0.44_dp, 0.5_dp, 48.0_dp, 312.0_dp )
-      case ( 'D' )
-         call gl( 0.00_dp, 0.0_dp, 0.00_dp, 1.0_dp )
-         call gl( 0.00_dp, 0.0_dp, 0.25_dp, 0.0_dp )
-         call ga( 0.25_dp, 0.5_dp, 0.45_dp, 0.5_dp, 90.0_dp, -90.0_dp )
-         call gl( 0.25_dp, 1.0_dp, 0.00_dp, 1.0_dp )
       case ( 'E' )
          call gl( 0.62_dp, 0.0_dp, 0.00_dp, 0.0_dp )
          call gl( 0.00_dp, 0.0_dp, 0.00_dp, 1.0_dp )
@@ -347,10 +340,6 @@ contains
          call gl( 0.00_dp, 0.0_dp, 0.42_dp, 0.72_dp )
          call gl( 0.42_dp, 0.72_dp, 0.84_dp, 0.0_dp )
          call gl( 0.84_dp, 0.0_dp, 0.84_dp, 1.0_dp )
-      case ( 'N' )
-         call gl( 0.00_dp, 1.0_dp, 0.00_dp, 0.0_dp )
-         call gl( 0.00_dp, 0.0_dp, 0.70_dp, 1.0_dp )
-         call gl( 0.70_dp, 1.0_dp, 0.70_dp, 0.0_dp )
       case ( 'O' )
          call ga( 0.43_dp, 0.5_dp, 0.43_dp, 0.5_dp, 0.0_dp, 360.0_dp )
       case ( 'P' )

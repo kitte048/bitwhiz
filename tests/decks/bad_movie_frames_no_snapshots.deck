@@ -1,14 +1,13 @@
-# expect: movie_dt belongs in the Output block, not the Run block
-# movie_dt is an Output key.
+# expect: needs snapshots to draw its frames from
+# movie_frames without plot_dt or plot_every: nothing to draw them from.
 Begin bitwhiz
  deck_version = 1
  Begin Run
   t_end = 1.0
   plots_only = no
-  movie_dt = 0.15
  End Run
  Begin Output
-  plot_every = 10
+  movie_frames = 5
  End Output
  Begin Material Al
   R0 = 2.78

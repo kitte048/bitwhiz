@@ -43,8 +43,9 @@ module deck
 !                                     any number of words
 !    10/24/26    D. E. Kittell        Output block: plot_range (robust,
 !                (with Claude)        full)
-!    11/02/26    D. E. Kittell        Output block: movie_dt (needs
-!                (with Claude)        snapshots, checked in resolve_deck)
+!    11/02/26    D. E. Kittell        Output block: movie_frames (2 to
+!                (with Claude)        50; needs snapshots, checked in
+!                                     resolve_deck)
 !
 !**********************************************************************!
 !
@@ -182,7 +183,7 @@ integer(kind=int32) :: line_version = 0
 integer(kind=int32) :: line_origin  = 0, line_xleft = 0
 integer(kind=int32) :: line_ulo = 0, line_uhi = 0  ! color windows
 integer(kind=int32) :: line_plo = 0, line_phi = 0
-integer(kind=int32) :: line_movie = 0              ! movie_dt's line
+integer(kind=int32) :: line_movie = 0              ! movie_frames' line
 integer(kind=int32) :: imat_now = 0, ilay_now = 0  ! block being filled
 logical             :: tend_given = .false.        ! t_end appeared
 
@@ -972,15 +973,20 @@ contains
       if (ok .and. x < zero) call deck_error(ln, 'plot_dt cannot be '// &
          'negative (0 turns it off)')
       if (ok .and. x >= zero) plot_dt = x
-   case ('movie_dt')
-      ! Movie frames (module pics): P, u and density against x, drawn
-      ! from the snapshots nearest 0, movie_dt, 2 movie_dt, ...; that
-      ! there are snapshots is checked once the whole deck is read.
-      call get_real(ln, key, val, x, ok)
-      if (ok .and. x < zero) call deck_error(ln, 'movie_dt cannot be '// &
-         'negative (0 turns it off)')
-      if (ok .and. x >= zero) then
-         movie_dt = x
+   case ('movie_frames')
+      ! The pressure movie (module pics): P against x, drawn from the
+      ! snapshots nearest movie_frames times spread evenly from t = 0
+      ! to the last snapshot. At most max_movie_frames, so a deck cannot
+      ! flood its folder with pictures; at least 2 (the first and the
+      ! last). That there are snapshots is checked once the whole deck
+      ! is read.
+      call get_int(ln, key, val, iv, ok)
+      if (ok .and. iv /= 0 .and. (iv < 2 .or. iv > max_movie_frames)) then
+         call deck_error(ln, 'movie_frames = '//itoa(iv)//' must be 0 '// &
+            '(no movie) or from 2 (the first and last snapshots) to '// &
+            itoa(max_movie_frames))
+      else if (ok) then
+         movie_frames = iv
          line_movie = ln
       end if
    case ('tracer_dt')
@@ -1052,8 +1058,8 @@ contains
       tracer(ntrc)%line = ln
    case default
       call unknown_key(ln, key, 'in the Output block', &
-         'tracer, tracer_dt, plot_every, plot_dt, movie_dt, colormap, '// &
-         'plot_range, plot_u_lo, plot_u_hi, plot_p_lo, plot_p_hi')
+         'tracer, tracer_dt, plot_every, plot_dt, movie_frames, '// &
+         'colormap, plot_range, plot_u_lo, plot_u_hi, plot_p_lo, plot_p_hi')
    end select
    end subroutine key_output
 
@@ -1359,7 +1365,7 @@ contains
    case ('title', 't_end', 'cycle_max', 'num_threads', 'omp_min_zones', &
          'plots_only')
       b = 'the Run block'
-   case ('tracer', 'tracer_dt', 'plot_every', 'plot_dt', 'movie_dt', &
+   case ('tracer', 'tracer_dt', 'plot_every', 'plot_dt', 'movie_frames', &
          'colormap', 'plot_range', 'plot_u_lo', 'plot_u_hi', 'plot_p_lo', &
          'plot_p_hi')
       b = 'the Output block'
@@ -1542,9 +1548,10 @@ contains
       line_phi), 'plot_p_lo ('//fmt_real(plot_p_lo)//') must be less '// &
       'than plot_p_hi ('//fmt_real(plot_p_hi)//')')
 
-   !*** 7. Movies are drawn from the snapshots: movie_dt needs some.
-   if (movie_dt > zero .and. plot_every == 0 .and. .not. (plot_dt > zero)) &
-      call deck_error(line_movie, 'movie_dt = '//fmt_real(movie_dt)// &
+   !*** 7. The movie is drawn from the snapshots: movie_frames needs
+   !***    some.
+   if (movie_frames > 0 .and. plot_every == 0 .and. .not. (plot_dt > zero)) &
+      call deck_error(line_movie, 'movie_frames = '//itoa(movie_frames)// &
          ' needs snapshots to draw its frames from: set plot_dt (or '// &
          'plot_every) in the Output block')
 
@@ -1764,9 +1771,9 @@ contains
       merge('off       ', 'cycles    ', plot_every == 0))
    call kv(lu, 2, 'plot_dt',     fmt_real(plot_dt), &
       merge('off', 'us ', plot_dt <= zero))
-   call kv(lu, 2, 'movie_dt',    fmt_real(movie_dt), &
-      merge('off                                ', &
-            'us: P, u, density movies from these', movie_dt <= zero))
+   call kv(lu, 2, 'movie_frames', itoa(movie_frames), &
+      merge('off                             ', &
+            'frames of P from the snapshots  ', movie_frames == 0))
    call kv(lu, 2, 'colormap',    trim(colormap))
    call kv(lu, 2, 'plot_range',  trim(plot_range), &
       merge('color ranges: min to the top held 50 cycles', &
