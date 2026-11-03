@@ -608,11 +608,18 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
   the pixels by more than 16 of 255 levels.
 - **The t-x picture** has the tracer plots' look (below; the frame, the font
   and the slate are shared, `src/modules/strk_mod.f95`): the plot area inside
-  a box with rounded corners and ticks at tenths, 40-pixel margins left, right
-  and above; the title **BITWHIZ PRESSURE VIEW** or **BITWHIZ VELOCITY VIEW**
-  engraved above the box; and below it a **color bar**, the colormap from 0
-  (the color window's low end, left) to 1 (its high end, right), outlined in
-  slate and labeled 0 and 1. The screen gives the window in data units.
+  a box with rounded corners and ticks at tenths, the box 40 pixels from the
+  top, 100 from the left, 60 from the right and 105 from the bottom; the title
+  **BITWHIZ PRESSURE VIEW** or **BITWHIZ VELOCITY VIEW** engraved above it,
+  centered on the page; the axis ends as numbers, as on the tracer plots, x
+  (mm) under the box's bottom corners and t (us) left of its left side, each
+  axis rounded out to clean ends first (the class deck: −7 to 25 mm, 0 to 5
+  us; a top rounded past the last frame is white); and below it a **color
+  bar**, the colormap from the color window's low end (left) to its high end
+  (right), outlined in slate and labeled with the window's ends in data
+  units, to 3 significant figures of the larger (−2.6 and 18.7 GPa for the
+  class deck). The colors are the window's exactly: its ends are not rounded,
+  only written short, and the screen gives them in full.
 - **Tracer plots** (`src/drawings/draw_trace.f95`): the tracer's velocity
   (`KMPS`) against time, a line through every row of the tracer file, 3.0
   pixels wide, in Okabe-Ito vermilion (#D55E00). x runs from the first to the

@@ -38,9 +38,10 @@ module pics
 !  The pictures:
 !    t-x diagrams, in the lab frame: x across, from the smallest to
 !    the largest face position of the whole run, t up, from 0 to the
-!    last frame, inside a frame like the tracer plots', titled
-!    BITWHIZ PRESSURE VIEW or BITWHIZ VELOCITY VIEW, with a color bar
-!    (0 to 1 of the window) below. Colors:
+!    last frame (both rounded out to clean ends, which it prints),
+!    inside a frame like the tracer plots', titled BITWHIZ PRESSURE
+!    VIEW or BITWHIZ VELOCITY VIEW, with a color bar below, labeled
+!    with the window's ends. Colors:
 !    the deck's colormap over the color window, min + lo*(top - min)
 !    to min + hi*(top - min) of the data (plot_u_lo, ...), values
 !    beyond saturating. The top is the data's max with plot_range =
@@ -127,6 +128,8 @@ module pics
 !                (with Claude)        axes rounded out to clean ends
 !                                     (nice_ends, module strokes), which
 !                                     the pictures now print
+!    11/03/26    D. E. Kittell        The t-x diagrams' x and t too: the
+!                (with Claude)        screen reports their clean ends
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
@@ -217,6 +220,7 @@ contains
    character(len=:), allocatable :: fname, msg, what
    real(kind=sp) :: umin, umax, pmin, pmax, utop, ptop
    real(kind=dp) :: ulo, uhi, plo, phi
+   real(kind=dp) :: xa, xb, ta, tb, step     ! the axes' clean ends
    integer(kind=int32) :: l, ord, j
 
    fname = trim(title)//'.hist'
@@ -301,10 +305,15 @@ contains
    uhi = real(umin,dp) + plot_u_hi*real(utop - umin,dp)
    plo = real(pmin,dp) + plot_p_lo*real(ptop - pmin,dp)
    phi = real(pmin,dp) + plot_p_hi*real(ptop - pmin,dp)
-   write( kpt6, fl ) 'x across (mm)', num(minval(hr_x))//' to '// &
-      num(maxval(hr_x))
-   write( kpt6, fl ) 't up (us)', num(real(hr_time(1),sp))//' to '// &
-      num(real(hr_time(hr_nframes),sp))
+   !*** The axes as draw_tx draws them: rounded out to clean ends, by
+   !*** the same calls on the same numbers.
+   call nice_ends( real( minval(hr_x), dp ), real( maxval(hr_x), dp ), &
+      xa, xb, step )
+   call nice_ends( zero, hr_time(hr_nframes), ta, tb, step )
+   if ( .not. ( tb > zero ) ) tb = hr_time(hr_nframes)
+   write( kpt6, fl ) 'x across (mm)', num(real(xa,sp))//' to '// &
+      num(real(xb,sp))
+   write( kpt6, fl ) 't up (us)', num(0.0_sp)//' to '//num(real(tb,sp))
    if ( plot_range == 'robust' ) then
       write( kpt6, fl ) 'Color ranges', 'robust: min to the top held '// &
          'for '//itoa(nhold)//' cycles'

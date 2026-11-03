@@ -10,17 +10,27 @@ subroutine draw_tx( var, bout, cmap, clo, chi )
 !    frame, the font and the slate ink are module strokes'): a white   !
 !    page; a box with rounded outside corners and ticks at tenths of   !
 !    each axis, pointing in; the title engraved above it, BITWHIZ      !
-!    PRESSURE VIEW or BITWHIZ VELOCITY VIEW; and below it a color bar, !
-!    the colormap from 0 (the window's low end, left) to 1 (its high   !
-!    end, right), outlined in slate and labeled 0 and 1. The screen    !
-!    gives the ranges.                                                 !
+!    PRESSURE VIEW or BITWHIZ VELOCITY VIEW, centered on the page; and !
+!    below it a color bar, the colormap from the window's low end clo  !
+!    (left) to its high end chi (right), outlined in slate. The        !
+!    numbers, in 12-pixel figures: the x axis's ends (mm) under the    !
+!    box's bottom corners, the t axis's (us) left of its left side,    !
+!    level with the plot area's bottom and top, and the color window's !
+!    ends beside the bar's, to 3 significant figures (the colors are   !
+!    the window's exactly; the screen gives every value in full). The  !
+!    box is 40 pixels from the top (the title's margin), 100 from the  !
+!    left, 60 from the right and 105 from the bottom (the x ends and   !
+!    the bar), so the page stays 1200 by 900.                          !
 !                                                                      !
 !    Inside the box, the plot area, in the LAB frame: x across, from   !
-!    the smallest face position of the whole run (left edge) to the    !
-!    largest (right edge); t up, from 0 (bottom edge) to the last      !
-!    frame (top edge). Every cell is drawn between its two faces where !
-!    they are at that time, so a material line (a face) is a curve of  !
-!    slope dx/dt = u, and a shock front's slope is the shock velocity. !
+!    the smallest face position of the whole run to the largest, each  !
+!    rounded out to a clean number (nice_ends, module strokes, as the  !
+!    movie's x axis); t up, from 0 (bottom edge) to the last frame,    !
+!    rounded up the same way (a run that ends at t_end = 5 us stays 0  !
+!    to 5; above the last frame, if the top is rounded past it, is     !
+!    white). Every cell is drawn between its two faces where they are  !
+!    at that time, so a material line (a face) is a curve of slope     !
+!    dx/dt = u, and a shock front's slope is the shock velocity.       !
 !                                                                      !
 !    Pressure: the deck's colormap over the color window clo to chi    !
 !    (values beyond it take its end colors), and WHITE                 !
@@ -101,12 +111,18 @@ subroutine draw_tx( var, bout, cmap, clo, chi )
 !    10/24/26    D. E. Kittell        pzero 1e-3 of the largest |P|    !
 !                (with Claude)        (was 1e-6): the white rule no    !
 !                                     longer colors a shock's foot     !
+!    11/03/26    D. E. Kittell        The axis ends as numbers, as the !
+!                (with Claude)        scope view's: the box's left,    !
+!                                     right and bottom sides moved in, !
+!                                     x and t rounded out to clean     !
+!                                     ends, the color bar labeled with !
+!                                     the window's values (was 0, 1)   !
 !                                                                      !
 !**********************************************************************!
 use bits, only: int8,int32,dp,kpt6,zero,half,one
 use hist, only: hr_nframes,hr_kmax,hr_time,hr_x,hr_u,hr_p,hr_d
 use strokes, only: frame_t,frame_set,frame_ink,frame_near,engrave, &
-   in_rounded,slate_rgb
+   in_rounded,slate_rgb,nice_ends,axis_text
 implicit none
 
 !**********************************************************************!
@@ -124,20 +140,25 @@ integer(kind=int32), parameter :: nx=1200     ! pixels across (x)
 integer(kind=int32), parameter :: ny=900      ! pixels down (t up)
 integer(kind=int32), parameter :: ns=4        ! samples (and sub-rows) per
                                               ! pixel, each way
-!*** The box's outside edges, pixels: a 40-pixel margin left, right and
-!*** above (the title's), 80 below (the color bar's).
-real(kind=dp), parameter :: bl=40.0_dp, br=1160.0_dp
-real(kind=dp), parameter :: bt=40.0_dp, bb=820.0_dp
+!*** The box's outside edges, pixels: 40 from the top (the title's
+!*** margin, as it always was), 100 from the left (the t ends), 60 from
+!*** the right (half of the x end) and 105 from the bottom (the x ends,
+!*** then the color bar).
+real(kind=dp), parameter :: bl=100.0_dp, br=1140.0_dp
+real(kind=dp), parameter :: bt=40.0_dp, bb=795.0_dp
+!*** The axis ends' numbers, as the scope view's: cap height, stroke
+!*** width, and their gap from the box (pixels).
+real(kind=dp), parameter :: nh=12.0_dp, nsw=1.7_dp, ngap=10.0_dp
 !*** The title: cap height and stroke width (pixels), as the scope's.
 real(kind=dp), parameter :: th=16.0_dp
 real(kind=dp), parameter :: tsw=2.2_dp
 !*** The color bar: its outside edges, outline width and corner radius
-!*** (pixels); its labels' cap height, stroke width and distance from
-!*** the bar's ends to their centers.
+!*** (pixels); its labels' cap height, stroke width and gap from the
+!*** bar's ends (the low end's label ends there, the high end's starts).
 real(kind=dp), parameter :: cbl=300.0_dp, cbr=900.0_dp
 real(kind=dp), parameter :: cbt=842.0_dp, cbb=860.0_dp
 real(kind=dp), parameter :: cbw=1.5_dp, cbrad=5.0_dp
-real(kind=dp), parameter :: lth=12.0_dp, lsw=1.8_dp, lgap=16.0_dp
+real(kind=dp), parameter :: lth=12.0_dp, lsw=1.8_dp, lgap=10.0_dp
 real(kind=dp), parameter :: zero_frac=1.0e-3_dp  ! pzero / largest |P|
 integer(kind=int32) :: i,j,k,s,ii,jj          ! loop indices
 integer(kind=int32) :: i1,i2                  ! pixels a cell covers
@@ -152,6 +173,9 @@ type(frame_t) :: f                            ! the box, plot area, ticks
 real(kind=dp) :: xmin,xmax,sc                 ! mm: the run's x; px per mm
 real(kind=dp) :: tend,t,w,ys                  ! us: top edge, a sub-row's t;
                                               ! its y, pixels
+real(kind=dp) :: stx,stt,stc                  ! the x, t and color steps
+                                              ! (nice_ends; the color's for
+                                              ! 3 significant figures)
 real(kind=dp) :: a,b,lo,hi,ov                 ! px: a cell, a pixel, overlap
 real(kind=dp) :: p,span                       ! a cell's P (GPa), the window
 real(kind=dp) :: ua,ub                        ! km/s: u at a cell's faces
@@ -209,24 +233,41 @@ ilo = floor( f%xa ) + 1
 ihi = ceiling( f%xb )
 
 !*** The run's x (mm) onto the plot area's width (pixels); t from 0 at
-!*** its bottom edge to the last frame at its top.
-xmin = real( minval( hr_x(:,1:nf) ), dp )
-xmax = real( maxval( hr_x(:,1:nf) ), dp )
+!*** its bottom edge to the last frame at its top. Both rounded out to
+!*** clean ends (module pics reports the same, from the same calls).
+call nice_ends( real( minval( hr_x(:,1:nf) ), dp ), &
+   real( maxval( hr_x(:,1:nf) ), dp ), xmin, xmax, stx )
+call nice_ends( zero, hr_time(nf), w, tend, stt )
+if ( .not. ( tend > zero ) ) tend = hr_time(nf)
 sc   = zero
 if ( xmax > xmin ) sc = ( f%xb - f%xa )/( xmax - xmin )
-tend = hr_time(nf)
 span = chi - clo
 pzero = zero_frac*real( maxval( abs( hr_p(:,1:nf) ) ), dp )
 
-!*** The text's samples (marked 2): the title centered over the box in
-!*** the top margin, as the scope's; 0 and 1 at the bar's ends.
+!*** The text's samples (marked 2): the title centered on the page in
+!*** the top margin, as the scope's (where it was, over the box, before
+!*** the box's sides moved in); the axis ends, as the scope's; and the
+!*** color window's ends beside the bar's, to 3 significant figures of
+!*** the larger: the colors are the window's exactly, so its ends are
+!*** not rounded, only written short.
 txt = 0_int8
-call engrave( txt, ns, trim( title_text ), half*( bl + br ), half*bt, th, &
-   tsw, 2_int8 )
-call engrave( txt, ns, '0', cbl - lgap, half*( cbt + cbb ), lth, lsw, &
-   2_int8 )
-call engrave( txt, ns, '1', cbr + lgap, half*( cbt + cbb ), lth, lsw, &
-   2_int8 )
+call engrave( txt, ns, trim( title_text ), half*real( nx, dp ), half*bt, &
+   th, tsw, 2_int8 )
+call engrave( txt, ns, axis_text( xmin, stx ), f%xa, bb + ngap + half*nh, &
+   nh, nsw, 2_int8 )
+call engrave( txt, ns, axis_text( xmax, stx ), f%xb, bb + ngap + half*nh, &
+   nh, nsw, 2_int8 )
+call engrave( txt, ns, axis_text( zero, stt ), bl - ngap, f%yb, nh, nsw, &
+   2_int8, 'r' )
+call engrave( txt, ns, axis_text( tend, stt ), bl - ngap, f%ya, nh, nsw, &
+   2_int8, 'r' )
+stc = one
+if ( max( abs(clo), abs(chi) ) > zero ) &
+   stc = 10.0_dp**( floor( log10( max( abs(clo), abs(chi) ) ) ) - 2 )
+call engrave( txt, ns, axis_text( clo, stc ), cbl - lgap, &
+   half*( cbt + cbb ), lth, lsw, 2_int8, 'r' )
+call engrave( txt, ns, axis_text( chi, stc ), cbr + lgap, &
+   half*( cbt + cbb ), lth, lsw, 2_int8, 'l' )
 
 !*** The color bar's fill, inside its outline, and its colors: each
 !*** pixel column the colormap at the column's center, 0 at the fill's
@@ -262,6 +303,8 @@ rows: do j=ny,1,-1
          if ( ys < f%ya .or. ys > f%yb ) cycle subrows
          nsub = nsub + 1
          t = ( f%yb - ys )/( f%yb - f%ya )*tend
+         if ( t > hr_time(nf) ) cycle subrows   ! past the last frame:
+                                                ! white (c4 stays 0)
 
          ! The frames around t: jf at or before it, jf+1 after it.
          do while ( jf < nf - 1 )

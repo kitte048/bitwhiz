@@ -61,7 +61,9 @@
 #  The t-x diagram's frame: the bottom spine full slate, the box's     #
 #  outer corner pixel white; the title BITWHIZ PRESSURE VIEW above it  #
 #  (the stem of its first I slate, the gap after it white); the color  #
-#  bar below it (a slate outline, two different colors near its ends). #
+#  bar below it (a slate outline, two different colors near its ends); #
+#  its numbers: x and t rounded to -7 to 25 mm and 0 to 5 us, and ink  #
+#  at the axis ends' and the color window's places.                    #
 #  A tracer plot's frame: the bottom spine full slate (#2C3E50), its   #
 #  inner edge a half shade (anti-aliased), the box's outer corner      #
 #  pixel white (rounded); and the curve drawn: vermilion (#D55E00)     #
@@ -81,7 +83,7 @@ CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 . "$(dirname "$0")/report.sh"
-plan 22 "history tests"
+plan 23 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -213,13 +215,14 @@ against_tracer() {   # $1 case name, $2 deck, $3 dt, $4 tracer
 against_tracer class_av  input/me697_double_shock_2p00.deck 0.01 pdv
 
 # Case: the class run's P t-x diagram (1200 x 900), lab frame and white
-# rule. The plot area is x = 42.5 to 1157.5 pixels across and
-# y = 42.5 (t_end) to 817.5 (t = 0) down, inside the frame's spines;
-# x (mm) is at x0 + (x - xmin)/(xmax - xmin)*1115 with xmin and xmax
-# from the screen's "x across" line. Rows are counted from the bottom:
-# row 85 is just after t = 0, row 838 just before t_end. Columns 60 and
-# 1140 and rows 95 and 830 are near the plot area's corners, clear of
-# the spines, the rounded corners and the ticks.
+# rule. The plot area is x = 102.5 to 1137.5 pixels across and
+# y = 42.5 (t_end) to 792.5 (t = 0) down, inside the frame's spines;
+# x (mm) is at x0 + (x - xmin)/(xmax - xmin)*1035 with xmin and xmax
+# from the screen's "x across" line (-7 to 25, rounded out). Rows are
+# counted from the bottom: row 112 is just after t = 0, row 838 just
+# before t_end. Columns 120 and 1120 and rows 120 and 830 are near the
+# plot area's corners, clear of the spines, the rounded corners and the
+# ticks; column 1120 is x = 24.4 mm, beyond the PMMA's rear at t = 0.
 begin
 c=tx_p_class
 f="$TMP/class_av/double_shock_2p00.tx_p.bmp"
@@ -228,15 +231,15 @@ if [ ! -f "$f" ]; then
 else
    col() {   # the pixel column of x = $1 mm
       awk -F: -v x="$1" '/x across \(mm\)/ {split($2, v, " to "); x0 = v[1] + 0; x1 = v[2] + 0;
-           print int(42.5 + (x - x0)/(x1 - x0)*1115) + 1}' "$TMP/class_av/screen.out"
+           print int(102.5 + (x - x0)/(x1 - x0)*1035) + 1}' "$TMP/class_av/screen.out"
    }
    i0=$(col 0); i15=$(col 15)
-   if [ "$(pixel "$f" 60 95 1200)" != ffffff ] || [ "$(pixel "$f" 1140 95 1200)" != ffffff ] ||
-      [ "$(pixel "$f" 60 830 1200)" != ffffff ]; then
+   if [ "$(pixel "$f" 120 120 1200)" != ffffff ] || [ "$(pixel "$f" 1120 120 1200)" != ffffff ] ||
+      [ "$(pixel "$f" 120 830 1200)" != ffffff ]; then
       fail $c "a corner of the plot area is not white (bottom left, bottom right, top left)"
-   elif [ -z "$i0" ] || [ "$(pixel "$f" "$i0" 85 1200)" = ffffff ]; then
+   elif [ -z "$i0" ] || [ "$(pixel "$f" "$i0" 112 1200)" = ffffff ]; then
       fail $c "the impact plane (column ${i0:-?}) is white just after t = 0"
-   elif [ -z "$i15" ] || [ "$(pixel "$f" "$i15" 85 1200)" != ffffff ] ||
+   elif [ -z "$i15" ] || [ "$(pixel "$f" "$i15" 112 1200)" != ffffff ] ||
         [ "$(pixel "$f" "$i15" 838 1200)" = ffffff ]; then
       fail $c "the PMMA at x = 15 mm (column ${i15:-?}) is not white at t = 0 and colored near t_end"
    else
@@ -253,20 +256,20 @@ c=tx_u_class
 f="$TMP/class_av/double_shock_2p00.tx_u.bmp"
 if [ ! -f "$f" ]; then
    fail $c "no u t-x diagram"
-elif [ "$(pixel "$f" 60 95 1200)" = ffffff ] || [ "$(pixel "$f" "$i15" 85 1200)" = ffffff ]; then
+elif [ "$(pixel "$f" 120 120 1200)" = ffffff ] || [ "$(pixel "$f" "$i15" 112 1200)" = ffffff ]; then
    fail $c "the moving flyer or the PMMA at rest is white at t = 0"
-elif [ "$(pixel "$f" 1140 95 1200)" != ffffff ] || [ "$(pixel "$f" 60 830 1200)" != ffffff ]; then
+elif [ "$(pixel "$f" 1120 120 1200)" != ffffff ] || [ "$(pixel "$f" 120 830 1200)" != ffffff ]; then
    fail $c "a place with no material is not white"
 else
    pass $c
 fi
 
 # Case: the t-x diagram's frame, title and color bar, in the scope
-# view's style (module strokes). The box's outside edges are 40 and
-# 1160 across, 40 and 820 down; its bottom spine, 2.5 pixels, fills
-# rows 81 and 82 from the bottom and half of row 83; column 580 is
-# clear of the ticks. The title BITWHIZ PRESSURE VIEW is centered over
-# the box, cap height 16 centered on y = 20 (row 881): the stem of its
+# view's style (module strokes). The box's outside edges are 100 and
+# 1140 across, 40 and 795 down; its bottom spine, 2.5 pixels, fills
+# rows 106 and 107 from the bottom and half of row 108; column 580 is
+# clear of the ticks. The title BITWHIZ PRESSURE VIEW is centered on
+# the page, cap height 16 centered on y = 20 (row 881): the stem of its
 # first I (at x = 463.0, 2.2 pixels wide) fills column 463, and column
 # 466, between I and T, is white. The color bar, 300 to 900 across and
 # 842 to 860 down, has a 1.5-pixel slate outline (its top fills row 58)
@@ -276,8 +279,8 @@ begin
 c=tx_frame
 f="$TMP/class_av/double_shock_2p00.tx_p.bmp"
 lft=$(pixel "$f" 305 50 1200); rgt=$(pixel "$f" 895 50 1200)
-if [ "$(pixel "$f" 580 81 1200)" != 503e2c ] || [ "$(pixel "$f" 580 82 1200)" != 503e2c ] ||
-   [ "$(pixel "$f" 41 81 1200)" != ffffff ]; then
+if [ "$(pixel "$f" 580 106 1200)" != 503e2c ] || [ "$(pixel "$f" 580 107 1200)" != 503e2c ] ||
+   [ "$(pixel "$f" 101 106 1200)" != ffffff ]; then
    fail $c "the bottom spine is not slate, or the box's outer corner pixel is not white"
 elif [ "$(pixel "$f" 463 881 1200)" != 503e2c ] || [ "$(pixel "$f" 466 881 1200)" != ffffff ]; then
    fail $c "the title's first I is not where it belongs (slate stem, white gap)"
@@ -373,6 +376,40 @@ elif ! ink "$f" 70 90 552 564; then
    fail $c "no number left of the plot area's top (yhi)"
 elif ink "$f" 1 60 1 40; then
    fail $c "ink in the bottom-left margin, where nothing is drawn"
+else
+   pass $c
+fi
+
+# Case: the t-x diagram's numbers. The screen gives the axes rounded out
+# to clean ends, x -7 to 25 mm and t 0 to 5 us; the numbers are drawn
+# where they belong: x's under the box's bottom corners (x = 102.5 and
+# 1137.5, rows 83-95 from the bottom), t's left of its left side
+# (columns 60-90, level with the plot area's bottom and top), and the
+# color window's ends beside the bar's (the low end's label ending at
+# x = 290, the high end's starting at 910, rows 43-55); nothing in the
+# page's bottom-left corner.
+ink1200() {   # as ink, on a 1200-pixel-wide picture
+   local r
+   for r in $(seq "$4" "$5"); do
+      od -v -An -t x1 -j $((54 + 3*((r - 1)*1200 + $2 - 1))) -N $((3*($3 - $2 + 1))) "$1" |
+         tr -s ' \n' '\n' | grep -qv -e '^ff$' -e '^$' && return 0
+   done
+   return 1
+}
+begin
+c=tx_numbers
+f="$TMP/class_av/double_shock_2p00.tx_p.bmp"
+if ! grep -q 'x across (mm) *: -7.0 to 25.0$' "$TMP/class_av/screen.out" ||
+   ! grep -q 't up (us) *: 0.0 to 5.0$' "$TMP/class_av/screen.out"; then
+   fail $c "the screen does not give the axes as -7 to 25 mm and 0 to 5 us"
+elif ! ink1200 "$f" 95 110 83 95 || ! ink1200 "$f" 1125 1150 83 95; then
+   fail $c "no number under a bottom corner of the box (x ends)"
+elif ! ink1200 "$f" 60 90 102 114 || ! ink1200 "$f" 60 90 852 864; then
+   fail $c "no number left of the plot area's bottom or top (t ends)"
+elif ! ink1200 "$f" 240 290 43 55 || ! ink1200 "$f" 910 960 43 55; then
+   fail $c "no number beside the color bar's ends"
+elif ink1200 "$f" 1 60 1 40; then
+   fail $c "ink in the page's bottom-left corner, where nothing is drawn"
 else
    pass $c
 fi

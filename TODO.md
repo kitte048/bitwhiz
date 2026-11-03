@@ -338,8 +338,11 @@ decks.
     module strokes), each axis rounded out to clean ends first
     (`nice_ends`: two significant figures of the span), in bitwhiz's own
     units, no unit or axis name yet.
-  - [ ] The t-x diagrams (x and t ends; the color bar's 0 and 1 as data
-    values).
+  - [x] The t-x diagrams (Nov 3): the box's left, right and bottom sides
+    moved in (100, 60, 105 pixels), x and t rounded out to clean ends and
+    printed as on the tracer plots, the color bar labeled with the
+    window's ends (3 significant figures; the window itself not rounded,
+    decided Nov 3).
   - [ ] Axis names and units, with the unit chosen to fit (decided Nov 3:
     with the labels, not before, so no scaled number appears without its
     unit). Lengths in the unit that keeps them under 1000 without
