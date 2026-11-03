@@ -17,9 +17,9 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Tracer file (`<title>.tracers.csv`, `tracer_dt`) | done (`src/modules/trace_mod.f95`; see `input/README.md`) |
 | Second method, `method = RS` (Godunov's method, acoustic Riemann solver), in the same code; `order = 2` (MUSCL-Hancock, Van Leer, the default) or `1` | done (`src/modules/rs_mod.f95`, maincode section 7; equation sheet `doc/Hydrocode_RS_Eqns_v4`) |
 | History file `<title>.hist`: x, u, P and damage on the whole mesh, one frame per snapshot (`plot_every`, `plot_dt`) | done (`src/modules/hist_mod.f95`; format in `input/README.md`, section 9) |
-| Pictures: t-x diagrams of u and P, one plot per tracer, a pressure movie, P against x (`movie_frames`, 2 to 50); `plots_only = yes` re-draws them without running || done: both t-x diagrams (lab frame; white outside the material and in open spall, and in P where no wave has reached) and the tracer plots (velocity against time); each framed and titled (BITWHIZ PRESSURE, VELOCITY and SCOPE VIEW), the t-x diagrams with a color bar, all anti-aliased (`src/modules/pics_mod.f95`, `src/drawings/draw_tx.f95`, `draw_trace.f95`, `draw_profile.f95`, `src/modules/strk_mod.f95`; `input/README.md` section 9b) |
+| Pictures: t-x diagrams of u and P, one plot per tracer, a pressure movie, P against x (`movie_frames`, 2 to 50); `plots_only = yes` re-draws them without running || done: both t-x diagrams (lab frame; white outside the material and in open spall, and in P where no wave has reached) and the tracer plots (velocity against time); each framed and titled (BITWHIZ PRESSURE, VELOCITY and SCOPE VIEW), the t-x diagrams with a color bar, all anti-aliased; the axis ends printed as numbers, each axis rounded out to clean ends, and the color bar labeled with its window (1.2.0; axis names and units next) (`src/modules/pics_mod.f95`, `src/drawings/draw_tx.f95`, `draw_trace.f95`, `draw_profile.f95`, `src/modules/strk_mod.f95`; `input/README.md` section 9b) |
 | Velocity profiles: a layer's starting velocity shaped by a probability density (`xvel_profile`, `xvel_amplitude`; uniform, linear, beta, normal, split normal, sinh-arcsinh, Cauchy), momentum exact | done, 1.1.0 (`src/modules/dist_mod.f95`, with unit test; `input/README.md`, Layer block; design `doc/design/distributions.md`; example decks `input/ramp_*.deck`, `input/pulse_split_normal.deck`, checked against exact linear acoustics) |
-| Material models: `eos = mie_gruneisen` (the default) or `mie_gruneisen_t`, the same P and c plus each cell's temperature (`CV`, `T0`; the cold curve carried cell by cell), `TK` in the tracer and history files, the T range and hottest cell (intact cells) in the log | done, for 1.2.0 (`src/modules/temp_mod.f95`, with unit test; `input/README.md`, Material block; design `doc/design/materials.md`; checked against G1's temperatures by `compare_g1.py`) |
+| Material models: `eos = mie_gruneisen` (the default) or `mie_gruneisen_t`, the same P and c plus each cell's temperature (`CV`, `T0`; the cold curve carried cell by cell), `TK` in the tracer and history files, the T range and hottest cell (intact cells) in the log | done, 1.2.0 (`src/modules/temp_mod.f95`, with unit test; `input/README.md`, Material block; design `doc/design/materials.md`; checked against G1's temperatures by `compare_g1.py`) |
 | Comparison with reference data | data in `tests/verification/` (the class problem; gold-standard sets G1, inert, and G2-G5, HVRB); `tests/verification/gold.py` reads it and reproduces the gold standard's published results; bitwhiz against G1 (inert): `tests/verification/compare_g1.py`, all pass (P, u, rho at 1 mm within 0.001 % of exact; arrivals within 5 ns; TK the formula's at bitwhiz's own state to 1e-11 K, and within 0.011 % of the exact Hugoniot rise at 1 mm) |
 
 ## Build
@@ -206,8 +206,8 @@ here, are:
 
 To check before a release, build with gfortran 8 if you can (`make clean;
 make FC=gfortran-8 test`); v1.0.2 was tested with gfortran 8.4, 9, 10, 12
-and 13; v1.1.0 with 13 and 15.2, its gfortran 8 check left to nanoHUB's
-install (8.3).
+and 13; v1.1.0 with 13 and 15.2, and v1.2.0 with 9, 13 and 15.2, their
+gfortran 8 checks left to nanoHUB's install (8.3).
 
 **How the tool runs** (for the notebook, `bitwhiz.ipynb` in the clone):
 nanoHUB copies the notebook into the session's results folder and starts it

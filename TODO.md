@@ -9,6 +9,8 @@ nanoHUB. Reordered Oct 31, 2026, after 1.0.3, from a brainstorm: one branch
 again, the nanoHUB tool, gold-standard data, movies, HVRB, graded materials.
 Reordered again Nov 2, 2026, after 1.1.0 (velocity profiles and the new
 nanoHUB notebook, published) and the gold-standard data and its reader.
+1.2.0 cut Nov 3, 2026: Mie-Grüneisen with temperature, the axis ends on
+every picture, the shorter screen, `make runs`, movies in the class deck.
 
 ## Priorities
 1. Material models: the architecture, design note first. A default model
@@ -196,7 +198,14 @@ need no tables.
       the six tests;
       every old deck bit for bit; G1's temperatures checked
       (`compare_g1.py`, 40 checks). Notes on the build in the design note.
-- [ ] **Release 1.2.0** (MG+T), with the nanoHUB tool.
+- [ ] **Release 1.2.0** (Nov 3): MG+T and its verification (T1-T5);
+      the axis ends on every picture; bitmaps a row at a time; the
+      screen (132 lines, `<title>.resolved`, section 8's file sizes);
+      `make runs`; pressure movies in the class deck,
+      `pulse_split_normal` and the new `steepening_hump`. Tagged on
+      `shock`; the nanoHUB tool with it, with the notebook's MP4 movie,
+      the `.resolved` download and `steepening_hump` in the picker
+      (section 2), then beta testing.
 - [ ] **A broken cell's temperature:** written as computed, it falls as
       the cell opens (P floored at 0, e_c following V): -4,693 K in G1's
       spalled PMMA at 2.00 km/s. The log skips broken cells. Decide what
