@@ -119,6 +119,7 @@ whole block may be left out.
 | `tracer_dt` | number, us | 0 (every cycle) | time between rows of the tracer file |
 | `plot_every` | integer | 0 (off) | write a snapshot (a frame of the history file, section 9) every N cycles |
 | `plot_dt` | number, us | 0 (off) | also write a snapshot every plot_dt |
+| `movie_dt` | number, us | 0 (off) | movies: P, u and density against x, one frame each from the snapshot nearest each of 0, movie_dt, 2 movie_dt, ... (needs snapshots; section 9b) |
 | `colormap` | name | `viridis` | for bitmap pictures: `grayscale`, `viridis`, `plasma`, `inferno`, `blackbody`, `kindlmann`, `extendedkindlmann`, `smoothcoolwarm`, `bentcoolwarm` |
 | `plot_range` | `robust` or `full` | `robust` | each t-x diagram's color range: `full` is the data's min to its max; `robust` the min to the top the run held for 50 cycles, when the max is a spike above that (section 9b) |
 | `plot_u_lo`, `plot_u_hi` | number, 0 to 1 | 0, 1 | the u t-x diagram's color window, as fractions of its color range (lo below hi; section 9b) |
@@ -482,10 +483,33 @@ the screen) and writes, in the folder the run starts from:
 | `<title>.tx_u.bmp` | t-x diagram of the velocity u | 1200 × 900 | snapshots (`plot_every` or `plot_dt`) |
 | `<title>.tx_p.bmp` | t-x diagram of the pressure P | 1200 × 900 | snapshots |
 | `<title>.tr_<name>.bmp` | one tracer's velocity against time, one per tracer | 800 × 600 | tracers |
+| `<title>.mv_p_<cycle>.bmp` | movie frame: the pressure P against x | 800 × 600 | `movie_dt` (and snapshots) |
+| `<title>.mv_u_<cycle>.bmp` | movie frame: the velocity u against x | 800 × 600 | `movie_dt` |
+| `<title>.mv_rho_<cycle>.bmp` | movie frame: the density against x | 800 × 600 | `movie_dt` |
 
 The pictures are 24-bit Windows bitmaps (`.bmp`), drawn by
-`src/drawings/draw_tx.f95` and `draw_trace.f95` and written by
-`src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
+`src/drawings/draw_tx.f95`, `draw_trace.f95` and `draw_profile.f95` and written
+by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
+
+- **Movies** (`movie_dt`, Output block): three, all or none, drawn from the
+  history file like the t-x diagrams, so `movie_dt` needs snapshots
+  (`plot_dt` or `plot_every`), and the movie times are a subset of the
+  snapshot times. For each time 0, `movie_dt`, 2 `movie_dt`, ... up to the
+  last snapshot's, the snapshot nearest it is drawn (the earlier of two
+  equally near; one that two movie times share, once): P at the cells'
+  centers, u at the faces, and the density, which the history file does not
+  hold: each cell keeps its mass, so ρ = R0·dx₀/dx, its width at t = 0 over its
+  width then. Files are named by the snapshot's cycle in six digits
+  (`<title>.mv_p_000142.bmp`; past cycle 999999 the count rolls over), so
+  they sort in time order, and each is titled with its time, e.g. PRESSURE AT
+  TIME = +1.000 US. The axes hold for the whole movie: x as the t-x diagrams'
+  (the run's smallest to largest face position, lab frame), y from min − 5%
+  to top + 5% of the run's range, the top as for the t-x diagrams
+  (`plot_range`); a value above it is drawn at the box's edge. The screen
+  gives every axis. A frame costs about as much as a tracer plot (a tenth of
+  a second in the release build), so `movie_dt` about 1/20 to 1/100 of
+  `t_end` is a good start. Make a movie from the frames with any tool that
+  takes a sequence of pictures (ffmpeg, which nanoHUB has, for one).
 
 - **Read from the files, never from memory.** The t-x diagrams come from
   `<title>.hist` and the tracer plots from `<title>.tracers.csv`, so a picture
@@ -576,7 +600,9 @@ so the heartbeat, tracer and history files it reads are never touched.
   are not used.
 - Every tracer in the deck must be in the tracer file.
 - It writes the same pictures a run would, by the same names, replacing the
-  old ones.
+  old ones. Movie frames are named by cycle, so frames an earlier run left at
+  other cycles stay until `make tidy` (or a new run in the notebook) clears
+  them.
 
 ---
 

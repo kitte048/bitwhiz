@@ -53,6 +53,7 @@
 	src/drawings/draw_colormaps.o \
 	src/drawings/draw_tx.o \
 	src/drawings/draw_trace.o \
+	src/drawings/draw_profile.o \
 	src/main/bmpmaker.o \
 	src/utils/random.o \
 	src/utils/timestamp.o

@@ -15,8 +15,8 @@ module strokes
 !       engrave
 !           a title in bitwhiz's own stroke font: each letter a few
 !           straight strokes and elliptical arcs in a cell one cap
-!           height tall (only the letters bitwhiz's titles use, and
-!           the digits 0 and 1 of the color bar)
+!           height tall (only the letters bitwhiz's titles use, the
+!           ten digits, and . = + - for the movies' times)
 !       in_rounded, seg_dist2
 !           the geometry under them
 !
@@ -34,6 +34,10 @@ module strokes
 !                (with Claude)        (frame, stamp, the font), shared
 !                                     with draw_tx; letters R, U, L, Y
 !                                     and the digits 0, 1 added
+!    11/02/26    D. E. Kittell        For the movies' titles (PRESSURE
+!                (with Claude)        AT TIME = +1.234 US): letters A,
+!                                     D, M, N, the digits 2 to 9, and
+!                                     . = + -
 !
 !**********************************************************************!
 use bits, only: int8, int32, dp, zero, half, one
@@ -222,12 +226,28 @@ contains
       select case ( c )
       case ( '0' ); advance = 0.60_dp
       case ( '1' ); advance = 0.30_dp
+      case ( '2' ); advance = 0.60_dp
+      case ( '3' ); advance = 0.60_dp
+      case ( '4' ); advance = 0.64_dp
+      case ( '5' ); advance = 0.60_dp
+      case ( '6' ); advance = 0.60_dp
+      case ( '7' ); advance = 0.60_dp
+      case ( '8' ); advance = 0.60_dp
+      case ( '9' ); advance = 0.60_dp
+      case ( '.' ); advance = 0.12_dp
+      case ( '=' ); advance = 0.56_dp
+      case ( '+' ); advance = 0.56_dp
+      case ( '-' ); advance = 0.40_dp
+      case ( 'A' ); advance = 0.76_dp
       case ( 'B' ); advance = 0.72_dp
       case ( 'C' ); advance = 0.78_dp
+      case ( 'D' ); advance = 0.70_dp
       case ( 'E' ); advance = 0.62_dp
       case ( 'H' ); advance = 0.70_dp
       case ( 'I' ); advance = 0.00_dp
       case ( 'L' ); advance = 0.58_dp
+      case ( 'M' ); advance = 0.84_dp
+      case ( 'N' ); advance = 0.70_dp
       case ( 'O' ); advance = 0.86_dp
       case ( 'P' ); advance = 0.66_dp
       case ( 'R' ); advance = 0.68_dp
@@ -250,6 +270,49 @@ contains
       case ( '1' )
          call gl( 0.04_dp, 0.22_dp, 0.30_dp, 0.0_dp )
          call gl( 0.30_dp, 0.0_dp, 0.30_dp, 1.0_dp )
+      case ( '2' )                        ! a hook, a diagonal, a base
+         call ga( 0.30_dp, 0.28_dp, 0.29_dp, 0.28_dp, 160.0_dp, -38.0_dp )
+         call gl( 0.53_dp, 0.45_dp, 0.00_dp, 1.0_dp )
+         call gl( 0.00_dp, 1.0_dp, 0.60_dp, 1.0_dp )
+      case ( '3' )                        ! two bowls, open to the left
+         call ga( 0.29_dp, 0.25_dp, 0.27_dp, 0.25_dp, 155.0_dp, -90.0_dp )
+         call ga( 0.29_dp, 0.74_dp, 0.31_dp, 0.26_dp, 90.0_dp, -155.0_dp )
+      case ( '4' )
+         call gl( 0.48_dp, 1.0_dp, 0.48_dp, 0.0_dp )
+         call gl( 0.48_dp, 0.0_dp, 0.00_dp, 0.68_dp )
+         call gl( 0.00_dp, 0.68_dp, 0.64_dp, 0.68_dp )
+      case ( '5' )                        ! a flag, a stem, a bowl
+         call gl( 0.56_dp, 0.0_dp, 0.06_dp, 0.0_dp )
+         call gl( 0.06_dp, 0.0_dp, 0.05_dp, 0.47_dp )
+         call ga( 0.29_dp, 0.68_dp, 0.30_dp, 0.31_dp, 135.0_dp, -150.0_dp )
+      case ( '6' )                        ! a bowl below, a stroke into it
+         call ga( 0.30_dp, 0.69_dp, 0.30_dp, 0.31_dp, 0.0_dp, 360.0_dp )
+         call ga( 0.42_dp, 0.62_dp, 0.42_dp, 0.62_dp, 72.0_dp, 180.0_dp )
+         call gl( 0.00_dp, 0.62_dp, 0.00_dp, 0.69_dp )
+      case ( '7' )
+         call gl( 0.00_dp, 0.0_dp, 0.60_dp, 0.0_dp )
+         call gl( 0.60_dp, 0.0_dp, 0.20_dp, 1.0_dp )
+      case ( '8' )                        ! two rings, the lower wider
+         call ga( 0.30_dp, 0.25_dp, 0.25_dp, 0.25_dp, 0.0_dp, 360.0_dp )
+         call ga( 0.30_dp, 0.74_dp, 0.30_dp, 0.26_dp, 0.0_dp, 360.0_dp )
+      case ( '9' )                        ! the 6 turned over
+         call ga( 0.30_dp, 0.31_dp, 0.30_dp, 0.31_dp, 0.0_dp, 360.0_dp )
+         call ga( 0.18_dp, 0.38_dp, 0.42_dp, 0.62_dp, 0.0_dp, -108.0_dp )
+         call gl( 0.60_dp, 0.31_dp, 0.60_dp, 0.38_dp )
+      case ( '.' )                        ! a ring the stroke fills: a dot
+         call ga( 0.06_dp, 0.93_dp, 0.05_dp, 0.05_dp, 0.0_dp, 360.0_dp )
+      case ( '=' )
+         call gl( 0.00_dp, 0.36_dp, 0.56_dp, 0.36_dp )
+         call gl( 0.00_dp, 0.64_dp, 0.56_dp, 0.64_dp )
+      case ( '+' )
+         call gl( 0.28_dp, 0.22_dp, 0.28_dp, 0.78_dp )
+         call gl( 0.00_dp, 0.5_dp, 0.56_dp, 0.5_dp )
+      case ( '-' )
+         call gl( 0.00_dp, 0.5_dp, 0.40_dp, 0.5_dp )
+      case ( 'A' )
+         call gl( 0.00_dp, 1.0_dp, 0.38_dp, 0.0_dp )
+         call gl( 0.38_dp, 0.0_dp, 0.76_dp, 1.0_dp )
+         call gl( 0.14_dp, 0.64_dp, 0.62_dp, 0.64_dp )
       case ( 'B' )
          call gl( 0.00_dp, 1.0_dp, 0.00_dp, 0.0_dp )
          call gl( 0.00_dp, 0.0_dp, 0.42_dp, 0.0_dp )
@@ -260,6 +323,11 @@ contains
          call gl( 0.47_dp, 1.0_dp, 0.00_dp, 1.0_dp )
       case ( 'C' )
          call ga( 0.44_dp, 0.5_dp, 0.44_dp, 0.5_dp, 48.0_dp, 312.0_dp )
+      case ( 'D' )
+         call gl( 0.00_dp, 0.0_dp, 0.00_dp, 1.0_dp )
+         call gl( 0.00_dp, 0.0_dp, 0.25_dp, 0.0_dp )
+         call ga( 0.25_dp, 0.5_dp, 0.45_dp, 0.5_dp, 90.0_dp, -90.0_dp )
+         call gl( 0.25_dp, 1.0_dp, 0.00_dp, 1.0_dp )
       case ( 'E' )
          call gl( 0.62_dp, 0.0_dp, 0.00_dp, 0.0_dp )
          call gl( 0.00_dp, 0.0_dp, 0.00_dp, 1.0_dp )
@@ -274,6 +342,15 @@ contains
       case ( 'L' )
          call gl( 0.00_dp, 0.0_dp, 0.00_dp, 1.0_dp )
          call gl( 0.00_dp, 1.0_dp, 0.58_dp, 1.0_dp )
+      case ( 'M' )
+         call gl( 0.00_dp, 1.0_dp, 0.00_dp, 0.0_dp )
+         call gl( 0.00_dp, 0.0_dp, 0.42_dp, 0.72_dp )
+         call gl( 0.42_dp, 0.72_dp, 0.84_dp, 0.0_dp )
+         call gl( 0.84_dp, 0.0_dp, 0.84_dp, 1.0_dp )
+      case ( 'N' )
+         call gl( 0.00_dp, 1.0_dp, 0.00_dp, 0.0_dp )
+         call gl( 0.00_dp, 0.0_dp, 0.70_dp, 1.0_dp )
+         call gl( 0.70_dp, 1.0_dp, 0.70_dp, 0.0_dp )
       case ( 'O' )
          call ga( 0.43_dp, 0.5_dp, 0.43_dp, 0.5_dp, 0.0_dp, 360.0_dp )
       case ( 'P' )

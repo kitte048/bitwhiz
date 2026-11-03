@@ -10,12 +10,16 @@ module pics
 !       <title>.tx_u.bmp     t-x diagram of the velocity u   } with
 !       <title>.tx_p.bmp     t-x diagram of the pressure P   } snapshots
 !       <title>.tr_<name>.bmp  velocity against time, one per tracer
+!       <title>.mv_p_<cycle>.bmp    } movies (movie_dt): P, u and
+!       <title>.mv_u_<cycle>.bmp    } density against x, one frame
+!       <title>.mv_rho_<cycle>.bmp  } each per movie time
 !
 !    Everything is read back from the files, never from the run's
 !    memory, so a picture after a run and the same picture from a
 !    plots_only run are made by the same code from the same numbers:
 !
 !       t-x diagrams   <title>.hist         (module hist, read_history)
+!       movies         <title>.hist
 !       tracer plots   <title>.tracers.csv  (read here)
 !
 !    The history file must have been made by this deck: its method,
@@ -29,6 +33,8 @@ module pics
 !
 !       draw_tx      t-x diagram, 1200 x 900 pixels, the deck's colormap
 !       draw_trace   tracer plot,  800 x 600 pixels, on white
+!       draw_profile movie frame,  800 x 600 pixels, on white (the line
+!                    plot under draw_trace)
 !
 !  The pictures:
 !    t-x diagrams, in the lab frame: x across, from the smallest to
@@ -59,6 +65,20 @@ module pics
 !    last time, y from min - 5% to max + 5% of the range, a border
 !    and tick marks at tenths, and the title BITWHIZ SCOPE VIEW
 !    above the box (no other text).
+!    Movies (movie_dt > 0, which needs snapshots): for each time 0,
+!    movie_dt, 2 movie_dt, ... to the last snapshot, the snapshot
+!    nearest it (the earlier of two equally near; a snapshot two times
+!    share is drawn once), three frames: P (cells, at their centers),
+!    u (faces) and density against x, titled PRESSURE (VELOCITY,
+!    DENSITY) AT TIME = +1.234 US, named by the snapshot's cycle in six
+!    digits (rolling over past 999999), so they sort in time order. The
+!    axes hold for the whole movie: x as the t-x diagrams' (the run's
+!    smallest to largest face position, lab frame), y from min - 5% to
+!    top + 5% of the run's range, the top found as the t-x diagrams'
+!    is (plot_range); a value above it is drawn at the box's edge. The
+!    history file has no density: each cell keeps its mass, so
+!    rho = R0*dx0/dx, its width at t = 0 over its width now, exactly
+!    (to the file's real32 positions).
 !    The screen gets every range, so a picture can be read without
 !    text on it.
 !
@@ -96,12 +116,16 @@ module pics
 !                                     50 cycles (robust, the default)
 !                                     or to the max (full); what lies
 !                                     above is reported
+!    11/02/26    D. E. Kittell        Movies (movie_dt): P, u and
+!                (with Claude)        density against x from the
+!                                     snapshots nearest each movie
+!                                     time, drawn by draw_profile
 !
 !**********************************************************************!
 use bits,  only: sp, dp, int32, zero, one, kpt6
 use shock, only: title, layer, nlay, method, rs_order, plot_every, &
    plot_dt, plots_only, tracer, ntrc, colormap, plot_range, plot_u_lo, &
-   plot_u_hi, plot_p_lo, plot_p_hi
+   plot_u_hi, plot_p_lo, plot_p_hi, movie_dt
 use hist,  only: read_history, free_history, hr_nframes, hr_status, &
    hr_kmax, hr_nlay, hr_method, hr_order, hr_lname, hr_lmat, hr_kfirst, &
    hr_klast, hr_text, hr_time, hr_cycle, hr_x, hr_u, hr_p
@@ -132,6 +156,13 @@ interface
       integer(kind=int32), intent(in) :: n
       real(kind=dp), intent(in) :: t(n), u(n), ylo, yhi
    end subroutine draw_trace
+   subroutine draw_profile( bout, n, x, y, xlo, xhi, ylo, yhi, title_text )
+      import :: dp, int32
+      character(len=80), intent(in) :: bout
+      integer(kind=int32), intent(in) :: n
+      real(kind=dp), intent(in) :: x(n), y(n), xlo, xhi, ylo, yhi
+      character(len=*), intent(in) :: title_text
+   end subroutine draw_profile
 end interface
 
 contains
@@ -294,8 +325,166 @@ contains
       trim(title)//'.tx_p.bmp'
    call tx_file( 'u', trim(title)//'.tx_u', ulo, uhi, nerr )
    call tx_file( 'P', trim(title)//'.tx_p', plo, phi, nerr )
+
+   !*** The movies, from the same file and the same ranges' tops.
+   if ( movie_dt > zero ) call movie_pictures( umin, utop, pmin, ptop, &
+      nerr )
    call free_history()
    end subroutine tx_pictures
+
+   !******************************************************************!
+   ! The movies: P, u and density against x at the snapshots nearest  !
+   ! 0, movie_dt, 2 movie_dt, ... (module header). The history file   !
+   ! is read; umin, utop, pmin, ptop are the t-x diagrams' (the tops  !
+   ! by plot_range); density's are found here the same way.           !
+   !******************************************************************!
+   subroutine movie_pictures( umin, utop, pmin, ptop, nerr )
+   implicit none
+   real(kind=sp), intent(in) :: umin, utop, pmin, ptop
+   integer(kind=int32), intent(inout) :: nerr
+   integer(kind=int32), allocatable :: pick(:)
+   real(kind=sp), allocatable :: rho(:,:)
+   real(kind=dp), allocatable :: r0c(:), xc(:), xf(:), v(:)
+   real(kind=sp) :: rmin, rmax, rtop
+   real(kind=dp) :: xlo, xhi, plo, phi, ulo, uhi, rlo, rhi, tm, tlast
+   integer(kind=int32) :: nf, kmax, nm, m, mlast, j, jn, l, k, istat
+   character(len=16) :: tstr
+   character(len=6) :: cyc
+   character(len=:), allocatable :: tt
+
+   nf = hr_nframes
+   kmax = hr_kmax
+
+   !*** The frames: for each movie time tm = m*movie_dt, m = 0 to the
+   !*** last snapshot's (to the nearest), the snapshot nearest tm. The
+   !*** times only grow, so one pass; a snapshot already taken (two
+   !*** movie times nearest the same one) is not taken again.
+   tlast = hr_time(nf)
+   mlast = nint( tlast/movie_dt, int32 )
+   allocate( pick(mlast + 1) )
+   nm = 0
+   jn = 1
+   do m = 0, mlast
+      tm = real( m, dp )*movie_dt
+      do while ( jn < nf )
+         if ( abs( hr_time(jn+1) - tm ) < abs( hr_time(jn) - tm ) ) then
+            jn = jn + 1
+         else
+            exit
+         end if
+      end do
+      if ( nm > 0 ) then
+         if ( pick(nm) == jn ) cycle
+      end if
+      nm = nm + 1
+      pick(nm) = jn
+   end do
+
+   !*** Density, cell by cell: R0*dx0/dx, the mass a cell keeps over its
+   !*** width now (dx0, its width in frame 1, t = 0).
+   allocate( rho(kmax,nf), r0c(kmax), xc(kmax), xf(kmax+1), v(kmax+1), &
+      stat=istat )
+   if ( istat /= 0 ) then
+      call error( 'movies: could not allocate '//itoa(kmax)//' x '// &
+         itoa(nf)//' densities', nerr )
+      return
+   end if
+   do l = 1, nlay
+      r0c(layer(l)%kfirst:layer(l)%klast) = layer(l)%R0
+   end do
+   do j = 1, nf
+      do k = 1, kmax
+         rho(k,j) = real( r0c(k)*real( hr_x(k+1,1) - hr_x(k,1), dp )/ &
+            real( hr_x(k+1,j) - hr_x(k,j), dp ), sp )
+      end do
+   end do
+   rmin = minval(rho)
+   rmax = maxval(rho)
+   rtop = rmax
+   if ( plot_range == 'robust' ) then
+      rtop = held_top( [( maxval(rho(:,j)), j = 1, nf )] )
+      if ( .not. ( rmax - rtop > spike*( rtop - rmin ) ) ) rtop = rmax
+   end if
+
+   !*** The axes, for the whole movie: x as the t-x diagrams', y from
+   !*** min - 5% to top + 5% of the range (a flat range: +-5% of its
+   !*** value, at least +-0.05, as the tracer plots).
+   xlo = real( minval(hr_x), dp )
+   xhi = real( maxval(hr_x), dp )
+   call axis( pmin, ptop, plo, phi )
+   call axis( umin, utop, ulo, uhi )
+   call axis( rmin, rtop, rlo, rhi )
+   write( kpt6, fl ) 'Movies', 'movie_dt = '//fmt_real(movie_dt)// &
+      ' us: '//itoa(nm)//' frames of the '//itoa(nf)//' snapshots'
+   if ( nm == nf ) write( kpt6, fl ) '', '(every snapshot: movie_dt is '// &
+      'no longer than their spacing)'
+   write( kpt6, fl ) 'Movie x axis (mm)', num(real(xlo,sp))//' to '// &
+      num(real(xhi,sp))
+   write( kpt6, fl ) 'Movie P axis (GPa)', num(real(plo,sp))//' to '// &
+      num(real(phi,sp))
+   write( kpt6, fl ) 'Movie u axis (km/s)', num(real(ulo,sp))//' to '// &
+      num(real(uhi,sp))
+   write( kpt6, fl ) 'Density (g/cm^3)', num(rmin)//' to '//num(rmax)
+   if ( rtop < rmax ) write( kpt6, fl ) '', 'above the top held, '// &
+      num(rtop)//': drawn at the box''s edge'
+   write( kpt6, fl ) 'Movie density axis', num(real(rlo,sp))//' to '// &
+      num(real(rhi,sp))
+   write( kpt6, fl ) 'Drawing movies', itoa(3*nm)//' frames, '// &
+      trim(title)//'.mv_p_<cycle>.bmp, .mv_u_, .mv_rho_'
+
+   !*** The frames. P and density at the cells' centers, u at the faces.
+   do m = 1, nm
+      j = pick(m)
+      write( tstr, '(sp,f16.3)' ) hr_time(j)
+      tt = ' AT TIME = '//trim(adjustl(tstr))//' US'
+      write( cyc, '(i6.6)' ) mod( hr_cycle(j), 1000000_int32 )
+      xf = real( hr_x(:,j), dp )
+      xc = 0.5_dp*( xf(1:kmax) + xf(2:kmax+1) )
+      v(1:kmax) = real( hr_p(:,j), dp )
+      call movie_file( trim(title)//'.mv_p_'//cyc, xc, v(1:kmax), &
+         'PRESSURE'//tt )
+      v = real( hr_u(:,j), dp )
+      call movie_file( trim(title)//'.mv_u_'//cyc, xf, v, 'VELOCITY'//tt )
+      v(1:kmax) = real( rho(:,j), dp )
+      call movie_file( trim(title)//'.mv_rho_'//cyc, xc, v(1:kmax), &
+         'DENSITY'//tt )
+   end do
+   deallocate( pick, rho, r0c, xc, xf, v )
+
+   contains
+
+      !*** A y axis: min - 5% to top + 5% of the range; a flat one gets
+      !*** +-5% of its value, at least +-0.05.
+      subroutine axis( lo, top, alo, ahi )
+      real(kind=sp), intent(in) :: lo, top
+      real(kind=dp), intent(out) :: alo, ahi
+      real(kind=dp) :: del
+      del = 0.05_dp*real( top - lo, dp )
+      if ( .not. ( real( top - lo, dp ) > &
+           1.0e-9_dp*max( abs(real(lo,dp)), abs(real(top,dp)), one ) ) ) &
+         del = 0.05_dp*max( abs(real(top,dp)), one )
+      alo = real( lo, dp ) - del
+      ahi = real( top, dp ) + del
+      end subroutine axis
+
+      !*** One frame into <base>.bmp, on this movie's axes.
+      subroutine movie_file( base, x, y, what )
+      character(len=*), intent(in) :: base, what
+      real(kind=dp), intent(in) :: x(:), y(:)
+      character(len=80) :: bout
+      real(kind=dp) :: ylo, yhi
+      select case ( what(1:1) )
+      case ( 'P' ); ylo = plo; yhi = phi
+      case ( 'V' ); ylo = ulo; yhi = uhi
+      case default; ylo = rlo; yhi = rhi
+      end select
+      bout = base
+      call fresh( base//'.bmp' )
+      call draw_profile( bout, size(x), x, y, xlo, xhi, ylo, yhi, what )
+      call written( base//'.bmp', nerr )
+      end subroutine movie_file
+
+   end subroutine movie_pictures
 
    !******************************************************************!
    ! plot_range = robust: the top of a color range, the largest value !

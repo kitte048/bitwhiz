@@ -44,6 +44,8 @@ module shock
 !                                     plot_p_hi (Output block)
 !    10/24/26    D. E. Kittell        plot_range (Output block): robust
 !                (with Claude)        (default) or full
+!    11/02/26    D. E. Kittell        movie_dt (Output block): movie
+!                (with Claude)        frames from the snapshots, 0 = off
 !
 !**********************************************************************!
 !
@@ -378,6 +380,10 @@ integer(kind=int32) :: plot_every = 0          ! snapshot every N cycles,
                                                ! 0 = off
 real(kind=dp)       :: plot_dt    = zero       ! us, snapshot interval,
                                                ! 0 = off
+real(kind=dp)       :: movie_dt   = zero       ! us, between movie frames
+                                               ! (P, u and density
+                                               ! against x, drawn from
+                                               ! the snapshots), 0 = off
 real(kind=dp)       :: tracer_dt  = zero       ! us, between rows of the
                                                ! tracer file, 0 = every
                                                ! cycle

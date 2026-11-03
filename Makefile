@@ -31,6 +31,9 @@
 #                font shared by draw_trace and draw_tx)
 #Revision: 1.17 (10-22-26, with Claude: distributions module and its
 #                unit test, test_dist, in 'make test')
+#Revision: 1.18 (11-02-26, with Claude: draw_profile, the line plot
+#                under draw_trace and the movies; 'tidy' removes the
+#                movie frames, *.mv_*.bmp)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -260,7 +263,7 @@ $(eval $(call MOD_ORDER,$(RDIR)/))
 ############################################################
 RUN_FILES = *.heartbeat input/*.heartbeat *.tracers.csv \
             input/*.tracers.csv *.hist input/*.hist input/*.bmp \
-            *.tx_u.bmp *.tx_p.bmp *.tr_*.bmp
+            *.tx_u.bmp *.tx_p.bmp *.tr_*.bmp *.mv_*.bmp
 
 ############################################################
 ###  NOTES: target names. No target name is the start of

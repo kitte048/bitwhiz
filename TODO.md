@@ -11,20 +11,18 @@ Reordered again Nov 2, 2026, after 1.1.0 (velocity profiles and the new
 nanoHUB notebook, published) and the gold-standard data and its reader.
 
 ## Priorities
-1. Movies: a third kind of output, profiles along x at their own interval
-   (section 4).
-2. Material models: the architecture, design note first. A default model
+1. Material models: the architecture, design note first. A default model
    with add-ons (burn, rate law), and constants that can vary cell by cell;
    Mie-Grüneisen kept as the default (section 5). Its first case:
    Mie-Grüneisen with temperature, a separate model (section 6), so G1's
    temperatures can be compared too (talk through the T calculation first).
-3. HVRB, checked against the gold-standard reactive data (G2-G5); then the
+2. HVRB, checked against the gold-standard reactive data (G2-G5); then the
    burn models from the 2025 survey (section 6).
-4. Graded materials: constants (Gamma_0, P_R, ...) graded through a layer,
+3. Graded materials: constants (Gamma_0, P_R, ...) graded through a layer,
    as velocity is now. Research, toward publication (section 7).
-5. In the background, between releases: the nanoHUB tool (section 2) and
-   the velocity profiles' next steps (section 1).
-6. Throughout: no bloat. Cost per cycle stays the same or improves, and
+4. In the background, between releases: the nanoHUB tool (section 2) and
+   the velocity profiles' next steps (section 1), the movies' (section 4).
+5. Throughout: no bloat. Cost per cycle stays the same or improves, and
    `make test` stays a few minutes.
 
 ## 1. Velocity profiles (released in 1.1.0)
@@ -68,6 +66,7 @@ run and an error inside a button (tests/test_notebook.py in the clone).
 - [ ] **A Stop button:** a run holds the notebook's kernel until it ends,
       so a button cannot stop it. Run bitwhiz in a thread (or poll the
       process) so Stop can kill it; until then a long run must finish.
+- [ ] **Movies in the notebook** (section 4): clear, list and show them.
 - [ ] **Two sessions, one title:** two browser tabs running decks with the
       same title write the same folder. Rare; a lock file would catch it.
 - [ ] **num_threads note** in the example decks' comments: 1 for class
@@ -140,25 +139,29 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       is now at v8, published as `Class_Project/HVRB_Eqns_rev-0.pdf`.
 
 ## 4. Movies: profiles along x
-- [ ] **A third kind of output:** plot-over-line frames, a quantity against
-      x over the whole stack at one time; P and u first. One numbered
-      picture per frame, made into a movie in the notebook (an animation,
-      or an MP4 or GIF if nanoHUB has ffmpeg).
-- [ ] **Its own interval, coarser than the t-x snapshots** (`plot_dt`,
-      `plot_every`). New deck keys with descriptive names, settled before
-      any code, unmistakable beside `plot_dt`, `plot_every` and `tracer_dt`
-      (to propose: e.g. `movie_frame_dt`, `movie_fields = P u`); in
-      `input/README.md` and the key reference at the end of the class deck.
-- [ ] **Design question first:** the history file already holds x, u and P
-      on the whole mesh at every snapshot. Can the frames be drawn from it
-      (every Nth snapshot, also with `plots_only = yes`), so a movie needs
-      no new output during the run? If the frame interval must then be a
-      multiple of `plot_dt`, the deck reader says so.
-- [ ] Axes fixed across frames (x over the whole stack in the lab frame;
-      the value range from the run, by the `plot_range` rule), each frame
-      titled with its time and the deck title.
-- [ ] Tests: the frame count and names, and pixels at known places, as for
-      the t-x diagrams.
+Done Nov 2, 2026: `movie_dt` (Output block, us; 0 or absent = none) draws
+three movies, all or none, from the history file: P, u and density against
+x, one frame each from the snapshot nearest each of 0, movie_dt, 2 movie_dt,
+... (so the movie times are a subset of the snapshot times, and plots_only
+redraws them). Files `<title>.mv_p_<cycle>.bmp`, `.mv_u_`, `.mv_rho_`, the
+cycle in six digits; frames titled PRESSURE (VELOCITY, DENSITY) AT TIME =
++1.234 US (new glyphs in the stroke font); axes fixed for the whole movie
+(x as the t-x diagrams', y by the plot_range rule). Density is R0 dx0/dx
+(the history file has none). The line plot is draw_profile, now under
+draw_trace too (tracer plots unchanged, byte for byte). input/README.md,
+section 9b; the class deck's key reference; deck tests and a history-file
+test (the frames worked out again in awk; plots_only byte for byte).
+
+- [ ] **The nanoHUB notebook:** clear `<title>.mv_*.bmp` with a run's other
+      outputs before Run; a "Movies" kind in Files; and a movie in the
+      page: an MP4 from the frames with ffmpeg (nanoHUB has it, anaconda-7)
+      or a slider over the frames, P, u and density side by side.
+- [ ] **Density's axis** spans every material, so a heavy one (Ta, 16.6
+      g/cm^3) flattens the others' steps. Consider rho/rho0 (or eta, the
+      house compression variable) as a fourth movie, or a key to choose.
+- [ ] **Cost:** about 0.1 s a frame in the release build (63 frames add
+      6.6 s to the class deck). If long movies matter, draw the frames on
+      the OpenMP threads (each frame is independent).
 
 ## 5. Material models: the architecture
 - [ ] **A default model, and add-ons.** Each material has one equation of
