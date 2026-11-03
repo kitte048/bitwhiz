@@ -131,7 +131,20 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       spreads the shock's foot, which the 0.05 km/s threshold reads. Rerun
       with RS order 2 and at 200 zones/mm: does the offset follow the
       method, the mesh, or neither?
-- [ ] **Temperature at the G1 gauges,** once bitwhiz computes T (section 6).
+- [x] **Temperature at the G1 gauges** (Nov 3, with MG+T, section 5):
+      `compare_g1.py`, 40 checks, all pass. bitwhiz's TK is the formula's
+      at its own state to 1e-11 K, and within 0.03 K of the exact
+      Hugoniot temperature at 1 mm; the formula at the reference's own
+      state agrees with its TK for PMMA to 0.004 K. Material X: the
+      reference is 0.9-4.6 K hotter (growing with the shock, the same at
+      every depth, and after the Ta reshock too: 788 K vs 784 K).
+- [x] **How the reference's EOS tool computes T and e_c** (Nov 3): one
+      query of the tool (`inert_gauges/eos_tool/`). Its pressure is
+      bitwhiz's; its Material X cold energy is not the integral of that
+      pressure (PMMA's is), which is G1's 0.9-4.6 K, to 0.006 K; its
+      pressure's zero at 298.0014 K is G1's start. Not pursued further:
+      bitwhiz has its own temperature standard (T1-T5,
+      `doc/design/materials.md`), and G1's TK is reported, not checked.
 - [ ] **G2-G5 (reactive), with HVRB** (section 6): decks for the class stack
       and the thick-flyer stack, compared with `hvrb/README.md`'s tolerances.
 - [ ] Check that the data's HVRB inputs match the equation sheet bitwhiz
@@ -250,6 +263,21 @@ decks.
       L1 slope near 2 for RS order 2 and near 1 for order 1; L-infinity
       lower for order 2, where Van Leer clips the slopes at extrema. Keep it
       as a test, and use it with the ramp verification for 1.1.0.
+- [ ] **The impact plane: Noh wall heating, or more.** W. F. Noh, "Errors
+      for calculations of strong shocks using an artificial viscosity and
+      an artificial heat flux," J. Comput. Phys. 72, 78-120 (1987): where
+      an AV shock forms (a wall, an impact plane) the first cells take too
+      much entropy as it starts, and in a Lagrangian code without heat
+      conduction they keep it: T (and a density dip) wrong for the rest of
+      the run, P right (W. J. Rider revisited it, J. Comput. Phys., 2000).
+      TK shows it in G1 at 2.00 km/s, t = 1.0 us, against plateaus of 383 K
+      (Al) and 736 K (Material X): the Al cells next to the impact plane
+      +25 to +47 K (wall heating), but the last Al cell -19 K and the first
+      Material X cell -173 K, which pure wall heating does not do (the
+      momentum-weighted impact face splitting the first step's energy?).
+      The `impact` tracer reports that last Al cell. Study: mesh (does it
+      stay a few cells wide?), AV against RS, BL and BQ, and Noh's
+      artificial heat flux as a possible cure.
 - [ ] **AV energy at a free surface:** with AV, the energy error jumps
       when a shock reaches a free surface (ramp_linear: -6.8e-4 at 25
       zones/mm, first order, -4.3e-5 at 400), and is flat otherwise; RS

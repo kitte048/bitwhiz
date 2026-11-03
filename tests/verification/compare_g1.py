@@ -13,29 +13,31 @@ the acceptance the data's README suggests, at 100 zones/mm:
    energy                bitwhiz's total energy drift within 0.01 %
 
 and the temperatures (every material carries T in the deck: eos =
-mie_gruneisen_t; doc/design/materials.md, decision 3), the same way for
-every material:
+mie_gruneisen_t), against bitwhiz's own standard, not the reference's
+(doc/design/materials.md, "Temperature verification"): exact values from
+gold.py, which is independent of the Fortran and checked against 50 digits
+(gold.py's self-test), the same way for every material:
 
-   formula               bitwhiz's TK is the formula's T at bitwhiz's own
-                         density and energy, every row of all 13 tracers,
-                         to 1e-6 K (round-off: the cold energy carried
-                         cell by cell against gold.py's integral from V0)
-   first shock at 1 mm   TK within 0.1 % of the exact Hugoniot temperature
-                         rise (T_H - T0 at the impedance match, as P)
-   the reference's model at each first-shock plateau, the formula at the
-                         reference's own density on the Hugoniot against
-                         the reference's TK: PMMA (11 mm) to 0.01 K, the
-                         same model; Material X (1, 5, 9 mm) reported:
-                         the reference is 0.9-4.6 K higher, a property of
-                         its data (a fitted cold curve, likely), not a
-                         tolerance on bitwhiz
+   T3 consistency        TK is the formula's T at bitwhiz's own density
+                         and energy, every row of all 13 tracers, to
+                         1e-6 K (round-off: the cold energy carried cell
+                         by cell against gold.py's integral from V0)
+   T4 exact first shock  Material X, 1-9 mm: TK within 0.1 % of the exact
+                         Hugoniot temperature rise (T_H - T0 at the
+                         impedance match, as P); PMMA, 11 mm: TK on PMMA's
+                         own Hugoniot at bitwhiz's density, to 0.1 % of
+                         the rise
 
 and reports, without a pass or fail, what is not in that list: the shock
 speed fit through 1-9 mm, the Ta reshock's arrival at 1 mm, the PDV's
-first plateau, and bitwhiz's first-shock TK against the reference's
-(which adds the two codes' small state differences to the above). Later
-than that the codes part on purpose: the reference allows tension
-everywhere, bitwhiz breaks a cell past its spall strength.
+first plateau, and the reference's first-shock TK at 5 and 11 mm. Those
+differ from bitwhiz's by up to 0.03 K in PMMA and by 0.9-4.6 K in
+Material X, where the reference's own EOS tool has a cold energy that is
+not the integral of its pressure (inert_gauges/eos_tool/README.md): a
+property of the reference, explained to 0.006 K, not a tolerance on
+bitwhiz. Later than the first shock the codes part on purpose: the
+reference allows tension everywhere, bitwhiz breaks a cell past its spall
+strength.
 
     python3 tests/verification/compare_g1.py [bitwhiz]
 
@@ -59,9 +61,8 @@ REL_1MM = 1.0e-3                   # 0.1 %, first shock at 1 mm
 DT_ARRIVE = 0.005                  # us, arrivals
 DRIFT = 1.0e-4                     # 0.01 %, total energy
 GAUGES = ['x%d' % k for k in range(1, 10)] + ['pdv']   # bitwhiz's names
-DT_FORMULA = 1.0e-6                # K, TK against the formula
-REL_T1MM = 1.0e-3                  # 0.1 % of T_H - T0, first shock at 1 mm
-DT_MODEL = 0.01                    # K, the reference's model, PMMA
+DT_FORMULA = 1.0e-6                # K, T3: TK against the formula
+REL_TRISE = 1.0e-3                 # T4: 0.1 % of T_H - T0, first shock
 # Every tracer's material: the cell it reports (an interface tracer
 # reports the cell on its own layer's side; shock_mod, tracer table).
 MATERIAL = dict({'ta_al': 'Ta', 'impact': 'Al', 'pdv': 'MatX',
@@ -154,7 +155,8 @@ def main():
                   gold.first_shock(r, rn['pdv'], 'KMPS'))
         note(f'PDV first plateau: bitwhiz {pb:.4f}, reference {pr:.4f} km/s '
              f'({100*(pb/pr-1):+.2f} %)')
-        # Temperatures (decision 3: the same for every material).
+        # Temperatures: bitwhiz's own standard (T3, T4), then the
+        # reference's TK, reported.
         dtf = {g: np.max(np.abs(b['TK', g] - gold.temperature(
                    m, b['DENS', g], b['SIE', g])))
                for g, m in MATERIAL.items()}
@@ -163,23 +165,25 @@ def main():
               f'state, all 13 tracers, every row: within {dtf[worst]:.1e} K '
               f'(largest at {worst})')
         th = gold.hugoniot_temperature('MatX', rho1)
-        tb = gold.first_shock(b, 'x1', 'TK')
-        check(abs(tb - th) <= REL_T1MM * (th - gold.T0),
-              f'1 mm, TK   {tb:8.3f} K      ({100*(tb-th)/(th-gold.T0):+.3f} '
-              f'% of the exact rise; exact {th:.3f})')
-        for g in ('pmma11', 'x1', 'x5', 'x9'):
-            n, m = rn.get(g, gold._near(r, b.x0[g])), MATERIAL[g]
-            tr = gold.first_shock(r, n, 'TK')
-            tf = gold.hugoniot_temperature(m, gold.first_shock(r, n, 'DENS'))
-            tbg = gold.first_shock(b, g, 'TK')
-            what = (f'{b.x0[g]:4.1f} mm ({m}): the formula at the reference\'s '
-                    f'state {tf:.3f} K, its TK {tr:.3f} (formula - TK {tf-tr:+.4f} K)')
-            if m == 'PMMA':
-                check(abs(tf - tr) <= DT_MODEL, what)
-            else:
-                note(what)
-            note(f'   bitwhiz\'s TK {tbg:.3f} K, reference\'s {tr:.3f} '
-                 f'({tbg-tr:+.3f} K)')
+        dth = {g: gold.first_shock(b, g, 'TK') - th
+               for g in GAUGES if MATERIAL[g] == 'MatX' and g != 'pdv'}
+        worst = max(dth, key=lambda g: abs(dth[g]))
+        check(abs(dth[worst]) <= REL_TRISE * (th - gold.T0),
+              f'1-9 mm, TK at the first shock: exact {th:.3f} K, bitwhiz '
+              f'within {dth[worst]:+.3f} K ({100*dth[worst]/(th-gold.T0):+.3f} '
+              f'% of the rise; largest at {worst})')
+        tp = gold.first_shock(b, 'pmma11', 'TK')
+        tph = gold.hugoniot_temperature('PMMA',
+                                        gold.first_shock(b, 'pmma11', 'DENS'))
+        check(abs(tp - tph) <= REL_TRISE * (tph - gold.T0),
+              f'11 mm (PMMA), TK {tp:.3f} K on its Hugoniot at bitwhiz\'s '
+              f'density, {tph:.3f} ({100*(tp-tph)/(tph-gold.T0):+.3f} % of '
+              f'the rise)')
+        for g in ('x5', 'pmma11'):
+            n = rn.get(g, gold._near(r, b.x0[g]))
+            tbg, tr = gold.first_shock(b, g, 'TK'), gold.first_shock(r, n, 'TK')
+            note(f'reference TK at {b.x0[g]:4.1f} mm ({MATERIAL[g]}): {tr:.3f} '
+                 f'K, bitwhiz {tbg:.3f} ({tbg-tr:+.3f} K)')
     print(f'compare_g1.py: {npass} passed, {nfail} failed')
     if os.environ.get('KEEP') == '1':
         print(f'  the runs are kept in {work}')

@@ -721,7 +721,10 @@ ringing and release into tension and back, and out to 21 V0 and back (on the
 curve to 1e-13 every time); temperatures on the Hugoniot; and the units, from
 the deck's `CV` in J/(g K) to 100 K by hand. The G1 comparison
 (`tests/verification/compare_g1.py`) checks every material's `TK` against the
-formula at bitwhiz's own state, every row, to 1e-6 K.
+formula at bitwhiz's own state, every row, to 1e-6 K, and the first shock's
+against the exact Hugoniot temperature, to 0.1 % of the rise: bitwhiz's own
+temperature standard (`doc/design/materials.md`, "Temperature
+verification").
 
 The distributions themselves (module `distributions`) have a unit test,
 `bin/test_dist`, also run by `make test`: f, F and 1 − F at 42 points against

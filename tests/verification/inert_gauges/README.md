@@ -57,6 +57,14 @@ TK.n (K), KMPS.n (km/s), GPA.n (GPa).
   node 0 to 4.4 ns after the reference's; energy drift 0.0011-0.0017 %
   (the reference: 0.0021-0.0033 %); the Ta reshock at 1 mm within 2.2 ns and
   the PDV's first plateau the same to 4 digits.
+- **Temperatures** (Nov 3, 2026, with `eos = mie_gruneisen_t` in
+  `g1_inert.deck`): bitwhiz is checked against its own standard (exact
+  values from `../gold.py`; `doc/design/materials.md`, "Temperature
+  verification"), and this set's TK is reported beside it. PMMA agrees to
+  0.03 K. Material X is 0.9-4.6 K hotter here: the reference's own EOS tool
+  has a Material X cold energy that is not the integral of its pressure,
+  measured and explained to 0.006 K in `eos_tool/README.md`, where the
+  data's 298.0014 K start is explained too.
 - **Compare derived quantities, not traces point by point** (the codes differ:
   Eulerian against Lagrangian). Suggested acceptance at 100 zones/mm: the
   first-shock P and u at 1 mm within 0.1 %; arrivals (first u > 0.05 km/s,

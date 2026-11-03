@@ -265,6 +265,17 @@ def hugoniot_temperature(mat, rho):
     us = 2.0 * c0 / (a + np.sqrt(a * a - 4.0 * s2 * eta * eta))
     return float(temperature(mat, rho, 0.5 * (eta * us) ** 2))
 
+# 50-digit values from tests/temp_reference.py (C_V = 1.1633418 J/(g K),
+# T0 = 298 K): at eta = 0.25, e_c (kJ/g) and the Hugoniot T (K); and e_c
+# at eta = -0.2 (tension, bitwhiz's cubic).
+TEMP_REF = {'Ta':   (0.25, 0.56261642198776283957, 594.67310520852881012),
+            'Al':   (0.25, 1.4437109046374710397, 956.59902018180450434),
+            'MatX': (0.25, 0.40489211036290169319, 587.40717253114738655),
+            'PMMA': (0.25, 0.37641941441394890060, 511.44491331956040477)}
+TEMP_REF_TENSION = {'Ta': 0.17125419471726932230, 'Al': 0.40221193139450443418,
+              'MatX': 0.081755450005121964307,
+              'PMMA': 0.090063704786293224853}
+
 def trust_end(r, rel=1.0e-6):
     """The last output time (us) at which total mass is still its initial
     value (to rel); the end of the file if it never changes."""
@@ -405,6 +416,18 @@ def main():
         check(close(a, POP[0], 5.1e-4) and close(b, POP[1], 5.1e-4),
               f'Pop plot: ln x_run = {a:.3f} {b:+.3f} ln P1 (README '
               f'{POP[0]} {POP[1]:+})')
+    # The temperature model (bitwhiz's own standard, not the data's):
+    # this module's cold energy and Hugoniot temperature against the
+    # 50-digit values of tests/temp_reference.py (mpmath, its own
+    # quadrature), at eta = 0.25 and -0.2, every material.
+    worst = 0.0
+    for mat, (eta, ec, th) in TEMP_REF.items():
+        r0 = MATERIALS[mat][0]
+        worst = max(worst, abs(cold_energy(mat, eta)[0] / ec - 1),
+                    abs(cold_energy(mat, -0.2)[0] / TEMP_REF_TENSION[mat] - 1),
+                    abs(hugoniot_temperature(mat, r0 / (1 - eta)) / th - 1))
+    check(worst <= 1.0e-12, f'temperature model: e_c and T_H against 50 '
+          f'digits, four materials, within {worst:.1e} (1e-12)')
     print(f'gold.py: {npass} passed, {nfail} failed ({len(files)} files)')
     return 1 if nfail else 0
 

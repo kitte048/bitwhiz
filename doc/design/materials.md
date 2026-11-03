@@ -293,6 +293,33 @@ bitwhiz's own first-shock TK against the reference's, reported: PMMA
 -0.028 to +0.016 K (the two codes' plateau states differ slightly), Material
 X the -0.9 to -4.6 K above, as predicted before any code.
 
+## Temperature verification: bitwhiz's own standard (Nov 3, 2026)
+
+bitwhiz's temperatures are verified against exact values it computes
+itself, two independent ways, not against another code. Decision 3 asked
+for G1 as well; G1's Material X temperatures turned out to carry the
+reference tool's own cold-energy error (below), so G1 is reported, not
+checked. The standard, for every material:
+
+| | What | Against | Tolerance | Where |
+|---|---|---|---|---|
+| T1 | the method: e_c in one step and in many, a 2,061-step path, out to 21 V0 and back; T on the Hugoniot; units | 50-digit values (mpmath, its own quadrature: `tests/temp_reference.py`) | 1e-12 relative | `tests/test_temp.f95`, `make test` |
+| T2 | the second exact implementation: `gold.py`'s e_c (Gauss-Legendre from V0, numpy) and Hugoniot T | the same 50-digit values | 1e-12 relative | `gold.py`'s self-test |
+| T3 | a run's consistency: TK at every row of every tracer | `gold.py`'s formula at the run's own rho and e | 1e-6 K | `compare_g1.py` |
+| T4 | the physics: the first shock's TK, Material X at 1-9 mm and PMMA at 11 mm | the exact Hugoniot T, at the impedance match (Material X) and at the run's density (PMMA) | 0.1 % of T_H - T0, as P | `compare_g1.py` |
+| T5 | threads and builds | the 1-thread debug run | bit for bit | OpenMP and release tests |
+
+Measured (G1 deck, five velocities): T1 1e-13, T2 4e-16, T3 1.4e-11 K, T4
+0.039 % of the rise at most. G1's own TK, reported beside it: PMMA within
+0.03 K of bitwhiz; Material X 0.9-4.6 K higher. That difference was
+measured in the reference's EOS tool (`tests/verification/inert_gauges/
+eos_tool/`): its pressure is bitwhiz's, but its Material X cold energy is
+not the integral of that pressure (PMMA's is), and the gap at each
+first-shock density is G1's offset, to 0.006 K. The same queries explain
+G1's 298.0014 K start and show the tool's linearized model in tension. The
+book on the reference's temperatures is closed there; bitwhiz keeps the
+exact cold curve.
+
 ## Phases
 
 1. **This note, approved.**
