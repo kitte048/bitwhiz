@@ -38,9 +38,10 @@ Near term, verification and correctness, toward 1.3:
    font (Ideas); a colormap table lookup, maybe (section 8).
 
 Medium term, the reactive physics:
-9. HVRB, checked against G2-G5 (sections 3 and 6): first a frozen copy
-   of the v8 equation sheet in `doc/` and a check that G2-G5 used its
-   inputs; JWL products after.
+9. HVRB, checked against G2-G5 (sections 3 and 6): the v8 equation sheet
+   frozen in `doc/` and G2-G5's inputs checked against it (Nov 4); next,
+   the design note (`doc/design/materials.md`, phase 3). Started Nov 4,
+   ahead of the order above. JWL products after.
 10. With it or after: a broken cell's temperature (section 5); strength,
     the spall "knocking", the 2025 survey's burn models (section 6).
 
@@ -195,9 +196,10 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       `doc/design/materials.md`), and G1's TK is reported, not checked.
 - [ ] **G2-G5 (reactive), with HVRB** (section 6): decks for the class stack
       and the thick-flyer stack, compared with `hvrb/README.md`'s tolerances.
-- [ ] Check that the data's HVRB inputs match the equation sheet bitwhiz
-      will follow: the dataset's README cites `HVRB_Eqns_v3.tex`; the sheet
-      is now at v8, published as `Class_Project/HVRB_Eqns_rev-0.pdf`.
+- [x] Check that the data's HVRB inputs match the equation sheet bitwhiz
+      will follow (Nov 4): the dataset's README cites `HVRB_Eqns_v3.tex`;
+      the sheet's model and constants are the same in v3 and v8, frozen
+      as `doc/HVRB_Eqns_v8` (`doc/README.md`).
 
 ## 4. Movies: profiles along x
 Done Nov 2-3, 2026: `movie_frames = N` (Output block; 0 or absent = none; 2
@@ -278,8 +280,8 @@ decks.
       and method dependence, and a comparison with a damage model.
 - [ ] **History-variable reactive burn (HVRB)**, following the equation
       sheet (`Equation_Sheets/HVRB_rev-0/HVRB_Eqns_v8.tex`, published as
-      `Class_Project/HVRB_Eqns_rev-0.pdf`; a frozen copy into `doc/`, as
-      for the other sheets): reactant Mie-Grüneisen with the energy shift
+      `Class_Project/HVRB_Eqns_rev-0.pdf`; frozen as `doc/HVRB_Eqns_v8`,
+      Nov 4, 2026): reactant Mie-Grüneisen with the energy shift
       Q, ideal-gas products, density-temperature equilibrium, the HVRB rate
       (P_R, Z_R, M_R, X_R, P_I, tau_0). Checked against G2-G5 (section 3):
       run distance, the Pop plot, D_CJ = 7.500 km/s within 0.5 %, the mesh
