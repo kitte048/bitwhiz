@@ -7,7 +7,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Part | State |
 |---|---|
 | Build system, strict compiler flags, OpenMP | done |
-| Input deck: syntax spec, reader, ~100 test decks | done (`input/README.md`) |
+| Input deck: syntax spec, reader, about 150 test decks | done (`input/README.md`) |
 | Database layout, material/layer/tracer tables | done (`src/modules/shock_mod.f95`) |
 | Heartbeat file (opened and closed) | done; cycle lines come with the time loop |
 | Mesh setup at t = 0, with a setup audit | done (maincode sections 5-6) |
@@ -69,16 +69,18 @@ with tracers also writes `<title>.tracers.csv`: one row per `tracer_dt`, laid
 out like the verification data in `tests/verification/`. A deck with snapshots
 (`plot_dt` or `plot_every`) also writes `<title>.hist`, the whole mesh over
 time, and every run ends by drawing its pictures: t-x diagrams of u and P
-(`<title>.tx_u.bmp`, `.tx_p.bmp`) and one plot per tracer
-(`<title>.tr_<name>.bmp`); see `input/README.md`, section 9b. The screen
-says what it is doing in sections 2 to 9 (about 130 lines for the class
-deck), and section 8 lists every file the run wrote, with its size.
+(`<title>.tx_u.bmp`, `.tx_p.bmp`), one plot per tracer
+(`<title>.tr_<name>.bmp`) and, with `movie_frames`, the frames of a
+pressure movie (`<title>.mv_p_<cycle>.bmp`); see `input/README.md`,
+section 9b. The screen says what it is doing in sections 2 to 9 (about 130
+lines for the class deck), and section 8 lists every file the run wrote,
+with its size.
 
 ## A typical session
 From the bitwhiz folder, starting cold:
 ```
 make                 # debug build, bin/bitwhiz
-make test            # every test; about a minute
+make test            # every test; about 3 minutes on 2 cores
 make release         # bin/bitwhiz_release, checked against the debug build
 make tidy            # clear the tests' leftover run files
 cd input
@@ -116,17 +118,19 @@ Four kinds of test, all run by `make test`, which stops at the first failure:
   independently at 50 digits (`tests/eos_reference.py`), plus its error codes.
   `test_dist` checks the distributions (module `distributions`) against
   values computed at 50 digits (`tests/dist_reference.py`), plus identities
-  and its parameter checks.
+  and its parameter checks. `test_temp` checks the temperature model's cold
+  energy and Hugoniot temperatures (module `temperature`) against values
+  computed at 50 digits by direct quadrature (`tests/temp_reference.py`).
 - **Deck tests**, `tests/run_deck_tests.sh` (also runnable on its own): every
   deck in `tests/decks/` is accepted, or rejected with the expected message,
   and every accepted deck round-trips and passes the setup audit; bad command
   lines (no deck, a missing file, a folder, an empty file) stop cleanly.
-- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and five test
+- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and seven test
   decks (two impact faces; a plate that spalls; method RS at order 2 and at
-  order 1; velocity profiles) run on 1 thread and on 2, 3, 4 and 8
-  threads, as many as the machine has processors for, so the count of these
-  tests depends on the machine: 24 with 8 or more processors, 18 with 4 to
-  7, 12 with 3, 6 with 2.
+  order 1; velocity profiles; temperature, AV and RS) run on 1 thread and on
+  2, 3, 4 and 8 threads, as many as the machine has processors for, so the
+  count of these tests depends on the machine: 32 with 8 or more
+  processors, 24 with 4 to 7, 16 with 3, 8 with 2.
   Everything printed from
   t = 0 on, every heartbeat line and every tracer row must be identical to the 1-thread run
   (clock times aside). Any difference means a race condition. A serial build
@@ -191,7 +195,8 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   `src/` and set it to Installed. Check what was installed from a notebook cell,
   `!ls -la /apps/bitwhiz/dev /apps/bitwhiz/dev/bin` (`dev` points to the
   newest revision, e.g. `r5`; its `bin/` must hold `bitwhiz`), then launch the
-  tool fresh and test it: Run, Redraw pictures only, an error on purpose, the
+  tool fresh and test it: Run, Redraw pictures only, the movie (it plays,
+  and Files lists the .mp4, not its frames), an error on purpose, the
   history plot. Approve it on the status page when it works.
 
 **nanoHUB's compiler is gfortran 8.3** (Debian 10). Keep the code to what
@@ -219,18 +224,22 @@ shows the code. Since every cell runs at launch, none may fail before a run.
 The picker offers the decks in the tool's `examples/`, which the export fills
 from `input/`, so a deck added to `input/` here reaches nanoHUB with the next
 export. (The installed tool's `src/` is `drwxr-s---`: users cannot read it.) Runs are written to
-`~/bitwhiz_runs/<title>`. A session sees 24 processors with no CPU limit, shared
-with other users: `num_threads = 1` for class decks, 4 to 8 for large meshes.
+`~/bitwhiz_runs/<title>`. After a run that draws movie frames, the notebook
+makes them one `<title>.mv_p.mp4` with ffmpeg (the recipe in
+`input/README.md`, section 9b) and removes them, so the frames' names,
+`<title>.mv_p_*.bmp`, are part of what the notebook relies on. A session
+sees 24 processors with no CPU limit, shared with other users:
+`num_threads = 1` for class decks, 4 to 8 for large meshes.
 
 ## Layout
 | Folder | What |
 |---|---|
 | `src/main` | `maincode.f95` (the run, section by section), `bmpmaker.f95` |
-| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `av_mod` (the artificial viscosity method, one place at a time), `rs_mod` (the Riemann solver method), `trace_mod` (the tracer file), `hist_mod` (the history file), `pics_mod` (the pictures), `strk_mod` (the pictures' frame and font), `dist_mod` (probability distributions, self-contained), `bit_mod` (kinds and constants), colormap data |
-| `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_tx` and `draw_trace` (a run's pictures), `draw_colormaps` (demo, kept in the build) |
-| `src/utils` | `make_build_info.sh` (writes the build record), `export_nanohub.sh` (copies a tag into the nanoHUB clone), `timestamp` (not used by the run), `random` |
+| `src/modules` | `shock_mod` (database and input tables), `deck_mod` (deck reader), `eos_mod` (Mie-Gruneisen P and c), `temp_mod` (module `temperature`: each cell's cold energy and temperature, for `mie_gruneisen_t`), `av_mod` (the artificial viscosity method, one place at a time), `rs_mod` (the Riemann solver method), `trace_mod` (the tracer file), `hist_mod` (the history file), `pics_mod` (the pictures), `strk_mod` (the pictures' frame and font), `dist_mod` (probability distributions, self-contained), `bit_mod` (kinds and constants), colormap data |
+| `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_tx`, `draw_trace` and `draw_profile` (a run's pictures; `draw_profile` draws a movie frame, and a tracer plot for `draw_trace`), `draw_colormaps` (demo, kept in the build) |
+| `src/utils` | `make_build_info.sh` (writes the build record), `export_nanohub.sh` (copies a tag into the nanoHUB clone), `run_decks.sh` (`make runs`), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |
-| `tests` | unit tests (`test_*.f95`), deck, OpenMP, history file and release tests, `verification/` reference tracer data and its reader (`gold.py`) |
+| `tests` | unit tests (`test_*.f95`, with their 50-digit references `*_reference.py`), deck, OpenMP, history file and release tests, `verification/` reference tracer data, its reader (`gold.py`) and the G1 comparison (`compare_g1.py`) |
 | `bin` | the executables: `bitwhiz` (debug), `bitwhiz_release` (optimized) |
 | `build/release` | the release build's objects and module files (made by `make release`, not in git) |
 | `doc` | the equation sheets the code is checked against, frozen copies (`doc/README.md`) |

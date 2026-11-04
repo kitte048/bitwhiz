@@ -325,6 +325,7 @@ exact cold curve.
 1. **This note, approved.**
 2. **Mie-Grüneisen with temperature:** keys, rows, the update, outputs,
    tests 1-6. A release (1.2.0) when G1's temperatures are settled.
+   Done: released as v1.2.0 Nov 3, 2026, on nanoHUB Nov 4.
 3. **HVRB** (TODO.md, section 6): reaction progress per cell, ideal-gas
    products, the density-temperature closure (T then feeds P), checked
    against G2-G5.

@@ -11,21 +11,47 @@ Reordered again Nov 2, 2026, after 1.1.0 (velocity profiles and the new
 nanoHUB notebook, published) and the gold-standard data and its reader.
 1.2.0 cut Nov 3, 2026: Mie-Grüneisen with temperature, the axis ends on
 every picture, the shorter screen, `make runs`, movies in the class deck.
+1.2.0 published on nanoHUB Nov 4, 2026 (with the notebook's MP4 movie),
+and beta testing begun; the priorities reordered that day, from a roadmap
+of next steps out to research.
 
 ## Priorities
-1. Material models: the architecture, design note first. A default model
-   with add-ons (burn, rate law), and constants that can vary cell by cell;
-   Mie-Grüneisen kept as the default (section 5). Its first case:
-   Mie-Grüneisen with temperature, a separate model (section 6), so G1's
-   temperatures can be compared too (talk through the T calculation first).
-2. HVRB, checked against the gold-standard reactive data (G2-G5); then the
-   burn models from the 2025 survey (section 6).
-3. Graded materials: constants (Gamma_0, P_R, ...) graded through a layer,
-   as velocity is now. Research, toward publication (section 7).
-4. In the background, between releases: the nanoHUB tool (section 2) and
-   the velocity profiles' next steps (section 1), the movie's (section 4).
-5. Throughout: no bloat. Cost per cycle stays the same or improves, and
-   `make test` stays a few minutes.
+Next, an afternoon each, little risk:
+1. Housekeeping (section 2, open questions): `shock` as GitHub's default
+   branch, the missing v1.0.1 tag, and a follow-up on ticket #516409 (IP
+   blocks) before beta testers use the tool heavily.
+2. The notebook (section 2), its changes collected into one nanoHUB
+   release while beta testing runs: the Stop button first (testers will
+   feel it), then a movie frame download, the movie step's timing, a
+   scripting cell, `num_threads` notes in the decks; more example decks
+   (wave overtake, spall, AV against RS) and gauges at the gold-standard
+   depths in place of `mid_x`.
+3. The history file size, said at the start of a run (section 8).
+4. The arrival offset (section 3): G1 with RS order 2 and at 200 zones/mm.
+   A cheap study.
+
+Near term, verification and correctness, toward 1.3:
+5. Order of accuracy and the acoustic check as tests (section 8).
+6. Noh wall heating at the impact plane (section 8).
+7. AV energy at a free surface (section 8).
+8. Pictures: axis names and units, after lower case and mu in the stroke
+   font (Ideas); a colormap table lookup, maybe (section 8).
+
+Medium term, the reactive physics:
+9. HVRB, checked against G2-G5 (sections 3 and 6): first a frozen copy
+   of the v8 equation sheet in `doc/` and a check that G2-G5 used its
+   inputs; JWL products after.
+10. With it or after: a broken cell's temperature (section 5); strength,
+    the spall "knocking", the 2025 survey's burn models (section 6).
+
+Far out, research:
+11. Graded materials (section 7): the path to publishing; the per-cell
+    e_c of 1.2.0 was chosen for it. Sampling and ensembles (section 1),
+    Bayesian calibration and a ramp drive fitted by inverse problem,
+    cylindrical and spherical geometry, 2D, PNG (Ideas).
+
+Throughout: no bloat. Cost per cycle stays the same or improves, and
+`make test` stays a few minutes.
 
 ## 1. Velocity profiles (released in 1.1.0)
 Design and status: `doc/design/distributions.md`.
@@ -53,6 +79,14 @@ run time, build; a file name under each), a run's old files cleared before
 it runs, Files (a run, a kind, a file: Download, pictures as PNG; or the
 run zipped), and plain messages for an empty deck, a bad title, a failed
 run and an error inside a button (tests/test_notebook.py in the clone).
+1.2.0 (published Nov 4) brought the pressure movie: after a run or a
+redraw with frames, ffmpeg makes them one `<title>.mv_p.mp4`, played on
+the page in an ipywidgets player, and the frames are removed (kept, and
+listed under Pictures, if ffmpeg is missing or fails); a Movie kind in
+Files; `<title>.resolved` under Deck; `steepening_hump` in the picker; a
+run's old `.resolved`, frames and movie cleared before it runs (57 checks
+in test_notebook.py). Notebook changes are best collected into one
+release: each costs a push and an install.
 
 - [ ] **More example decks** in the picker, each with a one-line label at
       the top of its comment box: a spall deck, AV against RS, later an
@@ -68,7 +102,19 @@ run and an error inside a button (tests/test_notebook.py in the clone).
 - [ ] **A Stop button:** a run holds the notebook's kernel until it ends,
       so a button cannot stop it. Run bitwhiz in a thread (or poll the
       process) so Stop can kill it; until then a long run must finish.
-- [ ] **Movies in the notebook** (section 4): clear, list and show them.
+      The first of these for beta testers.
+- [ ] **A movie frame to download** (asked Nov 4): the frames are gone
+      once the MP4 is made. Choices: a "keep the frames" box by Run (they
+      stay under Pictures); a time box under Files, Movie, that pulls one
+      frame from the MP4 as a PNG (`ffmpeg -ss <t> -frames:v 1`; cheap,
+      slightly softened by the compression); or a slider under the movie
+      with Save (the most code; needs the frames). The time box fits
+      best: a report wants one time. Wait for the testers.
+- [ ] **The movie step's time:** the class deck felt slower end to end on
+      nanoHUB than steepening_hump (3,432 cycles, 1,001 snapshots and 35
+      frames against 2,023, 351 and 25; the encode itself well under a
+      second here). Time the run, the encode and the page's movie apart,
+      and say "movie made in X s" if the encode is the slow part.
 - [ ] **Two sessions, one title:** two browser tabs running decks with the
       same title write the same folder. Rare; a lock file would catch it.
 - [ ] **num_threads note** in the example decks' comments: 1 for class
@@ -170,10 +216,9 @@ movies, P, u and density) gave no bound on the number of pictures; a
 small movie_dt made hundreds. A movie is a preview: figures come from the
 history file.
 
-- [ ] **The nanoHUB notebook:** clear `<title>.mv_*.bmp` with a run's other
-      outputs before Run; a "Movie" kind in Files; and the movie shown as
-      one thing, not up to 50 pictures: an MP4 from the frames with ffmpeg
-      (nanoHUB has it, anaconda-7) or a slider over them.
+- [x] **The nanoHUB notebook** (1.2.0, published Nov 4): the frames made
+      one MP4 with ffmpeg and played on the page, then removed; a Movie
+      kind in Files (section 2).
 - [ ] **Velocity or density movies,** if wanted later: re-engineer them
       then (velocity at the faces; density as R0 dx0/dx, the history file
       has none; for density, rho/rho0 or eta reads better across materials
@@ -198,14 +243,15 @@ need no tables.
       the six tests;
       every old deck bit for bit; G1's temperatures checked
       (`compare_g1.py`, 40 checks). Notes on the build in the design note.
-- [ ] **Release 1.2.0** (Nov 3): MG+T and its verification (T1-T5);
+- [x] **Release 1.2.0** (Nov 3; on nanoHUB Nov 4): MG+T and its
+      verification (T1-T5);
       the axis ends on every picture; bitmaps a row at a time; the
       screen (132 lines, `<title>.resolved`, section 8's file sizes);
       `make runs`; pressure movies in the class deck,
       `pulse_split_normal` and the new `steepening_hump`. Tagged on
       `shock`; the nanoHUB tool with it, with the notebook's MP4 movie,
       the `.resolved` download and `steepening_hump` in the picker
-      (section 2), then beta testing.
+      (section 2), approved and published Nov 4; beta testing begun.
 - [ ] **A broken cell's temperature:** written as computed, it falls as
       the cell opens (P floored at 0, e_c following V): -4,693 K in G1's
       spalled PMMA at 2.00 km/s. The log skips broken cells. Decide what
@@ -285,20 +331,20 @@ decks.
       too); times and wall time per cycle as plain numbers; the command
       line is read before the banner, so a usage error prints alone.
       Every heartbeat, tracer row, history frame and picture the same.
-- [ ] **nanoHUB:** list `<title>.resolved` among the notebook's
-      downloads, and check that its run log reads well at 132 lines
-      (with the next release); add `steepening_hump.deck` (shock
-      formation, Nov 3) to the picker, with its movie.
-- [ ] **nanoHUB: the movie as a movie** (1.2.0; decided Nov 3): after a
-      run with `<title>.mv_p_*.bmp`, the notebook encodes them with
-      ffmpeg (nanoHUB's has libx264: `-framerate 7 -pattern_type glob
-      -c:v libx264 -pix_fmt yuv420p -crf 20`, input/README.md section
-      9b), shows `<title>.mv_p.mp4` inline (`IPython.display.Video`,
-      embed), leaves the frames out of the pictures and the download
-      list (the .mp4 there instead), and deletes them once the movie is
-      written (tried Nov 3: steepening_hump's 25 frames, 35 MB of
-      bitmaps, make a 66 KB movie; kept if the encode fails). The class
-      deck makes 35 frames since Nov 3.
+- [x] **nanoHUB, with 1.2.0** (published Nov 4): `<title>.resolved`
+      among the notebook's downloads (Files, Deck), the run log read
+      there at about 130 lines, and `steepening_hump.deck` in the picker
+      with its movie.
+- [x] **nanoHUB: the movie as a movie** (1.2.0, published Nov 4): after
+      a run or redraw with `<title>.mv_p_*.bmp`, the notebook encodes
+      them with ffmpeg (nanoHUB's has libx264: `-framerate 7
+      -pattern_type glob -c:v libx264 -pix_fmt yuv420p -crf 20`,
+      input/README.md section 9b), shows `<title>.mv_p.mp4` on the page
+      in an ipywidgets player (`ipywidgets.Video`; a `<video>` tag on
+      older ipywidgets), lists the .mp4 under Files (Movie) and not the
+      frames, and deletes them once the movie is written (kept if the
+      encode fails). steepening_hump's 25 frames, 35 MB of bitmaps, make
+      a 66 KB movie; the class deck's 35, about 100 KB.
 - [ ] **History file size:** 12.3 MB for the class deck, 123 MB at 10
       times its resolution (plot_dt = 0.005 us, 1001 frames). Section 8
       now reports it at the end (Nov 3); still to do: say it at the
