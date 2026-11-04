@@ -1,7 +1,8 @@
 # Material models: design note
 
 Started Nov 3, 2026, on `shock` after `f81f2b7` (movies). Status: **approved
-Nov 3, 2026** (decisions below); phase 2 built Nov 3 (As built, below). TODO.md, sections 5 and 6, is
+Nov 3, 2026** (decisions below); phase 2 built Nov 3 (As built, below);
+phase 3, HVRB, drafted Nov 4 (Phase 3, below). TODO.md, sections 5 and 6, is
 the brief: room in the code for more than one material model, Mie-Grüneisen
 kept as the default and unchanged, bit for bit; the first new model is
 Mie-Grüneisen with temperature, so that G1's temperatures can be compared;
@@ -320,6 +321,268 @@ G1's 298.0014 K start and show the tool's linearized model in tension. The
 book on the reference's temperatures is closed there; bitwhiz keeps the
 exact cold curve.
 
+## Phase 3: HVRB (draft for approval, Nov 4, 2026)
+
+The model is `doc/HVRB_Eqns_v8` (frozen Nov 4; the inputs of the
+gold-standard reactive sets G2-G5, `tests/verification/hvrb/`). Decisions
+from D. E. Kittell's review of the plan and his answers (Nov 4) are marked
+**DK**; none is left open. Nothing in this section is built yet.
+
+### The deck
+
+```
+Begin Material MatX
+  eos      = mie_gruneisen_t     # the reactant: Mie-Grüneisen plus T (CV, T0)
+  R0 = 1.60 ... G0 = 1.20        # as now
+  CV       = 1.1633418           # J/(g K), both phases (the sheet's closure)
+  T0       = 298.0
+  burn     = hvrb                # the rate law
+  PR       = 7.0                 # GPa, reference pressure
+  ZR       = 3.0                 # pressure exponent
+  MR       = 1.5                 # delay exponent
+  XR       = 2.5                 # completion exponent
+  PI       = 1.0                 # GPa, threshold pressure
+  TAU0     = 1.0                 # us, time constant (required)
+  products = ideal_gas           # the products' EOS: required, no default
+  GAMMA    = 2.60
+  Q        = 4.8828              # kJ/g (= MJ/kg), heat of reaction
+End Material
+```
+
+- **Three independent choices** (**DK**): the reactant's `eos`, the
+  `burn`, and the `products`. HVRB is usually paired with JWL or tabular
+  products; ideal gas is the first, not the only one: `products = jwl` (or
+  Davis, or a table) later is a new products module, with no change to the
+  burn or the reactant.
+- **Said out loud:** `products` has no default, so a deck that burns names
+  its products; the screen and the resolved deck repeat them ("HVRB, ideal-gas
+  products").
+- **Errors:** `burn = hvrb` with any `eos` but `mie_gruneisen_t` (**DK**: the
+  closure needs the cold curve and T); `burn` without `products`, or
+  `products` without `burn`; any HVRB or products key without them (the
+  message names what takes it); PR, MR, XR, TAU0 not > 0; ZR, PI < 0;
+  GAMMA not > 1; Q < 0. MR and XR at or below 1 are legal (the sheet's
+  shape notes: no delay, an abrupt finish) and accepted as given; so is
+  ZR = 0 (below).
+- **Names** (**DK**): the sheet's symbols without subscripts, as R0, C0, S1,
+  G0 are: PR, ZR, MR, XR, PI, TAU0, GAMMA, Q. Every one is required; a burn
+  has no hidden defaults.
+- **TAU0 is a parameter in its own right** (**DK**). For ZR > 0 only the
+  product TAU0 PR^ZR enters the rate (the sheet), so the pair has one
+  redundant degree of freedom. At ZR = 0 the pressure factor is 1 above
+  threshold, PR drops out, and TAU0 is the only rate scale left: it is the
+  one parameter that always carries the time. Kept, required, and graded
+  like the rest later.
+
+### Notation: two "cold" energies
+
+bitwhiz's carried `e_c` (module temperature) is the isentrope from rest, the
+sheet's **e_S**. The sheet's **e_c** is e_S - C_V T_S, with T_S = T0
+exp(G0 eta). The code keeps its name; this note and the module's header say
+e_S where they mean the sheet's. Energy zero is bitwhiz's: e = 0 at rest,
+unreacted (the sheet's convention; the reference code puts the reactant at
+e = Q and subtracts it).
+
+### The closure, per cell
+
+With vartheta = C_V T (both phases share one C_V, so no iteration):
+
+    vartheta = e - (1 - lam)(e_S - C_V T_S) + lam Q
+    e_sol    = e_S - C_V T_S + vartheta            (the solid's energy at T)
+    P_sol    = mg pressure at (rho, e_sol)         (module eos, unchanged)
+    P_gas    = (gamma - 1) rho vartheta
+    P        = (1 - lam) P_sol + lam P_gas
+    T        = vartheta / C_V
+
+**Checked (sympy, Nov 4):** this is the sheet's T-free form exactly; at
+lam = 0 it is Mie-Grüneisen at (rho, e); at lam = 1, (gamma - 1) rho (e + Q);
+a constant-volume burn from rest ends at (gamma - 1) R0 Q = 12.499968 GPa;
+the strong-detonation D_CJ = sqrt(2 (gamma^2 - 1) Q) = 7.4999904 km/s, the
+dataset's exact value.
+
+**A cell that has started to burn holds no tension** (**DK**). The gas
+fills the cracks of a reacting solid, so the condensed phase is not mixed in
+while it would pull: for lam > 0,
+
+    P = (1 - lam) max(P_sol, 0) + lam P_gas
+
+so P >= 0 always (P_gas >= 0 with vartheta floored at 0), and a burning
+cell can never reach -spall_strength: it never "breaks", it expands with
+the gas. A cell at lam = 0 keeps today's tension and spall exactly. The
+burn itself stops in tension on its own: P < PI there, so Phi = 0 and lam
+holds (HVRB never runs backward). **Only the solid's pressure is
+dropped** (**DK**): vartheta, T and the energy balance stay as written, so
+energy is conserved exactly as in an unclamped cell.
+
+**The Hugoniot's reach.** The gas phase has no compression limit; the solid
+does (`eos_too_compressed`, Us past 100 C0). A fully burnt cell (lam = 1,
+which the exact topology reaches exactly, at phi_end) never evaluates the
+solid. A cell with 0 < lam < 1 past the reach stops the run, as today, with
+a message giving the cell, lam and eta. If G2-G5 runs ever trip it, the
+choice is then a cutoff in 1 - lam, made on evidence.
+
+### The sound speed: exact (**DK**)
+
+The sheet's exact rule (checked with sympy, Nov 4, for any Pi):
+
+    c^2 = (1 - lam) c_sol^2 + lam gamma (gamma - 1) vartheta
+          - lam (1 - lam) (R0 G0 / rho - gamma + 1)^2 vartheta
+
+with c_sol the inert Mie-Grüneisen sound speed at (rho, e_sol). Guardrails:
+vartheta floored at 0 in the gas terms; where the solid is dropped (P_sol <
+0), c^2 is that of the pressure actually used (the solid's terms out, the
+same exact derivative); if c^2 <= 0 anyway, the mass-weighted value, then
+the gas's alone, with a count in the log. The unit test checks c^2 against
+(dP/drho)_e + (P/rho^2)(dP/de)_rho of the closure, by 50-digit finite
+differences, at every state in its table, clamped ones included.
+
+### The rate law, per cell, once per cycle
+
+    Phi      = (1/TAU0) ((P^n - PI)/PR)^ZR   if P^n > PI,  else 0
+    phi^n+1  = min(phi^n + Phi dt, phi_end),  phi_end = XR^(1/MR)
+    lam^n+1  = 1 - (1 - phi^MR/XR)^XR                       exact, 0..1
+
+P^n is the cell's pressure. **Phi = 0 at or below PI is written out, not
+left to max(., 0)^ZR:** at ZR = 0 that would be 0^0, which Fortran leaves
+to the processor (gfortran gives 1), and a cell at rest would burn. With
+the test explicit, a cell at rest or in tension never burns, for every ZR
+and even with PI = 0.
+
+**ZR = 0: a burn on a clock** (**DK**: used in practice in place of
+time-dependent burns, e.g. aluminum droplet combustion). Above PI, Phi =
+1/TAU0, so phi is the time spent above threshold over TAU0, and the
+topology shapes lam(t). With MR = 1 it is a d^n law exactly: a droplet whose
+d^n falls linearly burns out at t_b, its mass goes as d^3, so
+
+    lam(t) = 1 - (1 - t/t_b)^(3/n)  =  HVRB with ZR = 0, MR = 1, XR = 3/n,
+                                       t_b = XR TAU0
+
+(the D^2 law: XR = 1.5, t_b = 1.5 TAU0; d^1: XR = 3; checked numerically,
+Nov 4, identical to round-off). MR > 1 puts an ignition delay in front.
+With ZR = 0 the first-order quadrature of Phi is exact while the cell stays
+above PI; the only error is a step that crosses it.
+
+Then the closure at (rho^n+1, e^n+1, lam^n+1). Burning changes lam at fixed
+rho and e, so total energy is conserved by the hydro's own update (e holds
+the chemical energy through + lam Q); the heartbeat's energy error is the
+check (the sheet: <= 0.01 % while Material X burns).
+
+**Order within a cycle** (a change from 1.2.0): the closure needs e_S at the
+new volume, so for burning materials the cold-curve update (module
+temperature) moves before the pressure is evaluated. e_S is a function of
+the cell's volume alone, so moving the update changes no number in an
+`mie_gruneisen_t` deck (checked bit for bit).
+
+### Method RS: the reaction as a source (**DK**)
+
+AV needs nothing more: its pressure comes from the closure each step. In RS
+a cell's P at the end of a step also comes from the closure, so order 1
+needs nothing more either. Order 2 advances P inside the step: the
+MUSCL-Hancock predictor (`rs_face_states`, step 1b) moves each face value
+half a step with the cell's acoustic equations, dP/dt = -Z^2 du/dh. With
+reaction the pressure equation gains a source (Fickett and Davis's
+thermicity sigma, r = dlam/dt):
+
+    dP/dt = -Z^2 du/dh + rho c^2 sigma r
+
+For this closure
+
+    rho c^2 sigma = (dP/dlam)_{rho,e}
+                  = -(P_c + R0 G0 vartheta) + (gamma - 1) rho vartheta
+                    + [(1 - lam) R0 G0 + lam (gamma - 1) rho] (e_S - C_V T_S + Q)
+
+with P_c = P_sol(rho, e_S) - R0 G0 C_V T_S (the sheet's cold pressure)
+(checked with sympy, Nov 4).
+
+- **Where:** in the predictor's half step only, dp = -(dt/2)(Z^2 du/dh -
+  rho c^2 sigma r), the same for both faces of the cell. The Riemann
+  problem itself is unchanged (it takes the face values and Z), and so is
+  the conservative update, so energy conservation is untouched: the
+  source only shapes the face pressures.
+- **Held constant across a step** (**DK**), as Z is: rho c^2 sigma from the
+  cell's state at time n. The PEP paper (D. E. Kittell et al., Propellants
+  Explos. Pyrotech. 45 (2020) 295-315, doi:10.1002/prep.201900209, p. 297;
+  already `rs_mod`'s reference for the star values) and DK's other journal
+  paper fold thermicity into an effective heat of reaction held constant
+  for the whole run; DK's notes hold it constant for one step. bitwhiz
+  takes the per-step form: the closure gives rho c^2 sigma exactly per cell,
+  for a few operations, so a constant for the whole run would only discard
+  information (a cell's rho c^2 sigma changes as it burns). The paper's
+  form is the same scheme with a frozen value.
+- **The rate r is the step's own:** r = (lam^n+1 - lam^n)/dt from the exact
+  burn update, computed from P^n before the predictor runs (it needs
+  nothing later). Not g(lam^n) Phi^n: g is infinite at lam = 0 when MR < 1,
+  and zero there when MR > 1 (the delay), while the step average is always
+  finite and consistent with the lam the closure then uses.
+- **A check on its effect:** G2 at 2.00 km/s with RS order 2, the source on
+  and off, before choosing to keep it; it should sharpen the reaction
+  zone's face pressures, not move the run distance by more than the mesh
+  study's spread. Off is a development switch only, not a deck key.
+
+### Per cell, for grading later
+
+Every constant is an array by cell, filled from the cell's layer at setup
+(PR, ZR, MR, XR, PI, TAU0, GAMMA, Q, and phi_end from MR and XR), beside
+module temperature's C_V and T0; the state is phi and lam by cell. Grading
+(section 7) then changes how the arrays are filled, not the physics. The
+arrays live in the burn's own module (`hvrb_mod.f95`, module `hvrb`) and the
+products' (`prod_mod.f95`, module `products`, the ideal gas: P, e and c from
+rho and vartheta), allocated only when a deck burns. A deck that does not
+burn allocates nothing and runs exactly as now; the model is chosen per
+layer at setup, never per cell by name.
+
+The products module is written for what comes after ideal gas: each phase
+gives P and e as functions of (rho, T). With one shared C_V the closure is
+linear in T, as above; a JWL or Davis products EOS (its own C_V) turns it
+into a one-variable Newton solve for T, in the same place.
+
+### Outputs
+
+- **Tracer file:** `XRN.<tracer>` (lam, 0 to 1) closing each tracer's block
+  when some material burns, 0 in cells that do not (**DK**: the gold
+  data's XRN3 is "material 3"; the tracer's name does that job here). TK
+  for a burning cell is vartheta/C_V.
+- **History file:** `XRN` (real32, cells) after `TK`.
+- **Log:** each burning material's model ("HVRB, ideal-gas products"); the
+  first cell to react (lam > 0: cell, layer, time, x); at the end, per
+  burning layer, the cells fully burnt and the largest lam.
+- `gold.py` reads XRN already; a `compare_hvrb.py` beside `compare_g1.py`.
+
+### Tests
+
+1. **Old decks, bit for bit,** both builds, MG+T decks included (the moved
+   cold-curve update).
+2. **50 digits:** `tests/hvrb_reference.py` (mpmath): the topology (lam of
+   phi, phi of lam, g), the closure (P, T, c^2, dP/dlam) on a table of
+   (rho, e, lam) in compression and tension, clamped states included; the
+   constant-volume burn. `tests/test_hvrb.f95` checks the module against it,
+   and also: the rate at or below PI is 0 for every ZR, ZR = 0 included, at
+   rest and in tension; ZR = 0, MR = 1, XR = 1.5 integrated step by step
+   against the D^2 law's closed form (exact while above PI).
+3. **The inert limit:** an HVRB deck with PI far above any pressure gives
+   the `mie_gruneisen_t` deck's results bit for bit (a lam = 0 cell takes
+   the plain Mie-Grüneisen path), XRN all 0.
+4. **A rebuilt history** (the sheet's check): lam from one tracer's P(t)
+   with the two HVRB boxes, in Python, against the tracer's XRN.
+5. **Deck tests:** every error above; the resolved deck's round trip.
+6. **OpenMP and release:** an HVRB deck, AV and RS, bit for bit.
+7. **G2-G5** (`compare_hvrb.py`), with the dataset README's tolerances: run
+   distance within one tracer spacing; D_CJ (G4) within 0.5 %; the Pop
+   plot (G3); the mesh study (G5); energy within 0.01 % while burning.
+
+### Steps
+
+1. This section, approved.
+2. Modules `hvrb` and `products`, the reference and the unit test: no hydro.
+3. Keys, deck tests, the per-cell arrays, AV wired, the inert limit, the
+   outputs and the log.
+4. RS, with the thermicity source in the order-2 predictor (above), and
+   the on/off check at G2.
+5. G2-G5; then a release (1.3.0) and an HVRB deck for nanoHUB.
+
+Performance: only burning cells do more; the default Mie-Grüneisen path's
+cost per cycle is checked unchanged (TODO.md, section 8).
+
 ## Phases
 
 1. **This note, approved.**
@@ -328,5 +591,5 @@ exact cold curve.
    Done: released as v1.2.0 Nov 3, 2026, on nanoHUB Nov 4.
 3. **HVRB** (TODO.md, section 6): reaction progress per cell, ideal-gas
    products, the density-temperature closure (T then feeds P), checked
-   against G2-G5.
+   against G2-G5. Drafted Nov 4 (Phase 3, above), for approval.
 4. **Graded constants** (section 7): the per-cell e_c already allows them.
