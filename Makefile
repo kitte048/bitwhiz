@@ -42,6 +42,8 @@
 #                the axis ends, nice_ends)
 #Revision: 1.22 (11-03-26, with Claude: 'make runs', every deck in
 #                input/ into runs/<deck>/; 'tidy' removes runs/)
+#Revision: 1.23 (11-04-26, with Claude: products and hvrb modules, and
+#                the burn's unit test, test_hvrb, in 'make test')
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -173,6 +175,9 @@ $(1)src/modules/av_mod.o:    $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/temp_mod.o:  $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
                              $(1)src/modules/bit_mod.o
+$(1)src/modules/prod_mod.o:  $(1)src/modules/bit_mod.o
+$(1)src/modules/hvrb_mod.o:  $(1)src/modules/eos_mod.o $(1)src/modules/prod_mod.o \
+                             $(1)src/modules/bit_mod.o
 $(1)src/modules/trace_mod.o: $(1)src/modules/temp_mod.o $(1)src/modules/shock_mod.o \
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/hist_mod.o:  $(1)src/modules/temp_mod.o $(1)src/modules/shock_mod.o \
@@ -204,7 +209,8 @@ $(eval $(call MOD_ORDER,))
 ###  pics calls the drawing routines (src/drawings), which
 ###  call bmpmaker and the colormaps.
 ############################################################
-UNIT_TESTS = ./bin/test_eos ./bin/test_hist ./bin/test_dist ./bin/test_temp
+UNIT_TESTS = ./bin/test_eos ./bin/test_hist ./bin/test_dist ./bin/test_temp \
+	./bin/test_hvrb
 
 ./bin/test_%: tests/test_%.f95 $(MOD_OBJS) $(LIB_OBJS)
 	@mkdir -p ./bin
@@ -214,6 +220,7 @@ test: $(EXECS) $(UNIT_TESTS)
 	./bin/test_eos
 	./bin/test_dist
 	./bin/test_temp
+	./bin/test_hvrb
 	BIN=$(EXECS) ./tests/run_deck_tests.sh
 	BIN=$(EXECS) ./tests/run_omp_tests.sh
 	BIN=$(EXECS) ./tests/run_hist_tests.sh

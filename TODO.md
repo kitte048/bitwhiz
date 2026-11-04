@@ -285,7 +285,10 @@ decks.
       Q, ideal-gas products, density-temperature equilibrium, the HVRB rate
       (P_R, Z_R, M_R, X_R, P_I, tau_0). Checked against G2-G5 (section 3):
       run distance, the Pop plot, D_CJ = 7.500 km/s within 0.5 %, the mesh
-      study. Then with a JWL products EOS.
+      study. Then with a JWL products EOS. Design: `doc/design/materials.md`,
+      phase 3 (approved Nov 4). Step 2 done Nov 4: modules `hvrb` and
+      `products` and `test_hvrb` (11 checks, 50 digits); next, step 3
+      (keys, the per-cell arrays, AV, the outputs).
 - [ ] **The burn models from the 2025 survey:** FlashFire,
       StochasticIgnite and ThermalCascade, from D. E. Kittell et al., "A
       Short Survey of Current Reactive Burn Model Capabilities as of

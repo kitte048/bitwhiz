@@ -574,6 +574,7 @@ into a one-variable Newton solve for T, in the same place.
 
 1. This section, approved.
 2. Modules `hvrb` and `products`, the reference and the unit test: no hydro.
+   Done Nov 4 (below).
 3. Keys, deck tests, the per-cell arrays, AV wired, the inert limit, the
    outputs and the log.
 4. RS, with the thermicity source in the order-2 predictor (above), and
@@ -582,6 +583,39 @@ into a one-variable Newton solve for T, in the same place.
 
 Performance: only burning cells do more; the default Mie-Grüneisen path's
 cost per cycle is checked unchanged (TODO.md, section 8).
+
+### As built: step 2 (Nov 4, 2026)
+
+`src/modules/prod_mod.f95` (module `products`: `idg_state`, P_gas and
+c_gas^2 from rho and vartheta, nothing at vartheta <= 0) and
+`src/modules/hvrb_mod.f95` (module `hvrb`: `hvrb_phi_end`, `hvrb_lambda`,
+`hvrb_rate`, `hvrb_step`, `hvrb_state`), elemental and stateless; the
+time loop does not call them yet. Choices made in the code:
+
+- **lam for small phi** by the binomial series (16 terms below x =
+  phi^MR/XR = 0.05), so a tiny lam keeps its relative precision: 1 - (1 -
+  x)^XR loses half its digits at x = 1e-8, and Fortran 2018 has no log1p.
+- **The threshold** is `.not. (P > PI)`, not max(P - PI, 0)^ZR (no 0^0),
+  and ZR = 0 is the clock 1/TAU0.
+- **dP/dlam at the ends:** at lam = 0 the slope of the burn's first step
+  (the dropped form if the solid pulls: P itself jumps there, from P_sol <
+  0 to >= 0); at lam = 1 the gas-only form, as the solid is not evaluated
+  (nothing multiplies it: the burn is over). The reference defines them the
+  same way.
+- **The exact c^2 needs vartheta > 0** (the gas has no pressure below
+  that); otherwise the guards take over, mass-weighted first.
+
+**Tests:** `tests/test_hvrb.f95`, 11 checks, against `tests/hvrb_reference.py`
+(mpmath, 50 digits, from the sheet's definitions; c^2 and dP/dlam by
+numerical differentiation of the closure, not from the closed forms):
+18 values of lam(phi) to 9e-16 relative (phi from 1e-9 of phi_end, MR and
+XR above and below 1); 64 closure states, two materials, tension and
+compression, lam = 0, 0.3, 0.8 and 1, the solid dropped in 12, P, c,
+vartheta and dP/dlam to 4e-15; lam = 0 is mg_eos bit for bit; the
+constant-volume burn, 12.499968 GPa; the D^2 law (ZR = 0, MR = 1, XR =
+1.5), 650 steps, to 7e-15; the rate's threshold for ZR = 0 to 3; the
+Hugoniot's reach; the guards; elemental calls. Clean with gfortran 9 and
+13 under the strict flags.
 
 ## Phases
 

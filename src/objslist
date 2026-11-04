@@ -13,6 +13,8 @@
 	src/modules/dist_mod.o \
 	src/modules/eos_mod.o \
 	src/modules/temp_mod.o \
+	src/modules/prod_mod.o \
+	src/modules/hvrb_mod.o \
 	src/modules/av_mod.o \
 	src/modules/rs_mod.o \
 	src/modules/deck_mod.o \
@@ -35,6 +37,8 @@
 	src/modules/distributions.mod \
 	src/modules/eos.mod \
 	src/modules/temperature.mod \
+	src/modules/products.mod \
+	src/modules/hvrb.mod \
 	src/modules/av.mod \
 	src/modules/rs.mod \
 	src/modules/deck.mod \
