@@ -331,6 +331,19 @@ decks.
       a smooth gradient converges with the mesh; a literature search on
       shocks in graded (functionally graded) materials for comparison
       cases.
+- [ ] **The t = 0 mesh and parameters, in a file of their own** (DK,
+      Nov 4): once constants vary cell by cell, the deck no longer shows
+      what each cell got. Written once at setup, beside the other outputs:
+      every cell's position (its faces, or center and width), layer and
+      material, its state (rho, e, u, P, T) and every constant it carries
+      (R0, C0, S1, S2, G0, spall_strength; CV, T0; the burn's PR, ZR, MR,
+      XR, PI, TAU0; the products' GAMMA, Q; 0 where a cell's model has
+      none), with names and units in a header, so a short Python script
+      can plot, say, the initial density, T0, G0 and PR against x. Plain
+      CSV, one row per cell (as the tracer file), or the history file's
+      binary layout if meshes get large; decide with the graded deck keys.
+      Its reader, and a check that it matches the deck (the setup audit's
+      numbers), in the tests.
 - [ ] The goal: take bitwhiz from a teaching tool into current research on
       shocks in graded materials, and publish there.
 

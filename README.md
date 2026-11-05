@@ -95,10 +95,16 @@ with.
 To look at every example after a code change, `make runs` (from the bitwhiz
 folder) builds the release executable if needed and runs each deck in
 `input/` in its own folder, `runs/<deck>/`, beside a copy of the deck, with
-its screen in `screen.txt` and every file it writes: about 10 s and 240 MB
-for the ten decks. One line per deck says how it ended, its wall time, and
+its screen in `screen.txt` and every file it writes: about 20 s and 410 MB
+for the eleven decks. One line per deck says how it ended, its wall time, and
 its files' count and size. Each `make runs` starts fresh; `make tidy` removes
 `runs/`. `make runs RUN_EXE=./bin/bitwhiz` uses the debug build instead.
+
+On a Mac, close Preview's windows on `runs/` (or quit Preview) before `make
+runs` or `make tidy`: both delete the files and write them anew under the
+same names, and a Preview that still holds the old ones can then refuse the
+new ones ("you don't have permission to view"), whatever is in them, until
+it is quit and opened again (Nov 4, 2026; the files were fine).
 
 To tune the pictures without running again, add `plots_only = yes` to the
 Run block and change `colormap` or the color windows (`plot_u_lo`,
