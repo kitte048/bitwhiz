@@ -45,6 +45,8 @@ module trace
 !                (with Claude)        reaction, when some material
 !                                     burns (module burn); 0 in a cell
 !                                     that does not
+!    11/05/26    D. E. Kittell        nan: qnan_dp (module bits), not
+!                (with Claude)        ieee_value, for gfortran 8
 !
 !**********************************************************************!
 use bits,  only: dp, int32, zero
@@ -52,7 +54,7 @@ use shock, only: jx, ju, jrho, je, jp, jq, jc, jdam, ju_star, face_slots, &
    database, iface, icell, ilay, layer, tracer, ntrc, tracer_dt, method
 use temperature, only: temp_in_run, tk
 use burn, only: burn_in_run, lam
-use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+use bits,  only: qnan_dp                ! (not ieee_value: bit_mod)
 implicit none
 private
 
@@ -168,7 +170,7 @@ contains
    do j = 1, ncol
       isface(j) = any( face_slots == col_slot(j) )
    end do
-   nan = ieee_value( 1.0_dp, ieee_quiet_nan )
+   nan = qnan_dp
    with_t = temp_in_run()
    with_x = burn_in_run()
    allocate( row( ntot - 1 + ( ncol + merge(1, 0, with_t) + &

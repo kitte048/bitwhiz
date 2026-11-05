@@ -53,6 +53,8 @@ module hvrb
 !    11/04/26    D. E. Kittell        burn_cell_t, what the hydro's
 !                (with Claude)        cell routines need of a burning
 !                                     cell (module burn fills it)
+!    11/05/26    D. E. Kittell        unusable: snan_dp (module bits),
+!                (with Claude)        not ieee_value, for gfortran 8
 !
 !**********************************************************************!
 !
@@ -360,12 +362,12 @@ contains
    ! convention).                                                     !
    !******************************************************************!
    elemental subroutine unusable( a, b, d )
-   use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_signaling_nan
+   use bits, only: snan_dp                     ! (not ieee_value: bit_mod)
    implicit none
    real(kind=dp), intent(out) :: a, b, d
-   a = ieee_value( a, ieee_signaling_nan )
-   b = ieee_value( b, ieee_signaling_nan )
-   d = ieee_value( d, ieee_signaling_nan )
+   a = snan_dp
+   b = snan_dp
+   d = snan_dp
    end subroutine unusable
 
 end module hvrb

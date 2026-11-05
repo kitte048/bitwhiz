@@ -14,6 +14,8 @@ module bits
 !    10/23/26    D. E. Kittell        quit: a quiet exit with a status,
 !                (with Claude)        for compilers before Fortran 2018's
 !                                     "stop code, quiet=.true."
+!    11/05/26    D. E. Kittell        qnan_dp, snan_dp: NaNs from their
+!                (with Claude)        bits, for gfortran 8 (see the NOTE)
 !
 !**********************************************************************!
 implicit none
@@ -72,6 +74,24 @@ real(kind=qp), parameter :: pi=&
  3.14159265358979323846264338327950288419716939937510582097494459230_qp
 
 integer(kind=int32), parameter :: nline=200  ! size of a character line
+
+!*** NaNs, double precision: quiet (a "no value" marker, e.g. a tracer
+!*** column a method does not have) and signaling (a "must not be used"
+!*** marker: with -ffpe-trap=invalid, the first arithmetic on it stops
+!*** the run). Built from their IEEE 754 bits, the ones gfortran 9 and
+!*** later give for ieee_value( x, ieee_quiet_nan / ieee_signaling_nan ).
+!***
+!***NOTE: why not ieee_value. gfortran 8 (nanoHUB has 8.3) makes these
+! NaNs by arithmetic and raises the invalid flag doing it, even for a
+! quiet NaN, so under the debug build's -ffpe-trap=invalid the program
+! stopped the moment it asked for one (found 11/05/26 with 8.4: every
+! run with tracers, at trace_mod's setup; and test_eos). A constant
+! made with transfer involves no arithmetic, on any compiler, and has
+! the same bits, so every output is unchanged.
+real(kind=dp), parameter :: qnan_dp = &
+   transfer( int( z'7FF8000000000000', int64 ), 1.0_dp )
+real(kind=dp), parameter :: snan_dp = &
+   transfer( int( z'7FF4000000000000', int64 ), 1.0_dp )
 
 !**********************************************************************!
 ! Data dictionary: BMP Header (BYTES 14, FIELDS 5)

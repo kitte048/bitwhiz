@@ -52,6 +52,8 @@ module shock
 !                                     or mie_gruneisen_t, which also
 !                                     carries T (CV, T0; module
 !                                     temperature)
+!    11/05/26    D. E. Kittell        alloc_database: snan_dp (module
+!                (with Claude)        bits), not ieee_value (gfortran 8)
 !
 !**********************************************************************!
 !
@@ -859,8 +861,7 @@ contains
    ! do not trap; only math and comparisons on the NaN do.)   !
    !**********************************************************!
    subroutine alloc_database(nk,kerr)
-   use, intrinsic :: ieee_arithmetic, only: ieee_value, &
-      ieee_signaling_nan
+   use bits, only: snan_dp                    ! (not ieee_value: bit_mod)
    implicit none
    integer(kind=int32), intent(in) :: nk      ! number of real cells
    integer(kind=int32), intent(inout) :: kerr ! increment on failure
@@ -882,7 +883,7 @@ contains
       kmax = 0
       imax = 0
    else
-      snan = ieee_value( snan, ieee_signaling_nan )
+      snan = snan_dp
       database = snan                         ! "not set yet" everywhere
       ilay = 0                                ! ghosts stay 0
    end if mem_fail

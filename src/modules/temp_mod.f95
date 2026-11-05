@@ -43,6 +43,8 @@ module temperature
 !                                     pressure that needs it; T of a
 !                                     burning cell, vartheta/C_V
 !                                     (temp_update's lam and q)
+!    11/05/26    D. E. Kittell        cold_step: snan_dp (module bits),
+!                (with Claude)        not ieee_value, for gfortran 8
 !
 !**********************************************************************!
 !
@@ -236,7 +238,7 @@ contains
    !******************************************************************!
    elemental subroutine cold_step( eta1, eta2, ec1, R0, C0, S1, S2, G0, &
       ec2, ierr )
-   use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_signaling_nan
+   use bits, only: snan_dp                     ! (not ieee_value: bit_mod)
    implicit none
    real(kind=dp), intent(in)  :: eta1    ! where ec1 holds
    real(kind=dp), intent(in)  :: eta2    ! where the cell is now
@@ -257,7 +259,7 @@ contains
    else
       call piece( eta1, eta2, ec2, R0, C0, S1, S2, G0, ierr )
    end if
-   if ( ierr /= eos_ok ) ec2 = ieee_value( ec2, ieee_signaling_nan )
+   if ( ierr /= eos_ok ) ec2 = snan_dp
    end subroutine cold_step
 
    !******************************************************************!

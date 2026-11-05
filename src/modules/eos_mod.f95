@@ -36,6 +36,8 @@ module eos
 !    10/15/26    D. E. Kittell        eta = (rho - R0)/rho, exactly 0 at
 !                (with Claude)        rho = R0 for every R0 (round-off
 !                                     review)
+!    11/05/26    D. E. Kittell        unusable: snan_dp (module bits),
+!                (with Claude)        not ieee_value, for gfortran 8
 !
 !**********************************************************************!
 !
@@ -374,11 +376,11 @@ contains
    ! ignores ierr stops at the very next arithmetic on them.          !
    !******************************************************************!
    elemental subroutine unusable( a, b )
-   use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_signaling_nan
+   use bits, only: snan_dp                     ! (not ieee_value: bit_mod)
    implicit none
    real(kind=dp), intent(out) :: a, b
-   a = ieee_value( a, ieee_signaling_nan )
-   b = ieee_value( b, ieee_signaling_nan )
+   a = snan_dp
+   b = snan_dp
    end subroutine unusable
 
    !******************************************************************!
