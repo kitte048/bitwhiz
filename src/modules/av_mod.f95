@@ -46,6 +46,10 @@ module av
 !                                     (module hvrb), no tension, no
 !                                     spall (doc/design/materials.md,
 !                                     phase 3)
+!    11/05/26    D. E. Kittell        cell_step: an end face carries no
+!                (with Claude)        q from the void (it was half of
+!                                     the end cell's), so total energy
+!                                     is conserved at a free surface
 !
 !**********************************************************************!
 !
@@ -66,9 +70,12 @@ module av
 !  velocity of the face itself.
 !
 !  At the two ends a neighbor is a ghost cell with M = P = q = 0
-!  (equation sheet, Boundary Conditions). The formulas below need no
-!  special case for it: the end face gets half a real cell's mass and
-!  zero stress from the void, which is a free surface.
+!  (equation sheet, Boundary Conditions): the end face gets half a
+!  real cell's mass and zero stress from the void, which is a free
+!  surface. The momentum formula needs no special case for it. The
+!  energy formula needs one: averaging q with the ghost's would put
+!  half the end cell's q on the end face, as work done by the void
+!  (cell_step).
 !
 !**********************************************************************!
 use bits,  only: dp, int32, zero, half, one
@@ -141,13 +148,18 @@ contains
    !*** Density from the new face positions.
    rho_new = c(jm,0)/( c(jx,1) - c(jx,-1) )
 
-   !*** Face stresses (a ghost has M = P = q = 0, so the stress the
-   !*** void puts on an end face is zero, apart from half of q).
+   !*** Face stresses. A ghost has M = P = q = 0, so the mass-weighted
+   !*** pressure on an end face is already zero; its q is set to zero
+   !*** too (the average with the ghost's would be half the end cell's
+   !*** q: work by the void, which is a free surface and does none).
+   !*** Every interior face is unchanged.
    mk = c(jm, 0)
    ml = c(jm,-2)
    mr = c(jm, 2)
-   sigl = ( mk*c(jp,-2) + ml*c(jp,0) )/( mk + ml ) + half*( c(jq,0) + c(jq,-2) )
-   sigr = ( mr*c(jp,0) + mk*c(jp,2) )/( mk + mr ) + half*( c(jq,0) + c(jq, 2) )
+   sigl = ( mk*c(jp,-2) + ml*c(jp,0) )/( mk + ml )
+   sigr = ( mr*c(jp,0) + mk*c(jp,2) )/( mk + mr )
+   if ( ml > zero ) sigl = sigl + half*( c(jq,0) + c(jq,-2) )
+   if ( mr > zero ) sigr = sigr + half*( c(jq,0) + c(jq, 2) )
 
    !*** Work by the faces, and the change in kinetic energy.
    work = (dt/mk)*( sigl*c(ju,-1) - sigr*c(ju,1) )
