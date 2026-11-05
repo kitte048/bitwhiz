@@ -151,3 +151,7 @@ Notes (ignored by the parser):
 - Checked against the gold-standard reactive data (G2-G5) by
   tests/verification/compare_hvrb.py, at 100 zones/mm; this deck's 35
   zones/mm puts about 5 cells across the reaction zone (the sheet).
+- With AV that is coarse: from about 0.85 us the front runs ahead of RS's,
+  and a plateau below P_CJ opens behind the spike, a weak detonation that
+  goes away by 200 zones/mm (doc/design/av_study.md). Compare the two
+  methods' pressure movies.

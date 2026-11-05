@@ -145,6 +145,15 @@ The artificial viscosity is the equation sheet's, with its default
 coefficients: q = BL ρ c |Δu| + BQ ρ (Δu)², applied only while the cell is
 being compressed (Δu > 0 and ρ increasing), and q = 0 otherwise.
 
+**A free surface with AV** jumps about 6 % above its true velocity when a
+shock reaches it, for about 2.5 cells' transit of the shock (16 ns at 25
+zones/mm, 1 ns at 400), on every mesh, then settles on the right value: read
+the plateau, not the peak (RS at order 2: 0.4 %). The end cell of a burning
+material blown off a free surface can show a temperature far below 0 K (the
+sheet's cell-centered kinetic energy, in one cell); the log's T range
+includes it. Both are measured, against mesh and an exact answer, in
+`doc/design/av_study.md`.
+
 ### `Material <name>`
 Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
 | Key | Units | Default |
@@ -212,6 +221,16 @@ bit for bit. Burning changes lam at fixed rho and e, so energy is conserved
 first cell to react and the cells burnt out. Both methods: with RS at order
 2 the reaction is also a source in the predictor's pressure (`doc/design/
 materials.md`, phase 3).
+
+**Resolution, with AV.** AV burns inside its smeared shock, and on a coarse
+mesh that makes a weak detonation: the front runs fast, and once an overdrive
+has decayed a plateau below P_CJ opens behind the spike and widens. It goes
+away as the mesh refines. For Material X (a reaction zone of about 0.14 mm):
+D is 3 % fast at 25 zones/mm, 0.4 % at 50, 0.2 % at 100 and within 0.03 % from
+200 (about 28 cells across the reaction zone); the class deck, at 35, runs
+1.6 % ahead of RS from about 0.85 us. RS at order 2 gets D right from 25
+zones/mm. Measured by `tests/verification/study_av.py` (`doc/design/
+av_study.md`).
 Example, the HVRB sheet's Material X set (`doc/design/materials.md`, phase 3):
 
     eos = mie_gruneisen_t

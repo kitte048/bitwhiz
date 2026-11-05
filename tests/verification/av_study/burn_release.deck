@@ -1,0 +1,138 @@
+#**********************************************************************#
+#  AV study, the end cell: the class stack with Material X burning     #
+#  (HVRB, ideal-gas products, the reference's model and constants, as  #
+#  ../hvrb/g2_react.deck) and no window, so Material X ends at a free  #
+#  surface (../study_av.py, set C).                                    #
+#                                                                      #
+#      Ta 3 mm -> Al 4 mm (both at 1.00 km/s) -> Material X 10 mm      #
+#                    x = 0 at the impact plane                         #
+#                                                                      #
+#  At 1.00 km/s Material X burns only partly before the shock reaches  #
+#  its free surface; the release then stretches partly burnt cells     #
+#  (the solid held where it first pulled, doc/design/materials.md,     #
+#  phase 3) and blows the end cell off. t_end = 8 us lets the release  #
+#  run its course. The cases differ only in the method and resolution. #
+#  Units: mm, us, g/cc, km/s, GPa.                                     #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 1.00            # km/s, flyer velocity
+
+ Begin Run
+  title       = burn_release
+  t_end       = 8.0             # us: the release runs its course
+  num_threads = 1
+ End Run
+
+ Begin Output                   # nothing listed here = nothing written
+  plot_dt     = 0.05            # us between snapshots: the coldest
+                                # cell over the run (TK)
+  tracer_dt   = 0.01            # us between tracer rows
+  colormap    = viridis         # for bitmap pictures
+
+  tracer = ta_al   Ta:Al        # x0 = -4.0 mm
+  tracer = impact  Al:MatX      #       0.0
+  tracer = x1      MatX@0.1     #       1.0
+  tracer = x2      MatX@0.2     #       2.0
+  tracer = x3      MatX@0.3     #       3.0
+  tracer = x4      MatX@0.4     #       4.0
+  tracer = x5      MatX@0.5     #       5.0
+  tracer = x6      MatX@0.6     #       6.0
+  tracer = x7      MatX@0.7     #       7.0
+  tracer = x8      MatX@0.8     #       8.0
+  tracer = x9      MatX@0.9     #       9.0
+ End Output
+
+ Begin Solver
+  method = AV
+  BL     = 0.1                  # linear viscosity coefficient
+  BQ     = 2.0                  # quadratic viscosity coefficient
+                                # (the equation sheet's defaults; leave
+                                # them alone unless you are studying q)
+  CFL    = 0.6
+ End Solver
+
+ # Mie-Gruneisen on the principal Hugoniot (rev-0, Eqs. 4 and 6):
+ #   Us = C0 + S1*up + (S2/C0)*up^2,   rho*Gamma = R0*G0
+ Begin Material Ta              # tantalum, backing plate
+  eos = mie_gruneisen_t         # Mie-Gruneisen, plus temperature
+  R0 = 16.65                    # g/cm^3, initial density
+  C0 = 3.40                     # km/s, Hugoniot intercept
+  S1 = 1.20                     # -,    Us-up slope
+  S2 = 0.0                      # -,    Us-up curvature (default 0)
+  G0 = 1.60                     # -,    Gruneisen coefficient
+  spall_strength = 5.0          # GPa, dynamic. Tantalum is strong in
+                                # tension (spall strengths of several
+                                # GPa are reported); at 5.0 the Ta here
+                                # holds its ~2 GPa tension, as in the
+                                # reference data. Other materials take
+                                # the default, 0.01 GPa (input/README.md)
+  CV = 1.1633418                # J/(g K), the reference's C_V for every
+                                # material: 1.35e11 erg/(g eV) / 11604.5 K/eV
+  T0 = 298.0                    # K, at R0 and e = 0 (the reference
+                                # starts at 298.0014 K: a known offset)
+ End Material
+
+ Begin Material Al              # aluminum, flyer face
+  eos = mie_gruneisen_t
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  S2 = 0.0
+  G0 = 2.00
+  CV = 1.1633418
+  T0 = 298.0
+ End Material
+
+ Begin Material MatX            # notional HE surrogate, reactive
+  eos = mie_gruneisen_t
+  R0 = 1.60
+  C0 = 2.50
+  S1 = 1.80
+  S2 = -0.10
+  G0 = 1.20
+  CV = 1.1633418
+  T0 = 298.0
+  burn = hvrb                   # History Variable Reactive Burn: the
+  PR   = 7.0                    # GPa   HVRB equation sheet's Material X
+  ZR   = 3.0                    #       set (doc/HVRB_Eqns_v8), the
+  MR   = 1.5                    #       reference's (hvrb/README.md)
+  XR   = 2.5
+  PI   = 1.0                    # GPa, threshold
+  TAU0 = 1.0                    # us
+  products = ideal_gas          # the reference's: P = (gamma - 1) rho C_V T
+  GAMMA    = 2.60
+  Q        = 4.8828             # kJ/g (= MJ/kg), heat of reaction
+ End Material
+
+
+ Begin Stack
+  resolution = 50               # zones/mm (study_av.py sets it)
+  origin     = Al:MatX          # x = 0 at the impact plane
+
+  Begin Layer
+   material = Ta
+   width    = 3.0               # mm
+   xvel     = u_fly             # km/s, + is to the right
+  End Layer
+
+  Begin Layer
+   material = Al
+   width    = 4.0
+   xvel     = u_fly
+  End Layer
+
+  Begin Layer
+   material = MatX
+   width    = 10.0
+  End Layer
+
+ End Stack
+End bitwhiz
+
+Notes (ignored by the parser):
+- Everything else is ../hvrb/g2_react.deck's: AV with BL = 0.1, BQ =
+  2.0, CFL = 0.6; Ta holds 5 GPa of tension, the others the default
+  0.01; a burning cell holds none.
+- What set C reads: the run's T range (the log), the guard count, and
+  the coldest cell over the run (the history file's TK).

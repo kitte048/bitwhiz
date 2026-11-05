@@ -65,6 +65,18 @@ docstring has the list; about 10 minutes on 2 cores; `--quick` leaves out the
 
     python3 tests/verification/compare_hvrb.py
 
+`study_av.py` measures what method AV does at a detonation and at a free
+surface, against mesh, beside RS order 2 and exact answers: G4's detonation
+and the class deck (a weak detonation on a coarse mesh, converging), a
+square shock reaching a free surface (`av_study/fs_square.deck`: AV's 6 %
+transient, converging in its integral), and a partly burnt free surface
+(`av_study/burn_release.deck`: the end cell's temperature). Its checks are
+of convergence (regression guards, set from the Nov 5 runs); the results
+are in `doc/design/av_study.md` (about 15 minutes on 2 cores, `--quick`
+about 2; needs mpmath too):
+
+    python3 tests/verification/study_av.py
+
 ## Gold-standard sets (subfolders)
 - `inert_gauges/`: the same problem, Material X inert, with 13 tracers (every
   1 mm through Material X) and density and temperature: set G1.

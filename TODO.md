@@ -37,9 +37,9 @@ Next, an afternoon each, little risk:
 Near term, verification and correctness, toward 1.3:
 5. Order of accuracy and the acoustic check as tests (section 8).
 6. Noh wall heating at the impact plane (section 8).
-7. AV at a free surface (section 8): the energy, fixed in 1.3.2; next the
-   free-surface peak and the end cell's temperature, and the spike in the
-   HVRB class deck (section 3).
+7. AV at a free surface and a detonation (sections 3 and 8): the energy
+   fixed in 1.3.2; the rest characterized Nov 5 (`doc/design/av_study.md`):
+   it converges, documented, no code change.
 8. Pictures: axis names and units, after lower case and mu in the stroke
    font (Ideas); a colormap table lookup, maybe (section 8).
 
@@ -222,7 +222,7 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       reaction zone, the burn's first-order quadrature of Phi over a long
       dt, the closure's sound speed) sets it, and does a burn time-step
       limit (Delta lam per step) close it?
-- [ ] **The AV spike in the HVRB class deck** (DK, Nov 5): with AV, the
+- [x] **The AV spike in the HVRB class deck** (DK, Nov 5): with AV, the
       pressure behind the detonation has a spike, then a thin valley,
       before the Taylor release wave; RS order 1 and order 2 do not, and
       their profiles look better (the AV behavior recalls the commercial
@@ -249,6 +249,12 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       Acceptable if they converge (D to D_CJ, the plateau gone) as the
       mesh refines; then a resolution guide in the docs (cells per
       reaction zone) and, for the class, AV against RS on this deck.
+      Done Nov 5 (`tests/verification/study_av.py`, set A;
+      `doc/design/av_study.md`): it converges. G4's D is 3.0 % fast at 25
+      zones/mm, 0.38 at 50, 0.21 at 100, 0.03 at 200 and 0.02 at 400 (RS2
+      0.00-0.02 at every mesh); the plateau is gone from 200 (28 cells
+      across the reaction zone, 0.14 mm). The guide is in
+      `input/README.md` (Material block) and the class deck's notes.
 - [x] Check that the data's HVRB inputs match the equation sheet bitwhiz
       will follow (Nov 4): the dataset's README cites `HVRB_Eqns_v3.tex`;
       the sheet's model and constants are the same in v3 and v8, frozen
@@ -486,7 +492,7 @@ decks.
       stress averaged the end cell's q with the void's, half of q as work
       by the void (-9.6e-3 with a burn at the surface). With none, AV
       conserves total energy to round-off on every deck, as RS does.
-- [ ] **AV at a free surface, what is left:** (a) the peak: on the ramp
+- [x] **AV at a free surface, what is left:** (a) the peak: on the ramp
       decks AV's free-surface velocity peaks about 9 % above RS order 2's
       (ramp_linear: 2.28 against 2.09 km/s; 0.4 % more since 1.3.2 kept
       the energy the end face leaked). The end node has half a cell's
@@ -496,7 +502,15 @@ decks.
       -968 K, its e falling 1.39 kJ/g with no -P dv of its own: AV's
       update takes the growth of the cell-centered (1/2) ubar^2 from e.
       One study with the class deck's spike (section 3): mesh, BL and BQ,
-      against RS.
+      against RS. Done Nov 5 (`study_av.py`, sets B and C;
+      `doc/design/av_study.md`): (a) against an exact square shock, AV's
+      free surface overshoots by 6 % on every mesh for about 2.5 cells'
+      transit, its integral first order and its plateau exact (RS2 0.37 %
+      the same way); the ramp's two peaks are this transient. (b) The end
+      cell, near -1000 K on every mesh (25 to 400 zones/mm), one cell of
+      vanishing mass; a compatible energy update would remove it, but
+      changes the class sheet's scheme. Both documented
+      (`input/README.md`, Solver); no code change. BL and BQ not varied.
 - [ ] **Acoustic verification as a test:** the four profile decks at 1e-4
       of their amplitude against exact linear acoustics (invariants
       p +/- Z u, impedance matching at the contact, p = 0 at the free

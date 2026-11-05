@@ -1,0 +1,60 @@
+#**********************************************************************#
+#  AV study, the free surface: a square shock reaching a free surface, #
+#  with an exact answer (../study_av.py, set B).                       #
+#                                                                      #
+#      Al flyer, 6 mm at 2.00 km/s  ->  Al target, 3 mm, at rest       #
+#                    x = 0 at the impact plane                         #
+#                                                                      #
+#  A symmetric impact: the shock's particle velocity is u_p = 1.00     #
+#  km/s exactly (P1 = 18.459 GPa, Us = 6.64 km/s). The shock reaches   #
+#  the target's free surface at about 0.45 us, and the flyer's release #
+#  not before about 1.3 us, so the free surface jumps to u_p plus the  #
+#  release along the isentrope from the shocked state, 2.0062468 km/s  #
+#  (study_av.py computes it, 40 digits), and holds there to t_end.     #
+#  The cases differ only in the method and resolution. Units: mm, us,  #
+#  g/cc, km/s, GPa.                                                    #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+
+ Begin Run
+  title = fs_square
+  t_end = 1.0                   # us: before the flyer's release arrives
+ End Run
+
+ Begin Output
+  tracer_dt = 0                 # every cycle: the jump is a few ns wide
+  tracer = fs     T@1           # the target's free surface
+  tracer = mid    T@0.5         # halfway through the target
+ End Output
+
+ Begin Solver
+  method = AV
+ End Solver
+
+ Begin Material Al              # aluminum (the ME 697 class deck's values)
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+  spall_strength = 100          # GPa: spall off (no tension here anyway)
+ End Material
+
+ Begin Stack
+  resolution = 25               # zones/mm (study_av.py sets it)
+  origin     = F:T              # x = 0 at the impact plane
+
+  Begin Layer
+   name     = F
+   material = Al
+   width    = 6.0               # mm
+   xvel     = 2.0               # km/s
+  End Layer
+
+  Begin Layer
+   name     = T
+   material = Al
+   width    = 3.0               # at rest
+  End Layer
+ End Stack
+End bitwhiz
