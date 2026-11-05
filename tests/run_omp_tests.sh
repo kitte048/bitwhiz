@@ -48,7 +48,8 @@ tests/decks/ok_method_rs.deck
 tests/decks/ok_method_rs_order1.deck
 tests/decks/ok_profile_hist.deck
 tests/decks/ok_temperature.deck
-tests/decks/ok_temperature_rs.deck"
+tests/decks/ok_temperature_rs.deck
+tests/decks/ok_hvrb.deck"
 
 # The thread counts to try: 2, 3, 4, 8, but no more than the processors.
 # (NPROCS=8 ./tests/run_omp_tests.sh overrides the count; only useful

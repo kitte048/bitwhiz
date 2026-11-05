@@ -41,12 +41,17 @@ module trace
 !                (with Claude)        some material carries T (module
 !                                     temperature); 0 in a cell without
 !                                     a temperature model
+!    11/04/26    D. E. Kittell        XRN, each tracer's extent of
+!                (with Claude)        reaction, when some material
+!                                     burns (module burn); 0 in a cell
+!                                     that does not
 !
 !**********************************************************************!
 use bits,  only: dp, int32, zero
 use shock, only: jx, ju, jrho, je, jp, jq, jc, jdam, ju_star, face_slots, &
    database, iface, icell, ilay, layer, tracer, ntrc, tracer_dt, method
 use temperature, only: temp_in_run, tk
+use burn, only: burn_in_run, lam
 use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
 implicit none
 private
@@ -77,6 +82,12 @@ public :: open_tracers, tracer_row, close_tracers, trc_open, trc_file
 ! from module temperature, not a database slot. 0 where the cell's
 ! material has no temperature model (doc/design/materials.md, decision
 ! 2). A run without T writes exactly the eight columns above, as before.
+!
+! And one more after it, XRN (lam, 0 to 1), when some material burns
+! (burn = hvrb): the cell's extent of reaction, from module burn. 0 where
+! the cell's material does not burn. (The gold-standard data numbers it
+! by material, XRN3; here the tracer's name says which.) A run without a
+! burn writes no XRN column.
 !**********************************************************************!
 integer(kind=int32), parameter :: ncol = 8
 integer(kind=int32), parameter, dimension(ncol) :: col_av = (/ &   ! AV
@@ -120,6 +131,7 @@ integer(kind=int32) :: col_slot(ncol)          ! this run's slots (the
                                                ! method's list), 0 = NaN
 logical             :: isface(ncol)            ! column is a face slot
 logical             :: with_t   = .false.      ! TK closes each block
+logical             :: with_x   = .false.      ! XRN after it (burn)
 real(kind=dp)       :: nan                     ! a quiet NaN
 
 !*** One row: 8 totals (CYCLE goes out as an integer) and ncol values
@@ -158,7 +170,9 @@ contains
    end do
    nan = ieee_value( 1.0_dp, ieee_quiet_nan )
    with_t = temp_in_run()
-   allocate( row( ntot - 1 + ( ncol + merge(1, 0, with_t) )*ntrc ) )
+   with_x = burn_in_run()
+   allocate( row( ntot - 1 + ( ncol + merge(1, 0, with_t) + &
+      merge(1, 0, with_x) )*ntrc ) )
 
    !*** Line 1, short names: a tracer's columns carry its name, e.g.
    !*** KMPS.pdv (the verification data number them instead: KMPS.4).
@@ -173,6 +187,8 @@ contains
       end do
       if ( with_t ) write( ktr, '(a)', advance='no' ) ', TK.'// &
          trim(tracer(it)%name)
+      if ( with_x ) write( ktr, '(a)', advance='no' ) ', XRN.'// &
+         trim(tracer(it)%name)
    end do
    write( ktr, '(a)' ) ''
 
@@ -186,6 +202,8 @@ contains
          write( ktr, '(a)', advance='no' ) ', '//trim(col_long(j))
       end do
       if ( with_t ) write( ktr, '(a)', advance='no' ) ', Temperature (K)'
+      if ( with_x ) write( ktr, '(a)', advance='no' ) &
+         ', Extent of reaction (-)'
    end do
    write( ktr, '(a)' ) ''
    end subroutine open_tracers
@@ -252,6 +270,10 @@ contains
          n = n + 1
          row(n) = tk( tracer(it)%kval )            ! 0: no T model there
       end if
+      if ( with_x ) then
+         n = n + 1
+         row(n) = lam( tracer(it)%kval )           ! 0: no burn there
+      end if
    end do
 
    !*** One write per row: TIME, then CYCLE as an integer, then the
@@ -310,6 +332,9 @@ contains
       '(the Riemann solution at the faces); Q is NaN (RS has no q)'
    if ( with_t ) write( ktr, '(a)' ) '# TK       : the cell''s temperature '// &
       'at TIME (eos = mie_gruneisen_t); 0 where its material has none'
+   if ( with_x ) write( ktr, '(a)' ) '# XRN      : the cell''s extent of '// &
+      'reaction, lam, at TIME (burn = hvrb); 0 where its material does '// &
+      'not burn'
    do it = 1, ntrc
       associate ( t => tracer(it) )
          write( buf, '(i0)' ) it

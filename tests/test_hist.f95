@@ -20,6 +20,10 @@ program test_hist
 !
 !       T  cycle  TK(cell)
 !
+!    and, in a run with a burn (the file has XRN), one more,
+!
+!       X  cycle  XRN(cell)
+!
 !    The last line it prints is always
 !
 !       B  <cells broken (D = 1) in the last frame>
@@ -43,6 +47,9 @@ program test_hist
 !    11/03/26    D. E. Kittell        TK (real32, cells), the 5th
 !                (with Claude)        variable when some material carries
 !                                     T: checked, and its T lines
+!    11/04/26    D. E. Kittell        XRN (real32, cells), the 6th, when
+!                (with Claude)        some material burns: 0 at t = 0,
+!                                     0 to 1, never falling; X lines
 !
 !**********************************************************************!
 use bits, only: sp, dp, int8, int32, int64, quit
@@ -66,6 +73,8 @@ real(kind=sp), allocatable :: x(:), u(:), p(:)
 integer(kind=int8), allocatable :: d(:)
 real(kind=sp), allocatable :: tk(:)             ! TK (cells), if present
 logical :: with_t                               ! the file has TK
+real(kind=sp), allocatable :: xr(:), xprev(:)   ! XRN (cells), if present
+logical :: with_x                               ! the file has XRN
 
 character(len=256) :: fname, arg
 integer(kind=int32) :: lu, ios, j, k, want_status, face, cell, nbad, nbytes
@@ -116,11 +125,15 @@ allocate( vname(nvar), vunit(nvar), vwhere(nvar), vtype(nvar), nval(nvar) )
 do j = 1, nvar
    read( lu ) vname(j), vunit(j), vwhere(j), vtype(j)
 end do
-call check( nvar == 4 .or. nvar == 5, 'nvar is 4 (or 5, with TK)' )
+call check( nvar >= 4 .and. nvar <= 6, &
+   'nvar is 4 (5 with TK, 6 with TK and XRN)' )
 if ( nbad > 0 ) call finish()
-with_t = ( nvar == 5 )
+with_t = ( nvar >= 5 )
+with_x = ( nvar == 6 )
 if ( with_t ) call check( vname(5) == 'TK' .and. vunit(5) == 'K' .and. &
    vwhere(5) == 1 .and. vtype(5) == 0, 'variable 5 is TK, K, cells, real32' )
+if ( with_x ) call check( vname(6) == 'XRN' .and. vunit(6) == '-' .and. &
+   vwhere(6) == 1 .and. vtype(6) == 0, 'variable 6 is XRN, -, cells, real32' )
 call check( vname(1) == 'XPOS' .and. vunit(1) == 'mm' .and. &
    vwhere(1) == 0 .and. vtype(1) == 0, 'variable 1 is XPOS, mm, faces, real32' )
 call check( vname(2) == 'KMPS' .and. vunit(2) == 'km/s' .and. &
@@ -168,14 +181,18 @@ call check( fsize == int(header_bytes,int64) + &
 if ( nbad > 0 ) call finish()
 
 !*** Frames.
-allocate( x(kmax+1), u(kmax+1), p(kmax), d(kmax), tk(kmax) )
+allocate( x(kmax+1), u(kmax+1), p(kmax), d(kmax), tk(kmax), xr(kmax), &
+   xprev(kmax) )
 tk = 0.0_sp
+xr = 0.0_sp
 if ( printing ) call check( face >= 1 .and. face <= kmax + 1 .and. &
    cell >= 1 .and. cell <= kmax, 'the face and cell asked for exist' )
 if ( nbad > 0 ) call finish()
 cprev = -1; tprev = -1.0_dp
 do j = 1, nframes
-   if ( with_t ) then
+   if ( with_x ) then
+      read( lu, iostat=ios ) time, cycle, frame, x, u, p, d, tk, xr
+   else if ( with_t ) then
       read( lu, iostat=ios ) time, cycle, frame, x, u, p, d, tk
    else
       read( lu, iostat=ios ) time, cycle, frame, x, u, p, d
@@ -207,8 +224,21 @@ do j = 1, nframes
    if ( printing ) write( *, '(a,i0,4(1x,es24.16e3),1x,i0)' ) 'F ', &
       cycle, time, real( x(face), dp ), real( u(face), dp ), &
       real( p(cell), dp ), int( d(cell), int32 )
+   !*** XRN: lam, 0 to 1, 0 everywhere at t = 0, and never falling
+   !*** (HVRB never runs backward: phi only grows).
+   if ( any( not_finite32(xr) ) ) call fail( 'frame '//itoa(j)// &
+      ': an XRN value is not a finite number' )
+   if ( any( xr < 0.0_sp ) .or. any( xr > 1.0_sp ) ) call fail( 'frame '// &
+      itoa(j)//': an XRN value is outside 0 to 1' )
+   if ( j == 1 .and. any( xr > 0.0_sp ) ) &
+      call fail( 'frame 1: a cell has burnt at t = 0' )
+   if ( j > 1 .and. any( xr < xprev ) ) call fail( 'frame '//itoa(j)// &
+      ': XRN fell in a cell' )
+   xprev = xr
    if ( printing .and. with_t ) write( *, '(a,i0,1x,es24.16e3)' ) 'T ', &
       cycle, real( tk(cell), dp )
+   if ( printing .and. with_x ) write( *, '(a,i0,1x,es24.16e3)' ) 'X ', &
+      cycle, real( xr(cell), dp )
    cprev = cycle; tprev = time
 end do
 close( lu )

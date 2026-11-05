@@ -116,6 +116,8 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads,method, &
    dealloc_materials,dealloc_tracers,plots_only,plot_dt,plot_every
 use temperature, only: alloc_temperature,dealloc_temperature, &
    temp_update,nt,kt,tk,etac,tmin_run,tmax_run,hot_k,hot_time,hot_x
+use burn, only: alloc_burn,dealloc_burn,burn_step,burn_cell,burn_track, &
+   lam,qk,phi,nb,kb,first_k,first_time,first_x,lam_max
 use deck, only: read_deck,write_resolved_deck,fmt_real
 use pics, only: make_pictures
 use eos, only: mg_eos,eos_message,eos_ok
@@ -193,6 +195,14 @@ real(kind=dp) :: tens_time,tens_x       ! first tensile cell: t, x
 integer(kind=int32) :: kdt,kdt_used     ! cell that set dt (0 = t_end)
 integer(kind=int32) :: kl               ! one thread's dt cell
 integer(kind=int32) :: ktens,kbad       ! first tensile / EOS-failed cell
+integer(kind=int32) :: kburn            ! first cell the burn's cold-curve
+                                        ! step failed in (module burn)
+integer(kind=int32) :: kc               ! a cell's k, in the time loop
+integer(kind=int32) :: ifl              ! a burning cell's c rule (hvrb)
+integer(kind=int32) :: nfall            ! burning cell-steps whose c came
+                                        ! from a guard (module hvrb)
+integer(kind=int32) :: nfall_run        ! ... over the whole run
+logical :: burning                      ! some material burns (module burn)
 integer(kind=int32) :: tens_k           ! first tensile cell, 0 = none
 integer(kind=int32) :: tens_cycle       ! ... and its cycle
 integer(kind=int32) :: nloop            ! threads in the time loop
@@ -237,6 +247,7 @@ logical :: running = .false.            ! the time loop has started
 215 format(3x,a,t40,': ',i0,' (',a,'), t =',f9.4,' us, x =',f9.4,' mm')
 216 format(3x,a,t40,': ',f15.6)          ! label : a time, us
 217 format(3x,a,t40,': ',f15.1)          ! label : wall time per cycle, us
+218 format(3x,a,t40,': ',f15.6)          ! label : a number
 
 !*** Start the clocks. Two different times are kept, because with
 !*** OpenMP they tell different stories:
@@ -753,6 +764,19 @@ if ( kerr > 0 ) then
    call quit( 1 )
 end if
 
+!*** 5f. The burn (module burn), only if some material burns (burn =
+!*** hvrb): each such cell's phi and lam, 0 at t = 0 (checked in 6),
+!*** and its constants, by cell. After 5e: a burning material carries T.
+call alloc_burn( kerr )
+if ( kerr > 0 ) then
+   write( kpt6, 202 ) 'bitwhiz: cannot allocate the burn state '// &
+      '(out of memory?)'
+   call close_outputs( 'could not allocate the burn state' )
+   call quit( 1 )
+end if
+burning   = nb > 0
+nfall_run = 0
+
 !*** Report.
 write( kpt6, 202 ) repeat('=',56)
 write( kpt6, 202 ) ' 5. Data arrays'
@@ -961,6 +985,16 @@ end do
 if ( nz > 0 ) call setup_fail( 'T is not T0 at the reference state in '// &
    itoa(nz)//' cells' )
 
+! (8) The burn, in the cells that can burn: nothing burnt at t = 0
+!     (phi = lam = 0 exactly), so a cell starts as the inert material.
+nz = 0
+do j = 1, nb
+   k = kb(j)
+   if ( abs( phi(k) ) > zero .or. abs( lam(k) ) > zero ) nz = nz + 1
+end do
+if ( nz > 0 ) call setup_fail( 'the burn has started at t = 0 in '// &
+   itoa(nz)//' cells' )
+
 if ( nbad > 0 ) then
    write( kpt6, '(1x,i0,a)' ) nbad, ' setup check(s) failed; stopping. '// &
       'This is a bug in bitwhiz, not in the deck.'
@@ -1120,6 +1154,8 @@ time_loop: do while ( .not. done )
    nspall = 0                             ! cells that broke this cycle
    pbmin  = zero                          ! deepest pull at a break
    kbad  = huge(kbad)                     ! first cell the EOS rejects
+   kburn = huge(kburn)                    ! ... the burn's cold step
+   nfall = 0                              ! guard sound speeds (hvrb)
 
    if ( method == 'RS' ) then
       call rs_region()                    ! method RS (contained, below)
@@ -1128,9 +1164,10 @@ time_loop: do while ( .not. done )
    !$OMP PARALLEL IF( use_team ) DEFAULT(NONE) &
    !$OMP    SHARED( database, imax, dt, dth, BL, BQ, dtcfl, kdt, &
    !$OMP            pmax, pmin, ktens, kbad, kvoid, nvoid, kspall, &
-   !$OMP            nspall, pbmin ) &
+   !$OMP            nspall, pbmin, burning, kburn, nfall, lam ) &
    !$OMP    PRIVATE( i, unew, xnew, rnew, enew, pnew, cnew, qnew, &
-   !$OMP             dtk, dnew, tens, spl, pbrk, isvoid, ierr, dtl, kl )
+   !$OMP             dtk, dnew, tens, spl, pbrk, isvoid, ierr, dtl, kl, &
+   !$OMP             kc, ifl )
 
    !*** Loop 1, faces (even i): u(n+1/2), then x(n+1). Steps a, b.
    !$OMP DO
@@ -1154,6 +1191,12 @@ time_loop: do while ( .not. done )
    end do step_cells
    !$OMP END DO
 
+   !*** Loop 2b, the cells that can burn (module burn; none without a
+   !*** burn): e_S to the new volume, then phi and lam over dt from P^n,
+   !*** still in the database (the sheet's "Adding Burn to One Cycle").
+   !*** An orphaned OMP DO in burn_step, on this team.
+   if ( burning ) call burn_step( dt, kburn )
+
    !*** Loop 3, cells: P (with the spall rule), c, q, D and dt_k. Steps
    !*** d, e. cell_state decides whether a cell holds its tension or
    !*** breaks (see cell_state); the loop records the first tensile and
@@ -1162,10 +1205,23 @@ time_loop: do while ( .not. done )
    dtl = huge(one)
    kl  = 0
    !$OMP DO REDUCTION(min: ktens, kbad, kvoid, kspall, pmin, pbmin) &
-   !$OMP    REDUCTION(max: pmax) REDUCTION(+: nvoid, nspall)
+   !$OMP    REDUCTION(max: pmax) REDUCTION(+: nvoid, nspall, nfall)
    step_states: do i = 3, imax-2, 2
-      call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
-         dtk, dnew, tens, spl, pbrk, isvoid, ierr )
+      !*** A cell that has started to burn (lam > 0) is given its burn
+      !*** (module av: P and c from the HVRB closure); any other, a cell
+      !*** at lam = 0 included, is called exactly as without a burn.
+      kc = 0
+      if ( burning ) then
+         if ( lam(kcell(i)) > zero ) kc = kcell(i)
+      end if
+      if ( kc > 0 ) then
+         call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
+            dtk, dnew, tens, spl, pbrk, isvoid, ierr, burn_cell(kc), ifl )
+         if ( ifl /= 0 ) nfall = nfall + 1
+      else
+         call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
+            dtk, dnew, tens, spl, pbrk, isvoid, ierr )
+      end if
       if ( ierr /= eos_ok ) then          ! reported after the region
          kbad = min( kbad, kcell(i) )
          cycle step_states
@@ -1206,12 +1262,34 @@ time_loop: do while ( .not. done )
 
    end if                                 ! method AV / RS
 
+   !*** The burn's cold-curve step (module burn) evaluates Pi between
+   !*** two volumes the hydro accepted, so it can not fail; if it ever
+   !*** does, it stops the run as the cold curve's own failure would.
+   if ( kburn < huge(kburn) ) then
+      write( kpt6, '(1x,a,i0,3a,i0)' ) 'bitwhiz: the cold curve '// &
+         '(burn) failed in cell ', kburn, ' (layer ', &
+         trim(layer(ilay(icell(kburn)))%name), ') on cycle ', ncycle+1
+      call close_outputs( 'cold curve failure (burn) in cell '// &
+         itoa(kburn) )
+      call quit( 1 )
+   end if
+   nfall_run = nfall_run + nfall
+
    !*** An EOS failure stops the run, naming the first cell it hit.
    if ( kbad < huge(kbad) ) then
       i = icell( kbad )
       if ( method == 'RS' ) then
          call rs_state( database(:,i-2:i+2), pnew, cnew, dtk, dnew, &
             tens, spl, pbrk, isvoid, ierr )
+      else if ( burning ) then              ! as the loop called it
+         if ( lam(kbad) > zero ) then
+            call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, &
+               qnew, dtk, dnew, tens, spl, pbrk, isvoid, ierr, &
+               burn_cell(kbad), ifl )
+         else
+            call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, &
+               qnew, dtk, dnew, tens, spl, pbrk, isvoid, ierr )
+         end if
       else
          call cell_state( database(:,i-2:i+2), BL, BQ, pnew, cnew, qnew, &
             dtk, dnew, tens, spl, pbrk, isvoid, ierr )
@@ -1297,7 +1375,12 @@ time_loop: do while ( .not. done )
    !*** evaluates Pi with the EOS at points between two volumes the
    !*** hydro accepted, so it can not fail; if it ever does, it stops
    !*** the run as an EOS failure would.
-   call temp_update( use_team, time, ncycle, kbad )
+   if ( burning ) then                    ! a burning cell's T: vartheta/C_V
+      call temp_update( use_team, time, ncycle, kbad, lam, qk )
+   else
+      call temp_update( use_team, time, ncycle, kbad )
+   end if
+   if ( burning ) call burn_track( time, ncycle )
    if ( kbad < huge(kbad) ) then
       write( kpt6, '(1x,a,i0,3a,i0)' ) 'bitwhiz: the cold curve '// &
          '(temperature) failed in cell ', kbad, ' (layer ', &
@@ -1372,6 +1455,23 @@ if ( nt > 0 ) then
    write( kpt6, 215 ) 'Hottest intact cell', hot_k, &
       trim(layer(ilay(icell(hot_k)))%name), hot_time, hot_x
 end if
+if ( burning ) then
+   if ( first_k > 0 ) then
+      write( kpt6, 215 ) 'First cell to react', first_k, &
+         trim(layer(ilay(icell(first_k)))%name), first_time, first_x
+      do l = 1, nlay
+         if ( layer(l)%burn == 0 ) cycle
+         nz = count( lam(layer(l)%kfirst:layer(l)%klast) >= one )
+         write( kpt6, 203 ) 'Cells burnt out, '//trim(layer(l)%name), nz, &
+            'of '//itoa(layer(l)%klast - layer(l)%kfirst + 1)
+      end do
+      write( kpt6, 218 ) 'Largest lam', lam_max
+   else
+      write( kpt6, 204 ) 'First cell to react', 'none'
+   end if
+   if ( nfall_run > 0 ) write( kpt6, 205 ) &
+      'Sound speed by a guard (cell-steps)', nfall_run
+end if
 call system_clock( tick1 )
 write( kpt6, 217 ) 'Wall time per cycle (us)', &
    1.0e6_dp*real(tick1-tick0,dp)/real(rate,dp)/real(max(ncycle,1),dp)
@@ -1432,6 +1532,7 @@ contains
    implicit none
    integer(kind=int32) :: kfree
    kfree = 0
+   call dealloc_burn( kfree )
    call dealloc_temperature( kfree )
    call dealloc_database( kfree )
    call dealloc_tracers( kfree )

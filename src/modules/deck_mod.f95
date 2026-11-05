@@ -196,6 +196,16 @@ integer(kind=int32) :: line_cv = 0, line_t0 = 0    ! the Material block's
                                                    ! CV and T0 (0 = not
                                                    ! given, or not valid)
 logical             :: bad_eos = .false.           ! its eos was not valid
+!*** The burn's and the products' keys in the Material block (doc/design/
+!*** materials.md, phase 3): where burn and products were given, and
+!*** each constant's line (0 = not given, or not valid), in the order
+!*** of burn_keys; checked when the block closes.
+integer(kind=int32), parameter :: nburnkey = 8     ! 6 HVRB, 2 products
+character(len=5), parameter, dimension(nburnkey) :: burn_keys = (/ &
+   'PR   ', 'ZR   ', 'MR   ', 'XR   ', 'PI   ', 'TAU0 ', 'GAMMA', 'Q    ' /)
+integer(kind=int32) :: line_burn = 0, line_prod = 0
+integer(kind=int32) :: line_bk(nburnkey) = 0
+logical             :: bad_burn = .false., bad_prod = .false.
 integer(kind=int32) :: imat_now = 0, ilay_now = 0  ! block being filled
 logical             :: tend_given = .false.        ! t_end appeared
 
@@ -778,10 +788,16 @@ contains
                'eos = mie_gruneisen, the default, which has no temperature)')
          end if
       end associate
+      call close_burn( lb )
       imat_now = 0
       line_cv  = 0
       line_t0  = 0
       bad_eos  = .false.
+      line_burn = 0
+      line_prod = 0
+      line_bk   = 0
+      bad_burn  = .false.
+      bad_prod  = .false.
    case (bk_layer)
       if (.not. seen('material')) call missing(lb, 'material', 'Layer')
       if (.not. seen('width'))    call missing(lb, 'width', 'Layer')
@@ -791,6 +807,56 @@ contains
    end select
    depth = depth - 1
    end subroutine close_block
+
+   !*** A Material block's burn and products, at its end (doc/design/
+   !*** materials.md, phase 3): a burn needs eos = mie_gruneisen_t and
+   !*** a products EOS (no default: a deck that burns names them); each
+   !*** of the burn's and the products' constants is required with it,
+   !*** and is an error without it.
+   subroutine close_burn(lb)
+   implicit none
+   integer(kind=int32), intent(in) :: lb       ! the block's Begin line
+   integer(kind=int32) :: j
+   character(len=48) :: who                    ! 'Material ' and a name
+   associate (m => material(imat_now))
+      who = 'Material '//trim(m%name)
+      if (m%burn == burn_hvrb) then
+         if (.not. bad_eos .and. m%eos /= eos_mie_gruneisen_t) &
+            call deck_error(line_burn, 'burn = hvrb needs eos = '// &
+            'mie_gruneisen_t (with CV and T0): its closure mixes the '// &
+            'solid and the products at one temperature ('//trim(who)//')')
+         if (m%products == products_none .and. .not. bad_prod) &
+            call missing(lb, 'products', trim(who)//' with burn = hvrb (the '// &
+            'products'' EOS has no default: products = ideal_gas)')
+         do j = 1, 6
+            if (line_bk(j) == 0 .and. .not. seen(lower(trim(burn_keys(j))))) &
+               call missing(lb, trim(burn_keys(j)), trim(who)//' with burn = hvrb')
+         end do
+      else if (.not. bad_burn) then
+         if (line_prod > 0) call deck_error(line_prod, 'products is only '// &
+            'for a material that burns (burn = hvrb); '//trim(who)// &
+            ' has no burn')
+         do j = 1, 6
+            if (line_bk(j) > 0) call deck_error(line_bk(j), &
+               trim(burn_keys(j))//' is only for burn = hvrb ('//trim(who)// &
+               ' has no burn)')
+         end do
+      end if
+      if (m%products == products_ideal_gas) then
+         do j = 7, nburnkey
+            if (line_bk(j) == 0 .and. .not. seen(lower(trim(burn_keys(j))))) &
+               call missing(lb, trim(burn_keys(j)), trim(who)// &
+               ' with products = ideal_gas')
+         end do
+      else if (.not. bad_prod) then
+         do j = 7, nburnkey
+            if (line_bk(j) > 0) call deck_error(line_bk(j), &
+               trim(burn_keys(j))//' is only for products = ideal_gas ('// &
+               trim(who)//' has no products)')
+         end do
+      end if
+   end associate
+   end subroutine close_burn
 
    !*** True if key k (lower case) appeared in the innermost block.
    logical function seen(k)
@@ -1212,9 +1278,67 @@ contains
          material(imat_now)%T0 = x
          line_t0 = ln
       end if
+   case ('burn')
+      ! The burn (doc/design/materials.md, phase 3). Its needs (eos,
+      ! products, its constants) are checked when the block closes.
+      line_burn = ln
+      select case (lower(val))
+      case ('hvrb')
+         material(imat_now)%burn = burn_hvrb
+      case default
+         bad_burn = .true.
+         call deck_error(ln, 'burn = '//trim(val)//' is not one of '// &
+            'hvrb (History Variable Reactive Burn)')
+      end select
+   case ('products')
+      ! The products' EOS: no default, so a deck that burns says it.
+      ! HVRB is usually paired with a JWL or tabular products EOS; the
+      ! ideal gas is the first one here.
+      line_prod = ln
+      select case (lower(val))
+      case ('ideal_gas')
+         material(imat_now)%products = products_ideal_gas
+      case default
+         bad_prod = .true.
+         call deck_error(ln, 'products = '//trim(val)//' is not one of '// &
+            'ideal_gas (P = (GAMMA - 1) rho C_V T)')
+      end select
+   case ('pr', 'zr', 'mr', 'xr', 'pi', 'tau0', 'gamma', 'q')
+      ! PR, PI in GPa; TAU0 in us; Q in kJ/g (= MJ/kg). Whether this
+      ! material's burn and products take them: at the block's end.
+      call get_real(ln, key, val, x, ok)
+      if (.not. ok) return
+      select case (k)
+      case ('pr', 'mr', 'xr', 'tau0')
+         call positive(ln, key, x, ok)
+      case ('zr', 'pi', 'q')
+         if (x < zero) then
+            call deck_error(ln, trim(key)//' must be 0 or more')
+            ok = .false.
+         end if
+      case ('gamma')
+         if (.not. ( x > one )) then
+            call deck_error(ln, 'GAMMA must be greater than 1')
+            ok = .false.
+         end if
+      end select
+      if (.not. ok) return
+      associate (m => material(imat_now))
+         select case (k)
+         case ('pr');    m%PR    = x; line_bk(1) = ln
+         case ('zr');    m%ZR    = x; line_bk(2) = ln
+         case ('mr');    m%MR    = x; line_bk(3) = ln
+         case ('xr');    m%XR    = x; line_bk(4) = ln
+         case ('pi');    m%PI    = x; line_bk(5) = ln
+         case ('tau0');  m%TAU0  = x; line_bk(6) = ln
+         case ('gamma'); m%GAMMA = x; line_bk(7) = ln
+         case ('q');     m%Q     = x; line_bk(8) = ln
+         end select
+      end associate
    case default
       call unknown_key(ln, key, 'in a Material block', &
-         'eos, R0, C0, S1, S2, G0, spall_strength, CV, T0')
+         'eos, R0, C0, S1, S2, G0, spall_strength, CV, T0, burn, PR, '// &
+         'ZR, MR, XR, PI, TAU0, products, GAMMA, Q')
    end select
    end subroutine key_material
 
@@ -1432,7 +1556,9 @@ contains
       b = 'the Output block'
    case ('method', 'bl', 'bq', 'cfl', 'order')
       b = 'the Solver block'
-   case ('eos', 'r0', 'c0', 's1', 's2', 'g0', 'spall_strength', 'cv', 't0')
+   case ('eos', 'r0', 'c0', 's1', 's2', 'g0', 'spall_strength', 'cv', 't0', &
+         'burn', 'products', 'pr', 'zr', 'mr', 'xr', 'pi', 'tau0', 'gamma', &
+         'q')
       b = 'a Material block'
    case ('origin', 'x_left')
       b = 'the Stack block'
@@ -1485,7 +1611,35 @@ contains
          layer(l)%cv = material(im)%CV/1000.0_dp   ! J/(g K) to kJ/(g K)
          layer(l)%T0 = material(im)%T0
       end if
+      layer(l)%burn     = material(im)%burn
+      layer(l)%products = material(im)%products
+      if (material(im)%burn == burn_hvrb) then
+         layer(l)%PR    = material(im)%PR
+         layer(l)%ZR    = material(im)%ZR
+         layer(l)%MR    = material(im)%MR
+         layer(l)%XR    = material(im)%XR
+         layer(l)%PI    = material(im)%PI
+         layer(l)%TAU0  = material(im)%TAU0
+      end if
+      if (material(im)%products == products_ideal_gas) then
+         layer(l)%GAMMA = material(im)%GAMMA
+         layer(l)%Q     = material(im)%Q
+      end if
    end do
+   if (nerr > 0) return
+
+   !*** 1a. A burn runs with method AV for now. Method RS takes it next
+   !***     (doc/design/materials.md, phase 3, step 4: the reaction's
+   !***     source in its predictor); until then it is not half done.
+   if (method == 'RS') then
+      do im = 1, nmat
+         if (material(im)%burn /= burn_none .and. material(im)%nused > 0) &
+            call deck_error(material(im)%line, 'Material '// &
+            trim(material(im)%name)//' burns (burn = hvrb), and a burn '// &
+            'is not yet available with method = RS: use method = AV '// &
+            '(RS comes next, doc/design/materials.md, phase 3)')
+      end do
+   end if
    if (nerr > 0) return
 
    !*** 1b. xvel_amplitude scales a shape, so it needs one.
@@ -1906,6 +2060,22 @@ contains
          if (m%eos == eos_mie_gruneisen_t) then
             call kv(lu, 2, 'CV', fmt_real(m%CV), 'J/(g K), constant')
             call kv(lu, 2, 'T0', fmt_real(m%T0), 'K, at R0 and e = 0')
+         end if
+         if (m%burn == burn_hvrb) then
+            call kv(lu, 2, 'burn', trim(burn_names(m%burn)), &
+               'History Variable Reactive Burn')
+            call kv(lu, 2, 'PR', fmt_real(m%PR), 'GPa, reference pressure')
+            call kv(lu, 2, 'ZR', fmt_real(m%ZR), 'pressure exponent')
+            call kv(lu, 2, 'MR', fmt_real(m%MR), 'delay exponent')
+            call kv(lu, 2, 'XR', fmt_real(m%XR), 'completion exponent')
+            call kv(lu, 2, 'PI', fmt_real(m%PI), 'GPa, threshold')
+            call kv(lu, 2, 'TAU0', fmt_real(m%TAU0), 'us, time constant')
+         end if
+         if (m%products == products_ideal_gas) then
+            call kv(lu, 2, 'products', trim(products_names(m%products)), &
+               'ideal gas (HVRB is usually paired with JWL)')
+            call kv(lu, 2, 'GAMMA', fmt_real(m%GAMMA))
+            call kv(lu, 2, 'Q', fmt_real(m%Q), 'kJ/g, heat of reaction')
          end if
          write(lu,'(a)') ' End Material'
       end associate

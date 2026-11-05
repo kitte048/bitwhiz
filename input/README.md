@@ -158,6 +158,10 @@ Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
 | `spall_strength` | GPa | 0.01 |
 | `CV` | J/(g K) | required with `mie_gruneisen_t`; not allowed without it |
 | `T0` | K | required with `mie_gruneisen_t`; not allowed without it |
+| `burn` | `hvrb` | none (inert) |
+| `PR`, `ZR`, `MR`, `XR`, `PI`, `TAU0` | GPa, -, -, -, GPa, us | each required with `burn = hvrb`; not allowed without it |
+| `products` | `ideal_gas` | none: required with `burn` (no default) |
+| `GAMMA`, `Q` | -, kJ/g (= MJ/kg) | each required with `products = ideal_gas`; not allowed without it |
 
 A material that no layer uses gets a warning, not an error.
 
@@ -182,6 +186,45 @@ gold-standard data's values for every material:
     eos = mie_gruneisen_t
     CV  = 1.1633418          # J/(g K): 1.35e11 erg/(g eV) / 11604.5 K/eV
     T0  = 298.0              # K
+
+**Burning (`burn = hvrb`).** The History Variable Reactive Burn of the HVRB
+equation sheet (`doc/HVRB_Eqns_v8`): the material above is the unreacted solid
+(so it needs `eos = mie_gruneisen_t`), the `products` are the reaction's gas,
+and each cell carries its extent of reaction, lam, from 0 (unreacted) to 1
+(burnt out). The rate law, a pressure history:
+
+    Phi = (1/TAU0) ((P - PI)/PR)^ZR    while P > PI (else 0)
+    phi = integral of Phi dt,  lam = 1 - (1 - phi^MR/XR)^XR,  to lam = 1
+
+and the mixture at one density and one temperature (one `CV` for both
+phases), `P = (1 - lam) P_solid + lam P_gas`, with the ideal-gas products
+`P_gas = (GAMMA - 1) rho CV T` and `Q` the heat of reaction (`products =
+ideal_gas`; HVRB is usually paired with a JWL or tabular products EOS, and
+the ideal gas is the first one here: the deck says which, as `products` has
+no default). `ZR = 0` is a burn on a clock: above PI, `Phi = 1/TAU0` and PR
+has no effect; with `MR = 1` it is a d^n law, lam = 1 - (1 - t/t_b)^(3/n) with
+`XR = 3/n` and burn-out at `t_b = XR TAU0` (the D^2 law: `XR = 1.5`). A cell
+that has started to burn holds no tension (P >= 0: the gas fills the cracks of
+a reacting solid) and never spalls; a cell at lam = 0 is the inert material,
+bit for bit. Burning changes lam at fixed rho and e, so energy is conserved
+(the heartbeat's energy error is the check). The tracer file gets `XRN`
+(lam) per tracer, the history file an `XRN` variable, and the run log the
+first cell to react and the cells burnt out. Method AV only for now (RS next).
+Example, the HVRB sheet's Material X set (`doc/design/materials.md`, phase 3):
+
+    eos = mie_gruneisen_t
+    CV  = 1.1633418          # J/(g K), both phases
+    T0  = 298.0
+    burn = hvrb
+    PR = 7.0                 # GPa
+    ZR = 3.0
+    MR = 1.5
+    XR = 2.5
+    PI = 1.0                 # GPa
+    TAU0 = 1.0               # us
+    products = ideal_gas
+    GAMMA = 2.60
+    Q = 4.8828               # kJ/g
 
 **Expansion and spall (bitwhiz's own rules).** U_S-u_p data exist only in
 compression. For expansion (V > V0) bitwhiz continues the Hugoniot form with a
@@ -358,7 +401,9 @@ Written in the folder the run starts from, laid out like the verification data
     kJ/g), `Q` (artificial viscosity, GPa), `CS` (sound speed, km/s), `DMG`
     (damage: 0 intact, 1 broken), and, when some material carries T
     (`eos = mie_gruneisen_t`), `TK` (temperature, K; 0 for a tracer whose
-    cell's material has no temperature model).
+    cell's material has no temperature model), and, when some material burns
+    (`burn = hvrb`), `XRN` (extent of reaction, lam, 0 to 1; 0 where the
+    cell's material does not burn).
 - **When:** cycle 0, then the first cycle at or after each multiple of
   `tracer_dt`, at that cycle's own time (nothing is interpolated), and always
   the last cycle. `tracer_dt = 0` writes every cycle: about 1 KB per row with
@@ -429,8 +474,10 @@ fraction of a second.
   When some material carries T (`eos = mie_gruneisen_t`), a fifth variable
   follows: `TK`, K, cells, real32, k_max values (0 in a cell whose material
   has no temperature model). A run without T writes the four, byte for byte
-  as before.
-- **Size:** 13 k_max + 24 bytes per frame (17 k_max + 24 with `TK`). The
+  as before. When some material burns (`burn = hvrb`), a sixth follows it:
+  `XRN`, -, cells, real32 (lam, 0 to 1; 0 in a cell that does not burn).
+- **Size:** 13 k_max + 24 bytes per frame (17 k_max + 24 with `TK`, 21
+  k_max + 24 with `XRN` too). The
   class problem (945 cells, `plot_dt = 0.01` to 5 us, 501 frames) writes
   6.2 MB.
 
@@ -713,6 +760,7 @@ so the heartbeat, tracer and history files it reads are never touched.
 | `xvel_profile`, `xvel_amplitude` | `layer(l)%prof_name`, `prof_np`, `prof_par`; `xamp`, `have_amp` |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
 | `Material` keys `eos`, `CV`, `T0` | `material(m)%eos` (`eos_mie_gruneisen`, `eos_mie_gruneisen_t`), `CV` (J/(g K)), `T0`; copied into `layer(l)%eos`, `cv` (kJ/(g K): `CV`/1000), `T0`, then into module `temperature` (`src/modules/temp_mod.f95`), cell by cell |
+| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`), the constants by their names; copied into `layer(l)%...`, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell; the physics in module `hvrb` (`hvrb_mod.f95`) and `products` (`prod_mod.f95`) |
 | `num_threads` | `nproc` |
 | `Run`, `Output`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `plot_dt`, `colormap`, `CFL`, `stack_resolution`, ...) |
 | `tracer` | `tracer(n)%...`: name, location, `x0`, `kface`, `w`, `kcell` |

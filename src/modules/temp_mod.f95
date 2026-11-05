@@ -37,6 +37,12 @@ module temperature
 !      ====       ==========          =====================
 !    11/03/26    D. E. Kittell        Original code
 !                (with Claude)
+!    11/04/26    D. E. Kittell        For the burn (module burn): one
+!                (with Claude)        cell's cold curve moved on its
+!                                     own (temp_cold_cell), before the
+!                                     pressure that needs it; T of a
+!                                     burning cell, vartheta/C_V
+!                                     (temp_update's lam and q)
 !
 !**********************************************************************!
 !
@@ -114,9 +120,9 @@ implicit none
 private
 
 public :: temp_in_run, alloc_temperature, dealloc_temperature, &
-   temp_update, cold_step, temp_of, eta_of
+   temp_update, cold_step, temp_of, eta_of, temp_cold_cell
 public :: tk, ec, etac, nt, kt, tmin_run, tmax_run, hot_k, hot_time, &
-   hot_cycle, hot_x
+   hot_cycle, hot_x, cv, t0
 
 !**********************************************************************!
 ! Data dictionary: the quadrature.
@@ -149,8 +155,8 @@ real(kind=dp), parameter :: eta_far  = -1.0_dp  ! V = 2 V0: compressed
 real(kind=dp), allocatable, protected :: tk(:)    ! T, K
 real(kind=dp), allocatable, protected :: ec(:)    ! e_c, kJ/g, at etac
 real(kind=dp), allocatable, protected :: etac(:)  ! the eta e_c holds at
-real(kind=dp), allocatable            :: cv(:)    ! C_V, kJ/(g K)
-real(kind=dp), allocatable            :: t0(:)    ! T0, K
+real(kind=dp), allocatable, protected :: cv(:)    ! C_V, kJ/(g K)
+real(kind=dp), allocatable, protected :: t0(:)    ! T0, K
 integer(kind=int32), allocatable, protected :: kt(:)  ! the cells with
                                                   ! T, left to right
 integer(kind=int32), protected :: nt = 0          ! how many
@@ -370,19 +376,24 @@ contains
    ! number of threads. It runs on the time loop's team when that is  !
    ! one (use_team; maincode, section 7).                             !
    !******************************************************************!
-   subroutine temp_update( use_team, time, ncycle, kbad )
+   subroutine temp_update( use_team, time, ncycle, kbad, lam, q )
    implicit none
    logical, intent(in) :: use_team               ! kmax >= omp_min_zones
    real(kind=dp), intent(in) :: time             ! us, after the step
    integer(kind=int32), intent(in) :: ncycle     ! cycle, after the step
    integer(kind=int32), intent(out) :: kbad      ! first failure, or huge
+   real(kind=dp), intent(in), optional :: lam(:) ! by cell: a burn's lam
+   real(kind=dp), intent(in), optional :: q(:)   ! ... and Q, kJ/g (both
+                                                 ! or neither; NOTE below)
    integer(kind=int32) :: n, k, i, ierr
    real(kind=dp) :: eta, ec2
+   logical :: burns
 
    kbad = huge(kbad)
    if ( nt == 0 ) return
+   burns = present( lam ) .and. present( q )
    !$OMP PARALLEL DO IF( use_team ) DEFAULT(NONE) &
-   !$OMP    SHARED( nt, kt, database, tk, ec, etac, cv, t0 ) &
+   !$OMP    SHARED( nt, kt, database, tk, ec, etac, cv, t0, burns, lam, q ) &
    !$OMP    PRIVATE( n, k, i, eta, ec2, ierr ) REDUCTION(min: kbad)
    do n = 1, nt
       k   = kt(n)
@@ -399,10 +410,43 @@ contains
       etac(k) = eta
       tk(k)   = temp_of( eta, database(je,i), ec2, database(jg0,i), &
          cv(k), t0(k) )
+      !***NOTE: a burning cell (lam > 0, module burn) is at vartheta/C_V,
+      ! vartheta = e - (1 - lam)(e_c - C_V T_S) + lam Q (module hvrb):
+      ! the inert T above plus lam (e_c - C_V T_S + Q)/C_V. At lam = 0
+      ! nothing is added, so an unburnt cell's T is the inert model's,
+      ! bit for bit.
+      if ( burns ) then
+         if ( lam(k) > zero ) tk(k) = tk(k) + lam(k)*( ec2 - &
+            cv(k)*t0(k)*exp( database(jg0,i)*eta ) + q(k) )/cv(k)
+      end if
    end do
    !$OMP END PARALLEL DO
    if ( kbad == huge(kbad) ) call track( time, ncycle, .false. )
    end subroutine temp_update
+
+   !******************************************************************!
+   ! One cell's cold energy, moved to its eta now, for a caller that  !
+   ! needs it before temp_update (module burn: the HVRB closure needs !
+   ! e_c at the new volume before the pressure). temp_update then     !
+   ! finds the cell where it left it: a step of zero length, which    !
+   ! leaves e_c bit for bit (exp(0) = 1, an integral over nothing),   !
+   ! so the order changes no number. Cell k only: any number of       !
+   ! threads may call it, each for its own cells. ierr as cold_step.  !
+   !******************************************************************!
+   subroutine temp_cold_cell( k, ierr )
+   implicit none
+   integer(kind=int32), intent(in)  :: k         ! cell, 1 to kmax
+   integer(kind=int32), intent(out) :: ierr      ! eos_ok, or why not
+   integer(kind=int32) :: i
+   real(kind=dp) :: eta, ec2
+   i   = icell( k )
+   eta = eta_of( database(jrho,i), database(jr0,i) )
+   call cold_step( etac(k), eta, ec(k), database(jr0,i), database(jc0,i), &
+      database(js1,i), database(js2,i), database(jg0,i), ec2, ierr )
+   if ( ierr /= eos_ok ) return
+   ec(k)   = ec2
+   etac(k) = eta
+   end subroutine temp_cold_cell
 
    !******************************************************************!
    ! Bring the run's T range up to date with this cycle (first = the  !

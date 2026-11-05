@@ -50,6 +50,9 @@ module hvrb
 !      ====       ==========          =====================
 !    11/04/26    D. E. Kittell        Original code
 !                (with Claude)
+!    11/04/26    D. E. Kittell        burn_cell_t, what the hydro's
+!                (with Claude)        cell routines need of a burning
+!                                     cell (module burn fills it)
 !
 !**********************************************************************!
 !
@@ -133,6 +136,20 @@ private
 
 public :: hvrb_phi_end, hvrb_lambda, hvrb_rate, hvrb_step, hvrb_state
 public :: hvrb_c_exact, hvrb_c_mass, hvrb_c_gas
+public :: burn_cell_t
+
+!*** What a burning cell's pressure needs beyond its database slots (its
+!*** rho, e and Mie-Gruneisen constants): handed to the hydro's cell
+!*** routines (module av, cell_pressure) by module burn, which keeps the
+!*** cells' burn state. A value, not state: this module still keeps none.
+type :: burn_cell_t
+   real(kind=dp) :: lam   = zero   ! extent of reaction, 0 to 1
+   real(kind=dp) :: es    = zero   ! e_S at the cell's rho, kJ/g
+   real(kind=dp) :: cv    = zero   ! C_V, kJ/(g K)
+   real(kind=dp) :: T0    = zero   ! K
+   real(kind=dp) :: gamma = zero   ! the products'
+   real(kind=dp) :: Q     = zero   ! kJ/g
+end type burn_cell_t
 
 !*** The sound speed's flag (ifb): which rule gave c (THE SOUND SPEED).
 integer(kind=int32), parameter :: hvrb_c_exact = 0

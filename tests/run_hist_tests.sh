@@ -30,6 +30,10 @@
 #   - with materials that carry T (eos = mie_gruneisen_t), the file    #
 #     has TK after DMG, and a tracer's TK in it is the tracer file's,  #
 #     to single precision, 298 K (T0) at t = 0;                        #
+#   - with a burn (burn = hvrb), the file has XRN after TK (0 at t = #
+#     0, 0 to 1, never falling), a tracer's XRN in it is the tracer    #
+#     file's; and a burn that never starts (PI out of reach) gives the #
+#     inert run's heartbeat, tracer rows and frames, bit for bit;      #
 #   - a run stopped by cycle_max ends its file with status 2 and a     #
 #     frame at that cycle;                                             #
 #   - a deck with no snapshot keys writes no history file;             #
@@ -85,7 +89,7 @@ CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 . "$(dirname "$0")/report.sh"
-plan 23 "history tests"
+plan 26 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -457,6 +461,84 @@ else
    else
       pass $c
    fi
+fi
+
+# Case: a burn (tests/decks/ok_hvrb.deck: MatX burns, HVRB with
+# ideal-gas products). Everything above holds with XRN in the file
+# (test_hist: 0 at t = 0, 0 to 1, never falling); then XRN at the
+# tracer's cell is the tracer file's XRN, to single precision, at every
+# frame: 0 at t = 0, and 1 by the end (the PDV cell, MatX's last, burns
+# out once the detonation reaches it).
+against_tracer hvrb tests/decks/ok_hvrb.deck 0.05 pdv
+begin
+c=hvrb_xrn
+d="$TMP/hvrb"
+if [ ! -f "$d/chk.out" ]; then
+   fail $c "no run (see the case above)"
+else
+   awk '/^X / {print $2, $3}' "$d/chk.out" > "$d/x_hist"
+   awk -F', *' 'NR == 1 { for (i = 1; i <= NF; i++) c[$i] = i; next }
+      NR == 2 || /^#/ { next } { print $(c["CYCLE"]), $(c["XRN.pdv"]) }' \
+      "$d"/*.tracers.csv > "$d/x_trc"
+   if [ ! -s "$d/x_hist" ]; then
+      fail $c "the history file has no XRN (no X lines from test_hist)"
+   elif ! paste -d' ' "$d/x_hist" "$d/x_trc" | awk '
+         function ab(a, b) { a += 0; b += 0; d = a - b; return d < 0 ? -d : d }
+         NF != 4 || $1 != $3 || ab($2, $4) > 1e-6 { exit 1 }
+         NR == 1 && $2 + 0 != 0 { exit 1 }
+         { last = $2 + 0 }
+         END { if (NR < 2 || last != 1) exit 1 }'; then
+      fail $c "XRN in the history file is not the tracer file's XRN (or not 0 at t = 0 and 1 at the end)"
+   else
+      pass $c
+   fi
+fi
+
+# Case: the inert limit (tests/decks/ok_hvrb_inert.deck: ok_temperature's
+# deck with a burn in MatX whose threshold PI no pressure reaches). No
+# cell ever burns, and every cell takes the inert path, so the run is
+# the temperature case's, bit for bit: every heartbeat line (but the
+# deck's name and title, and the clock), every tracer row with its XRN
+# columns left out, and every history frame with its XRN left out
+# (XRN is the last variable, so a frame is the inert frame, then XRN).
+begin
+c=hvrb_inert
+setkeys tests/decks/ok_hvrb_inert.deck Output "plot_dt = 0.05" \
+   "tracer_dt = 0.05" > "$TMP/hvrb_inert.deck"
+d0="$TMP/temperature"
+d="$TMP/hvrb_inert"
+beats() {     # $1 = heartbeat file: no clock, build, deck or title lines
+   grep -vE '^# (started|ended|version|built|flags|deck|title)' "$1" |
+      awk '/^#/ {print; next} {$NF=""; print}'
+}
+nox() {       # $1 = tracer file: the data rows, XRN columns left out
+   awk -F', *' 'NR == 1 { for (i = 1; i <= NF; i++) keep[i] = ($i !~ /^XRN\./) }
+      NR <= 2 || /^#/ { next }
+      { s = ""; for (i = 1; i <= NF; i++) if (keep[i]) s = s (s == "" ? "" : ",") $i; print s }' "$1"
+}
+i32() { od -An -t d4 -j "$2" -N 4 "$1" | tr -d ' '; }   # int32 at byte $2
+frames() {    # $1 = history file, $2 = bytes of each frame to keep
+   local h f n k
+   h=$(i32 "$1" 12); f=$(i32 "$1" 16); n=$(i32 "$1" 20)
+   for k in $(seq 0 $((n - 1))); do
+      tail -c +$((h + k*f + 1)) "$1" | head -c "$2" | cksum
+   done
+}
+if [ ! -f "$d0/chk.out" ]; then
+   fail $c "no inert run (see the temperature case)"
+elif ! run hvrb_inert "$TMP/hvrb_inert.deck"; then
+   fail $c "the run did not finish"
+elif grep -q 'First cell to react *: [0-9]' "$d/screen.out"; then
+   fail $c "a cell burnt (PI should be out of reach)"
+elif ! diff <(beats "$d0"/*.heartbeat) <(beats "$d"/*.heartbeat) > /dev/null; then
+   fail $c "the heartbeat differs from the inert run's"
+elif ! diff <(nox "$d0"/*.tracers.csv) <(nox "$d"/*.tracers.csv) > /dev/null; then
+   fail $c "the tracer rows (XRN left out) differ from the inert run's"
+elif ! diff <(frames "$d0"/*.hist "$(i32 "$d0"/*.hist 16)") \
+            <(frames "$d"/*.hist "$(i32 "$d0"/*.hist 16)") > /dev/null; then
+   fail $c "the history frames (XRN left out) differ from the inert run's"
+else
+   pass $c
 fi
 
 # Case: velocity profiles (xvel_profile, xvel_amplitude). Frame 1 is

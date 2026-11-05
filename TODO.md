@@ -39,8 +39,9 @@ Near term, verification and correctness, toward 1.3:
 
 Medium term, the reactive physics:
 9. HVRB, checked against G2-G5 (sections 3 and 6): the v8 equation sheet
-   frozen in `doc/` and G2-G5's inputs checked against it (Nov 4); next,
-   the design note (`doc/design/materials.md`, phase 3). Started Nov 4,
+   frozen in `doc/` and G2-G5's inputs checked against it (Nov 4); the
+   design (`doc/design/materials.md`, phase 3), steps 2 and 3a (method AV)
+   done Nov 4; next, method RS (3b and 4), then G2-G5 (5). Started Nov 4,
    ahead of the order above. JWL products after.
 10. With it or after: a broken cell's temperature (section 5); strength,
     the spall "knocking", the 2025 survey's burn models (section 6).
@@ -287,8 +288,11 @@ decks.
       run distance, the Pop plot, D_CJ = 7.500 km/s within 0.5 %, the mesh
       study. Then with a JWL products EOS. Design: `doc/design/materials.md`,
       phase 3 (approved Nov 4). Step 2 done Nov 4: modules `hvrb` and
-      `products` and `test_hvrb` (11 checks, 50 digits); next, step 3
-      (keys, the per-cell arrays, AV, the outputs).
+      `products` and `test_hvrb` (11 checks, 50 digits). Step 3a done Nov
+      4: the deck keys, module `burn`, method AV, `XRN` in the tracer and
+      history files, the inert limit bit for bit; G2 at 2.00 km/s already
+      within 5 ns at every gauge. Next, 3b and 4: method RS, with the
+      reaction's source in its predictor; then step 5, G2-G5.
 - [ ] **The burn models from the 2025 survey:** FlashFire,
       StochasticIgnite and ThermalCascade, from D. E. Kittell et al., "A
       Short Survey of Current Reactive Burn Model Capabilities as of
@@ -350,6 +354,16 @@ decks.
       frames, and deletes them once the movie is written (kept if the
       encode fails). steepening_hump's 25 frames, 35 MB of bitmaps, make
       a 66 KB movie; the class deck's 35, about 100 KB.
+- [ ] **The temperature's cost** (found Nov 4): carrying T (`eos =
+      mie_gruneisen_t`) makes a cycle about 6 times as long (G1's deck,
+      2,700 cells, release: 1,203 against 207 us). Per cell per cycle,
+      three Pi evaluations and three exponentials (the Gauss points), one
+      more for T, and a burning cell does it twice (its cold step before
+      the pressure, then temp_update's of zero length). Profile first;
+      then, e.g., the growth factors from one exponential, the zero-length
+      step skipped, a burnt-out cell's (lam = 1) cold curve not carried at
+      all (nothing uses it). Bit for bit where possible; where not, the
+      test values stay within T1-T5.
 - [ ] **History file size:** 12.3 MB for the class deck, 123 MB at 10
       times its resolution (plot_dt = 0.005 us, 1001 frames). Section 8
       now reports it at the end (Nov 3); still to do: say it at the

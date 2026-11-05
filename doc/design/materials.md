@@ -576,7 +576,8 @@ into a one-variable Newton solve for T, in the same place.
 2. Modules `hvrb` and `products`, the reference and the unit test: no hydro.
    Done Nov 4 (below).
 3. Keys, deck tests, the per-cell arrays, AV wired, the inert limit, the
-   outputs and the log.
+   outputs and the log. Done Nov 4 for method AV (3a, below); RS is 3b,
+   with step 4.
 4. RS, with the thermicity source in the order-2 predictor (above), and
    the on/off check at G2.
 5. G2-G5; then a release (1.3.0) and an HVRB deck for nanoHUB.
@@ -616,6 +617,60 @@ constant-volume burn, 12.499968 GPa; the D^2 law (ZR = 0, MR = 1, XR =
 1.5), 650 steps, to 7e-15; the rate's threshold for ZR = 0 to 3; the
 Hugoniot's reach; the guards; elemental calls. Clean with gfortran 9 and
 13 under the strict flags.
+
+### As built: step 3a, method AV (Nov 4, 2026)
+
+- **Module `burn`** (`src/modules/burn_mod.f95`, approved as a refinement
+  of "the burn's own module"): the cells' phi and lam, and every constant by
+  cell, filled from the layer; `burn_step`, `burn_cell`, `burn_track`. It
+  hands each cell to module `hvrb`, which stays stateless; a second burn
+  model is a second branch here. A deck without a burn allocates nothing.
+- **The cycle (AV):** loops 1 and 2 as before; then loop 2b, `burn_step`, an
+  orphaned OMP DO on the time loop's team over the cells that can burn:
+  e_S to the new volume (`temp_cold_cell`, module temperature), then phi
+  and lam from P^n (`hvrb_step`); then loop 3, where a cell with lam > 0 is
+  handed its burn (`cell_state(..., burn_cell(k))`, module av:
+  `hvrb_state`) and every other cell, lam = 0 included, is called exactly
+  as before. After the step, `temp_update` (T of a burning cell is the
+  inert T plus lam (e_c - C_V T_S + Q)/C_V, which is vartheta/C_V; nothing
+  added at lam = 0) and `burn_track`. temp_update's own cold step for a
+  burning cell is then of zero length, which leaves e_c bit for bit.
+- **A burning cell in `cell_pressure`:** P and c from the closure, never
+  tensile, never broken; a gas with no sound speed (vartheta <= 0) is void,
+  as an inert cell past c = 0 is. The count of guard sound speeds goes to
+  the log if any.
+- **Method RS refuses a burn** at the deck ("not yet available with method =
+  RS"), until 3b gives it the reaction's source.
+- **Outputs:** `XRN.<tracer>` after `TK.<tracer>`; `XRN` (real32, cells) after
+  `TK` in the history file; in the log, the first cell to react, the cells
+  burnt out per burning layer, the largest lam, and the guard count.
+
+**Tests:** 13 error decks (`bad_burn_*`, `bad_products_*`,
+`bad_pr_without_burn`) and three good ones: `ok_hvrb` (detonates; also an
+OpenMP and a release test deck), `ok_hvrb_clock` (ZR = 0, the D^2 law's
+exponents) and `ok_hvrb_inert`. History tests: `hvrb` (XRN in the file: 0
+at t = 0, 0 to 1, never falling; the tracer file's, every frame; 1 by the
+end) and **the inert limit**, `hvrb_inert`: ok_temperature's deck with a
+burn whose PI no pressure reaches gives its heartbeat, tracer rows and
+history frames, bit for bit (XRN left out). Every earlier deck (the ten
+inputs and every good test deck) gives the same heartbeat, tracer rows,
+history file and screen as before 3a, bit for bit; the class deck's cost
+per cycle is unchanged (77.9 against 77.7 us, release, best of three).
+gfortran 9 and 13: no new warnings.
+
+**A first look at G2** (2.00 km/s, 100 zones/mm, AV, G1's deck with Material
+X burning; the comparison script is step 5): the shock arrives within 5 ns
+of the gold standard at all nine Material X gauges (0.0 to 4.8 ns), the
+peak pressures within a few percent, every Material X cell burns out, and
+the energy error is 4.6e-5 (the sheet asks for 1e-4 or less). At 10
+zones/mm (`ok_hvrb`) it is 4.5e-4: the reaction zone (about 0.14 mm) is
+not resolved there, as expected.
+
+**Cost:** a burning cell adds about a third to a temperature-carrying run's
+cycle (G2 against G1, release: 1,590 against 1,203 us per cycle). The
+temperature itself is the larger cost: G1 without `mie_gruneisen_t` takes
+207 us per cycle, so carrying T (1.2.0) is about 6 times that (TODO.md,
+section 8).
 
 ## Phases
 

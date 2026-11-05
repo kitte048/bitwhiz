@@ -44,6 +44,8 @@
 #                input/ into runs/<deck>/; 'tidy' removes runs/)
 #Revision: 1.23 (11-04-26, with Claude: products and hvrb modules, and
 #                the burn's unit test, test_hvrb, in 'make test')
+#Revision: 1.24 (11-04-26, with Claude: burn module; av uses hvrb, trace
+#                and hist use burn)
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -172,15 +174,20 @@ $(1)src/modules/deck_mod.o:  $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod
                              $(1)src/modules/dist_mod.o
 $(1)src/modules/eos_mod.o:   $(1)src/modules/bit_mod.o
 $(1)src/modules/av_mod.o:    $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
-                             $(1)src/modules/bit_mod.o
+                             $(1)src/modules/bit_mod.o $(1)src/modules/hvrb_mod.o
 $(1)src/modules/temp_mod.o:  $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/prod_mod.o:  $(1)src/modules/bit_mod.o
 $(1)src/modules/hvrb_mod.o:  $(1)src/modules/eos_mod.o $(1)src/modules/prod_mod.o \
                              $(1)src/modules/bit_mod.o
+$(1)src/modules/burn_mod.o:  $(1)src/modules/hvrb_mod.o $(1)src/modules/temp_mod.o \
+                             $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
+                             $(1)src/modules/bit_mod.o
 $(1)src/modules/trace_mod.o: $(1)src/modules/temp_mod.o $(1)src/modules/shock_mod.o \
+                             $(1)src/modules/burn_mod.o \
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/hist_mod.o:  $(1)src/modules/temp_mod.o $(1)src/modules/shock_mod.o \
+                             $(1)src/modules/burn_mod.o \
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/strk_mod.o:  $(1)src/modules/bit_mod.o
 $(1)src/modules/pics_mod.o:  $(1)src/modules/hist_mod.o $(1)src/modules/deck_mod.o \

@@ -41,6 +41,11 @@ module av
 !    10/19/26    D. E. Kittell        cell_pressure: the EOS, spall rule
 !                (with Claude)        and sound speed of cell_state, as
 !                                     a routine method RS shares
+!    11/04/26    D. E. Kittell        A burning cell (optional brn): P
+!                (with Claude)        and c from the HVRB closure
+!                                     (module hvrb), no tension, no
+!                                     spall (doc/design/materials.md,
+!                                     phase 3)
 !
 !**********************************************************************!
 !
@@ -70,6 +75,7 @@ use bits,  only: dp, int32, zero, half, one
 use shock, only: nvar, jx, ju, ju_old, jmf, jm, jrho, je, &
    jp, jq, jrho_old, jr0, jc0, js1, js2, jg0, jdam, jsp
 use eos,   only: mg_pressure, mg_soundspeed, eos_ok, eos_bad_soundspeed
+use hvrb,  only: burn_cell_t, hvrb_state
 implicit none
 private
 
@@ -200,7 +206,7 @@ contains
    ! results are not to be used (signaling NaN); the caller stops.    !
    !******************************************************************!
    pure subroutine cell_state( c, BL, BQ, p, cs, q, dtk, dnew, tensile, &
-      spalled, pbreak, void, ierr )
+      spalled, pbreak, void, ierr, brn, cflag )
    implicit none
    real(kind=dp), intent(in)  :: c(nvar,-2:2)   ! cell,face,CELL,face,cell
    real(kind=dp), intent(in)  :: BL, BQ         ! viscosity coefficients
@@ -216,12 +222,15 @@ contains
                                                 ! floor), else zero
    logical, intent(out)       :: void           ! treated as void (above)
    integer(kind=int32), intent(out) :: ierr     ! from the EOS
+   type(burn_cell_t), intent(in), optional :: brn  ! a burning cell's
+                                                ! burn (cell_pressure)
+   integer(kind=int32), intent(out), optional :: cflag ! its c's rule
    real(kind=dp) :: rho, du, ubar
 
    !*** 1-3. Pressure, the spall rule and the sound speed: the cell's
    !*** own business, shared with method RS (cell_pressure, below).
    call cell_pressure( c(:,0), p, cs, dnew, tensile, spalled, pbreak, &
-      void, ierr )
+      void, ierr, brn, cflag )
    if ( ierr /= eos_ok ) then
       q   = cs                                  ! NaN, like cs
       dtk = cs
@@ -262,7 +271,7 @@ contains
    ! p and cs are signaling NaN.                                      !
    !******************************************************************!
    pure subroutine cell_pressure( s, p, cs, dnew, tensile, spalled, &
-      pbreak, void, ierr )
+      pbreak, void, ierr, brn, cflag )
    implicit none
    real(kind=dp), intent(in)  :: s(nvar)        ! one cell's slots
    real(kind=dp), intent(out) :: p              ! GPa, >= -spall_strength
@@ -274,8 +283,13 @@ contains
                                                 ! it broke, else zero
    logical, intent(out)       :: void           ! treated as void
    integer(kind=int32), intent(out) :: ierr     ! from the EOS
+   type(burn_cell_t), intent(in), optional :: brn  ! a burning cell's
+                                                ! burn: given for a cell
+                                                ! that may burn (0.)
+   integer(kind=int32), intent(out), optional :: cflag ! hvrb_state's ifb
    real(kind=dp), parameter :: ftens = 1.0e-9_dp ! round-off floor / K0
-   real(kind=dp) :: rho, pfail
+   real(kind=dp) :: rho, pfail, theta, dpdlam
+   integer(kind=int32) :: ifb
    logical :: broken
 
    tensile = .false.
@@ -285,6 +299,31 @@ contains
    rho     = s(jrho)
    broken  = ( s(jdam) > half )
    dnew    = s(jdam)
+   if ( present( cflag ) ) cflag = 0
+
+   !*** 0. A cell that has started to burn (lam > 0): P and c from the
+   !***    HVRB closure (module hvrb). It holds no tension (the gas fills
+   !***    the cracks of a reacting solid: P >= 0 always), so it is never
+   !***    tensile and never breaks; a gas with no temperature (no sound
+   !***    speed) is treated as void, as an inert cell past c = 0 is. A
+   !***    cell at lam = 0 goes on below, exactly as any other.
+   if ( present( brn ) ) then
+      if ( brn%lam > zero ) then
+         call hvrb_state( rho, s(je), brn%lam, brn%es, s(jr0), s(jc0), &
+            s(js1), s(js2), s(jg0), brn%cv, brn%T0, brn%gamma, brn%Q, &
+            p, cs, theta, dpdlam, ifb, ierr )
+         if ( present( cflag ) ) cflag = ifb
+         if ( ierr == eos_bad_soundspeed ) then
+            void = .true.
+            ierr = eos_ok
+            p    = zero
+            cs   = zero
+         else if ( ierr /= eos_ok ) then
+            cs = p                              ! NaN, like p
+         end if
+         return
+      end if
+   end if
 
    !*** 1. Pressure.
    call mg_pressure( rho, s(je), s(jr0), s(jc0), s(js1), s(js2), s(jg0), &
