@@ -414,6 +414,9 @@ holds (HVRB never runs backward). **Only the solid's pressure is
 dropped** (**DK**): vartheta, T and the energy balance stay as written, so
 energy is conserved exactly as in an unclamped cell.
 
+*Revised Nov 5: the dropped solid is held where it first pulled ("The solid
+held where it first pulled", below, before Phases).*
+
 **The Hugoniot's reach.** The gas phase has no compression limit; the solid
 does (`eos_too_compressed`, Us past 100 C0). A fully burnt cell (lam = 1,
 which the exact topology reaches exactly, at phi_end) never evaluates the
@@ -755,6 +758,73 @@ Material X burning, 35 zones/mm, a 35-frame pressure movie; 3 s release):
 in `make runs` and the deck tests with the other inputs, and exported to
 the nanoHUB tool's picker with them (decided Nov 4: the model in action for
 students who do not use Fortran; the code is open and verified).
+
+### The solid held where it first pulled (Nov 5, 2026)
+
+**The problem.** With only the pressure dropped, a partly burnt cell in
+tension went on charging the solid's cold energy as it stretched: ecs(rho)
+grows below R0, and vartheta = e - (1 - lam) ecs + lam Q pays for it, with no
+force doing the work (the dropped solid adds nothing to P). vartheta and T
+went negative: -4049 K in Material X at 1.00 km/s (AV, after the free-face
+fix of v1.3.2), -1858 K with RS, and the sound-speed guards fired in 16164
+and 12702 cell-steps.
+
+**The rule (DK: the solid's temperature should guide it; in equilibrium the
+solid never ends below the expanded gas).** A dropped solid does no work, so
+its cold energy should not change: it is **held at the density where it
+first pulled**, rho_hold, with e_S there, es_hold, while the cell is
+stretched past it. It cavitates; the gas fills the rest of the cell. Module
+`burn` keeps rho_hold and es_hold by cell (`burn_hold`, once a step, after
+e_S is at the new volume and lam is lam^(n+1), before P): kept while rho <
+rho_hold; otherwise set to (rho, e_S) if the solid pulls at rho, else
+cleared; never held at lam = 0 or 1. Every user of the closure sees the
+same hold: the pressure for both methods (`cell_pressure`), RS's source,
+and T (`temp_update`).
+
+**The closure, held** (module `hvrb`, optional `rhold`, `eshold`): every
+solid term at (rho_hold, es_hold), the gas at the cell's rho. Then
+d ecs/drho = 0, and P_sol at a fixed density depends on e alone (dP_sol/de
+= R0 G0), so
+
+    c^2 = lam (gamma - 1) vartheta + (P / rho^2) [ s (1 - lam) R0 G0 + lam (gamma - 1) rho ]
+
+with s = 1 if the held solid pushes and 0 if it is dropped. Dropped, that is
+lam (gamma - 1) vartheta (1 + lam (gamma - 1)) > 0: no guard is needed, and
+an expansion cools vartheta as rho^(lam (gamma - 1)), never to 0 and never
+below the gas alone expanded the same way (rho^(gamma - 1)). dP/dlam keeps
+its two forms, with the held ecs. If burning heats a held solid until it
+pushes, it pushes at rho_hold, paid from vartheta, until it no longer does.
+At rho = rho_hold the held and unheld closures agree, so P is continuous;
+energy is the hydro's, untouched.
+
+**Tests:** `test_hvrb` section 12, 3 checks: no hold at rho = rho_hold or
+lam = 0 (the same bits as none); held, dropped and pushing, c^2 and dP/dlam
+against central differences of the module's P, to 4e-11; a held cell
+stretched to rho/100 along de = -P dv stays at vartheta > 0 and ends
+6.6e-9 from the closed form.
+
+**Results** (the guard decks: Material X struck at 1.00 and 2.00 km/s,
+partly burnt, released at a free surface; v1.3.2 against the hold):
+
+| Deck | T min, K | Guard cell-steps | Energy error |
+|---|---|---|---|
+| 1.00 km/s, AV | -4049 / -968 | 16164 / 2575 | 8e-15 / 7e-15 |
+| 1.00 km/s, RS | -1858 / +8.6 | 12702 / 0 | round-off |
+| 2.00 km/s, AV | -2172 / +8.7 | 8221 / 0 | round-off |
+| 2.00 km/s, RS | +0.5 / +7.8 | 0 / 0 | round-off |
+| inert controls, AV and RS | unchanged, bit for bit | 0 | unchanged |
+
+Every input deck and `ok` test deck (43), and `compare_hvrb.py` under AV
+(36 checks), give the same bits as v1.3.2: no cell of theirs is held.
+
+**What is left: one cell, and not the closure.** The 1.00 km/s AV run's
+remaining -968 K, and all 2575 guard steps, are one cell: the free-surface
+end cell of Material X, barely burnt (lam = 9e-4), blown off to 1/500 of its
+density. After 3.39 us its own -P dv is 0, yet its e falls by 1.39 kJ/g:
+its neighbor's face work (+8.12) is outrun by the growth of its
+cell-centered kinetic energy, (1/2) ubar^2 (-9.51), which AV's energy
+update takes from e. That is AV's bookkeeping at a free surface (the same
+family as its free-surface overshoot), for the AV free-surface study (TODO).
 
 ## Phases
 

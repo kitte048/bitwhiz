@@ -18,12 +18,16 @@ module burn
 !                                               needs (module av)
 !       call burn_track( time, ncycle )         every cycle, after it
 !       lam(k), qk(k)                           cell k's lam and Q (0: none)
+!       rhold(k), eshold(k)                     where its solid is held
+!                                               (0: not held; THE SOLID
+!                                               HELD, below)
 !
 !    Method RS splits burn_step in two (ONE CYCLE, RS, below):
 !       call burn_rate_rs( dt )                 at the cycle's start
 !       src(k)                                  cell k's reaction source
 !       call temp_cold_cell( k, ierr )          in its cell loop, per cell
 !                                               (module temperature)
+!       call burn_hold( k )                     then, per cell
 !
 !    A deck without a burn allocates nothing here and runs exactly as
 !    before, bit for bit.
@@ -53,6 +57,9 @@ module burn
 !                (with Claude)        lam at the cycle's start, and each
 !                                     cell's reaction source for the
 !                                     order-2 predictor (src, module rs)
+!    11/05/26    D. E. Kittell        rhold, eshold and burn_hold: the
+!                (with Claude)        solid held where it first pulled
+!                                     (module hvrb, THE SOLID HELD)
 !
 !**********************************************************************!
 !
@@ -68,6 +75,7 @@ module burn
 !    d.  the pressure: a cell with lam > 0 from the closure at (rho,
 !        e, lam)^(n+1) (module av, cell_pressure, given burn_cell(k));
 !        a cell at lam = 0 exactly as an inert cell.
+!        Then burn_hold: where the cell's solid is held (below).
 !    after the step: temp_update, then burn_track.
 !  Burning changes lam at fixed rho and e, so total energy is the hydro's
 !  own (e carries the chemical energy through + lam Q); the heartbeat's
@@ -90,29 +98,46 @@ module burn
 !        cell's state n (module hvrb), held over the step as Z is.
 !    0.  the predictor, given src for a cell that burns this step
 !    2.  the cell loop: rho, u, e, then e_S to the new volume
-!        (temp_cold_cell), then the state (the closure if lam > 0)
+!        (temp_cold_cell), burn_hold, then the state (the closure if
+!        lam > 0)
 !  Order 1 has no predictor, so no source: its P comes from the closure.
 !  The source shapes only the face pressures the Riemann problem is
 !  given; the conservative update, and so energy, are untouched.
+!
+!  THE SOLID HELD (module hvrb has the physics)
+!  ============================================
+!  A partly burnt cell's solid is held at rhold, with e_S there, eshold,
+!  once it pulls: burn_hold, per cell, once a step, after e_S is at the
+!  cell's new volume and lam is lam^(n+1), and before the cell's P:
+!     rho < rhold (held)                 : kept as it is
+!     otherwise, the solid pulls at rho  : rhold = rho, eshold = e_S
+!     otherwise                          : not held (rhold = 0)
+!  and never held at lam = 0 or 1. So it is set where the solid first
+!  pulls, kept while the cell is stretched past that, and cleared once
+!  the cell is squeezed back to it and the solid pushes. The same rhold
+!  and eshold reach every user of the closure in the step: the cell's
+!  P (module av, cell_pressure, through burn_cell, for both methods),
+!  RS's source (burn_rate_rs, the next cycle, at the same state n) and
+!  T (module temperature, temp_update).
 !
 !***NOTE: rs_reaction_source turns the source off, for checking its
 ! effect (design note: G2, on and off); a development switch, not a
 ! deck key.
 !
 !**********************************************************************!
-use bits,        only: dp, int32, zero, half
+use bits,        only: dp, int32, zero, half, one
 use shock,       only: kmax, nlay, layer, database, icell, jx, jp, jrho, &
    je, jr0, jc0, js1, js2, jg0, burn_none, burn_hvrb, products_ideal_gas
 use eos,         only: eos_ok
-use hvrb,        only: hvrb_step, hvrb_state, burn_cell_t
+use hvrb,        only: hvrb_step, hvrb_state, hvrb_pulls, burn_cell_t
 use temperature, only: temp_cold_cell, ec, cv, t0
 implicit none
 private
 
 public :: burn_in_run, alloc_burn, dealloc_burn, burn_step, burn_cell, &
-   burn_track, burn_rate_rs
+   burn_track, burn_rate_rs, burn_hold
 public :: lam, qk, phi, nb, kb, first_k, first_time, first_cycle, first_x, &
-   lam_max, burnable, src
+   lam_max, burnable, src, rhold, eshold
 
 !**********************************************************************!
 ! Data dictionary: each cell's burn, cell k at index k (1 to kmax).
@@ -124,6 +149,9 @@ public :: lam, qk, phi, nb, kb, first_k, first_time, first_cycle, first_x, &
 real(kind=dp), allocatable, protected :: phi(:)   ! history variable
 real(kind=dp), allocatable, protected :: lam(:)   ! extent of reaction
 real(kind=dp), allocatable, protected :: qk(:)    ! Q, kJ/g (products)
+real(kind=dp), allocatable, protected :: rhold(:) ! the solid held at,
+                                                  ! g/cm^3 (0: not held)
+real(kind=dp), allocatable, protected :: eshold(:)! e_S there, kJ/g
 real(kind=dp), allocatable :: prk(:), zrk(:), mrk(:), xrk(:), pik(:), &
    tauk(:)                                        ! HVRB's, as layer_t's
 real(kind=dp), allocatable :: gamk(:)             ! the products' gamma
@@ -176,7 +204,7 @@ contains
    end do
    allocate( phi(kmax), lam(kmax), qk(kmax), prk(kmax), zrk(kmax), &
       mrk(kmax), xrk(kmax), pik(kmax), tauk(kmax), gamk(kmax), kb(nb), &
-      burnable(kmax), src(kmax), stat=status )
+      burnable(kmax), src(kmax), rhold(kmax), eshold(kmax), stat=status )
    if ( status /= 0 ) then
       kerr = kerr + 1
       nb   = 0
@@ -193,6 +221,8 @@ contains
    tauk = zero
    gamk = zero
    src  = zero
+   rhold  = zero
+   eshold = zero
    burnable = .false.
    nb  = 0
    do l = 1, nlay
@@ -226,7 +256,7 @@ contains
    integer(kind=int32) :: status
    if ( .not. allocated(lam) ) return
    deallocate( phi, lam, qk, prk, zrk, mrk, xrk, pik, tauk, gamk, kb, &
-      burnable, src, stat=status )
+      burnable, src, rhold, eshold, stat=status )
    if ( status /= 0 ) kerr = kerr + 1
    nb = 0
    end subroutine dealloc_burn
@@ -261,6 +291,7 @@ contains
          mrk(k), xrk(k), pik(k), tauk(k), phi2, lam2 )
       phi(k) = phi2
       lam(k) = lam2
+      call burn_hold( k )
    end do
    !$OMP END DO
    end subroutine burn_step
@@ -291,7 +322,7 @@ contains
          call hvrb_state( database(jrho,i), database(je,i), lam(k), ec(k), &
             database(jr0,i), database(jc0,i), database(js1,i), &
             database(js2,i), database(jg0,i), cv(k), t0(k), gamk(k), &
-            qk(k), p, c, theta, dpdlam, ifb, ierr )
+            qk(k), p, c, theta, dpdlam, ifb, ierr, rhold(k), eshold(k) )
          if ( ierr == eos_ok ) src(k) = dpdlam*( lam2 - lam(k) )/dt
       end if
       phi(k) = phi2
@@ -303,8 +334,8 @@ contains
    !******************************************************************!
    ! What cell k's pressure needs of its burn (module av, given it    !
    ! when lam(k) > 0): lam, e_S (module temperature's carried cold    !
-   ! energy, moved to the cell's volume by burn_step), C_V, T0, and   !
-   ! the products' gamma and Q.                                       !
+   ! energy, moved to the cell's volume by burn_step), C_V, T0, the   !
+   ! products' gamma and Q, and where its solid is held.              !
    !******************************************************************!
    pure function burn_cell( k ) result( b )
    implicit none
@@ -316,7 +347,34 @@ contains
    b%T0    = t0(k)
    b%gamma = gamk(k)
    b%Q     = qk(k)
+   b%rhold  = rhold(k)
+   b%eshold = eshold(k)
    end function burn_cell
+
+   !******************************************************************!
+   ! Where cell k's solid is held (THE SOLID HELD): call once a step, !
+   ! after e_S is at the cell's new volume and lam(k) is lam^(n+1),   !
+   ! before the cell's P. Cell k only: any number of threads may call !
+   ! it, each for its own cells.                                      !
+   !******************************************************************!
+   subroutine burn_hold( k )
+   implicit none
+   integer(kind=int32), intent(in) :: k          ! cell, 1 to kmax
+   integer(kind=int32) :: i
+   real(kind=dp) :: rho
+   i   = icell( k )
+   rho = database(jrho,i)
+   if ( rho < rhold(k) .and. lam(k) > zero .and. lam(k) < one ) return
+   if ( hvrb_pulls( rho, database(je,i), lam(k), ec(k), database(jr0,i), &
+      database(jc0,i), database(js1,i), database(js2,i), database(jg0,i), &
+      cv(k), t0(k), qk(k) ) ) then
+      rhold(k)  = rho                            ! held from here
+      eshold(k) = ec(k)
+   else
+      rhold(k)  = zero                           ! not held
+      eshold(k) = zero
+   end if
+   end subroutine burn_hold
 
    !******************************************************************!
    ! Bring the run's burn record up to date with this cycle: the      !

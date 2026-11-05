@@ -9,7 +9,9 @@ module hvrb
 !
 !       call hvrb_step ( phi1, p, dt, PR, ZR, MR, XR, PI, TAU0, phi2, lam2 )
 !       call hvrb_state( rho, e, lam, es, R0, C0, S1, S2, G0, cv, T0, &
-!                        gamma, Q, p, c, theta, dpdlam, ifb, ierr )
+!                        gamma, Q, p, c, theta, dpdlam, ifb, ierr &
+!                        [, rhold, eshold] )
+!       hvrb_pulls( rho, e, lam, es, R0, C0, S1, S2, G0, cv, T0, Q )
 !
 !    Elemental, as module eos and module temperature are: one cell, or
 !    many at once. This module holds no state; the cells' phi and lam,
@@ -55,6 +57,10 @@ module hvrb
 !                                     cell (module burn fills it)
 !    11/05/26    D. E. Kittell        unusable: snan_dp (module bits),
 !                (with Claude)        not ieee_value, for gfortran 8
+!    11/05/26    D. E. Kittell        The solid held where it first
+!                (with Claude)        pulled (optional rhold, eshold;
+!                                     hvrb_pulls): a partly burnt cell
+!                                     in tension keeps a vartheta > 0
 !
 !**********************************************************************!
 !
@@ -93,7 +99,8 @@ module hvrb
 !  is not mixed in while its pressure is negative,
 !     P = (1 - lam) max(P_sol, 0) + lam P_gas.
 !  Only its pressure is dropped; vartheta, T and the energy are as
-!  written. A cell at lam = 0 is the inert material exactly: mg_eos at
+!  written (but see THE SOLID HELD, below). A cell at lam = 0 is the
+!  inert material exactly: mg_eos at
 !  (rho, e), the same call and the same bits as eos = mie_gruneisen_t,
 !  so tension and spall there are what they always were. A cell at
 !  lam = 1 never evaluates the solid (its weight is 0), so it never
@@ -118,6 +125,33 @@ module hvrb
 !  reports a cell with no sound speed (the time loop treats it as it
 !  treats that).
 !
+!  THE SOLID HELD WHERE IT FIRST PULLED (11/05/26)
+!  ===============================================
+!  A dropped solid does no work (it adds nothing to P), yet its cold
+!  energy ecs(rho) went on growing as the cell stretched: energy taken
+!  from vartheta by no force, so vartheta, and T, went negative (to
+!  -4300 K, Material X at 1 km/s, AV). So the solid stops where it
+!  first pulled: at rho_hold, with e_S there, eshold, while the cell is
+!  stretched past it (rho < rhold). It cavitates; the gas fills the
+!  rest. Module burn keeps rhold and eshold, by cell (burn_hold: set
+!  where the solid first pulls, kept while rho < rhold, cleared when
+!  the cell is squeezed back to rhold and the solid pushes again).
+!  Held, every term of the solid is at (rhold, eshold), the gas's at
+!  the cell's rho:
+!     ecs = eshold - C_V T0 exp(G0 eta(rhold)),   d ecs/drho = 0
+!     vartheta, P, dP/dlam as above, with that ecs and P_sol(rhold, .)
+!     c**2 = lam (gamma-1) vartheta
+!            + (P/rho**2) [ s (1-lam) R0 G0 + lam (gamma-1) rho ]
+!  (s = 1 if the held solid pushes, 0 dropped; P_sol at a fixed density
+!  depends on e alone, d P_sol/de = R0 G0). Dropped, that is
+!  lam (gamma-1) vartheta (1 + lam (gamma-1)) > 0 wherever vartheta > 0,
+!  so the guards are not needed; and an expansion then cools vartheta
+!  as rho**(lam (gamma-1)): never below 0, nor below the gas alone
+!  expanded the same way. At rho = rhold the held and the unheld
+!  closures agree (eshold is e_S there), so P is continuous; a cell
+!  that is never held (every cell of every deck before this) gets the
+!  same bits as before.
+!
 !  dP/dlam at fixed rho and e (for method RS's source term, rho c**2
 !  sigma; design note, phase 3):
 !     solid in:      -P_sol + P_gas + [(1-lam) R0 G0 + lam (gamma-1) rho](ecs + Q)
@@ -136,7 +170,8 @@ use products, only: idg_state
 implicit none
 private
 
-public :: hvrb_phi_end, hvrb_lambda, hvrb_rate, hvrb_step, hvrb_state
+public :: hvrb_phi_end, hvrb_lambda, hvrb_rate, hvrb_step, hvrb_state, &
+   hvrb_pulls
 public :: hvrb_c_exact, hvrb_c_mass, hvrb_c_gas
 public :: burn_cell_t
 
@@ -151,6 +186,9 @@ type :: burn_cell_t
    real(kind=dp) :: T0    = zero   ! K
    real(kind=dp) :: gamma = zero   ! the products'
    real(kind=dp) :: Q     = zero   ! kJ/g
+   real(kind=dp) :: rhold  = zero  ! where the solid is held, g/cm^3
+                                   ! (0: not held; THE SOLID HELD)
+   real(kind=dp) :: eshold = zero  ! e_S there, kJ/g
 end type burn_cell_t
 
 !*** The sound speed's flag (ifb): which rule gave c (THE SOUND SPEED).
@@ -256,9 +294,11 @@ contains
    ! (hvrb_c_exact, _mass, _gas). On any status but eos_ok, p, c and  !
    ! dpdlam are signaling NaNs, as module eos does it, so a caller    !
    ! that ignores ierr stops at the next use; theta is always set.    !
+   ! rhold and eshold (both or neither): the solid held, used for     !
+   ! 0 < lam and rho < rhold (THE SOLID HELD); otherwise ignored.     !
    !******************************************************************!
    elemental subroutine hvrb_state( rho, e, lam, es, R0, C0, S1, S2, G0, &
-      cvk, T0k, gamma, Q, p, c, theta, dpdlam, ifb, ierr )
+      cvk, T0k, gamma, Q, p, c, theta, dpdlam, ifb, ierr, rhold, eshold )
    implicit none
    real(kind=dp), intent(in)  :: rho     ! density, g/cm^3
    real(kind=dp), intent(in)  :: e       ! specific internal energy, kJ/g
@@ -275,13 +315,26 @@ contains
    real(kind=dp), intent(out) :: dpdlam  ! (dP/dlam) at rho, e; GPa
    integer(kind=int32), intent(out) :: ifb   ! which rule gave c
    integer(kind=int32), intent(out) :: ierr  ! eos_ok, or why not
-   real(kind=dp) :: eta, ecs, psol, pg, c2g, g1, c2, cs, pc
+   real(kind=dp), intent(in), optional :: rhold  ! solid held at, g/cm^3
+   real(kind=dp), intent(in), optional :: eshold ! e_S there, kJ/g
+   real(kind=dp) :: eta, ecs, psol, pg, c2g, g1, c2, cs, pc, rs
    integer(kind=int32) :: ierrc
-   logical :: dropped
+   logical :: dropped, held
+
+   !*** The solid's density: the cell's, or where it is held.
+   held = .false.
+   if ( present( rhold ) .and. present( eshold ) ) &
+      held = lam > zero .and. rho < rhold
+   rs = rho
+   if ( held ) rs = rhold
 
    ifb   = hvrb_c_exact
-   eta   = ( rho - R0 )/rho              ! as module eos computes it
-   ecs   = es - cvk*T0k*exp( G0*eta )    ! the sheet's e_c
+   eta   = ( rs - R0 )/rs                ! as module eos computes it
+   if ( held ) then
+      ecs = eshold - cvk*T0k*exp( G0*eta )
+   else
+      ecs = es - cvk*T0k*exp( G0*eta )   ! the sheet's e_c
+   end if
    theta = e - ( one - lam )*ecs + lam*Q
    call idg_state( rho, theta, gamma, pg, c2g )
    g1 = zero                             ! d P_gas/d(rho vartheta)
@@ -314,8 +367,8 @@ contains
       return
    end if
 
-   !*** Partly burnt.
-   call mg_pressure( rho, ecs + theta, R0, C0, S1, S2, G0, psol, ierr )
+   !*** Partly burnt (the solid at rs: the cell's rho, or held).
+   call mg_pressure( rs, ecs + theta, R0, C0, S1, S2, G0, psol, ierr )
    if ( ierr /= eos_ok ) then
       call unusable( p, c, dpdlam )
       return
@@ -324,13 +377,20 @@ contains
    if ( dropped ) then                   ! the solid would pull
       p      = lam*pg
       dpdlam = pg + lam*g1*rho*( ecs + Q )
-      pc     = psol - R0*G0*theta
-      c2     = lam*g1*( theta*( one + lam*g1 ) - ( one - lam )*pc/rho )
+      if ( held ) then                   ! d ecs/drho = 0
+         c2  = lam*g1*theta*( one + lam*g1 )
+      else
+         pc  = psol - R0*G0*theta
+         c2  = lam*g1*( theta*( one + lam*g1 ) - ( one - lam )*pc/rho )
+      end if
    else
       p      = ( one - lam )*psol + lam*pg
       dpdlam = -psol + pg + ( ( one - lam )*R0*G0 + lam*g1*rho )*( ecs + Q )
       c2     = zero
-      if ( theta > zero ) then
+      if ( held ) then                   ! P_sol(rhold, .) depends on e only
+         c2  = lam*g1*theta + ( p/rho**2 )*( ( one - lam )*R0*G0 + &
+            lam*g1*rho )
+      else if ( theta > zero ) then
          call mg_soundspeed( rho, psol, R0, C0, S1, S2, G0, cs, ierrc )
          if ( ierrc == eos_ok ) c2 = ( one - lam )*cs*cs + lam*c2g &
             - lam*( one - lam )*( R0*G0/rho - gamma + one )**2*theta
@@ -340,7 +400,7 @@ contains
    !*** The guards (THE SOUND SPEED).
    if ( .not. ( c2 > zero ) ) then
       ifb = hvrb_c_mass
-      call mg_soundspeed( rho, max( psol, zero ), R0, C0, S1, S2, G0, cs, &
+      call mg_soundspeed( rs, max( psol, zero ), R0, C0, S1, S2, G0, cs, &
          ierrc )
       c2 = lam*c2g
       if ( ierrc == eos_ok ) c2 = c2 + ( one - lam )*cs*cs
@@ -356,6 +416,28 @@ contains
       call unusable( p, c, dpdlam )
    end if
    end subroutine hvrb_state
+
+   !******************************************************************!
+   ! True if the solid of a partly burnt cell (0 < lam < 1) at its    !
+   ! own rho would pull, P_sol < 0: where module burn holds it (THE   !
+   ! SOLID HELD). False otherwise, and where the EOS can not say.     !
+   !******************************************************************!
+   elemental logical function hvrb_pulls( rho, e, lam, es, R0, C0, S1, &
+      S2, G0, cvk, T0k, Q ) result( pulls )
+   implicit none
+   real(kind=dp), intent(in) :: rho, e, lam, es     ! as hvrb_state's
+   real(kind=dp), intent(in) :: R0, C0, S1, S2, G0  ! the solid
+   real(kind=dp), intent(in) :: cvk, T0k, Q         ! C_V, T0, Q
+   real(kind=dp) :: eta, ecs, theta, psol
+   integer(kind=int32) :: ierr
+   pulls = .false.
+   if ( .not. ( lam > zero .and. lam < one ) ) return
+   eta   = ( rho - R0 )/rho
+   ecs   = es - cvk*T0k*exp( G0*eta )
+   theta = e - ( one - lam )*ecs + lam*Q
+   call mg_pressure( rho, ecs + theta, R0, C0, S1, S2, G0, psol, ierr )
+   pulls = ierr == eos_ok .and. psol < zero
+   end function hvrb_pulls
 
    !******************************************************************!
    ! Signaling NaNs for results that must not be used (module eos's   !

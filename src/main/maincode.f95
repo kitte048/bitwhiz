@@ -101,6 +101,9 @@ program bitwhiz
 !                                     times in us as plain numbers, and
 !                                     the command line read before the
 !                                     banner (a usage error alone)
+!    11/05/26    D. E. Kittell        Method RS's cell loop: burn_hold
+!                (with Claude)        after e_S moves (module burn);
+!                                     temp_update given rhold, eshold
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one,quit
@@ -118,7 +121,8 @@ use temperature, only: alloc_temperature,dealloc_temperature, &
    temp_update,temp_cold_cell,nt,kt,tk,etac,tmin_run,tmax_run,hot_k, &
    hot_time,hot_x
 use burn, only: alloc_burn,dealloc_burn,burn_step,burn_cell,burn_track, &
-   burn_rate_rs,lam,qk,phi,nb,kb,first_k,first_time,first_x,lam_max, &
+   burn_rate_rs,burn_hold,rhold,eshold,lam,qk,phi,nb,kb,first_k, &
+   first_time,first_x,lam_max, &
    burnable,src
 use deck, only: read_deck,write_resolved_deck,fmt_real
 use pics, only: make_pictures
@@ -1386,7 +1390,7 @@ time_loop: do while ( .not. done )
    !*** hydro accepted, so it can not fail; if it ever does, it stops
    !*** the run as an EOS failure would.
    if ( burning ) then                    ! a burning cell's T: vartheta/C_V
-      call temp_update( use_team, time, ncycle, kbad, lam, qk )
+      call temp_update( use_team, time, ncycle, kbad, lam, qk, rhold, eshold )
    else
       call temp_update( use_team, time, ncycle, kbad )
    end if
@@ -1722,6 +1726,7 @@ contains
                kburn = min( kburn, kcell(i) )
                cycle rs_cells
             end if
+            call burn_hold( kcell(i) )    ! where its solid is held
             if ( lam(kcell(i)) > zero ) kc = kcell(i)
          end if
       end if

@@ -45,6 +45,9 @@ module temperature
 !                                     (temp_update's lam and q)
 !    11/05/26    D. E. Kittell        cold_step: snan_dp (module bits),
 !                (with Claude)        not ieee_value, for gfortran 8
+!    11/05/26    D. E. Kittell        temp_update: a burning cell's
+!                (with Claude)        solid where it is held (optional
+!                                     rhold, eshold; module burn)
 !
 !**********************************************************************!
 !
@@ -378,7 +381,8 @@ contains
    ! number of threads. It runs on the time loop's team when that is  !
    ! one (use_team; maincode, section 7).                             !
    !******************************************************************!
-   subroutine temp_update( use_team, time, ncycle, kbad, lam, q )
+   subroutine temp_update( use_team, time, ncycle, kbad, lam, q, rhold, &
+      eshold )
    implicit none
    logical, intent(in) :: use_team               ! kmax >= omp_min_zones
    real(kind=dp), intent(in) :: time             ! us, after the step
@@ -387,16 +391,22 @@ contains
    real(kind=dp), intent(in), optional :: lam(:) ! by cell: a burn's lam
    real(kind=dp), intent(in), optional :: q(:)   ! ... and Q, kJ/g (both
                                                  ! or neither; NOTE below)
+   real(kind=dp), intent(in), optional :: rhold(:)  ! by cell: where the
+   real(kind=dp), intent(in), optional :: eshold(:) ! solid is held, and
+                                                 ! its e_S (both or
+                                                 ! neither; module burn)
    integer(kind=int32) :: n, k, i, ierr
-   real(kind=dp) :: eta, ec2
-   logical :: burns
+   real(kind=dp) :: eta, ec2, etah
+   logical :: burns, holds
 
    kbad = huge(kbad)
    if ( nt == 0 ) return
    burns = present( lam ) .and. present( q )
+   holds = burns .and. present( rhold ) .and. present( eshold )
    !$OMP PARALLEL DO IF( use_team ) DEFAULT(NONE) &
-   !$OMP    SHARED( nt, kt, database, tk, ec, etac, cv, t0, burns, lam, q ) &
-   !$OMP    PRIVATE( n, k, i, eta, ec2, ierr ) REDUCTION(min: kbad)
+   !$OMP    SHARED( nt, kt, database, tk, ec, etac, cv, t0, burns, lam, q, &
+   !$OMP            holds, rhold, eshold ) &
+   !$OMP    PRIVATE( n, k, i, eta, ec2, ierr, etah ) REDUCTION(min: kbad)
    do n = 1, nt
       k   = kt(n)
       i   = icell( k )
@@ -417,9 +427,23 @@ contains
       ! the inert T above plus lam (e_c - C_V T_S + Q)/C_V. At lam = 0
       ! nothing is added, so an unburnt cell's T is the inert model's,
       ! bit for bit.
+      !***NOTE: held (module burn: the solid held where it first pulled,
+      ! rho < rhold), the solid's e_c is at rhold, with e_S = eshold
+      ! there: T = vartheta/C_V with that e_c, as module hvrb's closure.
       if ( burns ) then
-         if ( lam(k) > zero ) tk(k) = tk(k) + lam(k)*( ec2 - &
-            cv(k)*t0(k)*exp( database(jg0,i)*eta ) + q(k) )/cv(k)
+         if ( lam(k) > zero ) then
+            if ( holds ) then
+               if ( database(jrho,i) < rhold(k) ) then
+                  etah  = eta_of( rhold(k), database(jr0,i) )
+                  tk(k) = ( database(je,i) - ( one - lam(k) )*( eshold(k) - &
+                     cv(k)*t0(k)*exp( database(jg0,i)*etah ) ) + &
+                     lam(k)*q(k) )/cv(k)
+                  cycle
+               end if
+            end if
+            tk(k) = tk(k) + lam(k)*( ec2 - &
+               cv(k)*t0(k)*exp( database(jg0,i)*eta ) + q(k) )/cv(k)
+         end if
       end if
    end do
    !$OMP END PARALLEL DO

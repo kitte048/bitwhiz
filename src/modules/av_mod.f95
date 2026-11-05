@@ -50,6 +50,9 @@ module av
 !                (with Claude)        q from the void (it was half of
 !                                     the end cell's), so total energy
 !                                     is conserved at a free surface
+!    11/05/26    D. E. Kittell        cell_pressure: a burning cell's
+!                (with Claude)        solid where it is held (brn's
+!                                     rhold, eshold; module hvrb)
 !
 !**********************************************************************!
 !
@@ -323,7 +326,7 @@ contains
       if ( brn%lam > zero ) then
          call hvrb_state( rho, s(je), brn%lam, brn%es, s(jr0), s(jc0), &
             s(js1), s(js2), s(jg0), brn%cv, brn%T0, brn%gamma, brn%Q, &
-            p, cs, theta, dpdlam, ifb, ierr )
+            p, cs, theta, dpdlam, ifb, ierr, brn%rhold, brn%eshold )
          if ( present( cflag ) ) cflag = ifb
          if ( ierr == eos_bad_soundspeed ) then
             void = .true.

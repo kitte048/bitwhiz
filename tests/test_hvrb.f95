@@ -18,19 +18,23 @@ program test_hvrb
 !    module uses. Generator: tests/hvrb_reference.py. The other
 !    sections check by hand: the rate's threshold for every ZR, the
 !    D^2 law against its closed form, the constant-volume burn, the
-!    limits (the Hugoniot's reach, a gas with no temperature).
+!    limits (the Hugoniot's reach, a gas with no temperature), and the
+!    solid held where it first pulled (by finite differences of P, and
+!    an expansion against its closed form).
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
 !      ====       ==========          =====================
 !    11/04/26    D. E. Kittell        Original code
 !                (with Claude)
+!    11/05/26    D. E. Kittell        12: the solid held (module hvrb,
+!                (with Claude)        THE SOLID HELD)
 !
 !**********************************************************************!
 use, intrinsic :: iso_fortran_env, only: int64
 use bits, only: dp, int32, zero, half, one, quit
-use eos, only: mg_eos, mg_soundspeed, eos_ok, eos_too_compressed, &
-   eos_bad_soundspeed
+use eos, only: mg_eos, mg_soundspeed, mg_pressure, eos_ok, &
+   eos_too_compressed, eos_bad_soundspeed
 use products, only: idg_state
 use hvrb, only: hvrb_phi_end, hvrb_lambda, hvrb_rate, hvrb_step, &
    hvrb_state, hvrb_c_exact, hvrb_c_mass
@@ -597,6 +601,10 @@ real(kind=dp), parameter :: rtol = 1.0e-12_dp
 integer(kind=int32) :: i, m, n, ierr, ifb, nfail, ncheck, nbad
 real(kind=dp) :: p, c, th, dpl, worst, w(4), phi, lam, t, dt, pend
 real(kind=dp) :: pm, cm, x
+real(kind=dp) :: rh, eh, ecsh, pcold, lm, ee, rr, h, pp, pq, dpr, dpe, &
+   c2fd, dlfd, th0, r1, r2, e1, p1, p2, th1, c1, d1   ! section 12
+integer(kind=int32) :: j, ifb1, ierr1
+logical :: ok2
 real(kind=dp), dimension(size(mix)) :: pa, ca, tha, dpla
 integer(kind=int32), dimension(size(mix)) :: ifba, ierra
 logical :: ok
@@ -810,6 +818,124 @@ do i = 1, size(mix)
       ok = .false.
 end do
 call check( ok, 'array (elemental) call == one call per state' )
+
+!=====================================================================!
+! 12. The solid held where it first pulled (module hvrb, THE SOLID
+!     HELD). Material X held at rhold = 1.4 (eta < 0) with eshold =
+!     0.02 kJ/g, at lam = 0.3; there P_sol = P_cold + R0 G0 vartheta,
+!     P_cold = P_sol(rhold, ecs) < 0, so vartheta = 0.5 and 3 times
+!     -P_cold/(R0 G0) give the solid dropped and the solid pushing.
+!   a. Not held at rho = rhold, nor at lam = 0: the same bits as with
+!      no hold given.
+!   b. Held, both branches, at rho = 0.9: c**2 is the exact rule's,
+!      (dP/drho)_e + (P/rho**2)(dP/de)_rho, and dP/dlam its own, by
+!      central differences of the module's P (to 1e-6).
+!   c. Held and dropped, a stretch to 1/100 of the density along de =
+!      -P dv (midpoint rule, 20000 steps in ln rho): vartheta stays
+!      > 0 and ends at vartheta0 (rho/rho0)**(lam (gamma-1)), the
+!      closed form, to 1e-6.
+!=====================================================================!
+rh = 1.4_dp
+eh = 0.02_dp
+lm = 0.3_dp
+x  = ( rh - mat(1,1) )/rh
+ecsh = eh - brn(1,1)*brn(2,1)*exp( mat(5,1)*x )
+call mg_pressure( rh, ecsh, mat(1,1), mat(2,1), mat(3,1), mat(4,1), &
+   mat(5,1), pcold, ierr )
+ok = ierr == eos_ok .and. pcold < zero
+!*** a.
+ee = 0.5_dp*( -pcold/( mat(1,1)*mat(5,1) ) ) + ( one - lm )*ecsh - lm*brn(4,1)
+call hvrb_state( rh, ee, lm, eh, mat(1,1), mat(2,1), mat(3,1), mat(4,1), &
+   mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), p, c, th, dpl, ifb, &
+   ierr )
+call hvrb_state( rh, ee, lm, eh, mat(1,1), mat(2,1), mat(3,1), mat(4,1), &
+   mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pm, cm, x, d1, ifb1, &
+   ierr1, rh, 7.0_dp )
+ok = ok .and. same(p, pm) .and. same(c, cm) .and. same(th, x) .and. &
+   same(dpl, d1) .and. ifb == ifb1 .and. ierr == ierr1
+call hvrb_state( 0.9_dp, 0.1_dp, zero, -0.01_dp, mat(1,1), mat(2,1), &
+   mat(3,1), mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), &
+   p, c, th, dpl, ifb, ierr )
+call hvrb_state( 0.9_dp, 0.1_dp, zero, -0.01_dp, mat(1,1), mat(2,1), &
+   mat(3,1), mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), &
+   pm, cm, x, d1, ifb1, ierr1, rh, eh )
+ok = ok .and. same(p, pm) .and. same(c, cm) .and. same(th, x) .and. &
+   same(dpl, d1) .and. ifb == ifb1 .and. ierr == ierr1
+call check( ok, 'held: not at rho = rhold, nor at lam = 0 (the same bits '// &
+   'as no hold)' )
+!*** b.
+ok  = .true.
+worst = zero
+rr = 0.9_dp
+do j = 1, 2
+   x  = merge( 0.5_dp, 3.0_dp, j == 1 )*( -pcold/( mat(1,1)*mat(5,1) ) )
+   ee = x + ( one - lm )*ecsh - lm*brn(4,1)            ! vartheta = x
+   call hvrb_state( rr, ee, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+      mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), p, c, th, &
+      dpl, ifb, ierr, rh, eh )
+   ok = ok .and. ierr == eos_ok .and. ifb == hvrb_c_exact .and. &
+      abs(th - x) <= 1.0e-14_dp*x
+   if ( j == 1 ) then                                  ! dropped: P = lam P_gas
+      ok = ok .and. abs( p - lm*( brn(3,1) - one )*rr*x ) <= 1.0e-14_dp*p
+   else                                                ! pushing: more than that
+      ok = ok .and. p > lm*( brn(3,1) - one )*rr*x*( one + 1.0e-3_dp )
+   end if
+   h = 1.0e-5_dp*rr
+   call hvrb_state( rr + h, ee, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+      mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pp, cm, &
+      x, d1, ifb1, ierr1, rh, eh )
+   call hvrb_state( rr - h, ee, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+      mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pq, cm, &
+      x, d1, ifb1, ierr1, rh, eh )
+   dpr = ( pp - pq )/( 2.0_dp*h )
+   h = 1.0e-5_dp
+   call hvrb_state( rr, ee + h, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+      mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pp, cm, &
+      x, d1, ifb1, ierr1, rh, eh )
+   call hvrb_state( rr, ee - h, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+      mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pq, cm, &
+      x, d1, ifb1, ierr1, rh, eh )
+   dpe  = ( pp - pq )/( 2.0_dp*h )
+   c2fd = dpr + p/rr**2*dpe
+   h = 1.0e-6_dp
+   call hvrb_state( rr, ee, lm + h, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+      mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pp, cm, &
+      x, d1, ifb1, ierr1, rh, eh )
+   call hvrb_state( rr, ee, lm - h, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+      mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pq, cm, &
+      x, d1, ifb1, ierr1, rh, eh )
+   dlfd  = ( pp - pq )/( 2.0_dp*h )
+   worst = max( worst, abs( c*c - c2fd )/c2fd, abs( dpl - dlfd )/abs(dlfd) )
+end do
+call check( ok .and. worst <= 1.0e-6_dp, 'held, dropped and pushing: '// &
+   'c**2 and dP/dlam = differences of P, to '//rtoa(worst) )
+!*** c.
+r1  = 1.2_dp
+th0 = 0.5_dp*( -pcold/( mat(1,1)*mat(5,1) ) )
+e1  = th0 + ( one - lm )*ecsh - lm*brn(4,1)
+ok2 = .true.
+n   = 20000
+do j = 1, n
+   r2 = r1*exp( log( 0.01_dp )/real(n, dp) )
+   call hvrb_state( r1, e1, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+      mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), p1, c1, &
+      th1, d1, ifb1, ierr1, rh, eh )
+   x = sqrt( r1*r2 )                                   ! the midpoint
+   call hvrb_state( x, e1 - p1*( one/x - one/r1 ), lm, -99.0_dp, &
+      mat(1,1), mat(2,1), mat(3,1), mat(4,1), mat(5,1), brn(1,1), brn(2,1), &
+      brn(3,1), brn(4,1), p2, c1, th1, d1, ifb1, ierr1, rh, eh )
+   e1 = e1 - p2*( one/r2 - one/r1 )
+   r1 = r2
+   call hvrb_state( r1, e1, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+      mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), p1, c1, &
+      th1, d1, ifb1, ierr1, rh, eh )
+   if ( ierr1 /= eos_ok .or. ifb1 /= hvrb_c_exact .or. .not. th1 > zero ) &
+      ok2 = .false.
+end do
+x = th0*( 0.01_dp )**( lm*( brn(3,1) - one ) )
+call check( ok2 .and. abs( th1 - x ) <= 1.0e-6_dp*x, 'held and dropped, '// &
+   'stretched to rho/100: vartheta > 0 throughout, ends '// &
+   rtoa(abs(th1 - x)/x)//' from th0 (rho/rho0)**(lam(gamma-1))' )
 
 !=====================================================================!
 ! Summary. Exit status 1 on any failure, so 'make test' stops.
