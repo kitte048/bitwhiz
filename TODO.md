@@ -226,10 +226,29 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       pressure behind the detonation has a spike, then a thin valley,
       before the Taylor release wave; RS order 1 and order 2 do not, and
       their profiles look better (the AV behavior recalls the commercial
-      code's, at times). A first suspect: the burn inside AV's smeared
-      shock, the rate law reading a pressure the shock has not finished
-      building. With the 25 zones/mm difference above: mesh, BL and BQ,
-      against RS.
+      code's, at times). The spike starts out attached to the release
+      wave, and the valley opens later (DK). Looked at Nov 5 (35
+      zones/mm, AV against RS2): from 0.85 us a plateau near 21 GPa,
+      below P_CJ = 25, opens 3 cells behind AV's spike and widens (about
+      8 cells by 1.45 us); lam reaches 1 within 2-3 cells, inside AV's
+      smeared shock. AV's front runs at 7.68 km/s over 0.8-1.5 us, RS2's
+      at 7.56, and the weak branch at 7.68 km/s (the Rayleigh line on the
+      products' Hugoniot) is about 20.5 GPa. So AV looks to be on a weak
+      detonation once the overdrive decays, RS2 on the strong branch;
+      perhaps the same as AV's G4 D 0.2-0.3 % above D_CJ (RS 0.0 %) and
+      G5's 13 ns at 25 zones/mm. One mesh, one fit, the front still
+      decaying: suggestive, not proof.
+      Caution (DK): a burn adding energy during the viscous work at the
+      shock front is not unusual, and the production code shows similar
+      behavior. This is what AV does with this burn, imperfect as it may
+      be, not a feature to remove; and any burn control (a threshold on
+      the AV pressure, a shock counter) would be a deck key, documented
+      and verified like any other. So none without strong cause.
+      Next: characterize, not fix. AV's front speed, the plateau and its
+      width against mesh (G4, 25 to 400 zones/mm, and the class deck).
+      Acceptable if they converge (D to D_CJ, the plateau gone) as the
+      mesh refines; then a resolution guide in the docs (cells per
+      reaction zone) and, for the class, AV against RS on this deck.
 - [x] Check that the data's HVRB inputs match the equation sheet bitwhiz
       will follow (Nov 4): the dataset's README cites `HVRB_Eqns_v3.tex`;
       the sheet's model and constants are the same in v3 and v8, frozen
