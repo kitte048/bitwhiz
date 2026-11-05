@@ -93,7 +93,7 @@ program bitwhiz
 !                                     checked in 6, updated every cycle
 !                                     after the hydro step; the run's T
 !                                     range and hottest cell reported
-!!    11/03/26    D. E. Kittell        The screen, for a quick read: the
+!    11/03/26    D. E. Kittell        The screen, for a quick read: the
 !                (with Claude)        resolved deck to <title>.resolved
 !                                     (section 2), one rule between
 !                                     sections, section 8 lists the

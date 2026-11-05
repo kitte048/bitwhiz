@@ -14,7 +14,10 @@ every picture, the shorter screen, `make runs`, movies in the class deck.
 1.2.0 published on nanoHUB Nov 4, 2026 (with the notebook's MP4 movie),
 and beta testing begun; the priorities reordered that day, from a roadmap
 of next steps out to research. 1.3.0 cut Nov 4, 2026: HVRB (both methods,
-verified against G2-G5) and its example deck.
+verified against G2-G5) and its example deck. 1.3.1 to 1.3.3 Nov 5, 2026:
+gfortran 8 debug builds, AV's energy conserved at a free surface, and a
+partly burnt cell's solid held where it first pulls; the nanoHUB tool rebuilt
+at 1.3.0 and working that day.
 
 ## Priorities
 Next, an afternoon each, little risk:
@@ -28,13 +31,15 @@ Next, an afternoon each, little risk:
    (wave overtake, spall, AV against RS) and gauges at the gold-standard
    depths in place of `mid_x`.
 3. The history file size, said at the start of a run (section 8).
-4. The arrival offset (section 3): G1 with RS order 2 and at 200 zones/mm.
-   A cheap study.
+4. The arrival offset (section 3): very likely the reference's 5 ns rows
+   (Nov 5); G1 with bitwhiz's rows at 0.5 ns would settle it. A cheap study.
 
 Near term, verification and correctness, toward 1.3:
 5. Order of accuracy and the acoustic check as tests (section 8).
 6. Noh wall heating at the impact plane (section 8).
-7. AV energy at a free surface (section 8).
+7. AV at a free surface (section 8): the energy, fixed in 1.3.2; next the
+   free-surface peak and the end cell's temperature, and the spike in the
+   HVRB class deck (section 3).
 8. Pictures: axis names and units, after lower case and mu in the stroke
    font (Ideas); a colormap table lookup, maybe (section 8).
 
@@ -44,8 +49,9 @@ Medium term, the reactive physics:
    design (`doc/design/materials.md`, phase 3), steps 2 to 5 done Nov 4:
    both methods, all of G2-G5, an example deck; 1.3.0. Next for the burn:
    JWL products, the 25 zones/mm difference (section 3).
-10. With it or after: a broken cell's temperature (section 5); strength,
-    the spall "knocking", the 2025 survey's burn models (section 6).
+10. With it or after: a broken cell's temperature (section 5; a burning
+    cell's done in 1.3.3); strength, the spall "knocking", the 2025
+    survey's burn models (section 6).
 
 Far out, research:
 11. Graded materials (section 7): the path to publishing; the per-cell
@@ -181,7 +187,11 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       the 5 ns tolerance and the output spacing). Likely how each code
       spreads the shock's foot, which the 0.05 km/s threshold reads. Rerun
       with RS order 2 and at 200 zones/mm: does the offset follow the
-      method, the mesh, or neither?
+      method, the mesh, or neither? Nov 5: very likely the reference's
+      own 5 ns rows. With bitwhiz's rows at 0.5 ns, its G3 arrivals (RS
+      order 2) run 0 to +5.5 ns from the reference's, never earlier
+      (`compare_hvrb.py`'s tolerance is now 7.5 ns for it). G1 rerun with
+      `tracer_dt = 0.0005` would settle it for AV.
 - [x] **Temperature at the G1 gauges** (Nov 3, with MG+T, section 5):
       `compare_g1.py`, 40 checks, all pass. bitwhiz's TK is the formula's
       at its own state to 1e-11 K, and within 0.03 K of the exact
@@ -200,6 +210,11 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       stack) and `hvrb/g3_poplt.deck` (thick flyer), compared with
       `hvrb/README.md`'s tolerances by `compare_hvrb.py`: 36 checks, all
       pass (`doc/design/materials.md`, phase 3, step 5, the table).
+- [x] **G2-G5 with RS order 2** (Nov 5): `compare_hvrb.py --rs`, 31
+      checks, all pass with the arrival tolerance at 7.5 ns, one reference
+      row and half again (the script's docstring says why; G3 reached +5.0
+      and +5.1 ns against 5). G4's D within 0.08 % of D_CJ; energy to
+      round-off.
 - [ ] **The 25 zones/mm difference:** bitwhiz AV's PDV arrival is 13 ns
       early at 25 zones/mm against the reference's 25 zones/mm run (RS
       order 2 about 7; from 50 zones/mm up within 1 ns), where the reaction
@@ -207,6 +222,14 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       reaction zone, the burn's first-order quadrature of Phi over a long
       dt, the closure's sound speed) sets it, and does a burn time-step
       limit (Delta lam per step) close it?
+- [ ] **The AV spike in the HVRB class deck** (DK, Nov 5): with AV, the
+      pressure behind the detonation has a spike, then a thin valley,
+      before the Taylor release wave; RS order 1 and order 2 do not, and
+      their profiles look better (the AV behavior recalls the commercial
+      code's, at times). A first suspect: the burn inside AV's smeared
+      shock, the rate law reading a pressure the shock has not finished
+      building. With the 25 zones/mm difference above: mesh, BL and BQ,
+      against RS.
 - [x] Check that the data's HVRB inputs match the equation sheet bitwhiz
       will follow (Nov 4): the dataset's README cites `HVRB_Eqns_v3.tex`;
       the sheet's model and constants are the same in v3 and v8, frozen
@@ -265,15 +288,20 @@ need no tables.
       `shock`; the nanoHUB tool with it, with the notebook's MP4 movie,
       the `.resolved` download and `steepening_hump` in the picker
       (section 2), approved and published Nov 4; beta testing begun.
-- [ ] **Release 1.3.0** (Nov 4): HVRB with ideal-gas products (both
+- [x] **Release 1.3.0** (Nov 4): HVRB with ideal-gas products (both
       methods, verified against G2-G5), `XRN` outputs, the example deck
       `me697_hvrb_2p00.deck` in the nanoHUB picker. Tagged on `shock`, the
-      nanoHUB tool with it; then test and approve.
+      nanoHUB tool with it; then test and approve. Rebuilt on nanoHUB and
+      working, Nov 5.
 - [ ] **A broken cell's temperature:** written as computed, it falls as
       the cell opens (P floored at 0, e_c following V): -4,693 K in G1's
       spalled PMMA at 2.00 km/s. The log skips broken cells. Decide what
       a broken cell should carry (freeze e_c at the break? report 0?)
-      with HVRB or a damage model.
+      with HVRB or a damage model. A burning cell's, done Nov 5 (1.3.3):
+      its solid held where it first pulls, its e_c frozen there
+      (`doc/design/materials.md`, phase 3); T stays above 0 with RS, and
+      with AV but for one free-surface end cell (section 8). The same
+      hold may suit an inert broken cell: e_c frozen at the break.
 - [ ] **Constants per cell** for grading (section 7): the database's
       layout for them, when grading starts.
 
@@ -430,12 +458,26 @@ decks.
       The `impact` tracer reports that last Al cell. Study: mesh (does it
       stay a few cells wide?), AV against RS, BL and BQ, and Noh's
       artificial heat flux as a possible cure.
-- [ ] **AV energy at a free surface:** with AV, the energy error jumps
+- [x] **AV energy at a free surface:** with AV, the energy error jumps
       when a shock reaches a free surface (ramp_linear: -6.8e-4 at 25
       zones/mm, first order, -4.3e-5 at 400), and is flat otherwise; RS
       conserves energy to round-off. Find which term does it (the
       free-surface face, q in the last cell) and whether it can be made
-      conservative.
+      conservative. Done Nov 5 (1.3.2): the energy update's end-face
+      stress averaged the end cell's q with the void's, half of q as work
+      by the void (-9.6e-3 with a burn at the surface). With none, AV
+      conserves total energy to round-off on every deck, as RS does.
+- [ ] **AV at a free surface, what is left:** (a) the peak: on the ramp
+      decks AV's free-surface velocity peaks about 9 % above RS order 2's
+      (ramp_linear: 2.28 against 2.09 km/s; 0.4 % more since 1.3.2 kept
+      the energy the end face leaked). The end node has half a cell's
+      mass and takes the end cell's full q. (b) The end cell's
+      temperature: Material X struck at 1.00 km/s (AV), the free-surface
+      cell, barely burnt and blown off to 1/500 of its density, reaches
+      -968 K, its e falling 1.39 kJ/g with no -P dv of its own: AV's
+      update takes the growth of the cell-centered (1/2) ubar^2 from e.
+      One study with the class deck's spike (section 3): mesh, BL and BQ,
+      against RS.
 - [ ] **Acoustic verification as a test:** the four profile decks at 1e-4
       of their amplitude against exact linear acoustics (invariants
       p +/- Z u, impedance matching at the contact, p = 0 at the free
@@ -447,6 +489,11 @@ decks.
       using the `<title>.resolved` the first run wrote (deck tests 160 s
       to 105 s on 2 cores), each in its own scratch folder. The second run
       could be a reading check without a full run: about 30 s more.
+- [x] **gfortran 8 debug builds** (Nov 5, 1.3.1; nanoHUB has 8.3):
+      `ieee_value` raised the invalid flag there, which the debug build
+      traps; the NaN constants are now bit patterns in `bit_mod`. Release
+      builds were never affected; gfortran 8.4 and 13 give the same bits
+      on every deck.
 
 ## Ideas (further out)
 - **Values and units on every plot:** the axes' ends (xmin, xmax, ymin,
