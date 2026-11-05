@@ -1,0 +1,161 @@
+#**********************************************************************#
+#  G2 and G5 comparison: the class problem with Material X burning     #
+#  (HVRB, ideal-gas products), against the gold-standard reactive data #
+#  (hvrb/G2_react_<v>_kmps.dat, the five flyer velocities; G5_react_   #
+#  2p00_kmps_<z>_zpmm.dat, the mesh study at 2.00 km/s).               #
+#                                                                      #
+#  ../inert_gauges/g1_inert.deck with a burn in Material X, the        #
+#  reference's model and constants (hvrb/README.md, "Model"; the HVRB  #
+#  equation sheet, doc/HVRB_Eqns_v8), and t_end = 3.0 us: every        #
+#  arrival the data is compared on is before 2.7 us. Its 13 tracers    #
+#  are G1's (and G2's):                                                #
+#                                                                      #
+#      Ta:Al  Al:MatX  MatX@0.1 ... MatX@0.9  MatX:PMMA  PMMA@0.1      #
+#      -4.0   0.0      1, 2, ... 9 mm         10.0 (PDV) 11.0          #
+#                                                                      #
+#  The cases differ only in "define u_fly", the title and, for G5,     #
+#  resolution. ../compare_hvrb.py runs them and compares them with the #
+#  data. Units: mm, us, g/cc, km/s, GPa.                               #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00            # km/s, flyer velocity
+
+ Begin Run
+  plots_only = no    # yes or no
+  title       = g2_react_2p00
+  t_end       = 3.0             # us: every arrival compared is before
+                                # 2.7 us (the PDV at 1.00 km/s: 2.63)
+  num_threads = 1
+ End Run
+
+ Begin Output                   # nothing listed here = nothing written
+  plot_dt     = 0               # no history file (it is not compared)
+  tracer_dt   = 0.005           # us between tracer rows (the
+                                # reference's spacing); 0 = every cycle
+  colormap    = viridis         # for bitmap pictures
+
+  tracer = ta_al   Ta:Al        # x0 = -4.0 mm (the reference: -3.999)
+  tracer = impact  Al:MatX      #       0.0       (0.001)
+  tracer = x1      MatX@0.1     #       1.0
+  tracer = x2      MatX@0.2     #       2.0
+  tracer = x3      MatX@0.3     #       3.0
+  tracer = x4      MatX@0.4     #       4.0
+  tracer = x5      MatX@0.5     #       5.0
+  tracer = x6      MatX@0.6     #       6.0
+  tracer = x7      MatX@0.7     #       7.0
+  tracer = x8      MatX@0.8     #       8.0
+  tracer = x9      MatX@0.9     #       9.0
+  tracer = pdv     MatX:PMMA    #      10.0, PDV  (9.999)
+  tracer = pmma11  PMMA@0.1     #      11.0
+ End Output
+
+ Begin Solver
+  method = AV
+  BL     = 0.1                  # linear viscosity coefficient
+  BQ     = 2.0                  # quadratic viscosity coefficient
+                                # (the equation sheet's defaults; leave
+                                # them alone unless you are studying q)
+  CFL    = 0.6
+ End Solver
+
+ # Mie-Gruneisen on the principal Hugoniot (rev-0, Eqs. 4 and 6):
+ #   Us = C0 + S1*up + (S2/C0)*up^2,   rho*Gamma = R0*G0
+ Begin Material Ta              # tantalum, backing plate
+  eos = mie_gruneisen_t         # Mie-Gruneisen, plus temperature
+  R0 = 16.65                    # g/cm^3, initial density
+  C0 = 3.40                     # km/s, Hugoniot intercept
+  S1 = 1.20                     # -,    Us-up slope
+  S2 = 0.0                      # -,    Us-up curvature (default 0)
+  G0 = 1.60                     # -,    Gruneisen coefficient
+  spall_strength = 5.0          # GPa, dynamic. Tantalum is strong in
+                                # tension (spall strengths of several
+                                # GPa are reported); at 5.0 the Ta here
+                                # holds its ~2 GPa tension, as in the
+                                # reference data. Other materials take
+                                # the default, 0.01 GPa (input/README.md)
+  CV = 1.1633418                # J/(g K), the reference's C_V for every
+                                # material: 1.35e11 erg/(g eV) / 11604.5 K/eV
+  T0 = 298.0                    # K, at R0 and e = 0 (the reference
+                                # starts at 298.0014 K: a known offset)
+ End Material
+
+ Begin Material Al              # aluminum, flyer face
+  eos = mie_gruneisen_t
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  S2 = 0.0
+  G0 = 2.00
+  CV = 1.1633418
+  T0 = 298.0
+ End Material
+
+ Begin Material MatX            # notional HE surrogate, reactive
+  eos = mie_gruneisen_t
+  R0 = 1.60
+  C0 = 2.50
+  S1 = 1.80
+  S2 = -0.10
+  G0 = 1.20
+  CV = 1.1633418
+  T0 = 298.0
+  burn = hvrb                   # History Variable Reactive Burn: the
+  PR   = 7.0                    # GPa   HVRB equation sheet's Material X
+  ZR   = 3.0                    #       set (doc/HVRB_Eqns_v8), the
+  MR   = 1.5                    #       reference's (hvrb/README.md)
+  XR   = 2.5
+  PI   = 1.0                    # GPa, threshold
+  TAU0 = 1.0                    # us
+  products = ideal_gas          # the reference's: P = (gamma - 1) rho C_V T
+  GAMMA    = 2.60
+  Q        = 4.8828             # kJ/g (= MJ/kg), heat of reaction
+ End Material
+
+ Begin Material PMMA            # window; Lacina et al. (2018) linear fit
+  eos = mie_gruneisen_t
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  S2 = 0.0
+  G0 = 0.90                     # estimated from Plexiglass (rev-0 Table 1)
+  CV = 1.1633418
+  T0 = 298.0
+ End Material
+
+ Begin Stack
+  resolution = 100              # zones/mm, as the reference: 2700 cells
+  origin     = Al:MatX          # x = 0 at the impact plane
+
+  Begin Layer
+   material = Ta
+   width    = 3.0               # mm
+   xvel     = u_fly             # km/s, + is to the right
+  End Layer
+
+  Begin Layer
+   material = Al
+   width    = 4.0
+   xvel     = u_fly
+  End Layer
+
+  Begin Layer
+   material = MatX
+   width    = 10.0
+  End Layer
+
+  Begin Layer
+   material = PMMA
+   width    = 10.0
+  End Layer
+ End Stack
+End bitwhiz
+
+Notes (ignored by the parser):
+- Everything else is the class deck's: AV with BL = 0.1, BQ = 2.0, CFL =
+  0.6 (method = RS works too; compare_hvrb.py --rs). Ta holds 5 GPa of
+  tension, the others the default 0.01; a burning cell holds none.
+- The data's own notes: decide "detonated or not" from the shock's path
+  (run distance), never from the PDV's amplitude: at 1.00 and 1.25 km/s
+  the burn behind an unreacted front still reaches the window late.
+- Its key reference: input/me697_double_shock_2p00.deck, after End bitwhiz.

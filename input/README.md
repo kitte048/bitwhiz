@@ -338,6 +338,17 @@ into a triangle that decays as it crosses C. A pressure movie (25 frames)
 and scope views at 1, 3, 6, 10 and 15 mm into C are built in; spall is off,
 as above.
 
+**A detonation,** `me697_hvrb_2p00.deck`: the class problem with Material X
+burning (`burn = hvrb`, `products = ideal_gas`, the HVRB equation sheet's
+Material X constants; Material block, "Burning"). At 2.00 km/s the shock
+grows into a detonation about 3.5 mm into Material X and runs at D_CJ =
+7.5 km/s, a von Neumann spike at its front and the products' Taylor wave
+behind; the P t-x diagram and the pressure movie (35 frames) show it, and
+each tracer's `XRN` column is its cell's extent of reaction. Change `define
+u_fly` for the Pop plot's trend (1.75 and 1.50 km/s detonate later, 1.25 and
+1.00 not within 10 mm). Checked against the gold-standard reactive data by
+`tests/verification/compare_hvrb.py`. About 3 s (release build).
+
 **Keep the origin near the problem.** Positions are stored as plain numbers, so
 round-off in x grows with the size of x: a cell's width is the difference of
 its two face positions. With the origin in or near the stack (the usual
@@ -612,8 +623,8 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
              -c:v libx264 -pix_fmt yuv420p -crf 20 <title>.mv_p.mp4
 
   (7 frames a second: 35 frames make 5 s; `yuv420p` so browsers play it).
-  The class deck, `pulse_split_normal.deck` and `steepening_hump.deck` make
-  movies (35, 35 and 25 frames).
+  The class deck, `pulse_split_normal.deck`, `steepening_hump.deck` and
+  `me697_hvrb_2p00.deck` make movies (35, 35, 25 and 35 frames).
 
 - **Read from the files, never from memory.** The t-x diagrams come from
   `<title>.hist` and the tracer plots from `<title>.tracers.csv`, so a picture

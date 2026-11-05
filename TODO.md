@@ -13,7 +13,8 @@ nanoHUB notebook, published) and the gold-standard data and its reader.
 every picture, the shorter screen, `make runs`, movies in the class deck.
 1.2.0 published on nanoHUB Nov 4, 2026 (with the notebook's MP4 movie),
 and beta testing begun; the priorities reordered that day, from a roadmap
-of next steps out to research.
+of next steps out to research. 1.3.0 cut Nov 4, 2026: HVRB (both methods,
+verified against G2-G5) and its example deck.
 
 ## Priorities
 Next, an afternoon each, little risk:
@@ -40,9 +41,9 @@ Near term, verification and correctness, toward 1.3:
 Medium term, the reactive physics:
 9. HVRB, checked against G2-G5 (sections 3 and 6): the v8 equation sheet
    frozen in `doc/` and G2-G5's inputs checked against it (Nov 4); the
-   design (`doc/design/materials.md`, phase 3), steps 2 to 4 (both
-   methods) done Nov 4; next, G2-G5 (5). Started Nov 4,
-   ahead of the order above. JWL products after.
+   design (`doc/design/materials.md`, phase 3), steps 2 to 5 done Nov 4:
+   both methods, all of G2-G5, an example deck; 1.3.0. Next for the burn:
+   JWL products, the 25 zones/mm difference (section 3).
 10. With it or after: a broken cell's temperature (section 5); strength,
     the spall "knocking", the 2025 survey's burn models (section 6).
 
@@ -195,8 +196,17 @@ zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
       pressure's zero at 298.0014 K is G1's start. Not pursued further:
       bitwhiz has its own temperature standard (T1-T5,
       `doc/design/materials.md`), and G1's TK is reported, not checked.
-- [ ] **G2-G5 (reactive), with HVRB** (section 6): decks for the class stack
-      and the thick-flyer stack, compared with `hvrb/README.md`'s tolerances.
+- [x] **G2-G5 (reactive), with HVRB** (Nov 4): `hvrb/g2_react.deck` (class
+      stack) and `hvrb/g3_poplt.deck` (thick flyer), compared with
+      `hvrb/README.md`'s tolerances by `compare_hvrb.py`: 36 checks, all
+      pass (`doc/design/materials.md`, phase 3, step 5, the table).
+- [ ] **The 25 zones/mm difference:** bitwhiz AV's PDV arrival is 13 ns
+      early at 25 zones/mm against the reference's 25 zones/mm run (RS
+      order 2 about 7; from 50 zones/mm up within 1 ns), where the reaction
+      zone spans 3 to 4 cells. Which part of the scheme (AV's q in the
+      reaction zone, the burn's first-order quadrature of Phi over a long
+      dt, the closure's sound speed) sets it, and does a burn time-step
+      limit (Delta lam per step) close it?
 - [x] Check that the data's HVRB inputs match the equation sheet bitwhiz
       will follow (Nov 4): the dataset's README cites `HVRB_Eqns_v3.tex`;
       the sheet's model and constants are the same in v3 and v8, frozen
@@ -255,6 +265,10 @@ need no tables.
       `shock`; the nanoHUB tool with it, with the notebook's MP4 movie,
       the `.resolved` download and `steepening_hump` in the picker
       (section 2), approved and published Nov 4; beta testing begun.
+- [ ] **Release 1.3.0** (Nov 4): HVRB with ideal-gas products (both
+      methods, verified against G2-G5), `XRN` outputs, the example deck
+      `me697_hvrb_2p00.deck` in the nanoHUB picker. Tagged on `shock`, the
+      nanoHUB tool with it; then test and approve.
 - [ ] **A broken cell's temperature:** written as computed, it falls as
       the cell opens (P floored at 0, e_c following V): -4,693 K in G1's
       spalled PMMA at 2.00 km/s. The log skips broken cells. Decide what
@@ -294,10 +308,11 @@ decks.
       within 5 ns at every gauge. Steps 3b and 4 done Nov 4: method RS,
       with the reaction's source in its order-2 predictor (per cell, per
       step); AV, RS order 2 and order 1 all within 5 ns of G2 at every
-      gauge at 2.00 km/s, and AV and RS order 2 at 1.50. Next, step 5:
-      `compare_hvrb.py` against G2-G5 (run distance, the Pop plot, D_CJ,
-      the mesh study), then an example deck (and whether it goes to
-      nanoHUB: HVRB is the class project's extra credit) and 1.3.0.
+      gauge at 2.00 km/s, and AV and RS order 2 at 1.50. Step 5 done Nov
+      4: G2-G5 all pass (section 3); the example deck
+      `input/me697_hvrb_2p00.deck`, exported to nanoHUB with the others
+      (decided Nov 4: the model in action, for students who do not use
+      Fortran). Released in 1.3.0.
 - [ ] **The burn models from the 2025 survey:** FlashFire,
       StochasticIgnite and ThermalCascade, from D. E. Kittell et al., "A
       Short Survey of Current Reactive Burn Model Capabilities as of

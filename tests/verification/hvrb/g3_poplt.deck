@@ -1,0 +1,192 @@
+#**********************************************************************#
+#  G3 and G4 comparison: the thick flyer, Material X burning (HVRB,    #
+#  ideal-gas products), against the gold-standard reactive data        #
+#  (hvrb/G3_poplt_<v>_kmps.dat: single-shock runs to detonation, the   #
+#  Pop plot, 1.25 to 2.25 km/s; G4_wavsp_3p00_kmps.dat: the detonation #
+#  speed, 3.00 km/s).                                                  #
+#                                                                      #
+#      Al 20 mm (at u_fly)  ->  Material X 20 mm  ->  PMMA 4 mm        #
+#                         x = 0 at the impact plane                    #
+#                                                                      #
+#  The thick flyer keeps one shock in Material X until it detonates    #
+#  (no Ta reshock). One tracer at the impact plane and one every 0.25  #
+#  mm through Material X, 0.25 to 20 mm: every position any G3 or G4   #
+#  file has (each uses its own subset: every 1, 0.5 or 0.25 mm), so    #
+#  ../compare_hvrb.py measures run distance on the reference's own     #
+#  tracers. Material constants and the burn as hvrb/g2_react.deck (the #
+#  reference's model, hvrb/README.md). The cases differ only in        #
+#  "define u_fly" and the title. Units: mm, us, g/cc, km/s, GPa.       #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00            # km/s, flyer velocity
+
+ Begin Run
+  title       = g3_poplt_2p00
+  t_end       = 4.0             # us, the reference's trust window (its
+                                # mass is constant to 3.6-4.0 us)
+  num_threads = 1
+ End Run
+
+ Begin Output
+  tracer_dt   = 0.005           # us between tracer rows, as the reference
+  tracer = impact  Al:MatX      # x0 = 0.0 mm (the reference: 0.001)
+  tracer = x0_25    MatX@0.0125  #   0.25 mm
+  tracer = x0_50    MatX@0.025   #   0.50 mm
+  tracer = x0_75    MatX@0.0375  #   0.75 mm
+  tracer = x1_00    MatX@0.05    #   1.00 mm
+  tracer = x1_25    MatX@0.0625  #   1.25 mm
+  tracer = x1_50    MatX@0.075   #   1.50 mm
+  tracer = x1_75    MatX@0.0875  #   1.75 mm
+  tracer = x2_00    MatX@0.1     #   2.00 mm
+  tracer = x2_25    MatX@0.1125  #   2.25 mm
+  tracer = x2_50    MatX@0.125   #   2.50 mm
+  tracer = x2_75    MatX@0.1375  #   2.75 mm
+  tracer = x3_00    MatX@0.15    #   3.00 mm
+  tracer = x3_25    MatX@0.1625  #   3.25 mm
+  tracer = x3_50    MatX@0.175   #   3.50 mm
+  tracer = x3_75    MatX@0.1875  #   3.75 mm
+  tracer = x4_00    MatX@0.2     #   4.00 mm
+  tracer = x4_25    MatX@0.2125  #   4.25 mm
+  tracer = x4_50    MatX@0.225   #   4.50 mm
+  tracer = x4_75    MatX@0.2375  #   4.75 mm
+  tracer = x5_00    MatX@0.25    #   5.00 mm
+  tracer = x5_25    MatX@0.2625  #   5.25 mm
+  tracer = x5_50    MatX@0.275   #   5.50 mm
+  tracer = x5_75    MatX@0.2875  #   5.75 mm
+  tracer = x6_00    MatX@0.3     #   6.00 mm
+  tracer = x6_25    MatX@0.3125  #   6.25 mm
+  tracer = x6_50    MatX@0.325   #   6.50 mm
+  tracer = x6_75    MatX@0.3375  #   6.75 mm
+  tracer = x7_00    MatX@0.35    #   7.00 mm
+  tracer = x7_25    MatX@0.3625  #   7.25 mm
+  tracer = x7_50    MatX@0.375   #   7.50 mm
+  tracer = x7_75    MatX@0.3875  #   7.75 mm
+  tracer = x8_00    MatX@0.4     #   8.00 mm
+  tracer = x8_25    MatX@0.4125  #   8.25 mm
+  tracer = x8_50    MatX@0.425   #   8.50 mm
+  tracer = x8_75    MatX@0.4375  #   8.75 mm
+  tracer = x9_00    MatX@0.45    #   9.00 mm
+  tracer = x9_25    MatX@0.4625  #   9.25 mm
+  tracer = x9_50    MatX@0.475   #   9.50 mm
+  tracer = x9_75    MatX@0.4875  #   9.75 mm
+  tracer = x10_00   MatX@0.5     #  10.00 mm
+  tracer = x10_25   MatX@0.5125  #  10.25 mm
+  tracer = x10_50   MatX@0.525   #  10.50 mm
+  tracer = x10_75   MatX@0.5375  #  10.75 mm
+  tracer = x11_00   MatX@0.55    #  11.00 mm
+  tracer = x11_25   MatX@0.5625  #  11.25 mm
+  tracer = x11_50   MatX@0.575   #  11.50 mm
+  tracer = x11_75   MatX@0.5875  #  11.75 mm
+  tracer = x12_00   MatX@0.6     #  12.00 mm
+  tracer = x12_25   MatX@0.6125  #  12.25 mm
+  tracer = x12_50   MatX@0.625   #  12.50 mm
+  tracer = x12_75   MatX@0.6375  #  12.75 mm
+  tracer = x13_00   MatX@0.65    #  13.00 mm
+  tracer = x13_25   MatX@0.6625  #  13.25 mm
+  tracer = x13_50   MatX@0.675   #  13.50 mm
+  tracer = x13_75   MatX@0.6875  #  13.75 mm
+  tracer = x14_00   MatX@0.7     #  14.00 mm
+  tracer = x14_25   MatX@0.7125  #  14.25 mm
+  tracer = x14_50   MatX@0.725   #  14.50 mm
+  tracer = x14_75   MatX@0.7375  #  14.75 mm
+  tracer = x15_00   MatX@0.75    #  15.00 mm
+  tracer = x15_25   MatX@0.7625  #  15.25 mm
+  tracer = x15_50   MatX@0.775   #  15.50 mm
+  tracer = x15_75   MatX@0.7875  #  15.75 mm
+  tracer = x16_00   MatX@0.8     #  16.00 mm
+  tracer = x16_25   MatX@0.8125  #  16.25 mm
+  tracer = x16_50   MatX@0.825   #  16.50 mm
+  tracer = x16_75   MatX@0.8375  #  16.75 mm
+  tracer = x17_00   MatX@0.85    #  17.00 mm
+  tracer = x17_25   MatX@0.8625  #  17.25 mm
+  tracer = x17_50   MatX@0.875   #  17.50 mm
+  tracer = x17_75   MatX@0.8875  #  17.75 mm
+  tracer = x18_00   MatX@0.9     #  18.00 mm
+  tracer = x18_25   MatX@0.9125  #  18.25 mm
+  tracer = x18_50   MatX@0.925   #  18.50 mm
+  tracer = x18_75   MatX@0.9375  #  18.75 mm
+  tracer = x19_00   MatX@0.95    #  19.00 mm
+  tracer = x19_25   MatX@0.9625  #  19.25 mm
+  tracer = x19_50   MatX@0.975   #  19.50 mm
+  tracer = x19_75   MatX@0.9875  #  19.75 mm
+  tracer = x20_00   MatX:PMMA    #  20.00 mm
+ End Output
+
+ Begin Solver
+  method = AV
+  BL     = 0.1                  # linear viscosity coefficient
+  BQ     = 2.0                  # quadratic viscosity coefficient
+                                # (the equation sheet's defaults; leave
+                                # them alone unless you are studying q)
+  CFL    = 0.6
+ End Solver
+
+ Begin Material Al              # aluminum, flyer face
+  eos = mie_gruneisen_t
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  S2 = 0.0
+  G0 = 2.00
+  CV = 1.1633418
+  T0 = 298.0
+ End Material
+
+ Begin Material MatX            # notional HE surrogate, reactive
+  eos = mie_gruneisen_t
+  R0 = 1.60
+  C0 = 2.50
+  S1 = 1.80
+  S2 = -0.10
+  G0 = 1.20
+  CV = 1.1633418
+  T0 = 298.0
+  burn = hvrb                   # History Variable Reactive Burn: the
+  PR   = 7.0                    # GPa   HVRB equation sheet's Material X
+  ZR   = 3.0                    #       set (doc/HVRB_Eqns_v8), the
+  MR   = 1.5                    #       reference's (hvrb/README.md)
+  XR   = 2.5
+  PI   = 1.0                    # GPa, threshold
+  TAU0 = 1.0                    # us
+  products = ideal_gas          # the reference's: P = (gamma - 1) rho C_V T
+  GAMMA    = 2.60
+  Q        = 4.8828             # kJ/g (= MJ/kg), heat of reaction
+ End Material
+
+ Begin Material PMMA            # window; Lacina et al. (2018) linear fit
+  eos = mie_gruneisen_t
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  S2 = 0.0
+  G0 = 0.90                     # estimated from Plexiglass (rev-0 Table 1)
+  CV = 1.1633418
+  T0 = 298.0
+ End Material
+
+ Begin Stack
+  resolution = 100              # zones/mm, as the reference: 4400 cells
+  origin     = Al:MatX          # x = 0 at the impact plane
+
+  Begin Layer
+   material = Al
+   width    = 20.0              # mm, the thick flyer
+   xvel     = u_fly
+  End Layer
+
+  Begin Layer
+   material = MatX
+   width    = 20.0
+  End Layer
+
+  Begin Layer
+   material = PMMA
+   width    = 4.0
+  End Layer
+ End Stack
+End bitwhiz
+
+Notes (ignored by the parser):
+- G4's file has positions only (XPOS), so its arrivals are first motion;
+  bitwhiz's are the 0.05 km/s threshold on u, as everywhere (gold.py).

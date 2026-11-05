@@ -55,6 +55,16 @@ velocities and checks it against the inert set G1 with the same code (after
 
     python3 tests/verification/compare_g1.py
 
+`compare_hvrb.py` runs bitwhiz with Material X burning (HVRB, the reference's
+model) on the reactive sets G2-G5, with `hvrb/g2_react.deck` (the class stack:
+G2, and G5's mesh study) and `hvrb/g3_poplt.deck` (the thick flyer: G3's runs
+to detonation and G4's detonation speed), and checks run distance, arrivals,
+D and convergence with the data's own definitions and tolerances (its
+docstring has the list; about 10 minutes on 2 cores; `--quick` leaves out the
+200 and 400 zones/mm runs, `--rs` runs method RS):
+
+    python3 tests/verification/compare_hvrb.py
+
 ## Gold-standard sets (subfolders)
 - `inert_gauges/`: the same problem, Material X inert, with 13 tracers (every
   1 mm through Material X) and density and temperature: set G1.

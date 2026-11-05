@@ -580,7 +580,8 @@ into a one-variable Newton solve for T, in the same place.
    with step 4.
 4. RS, with the thermicity source in the order-2 predictor (above), and
    the on/off check at G2. Done Nov 4, with 3b (below).
-5. G2-G5; then a release (1.3.0) and an HVRB deck for nanoHUB.
+5. G2-G5; then a release (1.3.0) and an HVRB deck for nanoHUB. G2-G5
+   done Nov 4 (below).
 
 Performance: only burning cells do more; the default Mie-Grüneisen path's
 cost per cycle is checked unchanged (TODO.md, section 8).
@@ -712,6 +713,48 @@ run, bit for bit, but for XRN); history tests `hvrb_rs` and `hvrb_inert_rs`
 (the inert limit is now a function, `inert_limit`, run for AV and RS).
 `bad_burn_rs` is gone (RS takes a burn). Every earlier deck, the three AV
 burn decks included, gives the same results as 3a, bit for bit.
+
+### As built: step 5, against G2-G5 (Nov 4, 2026)
+
+`tests/verification/compare_hvrb.py`, with `hvrb/g2_react.deck` (G1's deck
+with Material X burning: G2, and G5's mesh study) and `hvrb/g3_poplt.deck`
+(the thick flyer, a tracer every 0.25 mm through Material X: G3 and G4),
+method AV, the data's own definitions (gold.py) and the tolerances its
+README suggests; 36 checks, all pass:
+
+| Set | What | bitwhiz | Reference |
+|---|---|---|---|
+| G2 | run distance, 1.00 / 1.25 / 1.50 / 1.75 / 2.00 km/s | none / none / 7.5 / 5.5 / 3.5 mm | the same |
+| G2 | arrivals 1-9 mm and PDV, every velocity | within -0.1 to +4.8 ns | |
+| G2 | energy drift | 0.0006-0.0017 % | 0.0028-0.0055 % |
+| G2 | lam at 9 mm, 3.0 us, 1.00 km/s (no detonation) | 0.035 | 0.034 |
+| G3 | run distance, 1.25 / 1.50 / 1.75 / 2.00 / 2.25 km/s | 12.5 / 7.5 / 4.75 / 3.25 / 2.38 mm | 12.5 / 7.5 / 4.75 / 3.75 / 2.38 |
+| G3 | arrivals on the reference's tracers | within -0.2 to +4.8 ns | |
+| G3 | Pop plot, ln x_run = a + b ln P1 | 6.298 - 2.152 ln P1 | 6.158 - 2.074 ln P1 |
+| G4 | D over 10-20 / 10-15 / 15-20 mm (D_CJ 7.5000) | 7.5150 / 7.5230 / 7.5118 km/s | 7.505 / 7.505 / 7.506 |
+| G5 | PDV arrival, 25 / 50 / 100 / 200 / 400 zones/mm | 1.5061 / 1.5209 / 1.5202 / 1.5202 / 1.5201 us | 1.5194 / 1.5201 / 1.5203 / 1.5201 / 1.5201 |
+
+- **Run distance** is a first crossing on tracer intervals, so it moves in
+  steps of the spacing: G3 at 2.00 km/s is one step (0.5 mm) early, within
+  the data's tolerance, and that one point moves the Pop plot's fit.
+- **The mesh study converges:** bitwhiz's PDV arrival settles on the
+  reference's own converged value to 0.0 ns. At 25 zones/mm it is 13 ns
+  early against the reference's 25 zones/mm run (RS order 2: about 7): the
+  reaction zone (about 0.14 mm) spans 3 to 4 cells there, and the two codes'
+  schemes part. Reported, not checked; the data's acceptance is at 100
+  zones/mm, and the check from 50 zones/mm up is within 5 ns.
+- **G4's D** is 0.16-0.31 % above D_CJ (the reference: 0.07 %), inside the
+  0.5 % tolerance; at 3.00 km/s the drive is overdriven at first, and the
+  fits over 15-20 mm, furthest from it, are the closest.
+- **Not compared:** after the trust window (material leaving the
+  reference's mesh), and the reference's mixed-cell tracers at interfaces
+  (u only, as its README says).
+
+**The example deck,** `input/me697_hvrb_2p00.deck` (the class problem with
+Material X burning, 35 zones/mm, a 35-frame pressure movie; 3 s release):
+in `make runs` and the deck tests with the other inputs, and exported to
+the nanoHUB tool's picker with them (decided Nov 4: the model in action for
+students who do not use Fortran; the code is open and verified).
 
 ## Phases
 
