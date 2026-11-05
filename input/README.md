@@ -209,7 +209,9 @@ a reacting solid) and never spalls; a cell at lam = 0 is the inert material,
 bit for bit. Burning changes lam at fixed rho and e, so energy is conserved
 (the heartbeat's energy error is the check). The tracer file gets `XRN`
 (lam) per tracer, the history file an `XRN` variable, and the run log the
-first cell to react and the cells burnt out. Method AV only for now (RS next).
+first cell to react and the cells burnt out. Both methods: with RS at order
+2 the reaction is also a source in the predictor's pressure (`doc/design/
+materials.md`, phase 3).
 Example, the HVRB sheet's Material X set (`doc/design/materials.md`, phase 3):
 
     eos = mie_gruneisen_t

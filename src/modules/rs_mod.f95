@@ -28,7 +28,8 @@ module rs
 !    RS equation sheet, Steps 1-4, Time Step, Boundary Conditions.
 !    U7 (Acoustic Solution); S. K. Godunov, Mat. Sb. 47 (1959);
 !    D. E. Kittell et al., Propellants Explos. Pyrotech. 45 (2020)
-!    295-315 (star values stored at the faces).
+!    295-315 (star values stored at the faces; p. 297, a reaction's
+!    source held over a step, here per cell and per step).
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -39,12 +40,19 @@ module rs
 !                (with Claude)        default): MUSCL-Hancock face
 !                                     states with a Van Leer limiter
 !
+!    11/04/26    D. E. Kittell        A burn: the reaction's source in
+!                (with Claude)        the order-2 predictor (optional
+!                                     src), and a burning cell's state
+!                                     from the HVRB closure (optional
+!                                     brn, through cell_pressure)
+!
 !**********************************************************************!
 use bits,  only: dp, int32, zero, half, one
 use shock, only: nvar, jx, jm, jrho, je, jp, jc, juc, ju_star, jp_star, &
    ju_lf, ju_rf, jp_lf, jp_rf
 use eos,   only: eos_ok
 use av,    only: cell_pressure
+use hvrb,  only: burn_cell_t
 implicit none
 private
 
@@ -79,13 +87,16 @@ contains
    ! interface, so the slopes may span one (V, which jumps there, is  !
    ! never reconstructed).                                            !
    !******************************************************************!
-   pure subroutine rs_face_states( c, dt, order, ul, ur, pl, pr )
+   pure subroutine rs_face_states( c, dt, order, ul, ur, pl, pr, src )
    implicit none
    real(kind=dp), intent(in)  :: c(nvar,-2:2)   ! cell,face,CELL,face,cell
    real(kind=dp), intent(in)  :: dt             ! us, this cycle's step
    integer(kind=int32), intent(in) :: order     ! 1 or 2
    real(kind=dp), intent(out) :: ul, ur         ! km/s, u on left/right face
    real(kind=dp), intent(out) :: pl, pr         ! GPa,  P on left/right face
+   real(kind=dp), intent(in), optional :: src   ! GPa/us, the reaction's
+                                                ! source in dP/dt (a cell
+                                                ! that burns this step)
    real(kind=dp) :: mk, su, sp, du, dp_, z2
 
    if ( order < 2 ) then
@@ -111,6 +122,11 @@ contains
    z2  = ( c(jrho,0)*c(jc,0) )**2
    du  = -half*dt*sp
    dp_ = -half*dt*z2*su
+   !*** A cell that burns this step: the reaction's source too, dP/dt =
+   !*** -Z**2 du/dh + rho c**2 sigma r, held over the step as Z is
+   !*** (module burn, ONE CYCLE, METHOD RS). Absent for any other cell,
+   !*** whose face states are the same bits as without a burn.
+   if ( present( src ) ) dp_ = dp_ + half*dt*src
    ul  = c(juc,0) - half*mk*su + du
    ur  = c(juc,0) + half*mk*su + du
    pl  = c(jp,0)  - half*mk*sp + dp_
@@ -227,7 +243,7 @@ contains
    ! step. There is no q.                                             !
    !******************************************************************!
    pure subroutine rs_state( c, p, cs, dtk, dnew, tensile, spalled, &
-      pbreak, void, ierr )
+      pbreak, void, ierr, brn, cflag )
    implicit none
    real(kind=dp), intent(in)  :: c(nvar,-2:2)   ! cell,face,CELL,face,cell
    real(kind=dp), intent(out) :: p              ! GPa, >= -spall_strength
@@ -240,9 +256,12 @@ contains
                                                 ! broke, else zero
    logical, intent(out)       :: void           ! treated as void
    integer(kind=int32), intent(out) :: ierr     ! from the EOS
+   type(burn_cell_t), intent(in), optional :: brn  ! a burning cell's
+                                                ! burn (module av)
+   integer(kind=int32), intent(out), optional :: cflag ! its c's rule
 
    call cell_pressure( c(:,0), p, cs, dnew, tensile, spalled, pbreak, &
-      void, ierr )
+      void, ierr, brn, cflag )
    if ( ierr /= eos_ok ) then
       dtk = cs                                  ! NaN, like cs
       return

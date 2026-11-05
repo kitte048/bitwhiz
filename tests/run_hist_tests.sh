@@ -32,8 +32,9 @@
 #     to single precision, 298 K (T0) at t = 0;                        #
 #   - with a burn (burn = hvrb), the file has XRN after TK (0 at t = #
 #     0, 0 to 1, never falling), a tracer's XRN in it is the tracer    #
-#     file's; and a burn that never starts (PI out of reach) gives the #
-#     inert run's heartbeat, tracer rows and frames, bit for bit;      #
+#     file's, AV and RS; and a burn that never starts (PI out of      #
+#     reach) gives the inert run's heartbeat, tracer rows and frames,  #
+#     bit for bit, AV and RS;                                          #
 #   - a run stopped by cycle_max ends its file with status 2 and a     #
 #     frame at that cycle;                                             #
 #   - a deck with no snapshot keys writes no history file;             #
@@ -89,7 +90,7 @@ CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 . "$(dirname "$0")/report.sh"
-plan 26 "history tests"
+plan 28 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -495,18 +496,13 @@ else
 fi
 
 # Case: the inert limit (tests/decks/ok_hvrb_inert.deck: ok_temperature's
-# deck with a burn in MatX whose threshold PI no pressure reaches). No
-# cell ever burns, and every cell takes the inert path, so the run is
-# the temperature case's, bit for bit: every heartbeat line (but the
-# deck's name and title, and the clock), every tracer row with its XRN
-# columns left out, and every history frame with its XRN left out
-# (XRN is the last variable, so a frame is the inert frame, then XRN).
-begin
-c=hvrb_inert
-setkeys tests/decks/ok_hvrb_inert.deck Output "plot_dt = 0.05" \
-   "tracer_dt = 0.05" > "$TMP/hvrb_inert.deck"
-d0="$TMP/temperature"
-d="$TMP/hvrb_inert"
+# deck with a burn in MatX whose threshold PI no pressure reaches; and
+# ok_hvrb_inert_rs.deck, the same with method RS). No cell ever burns,
+# and every cell takes the inert path, so each run is its inert twin's,
+# bit for bit: every heartbeat line (but the deck's name and title, and
+# the clock), every tracer row with its XRN columns left out, and every
+# history frame with its XRN left out (XRN is the last variable, so a
+# frame is the inert frame, then XRN).
 beats() {     # $1 = heartbeat file: no clock, build, deck or title lines
    grep -vE '^# (started|ended|version|built|flags|deck|title)' "$1" |
       awk '/^#/ {print; next} {$NF=""; print}'
@@ -524,22 +520,35 @@ frames() {    # $1 = history file, $2 = bytes of each frame to keep
       tail -c +$((h + k*f + 1)) "$1" | head -c "$2" | cksum
    done
 }
-if [ ! -f "$d0/chk.out" ]; then
-   fail $c "no inert run (see the temperature case)"
-elif ! run hvrb_inert "$TMP/hvrb_inert.deck"; then
-   fail $c "the run did not finish"
-elif grep -q 'First cell to react *: [0-9]' "$d/screen.out"; then
-   fail $c "a cell burnt (PI should be out of reach)"
-elif ! diff <(beats "$d0"/*.heartbeat) <(beats "$d"/*.heartbeat) > /dev/null; then
-   fail $c "the heartbeat differs from the inert run's"
-elif ! diff <(nox "$d0"/*.tracers.csv) <(nox "$d"/*.tracers.csv) > /dev/null; then
-   fail $c "the tracer rows (XRN left out) differ from the inert run's"
-elif ! diff <(frames "$d0"/*.hist "$(i32 "$d0"/*.hist 16)") \
-            <(frames "$d"/*.hist "$(i32 "$d0"/*.hist 16)") > /dev/null; then
-   fail $c "the history frames (XRN left out) differ from the inert run's"
-else
-   pass $c
-fi
+inert_limit() {   # $1 case name, $2 the inert deck, $3 its twin with a burn
+   begin
+   local c=$1 d0="$TMP/$1_ref" d="$TMP/$1"
+   setkeys "$2" Output "plot_dt = 0.05" "tracer_dt = 0.05" > "$TMP/$1_ref.deck"
+   setkeys "$3" Output "plot_dt = 0.05" "tracer_dt = 0.05" > "$TMP/$1.deck"
+   if ! run "$1_ref" "$TMP/$1_ref.deck"; then
+      fail $c "the inert run did not finish"
+   elif ! run "$1" "$TMP/$1.deck"; then
+      fail $c "the run did not finish"
+   elif grep -q 'First cell to react *: [0-9]' "$d/screen.out"; then
+      fail $c "a cell burnt (PI should be out of reach)"
+   elif ! diff <(beats "$d0"/*.heartbeat) <(beats "$d"/*.heartbeat) > /dev/null; then
+      fail $c "the heartbeat differs from the inert run's"
+   elif ! diff <(nox "$d0"/*.tracers.csv) <(nox "$d"/*.tracers.csv) > /dev/null; then
+      fail $c "the tracer rows (XRN left out) differ from the inert run's"
+   elif ! diff <(frames "$d0"/*.hist "$(i32 "$d0"/*.hist 16)") \
+               <(frames "$d"/*.hist "$(i32 "$d0"/*.hist 16)") > /dev/null; then
+      fail $c "the history frames (XRN left out) differ from the inert run's"
+   else
+      pass $c
+   fi
+}
+inert_limit hvrb_inert    tests/decks/ok_temperature.deck    tests/decks/ok_hvrb_inert.deck
+inert_limit hvrb_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_hvrb_inert_rs.deck
+
+# Case: a burn with method RS (tests/decks/ok_hvrb_rs.deck, order 2: the
+# closure in its state and the reaction's source in its predictor), as
+# the other runs: the file, against the tracer file, the pictures.
+against_tracer hvrb_rs tests/decks/ok_hvrb_rs.deck 0.05 pdv
 
 # Case: velocity profiles (xvel_profile, xvel_amplitude). Frame 1 is
 # t = 0, so its face velocities (KMPS, real32) must be what the deck

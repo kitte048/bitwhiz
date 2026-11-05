@@ -579,7 +579,7 @@ into a one-variable Newton solve for T, in the same place.
    outputs and the log. Done Nov 4 for method AV (3a, below); RS is 3b,
    with step 4.
 4. RS, with the thermicity source in the order-2 predictor (above), and
-   the on/off check at G2.
+   the on/off check at G2. Done Nov 4, with 3b (below).
 5. G2-G5; then a release (1.3.0) and an HVRB deck for nanoHUB.
 
 Performance: only burning cells do more; the default Mie-Grüneisen path's
@@ -639,8 +639,8 @@ Hugoniot's reach; the guards; elemental calls. Clean with gfortran 9 and
   tensile, never broken; a gas with no sound speed (vartheta <= 0) is void,
   as an inert cell past c = 0 is. The count of guard sound speeds goes to
   the log if any.
-- **Method RS refuses a burn** at the deck ("not yet available with method =
-  RS"), until 3b gives it the reaction's source.
+- **Method RS refused a burn** at the deck ("not yet available with method =
+  RS") until 3b gave it the reaction's source (below).
 - **Outputs:** `XRN.<tracer>` after `TK.<tracer>`; `XRN` (real32, cells) after
   `TK` in the history file; in the log, the first cell to react, the cells
   burnt out per burning layer, the largest lam, and the guard count.
@@ -671,6 +671,47 @@ cycle (G2 against G1, release: 1,590 against 1,203 us per cycle). The
 temperature itself is the larger cost: G1 without `mie_gruneisen_t` takes
 207 us per cycle, so carrying T (1.2.0) is about 6 times that (TODO.md,
 section 8).
+
+### As built: steps 3b and 4, method RS (Nov 4, 2026)
+
+- **The cycle (RS):** loop 0', `burn_rate_rs` (module burn), at the cycle's
+  start: phi and lam over dt from P^n, and each burning cell's source, src =
+  (dP/dlam) (lam^(n+1) - lam^n)/dt, with dP/dlam from the closure at the
+  cell's state n (`hvrb_state`). Loop 0, the predictor: a cell with src /= 0
+  adds (dt/2) src to its face pressures (`rs_face_states`, optional src);
+  any other cell is called as before. Loop 2: after rho, u and e, a cell
+  that can burn moves its e_S to its new volume (`temp_cold_cell`), then its
+  state comes from the closure if lam > 0 (`rs_state`, optional brn, through
+  `cell_pressure`). Order 1 has no predictor, so no source.
+- **Held per cell, per step** (DK's notes): the PEP paper (p. 297) holds an
+  effective heat of reaction for the whole run; here the closure gives
+  dP/dlam exactly at each cell's state, for the price of one closure call
+  in each cell that burns that step.
+- **A development switch,** `rs_reaction_source` (module burn, a parameter),
+  for the on/off check; not a deck key.
+
+**The on/off check** (RS order 2, G2's deck; release build): with the
+source off, the gauge arrivals move by at most 0.3 ns at 100 zones/mm and
+2.00 km/s (0.1 ns at 1.50 km/s), and the P traces by 1.5e-4 of their peak
+on average; at 25 zones/mm by 6e-4, where the source brings the arrivals
+after detonation closer to the reference's own 25 zones/mm run (x4 to x9
+within 1.9 to 4.8 ns of it, against 4.3 to 7.2 off). A small effect, as
+expected (it shapes the face pressures in the reaction zone, not the run
+distance), and in the right direction: kept on.
+
+**Against G2** (a first look; the comparison script is step 5): gauge
+arrivals x1 to x9 and the PDV arrival within 5 ns of the gold standard for
+AV, RS order 2 and RS order 1 at 2.00 km/s, and for AV and RS order 2 at
+1.50 km/s (within 3.9 ns); peak pressures within a few percent; every
+Material X cell burns out. Energy: RS conserves it to round-off (2e-15), AV
+to 5e-5 or better at 100 zones/mm.
+
+**Tests:** `ok_hvrb_rs` (RS order 2; also an OpenMP and a release test
+deck) and `ok_hvrb_inert_rs` (the inert limit with RS: ok_temperature_rs's
+run, bit for bit, but for XRN); history tests `hvrb_rs` and `hvrb_inert_rs`
+(the inert limit is now a function, `inert_limit`, run for AV and RS).
+`bad_burn_rs` is gone (RS takes a burn). Every earlier deck, the three AV
+burn decks included, gives the same results as 3a, bit for bit.
 
 ## Phases
 

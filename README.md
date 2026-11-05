@@ -20,7 +20,7 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Pictures: t-x diagrams of u and P, one plot per tracer, a pressure movie, P against x (`movie_frames`, 2 to 50); `plots_only = yes` re-draws them without running || done: both t-x diagrams (lab frame; white outside the material and in open spall, and in P where no wave has reached) and the tracer plots (velocity against time); each framed and titled (BITWHIZ PRESSURE, VELOCITY and SCOPE VIEW), the t-x diagrams with a color bar, all anti-aliased; the axis ends printed as numbers, each axis rounded out to clean ends, and the color bar labeled with its window (1.2.0; axis names and units next) (`src/modules/pics_mod.f95`, `src/drawings/draw_tx.f95`, `draw_trace.f95`, `draw_profile.f95`, `src/modules/strk_mod.f95`; `input/README.md` section 9b) |
 | Velocity profiles: a layer's starting velocity shaped by a probability density (`xvel_profile`, `xvel_amplitude`; uniform, linear, beta, normal, split normal, sinh-arcsinh, Cauchy), momentum exact | done, 1.1.0 (`src/modules/dist_mod.f95`, with unit test; `input/README.md`, Layer block; design `doc/design/distributions.md`; example decks `input/ramp_*.deck`, `input/pulse_split_normal.deck`, checked against exact linear acoustics) |
 | Material models: `eos = mie_gruneisen` (the default) or `mie_gruneisen_t`, the same P and c plus each cell's temperature (`CV`, `T0`; the cold curve carried cell by cell), `TK` in the tracer and history files, the T range and hottest cell (intact cells) in the log | done, 1.2.0 (`src/modules/temp_mod.f95`, with unit test; `input/README.md`, Material block; design `doc/design/materials.md`; checked against G1's temperatures by `compare_g1.py`) |
-| Reactive burn: `burn = hvrb` with `products = ideal_gas` (HVRB, the HVRB equation sheet), each cell's extent of reaction lam, `XRN` in the tracer and history files, the first cell to react and the cells burnt out in the log | method AV done (`src/modules/burn_mod.f95`, `hvrb_mod.f95`, `prod_mod.f95`, with unit test; `input/README.md`, Material block; design `doc/design/materials.md`, phase 3); method RS next; G2-G5 to check against |
+| Reactive burn: `burn = hvrb` with `products = ideal_gas` (HVRB, the HVRB equation sheet), each cell's extent of reaction lam, `XRN` in the tracer and history files, the first cell to react and the cells burnt out in the log | done for both methods, RS with the reaction's source in its predictor (`src/modules/burn_mod.f95`, `hvrb_mod.f95`, `prod_mod.f95`, with unit test; `input/README.md`, Material block; design `doc/design/materials.md`, phase 3); within 5 ns of G2 at every gauge at 2.00 and 1.50 km/s; the full comparison with G2-G5 next |
 | Comparison with reference data | data in `tests/verification/` (the class problem; gold-standard sets G1, inert, and G2-G5, HVRB); `tests/verification/gold.py` reads it and reproduces the gold standard's published results; bitwhiz against G1 (inert): `tests/verification/compare_g1.py`, all pass (P, u, rho at 1 mm within 0.001 % of exact; arrivals within 5 ns; TK the formula's at bitwhiz's own state to 1e-11 K, and within 0.011 % of the exact Hugoniot rise at 1 mm) |
 
 ## Build
@@ -43,7 +43,7 @@ the class problem, with the run-time checks and floating-point traps left out
 (a NaN still stops the run, through the heartbeat's finite check). It builds
 in `build/release/`, so the debug build is never touched, and then runs the
 deck and OpenMP tests on it, plus `tests/run_release_tests.sh`: the class deck
-and eight test decks must give the debug build's results, heartbeat and
+and nine test decks must give the debug build's results, heartbeat and
 tracer rows bit for bit. Develop and run `make test` with the debug build;
 run `make release` before handing an executable out.
 
@@ -81,7 +81,7 @@ with its size.
 From the bitwhiz folder, starting cold:
 ```
 make                 # debug build, bin/bitwhiz
-make test            # every test; about 3 minutes on 2 cores
+make test            # every test; about 4 minutes on 2 cores
 make release         # bin/bitwhiz_release, checked against the debug build
 make tidy            # clear the tests' leftover run files
 cd input
@@ -131,12 +131,12 @@ Four kinds of test, all run by `make test`, which stops at the first failure:
   deck in `tests/decks/` is accepted, or rejected with the expected message,
   and every accepted deck round-trips and passes the setup audit; bad command
   lines (no deck, a missing file, a folder, an empty file) stop cleanly.
-- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and eight test
+- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and nine test
   decks (two impact faces; a plate that spalls; method RS at order 2 and at
-  order 1; velocity profiles; temperature, AV and RS; a burn) run on 1
-  thread and on 2, 3, 4 and 8 threads, as many as the machine has
-  processors for, so the count of these tests depends on the machine: 36
-  with 8 or more processors, 27 with 4 to 7, 18 with 3, 9 with 2.
+  order 1; velocity profiles; temperature, AV and RS; a burn, AV and RS)
+  run on 1 thread and on 2, 3, 4 and 8 threads, as many as the machine has
+  processors for, so the count of these tests depends on the machine: 40
+  with 8 or more processors, 30 with 4 to 7, 20 with 3, 10 with 2.
   Everything printed from
   t = 0 on, every heartbeat line and every tracer row must be identical to the 1-thread run
   (clock times aside). Any difference means a race condition. A serial build

@@ -1628,20 +1628,6 @@ contains
    end do
    if (nerr > 0) return
 
-   !*** 1a. A burn runs with method AV for now. Method RS takes it next
-   !***     (doc/design/materials.md, phase 3, step 4: the reaction's
-   !***     source in its predictor); until then it is not half done.
-   if (method == 'RS') then
-      do im = 1, nmat
-         if (material(im)%burn /= burn_none .and. material(im)%nused > 0) &
-            call deck_error(material(im)%line, 'Material '// &
-            trim(material(im)%name)//' burns (burn = hvrb), and a burn '// &
-            'is not yet available with method = RS: use method = AV '// &
-            '(RS comes next, doc/design/materials.md, phase 3)')
-      end do
-   end if
-   if (nerr > 0) return
-
    !*** 1b. xvel_amplitude scales a shape, so it needs one.
    do l = 1, nlay
       if (layer(l)%have_amp .and. len_trim(layer(l)%prof_name) == 0) &

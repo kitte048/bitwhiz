@@ -174,7 +174,7 @@ Notes (ignored by the parser):
 #    S2             -                           (0.0)
 #    spall_strength GPa, tension held before a cell breaks (0.01)
 #    CV, T0         mie_gruneisen_t only: J/(g K), K   (required there)
-#    burn           hvrb (needs mie_gruneisen_t; method AV)  (none)
+#    burn           hvrb (needs mie_gruneisen_t)       (none)
 #    PR, ZR, MR, XR, PI, TAU0  burn = hvrb only: GPa, -, -, -, GPa, us
 #    products       ideal_gas (required with a burn; no default)
 #    GAMMA, Q       products = ideal_gas only: -, kJ/g

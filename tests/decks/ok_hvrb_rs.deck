@@ -1,5 +1,7 @@
-# expect: a burn is not yet available with method = RS
-# a burn with method RS, before RS takes the reaction source (phase 3, step 4)
+# expect: ok
+# ok_hvrb.deck with method RS at order 2: the closure in rs_state and
+# the reaction's source in the predictor (doc/design/materials.md,
+# phase 3). Also an OpenMP and a release test deck.
 Begin bitwhiz
  deck_version = 1
  define u_fly = 2.00
@@ -15,6 +17,7 @@ Begin bitwhiz
  End Output
  Begin Solver
   method = RS
+  order  = 2
  End Solver
  Begin Material Al
   R0 = 2.78

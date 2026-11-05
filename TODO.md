@@ -40,8 +40,8 @@ Near term, verification and correctness, toward 1.3:
 Medium term, the reactive physics:
 9. HVRB, checked against G2-G5 (sections 3 and 6): the v8 equation sheet
    frozen in `doc/` and G2-G5's inputs checked against it (Nov 4); the
-   design (`doc/design/materials.md`, phase 3), steps 2 and 3a (method AV)
-   done Nov 4; next, method RS (3b and 4), then G2-G5 (5). Started Nov 4,
+   design (`doc/design/materials.md`, phase 3), steps 2 to 4 (both
+   methods) done Nov 4; next, G2-G5 (5). Started Nov 4,
    ahead of the order above. JWL products after.
 10. With it or after: a broken cell's temperature (section 5); strength,
     the spall "knocking", the 2025 survey's burn models (section 6).
@@ -291,8 +291,13 @@ decks.
       `products` and `test_hvrb` (11 checks, 50 digits). Step 3a done Nov
       4: the deck keys, module `burn`, method AV, `XRN` in the tracer and
       history files, the inert limit bit for bit; G2 at 2.00 km/s already
-      within 5 ns at every gauge. Next, 3b and 4: method RS, with the
-      reaction's source in its predictor; then step 5, G2-G5.
+      within 5 ns at every gauge. Steps 3b and 4 done Nov 4: method RS,
+      with the reaction's source in its order-2 predictor (per cell, per
+      step); AV, RS order 2 and order 1 all within 5 ns of G2 at every
+      gauge at 2.00 km/s, and AV and RS order 2 at 1.50. Next, step 5:
+      `compare_hvrb.py` against G2-G5 (run distance, the Pop plot, D_CJ,
+      the mesh study), then an example deck (and whether it goes to
+      nanoHUB: HVRB is the class project's extra credit) and 1.3.0.
 - [ ] **The burn models from the 2025 survey:** FlashFire,
       StochasticIgnite and ThermalCascade, from D. E. Kittell et al., "A
       Short Survey of Current Reactive Burn Model Capabilities as of

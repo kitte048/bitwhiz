@@ -115,9 +115,11 @@ use shock, only: omp_on,nproc,num_procs,max_threads,num_threads,method, &
    alloc_database,dealloc_database,dealloc_layers, &
    dealloc_materials,dealloc_tracers,plots_only,plot_dt,plot_every
 use temperature, only: alloc_temperature,dealloc_temperature, &
-   temp_update,nt,kt,tk,etac,tmin_run,tmax_run,hot_k,hot_time,hot_x
+   temp_update,temp_cold_cell,nt,kt,tk,etac,tmin_run,tmax_run,hot_k, &
+   hot_time,hot_x
 use burn, only: alloc_burn,dealloc_burn,burn_step,burn_cell,burn_track, &
-   lam,qk,phi,nb,kb,first_k,first_time,first_x,lam_max
+   burn_rate_rs,lam,qk,phi,nb,kb,first_k,first_time,first_x,lam_max, &
+   burnable,src
 use deck, only: read_deck,write_resolved_deck,fmt_real
 use pics, only: make_pictures
 use eos, only: mg_eos,eos_message,eos_ok
@@ -1278,7 +1280,15 @@ time_loop: do while ( .not. done )
    !*** An EOS failure stops the run, naming the first cell it hit.
    if ( kbad < huge(kbad) ) then
       i = icell( kbad )
-      if ( method == 'RS' ) then
+      if ( method == 'RS' .and. burning ) then   ! as the loop called it
+         if ( lam(kbad) > zero ) then
+            call rs_state( database(:,i-2:i+2), pnew, cnew, dtk, dnew, &
+               tens, spl, pbrk, isvoid, ierr, burn_cell(kbad), ifl )
+         else
+            call rs_state( database(:,i-2:i+2), pnew, cnew, dtk, dnew, &
+               tens, spl, pbrk, isvoid, ierr )
+         end if
+      else if ( method == 'RS' ) then
          call rs_state( database(:,i-2:i+2), pnew, cnew, dtk, dnew, &
             tens, spl, pbrk, isvoid, ierr )
       else if ( burning ) then              ! as the loop called it
@@ -1619,6 +1629,13 @@ contains
    !     fluxes, then e, then P (spall rule), c, D and   !
    !     the cell's dt_k.                  (c, d, e, f)  !
    !                                                     !
+   ! With a burn (module burn, ONE CYCLE, METHOD RS):    !
+   ! first phi and lam over dt from P^n, and each        !
+   ! burning cell's reaction source for loop 0's         !
+   ! predictor (burn_rate_rs); in loop 2, a cell that    !
+   ! can burn moves its e_S to its new volume before its !
+   ! state, which comes from the closure if lam > 0.     !
+   !                                                     !
    ! Loop 2 can do the state in the same pass as the     !
    ! update, because a cell's new P and c depend only on !
    ! itself; nobody reads them until loop 1 of the next  !
@@ -1630,24 +1647,39 @@ contains
    !*****************************************************!
    subroutine rs_region()
    implicit none
-   integer(kind=int32) :: i, ierr, kl
+   integer(kind=int32) :: i, ierr, kl, kc, ifl
    real(kind=dp) :: us, ps, xnew, rnew, unew, enew, pnew, cnew, dtk, &
       dnew, pbrk, dtl, ul, ur, pl, pr
    logical :: tens, spl, isvoid
 
    !$OMP PARALLEL IF( use_team ) DEFAULT(NONE) &
    !$OMP    SHARED( database, imax, dt, dtcfl, kdt, pmax, pmin, ktens, &
-   !$OMP            kbad, kvoid, nvoid, kspall, nspall, pbmin, rs_order ) &
+   !$OMP            kbad, kvoid, nvoid, kspall, nspall, pbmin, rs_order, &
+   !$OMP            burning, kburn, nfall, lam, src, burnable ) &
    !$OMP    PRIVATE( i, us, ps, xnew, rnew, unew, enew, pnew, cnew, dtk, &
    !$OMP             dnew, tens, spl, pbrk, isvoid, ierr, dtl, kl, &
-   !$OMP             ul, ur, pl, pr )
+   !$OMP             ul, ur, pl, pr, kc, ifl )
+
+   !*** Loop 0', the cells that can burn (none without a burn): phi and
+   !*** lam over dt from P^n, and the reaction's source (module burn).
+   if ( burning ) call burn_rate_rs( dt )
 
    !*** Loop 0, cells (odd i): the u and P each cell offers its two
-   !*** faces (its own for order 1; MUSCL-Hancock for order 2).
+   !*** faces (its own for order 1; MUSCL-Hancock for order 2, with the
+   !*** reaction's source for a cell that burns this step).
    !$OMP DO
    rs_states: do i = 3, imax-2, 2
-      call rs_face_states( database(:,i-2:i+2), dt, rs_order, ul, ur, &
-         pl, pr )
+      kc = 0
+      if ( burning ) then
+         if ( abs( src(kcell(i)) ) > zero ) kc = kcell(i)
+      end if
+      if ( kc > 0 ) then
+         call rs_face_states( database(:,i-2:i+2), dt, rs_order, ul, ur, &
+            pl, pr, src(kc) )
+      else
+         call rs_face_states( database(:,i-2:i+2), dt, rs_order, ul, ur, &
+            pl, pr )
+      end if
       database(ju_lf,i) = ul
       database(ju_rf,i) = ur
       database(jp_lf,i) = pl
@@ -1670,8 +1702,8 @@ contains
    !*** Loop 2, cells (odd i): rho, u, e at n+1, then the state.
    dtl = huge(one)
    kl  = 0
-   !$OMP DO REDUCTION(min: ktens, kbad, kvoid, kspall, pmin, pbmin) &
-   !$OMP    REDUCTION(max: pmax) REDUCTION(+: nvoid, nspall)
+   !$OMP DO REDUCTION(min: ktens, kbad, kvoid, kspall, pmin, pbmin, kburn) &
+   !$OMP    REDUCTION(max: pmax) REDUCTION(+: nvoid, nspall, nfall)
    rs_cells: do i = 3, imax-2, 2
       call rs_cell_step( database(:,i-2:i+2), dt, rnew, unew, enew )
       database(jrho_old,i) = database(jrho,i)
@@ -1679,8 +1711,28 @@ contains
       database(juc,i)      = unew
       database(je_old,i)   = database(je,i)
       database(je,i)       = enew
-      call rs_state( database(:,i-2:i+2), pnew, cnew, dtk, dnew, tens, &
-         spl, pbrk, isvoid, ierr )
+      !*** A cell that can burn: e_S to its new volume (the closure needs
+      !*** it); then, if lam > 0, its state from the closure. Any other
+      !*** cell, and one at lam = 0, is called exactly as without a burn.
+      kc = 0
+      if ( burning ) then
+         if ( burnable(kcell(i)) ) then
+            call temp_cold_cell( kcell(i), ierr )
+            if ( ierr /= eos_ok ) then    ! reported after the region
+               kburn = min( kburn, kcell(i) )
+               cycle rs_cells
+            end if
+            if ( lam(kcell(i)) > zero ) kc = kcell(i)
+         end if
+      end if
+      if ( kc > 0 ) then
+         call rs_state( database(:,i-2:i+2), pnew, cnew, dtk, dnew, tens, &
+            spl, pbrk, isvoid, ierr, burn_cell(kc), ifl )
+         if ( ifl /= 0 ) nfall = nfall + 1
+      else
+         call rs_state( database(:,i-2:i+2), pnew, cnew, dtk, dnew, tens, &
+            spl, pbrk, isvoid, ierr )
+      end if
       if ( ierr /= eos_ok ) then          ! reported after the region
          kbad = min( kbad, kcell(i) )
          cycle rs_cells

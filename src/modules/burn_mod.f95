@@ -19,6 +19,12 @@ module burn
 !       call burn_track( time, ncycle )         every cycle, after it
 !       lam(k), qk(k)                           cell k's lam and Q (0: none)
 !
+!    Method RS splits burn_step in two (ONE CYCLE, RS, below):
+!       call burn_rate_rs( dt )                 at the cycle's start
+!       src(k)                                  cell k's reaction source
+!       call temp_cold_cell( k, ierr )          in its cell loop, per cell
+!                                               (module temperature)
+!
 !    A deck without a burn allocates nothing here and runs exactly as
 !    before, bit for bit.
 !
@@ -43,6 +49,10 @@ module burn
 !      ====       ==========          =====================
 !    11/04/26    D. E. Kittell        Original code
 !                (with Claude)
+!    11/04/26    D. E. Kittell        Method RS: burn_rate_rs, phi and
+!                (with Claude)        lam at the cycle's start, and each
+!                                     cell's reaction source for the
+!                                     order-2 predictor (src, module rs)
 !
 !**********************************************************************!
 !
@@ -63,20 +73,46 @@ module burn
 !  own (e carries the chemical energy through + lam Q); the heartbeat's
 !  energy error is the check.
 !
+!  ONE CYCLE, METHOD RS (maincode, rs_region)
+!  ==========================================
+!  RS moves P within the step, in its order-2 predictor (module rs,
+!  rs_face_states: half a step of dP/dt = -Z**2 du/dh), which runs
+!  before the cells are updated. There the reaction is a source,
+!     dP/dt = -Z**2 du/dh + rho c**2 sigma r
+!  (Fickett and Davis's thermicity sigma, r = dlam/dt; D. E. Kittell et
+!  al., Propellants Explos. Pyrotech. 45 (2020) 295-315, p. 297; doc/
+!  design/materials.md, phase 3). So for RS the burn's step is split:
+!    0'. burn_rate_rs, at the cycle's start: phi and lam over dt from
+!        P^n (nothing else needed), and the source src = rho c**2 sigma r
+!        with r = (lam^(n+1) - lam^n)/dt, the step's own rate (not
+!        g(lam) Phi: g is infinite at lam = 0 when MR < 1), and rho c**2
+!        sigma = (dP/dlam) at fixed rho and e, from the closure at the
+!        cell's state n (module hvrb), held over the step as Z is.
+!    0.  the predictor, given src for a cell that burns this step
+!    2.  the cell loop: rho, u, e, then e_S to the new volume
+!        (temp_cold_cell), then the state (the closure if lam > 0)
+!  Order 1 has no predictor, so no source: its P comes from the closure.
+!  The source shapes only the face pressures the Riemann problem is
+!  given; the conservative update, and so energy, are untouched.
+!
+!***NOTE: rs_reaction_source turns the source off, for checking its
+! effect (design note: G2, on and off); a development switch, not a
+! deck key.
+!
 !**********************************************************************!
 use bits,        only: dp, int32, zero, half
-use shock,       only: kmax, nlay, layer, database, icell, jx, jp, &
-   burn_none, burn_hvrb, products_ideal_gas
+use shock,       only: kmax, nlay, layer, database, icell, jx, jp, jrho, &
+   je, jr0, jc0, js1, js2, jg0, burn_none, burn_hvrb, products_ideal_gas
 use eos,         only: eos_ok
-use hvrb,        only: hvrb_step, burn_cell_t
+use hvrb,        only: hvrb_step, hvrb_state, burn_cell_t
 use temperature, only: temp_cold_cell, ec, cv, t0
 implicit none
 private
 
 public :: burn_in_run, alloc_burn, dealloc_burn, burn_step, burn_cell, &
-   burn_track
+   burn_track, burn_rate_rs
 public :: lam, qk, phi, nb, kb, first_k, first_time, first_cycle, first_x, &
-   lam_max
+   lam_max, burnable, src
 
 !**********************************************************************!
 ! Data dictionary: each cell's burn, cell k at index k (1 to kmax).
@@ -94,6 +130,10 @@ real(kind=dp), allocatable :: gamk(:)             ! the products' gamma
 integer(kind=int32), allocatable, protected :: kb(:)  ! the cells that
                                                   ! can burn, left to right
 integer(kind=int32), protected :: nb = 0          ! how many
+logical, allocatable, protected :: burnable(:)    ! by cell: can burn
+real(kind=dp), allocatable, protected :: src(:)   ! by cell: RS's reaction
+                                                  ! source, GPa/us (0: none)
+logical, parameter :: rs_reaction_source = .true. ! (NOTE above)
 
 !*** The run's burn, so far: the first cell to react (lam > 0: the first
 !*** cycle, and on it the lowest cell) and the largest lam anywhere.
@@ -136,7 +176,7 @@ contains
    end do
    allocate( phi(kmax), lam(kmax), qk(kmax), prk(kmax), zrk(kmax), &
       mrk(kmax), xrk(kmax), pik(kmax), tauk(kmax), gamk(kmax), kb(nb), &
-      stat=status )
+      burnable(kmax), src(kmax), stat=status )
    if ( status /= 0 ) then
       kerr = kerr + 1
       nb   = 0
@@ -152,12 +192,15 @@ contains
    pik = zero
    tauk = zero
    gamk = zero
+   src  = zero
+   burnable = .false.
    nb  = 0
    do l = 1, nlay
       if ( layer(l)%burn /= burn_hvrb ) cycle
       do k = layer(l)%kfirst, layer(l)%klast
          nb = nb + 1
          kb(nb)  = k
+         burnable(k) = .true.
          prk(k)  = layer(l)%PR
          zrk(k)  = layer(l)%ZR
          mrk(k)  = layer(l)%MR
@@ -183,7 +226,7 @@ contains
    integer(kind=int32) :: status
    if ( .not. allocated(lam) ) return
    deallocate( phi, lam, qk, prk, zrk, mrk, xrk, pik, tauk, gamk, kb, &
-      stat=status )
+      burnable, src, stat=status )
    if ( status /= 0 ) kerr = kerr + 1
    nb = 0
    end subroutine dealloc_burn
@@ -221,6 +264,41 @@ contains
    end do
    !$OMP END DO
    end subroutine burn_step
+
+   !******************************************************************!
+   ! Method RS, step 0' (ONE CYCLE, METHOD RS): phi and lam over dt   !
+   ! from P^n, and the reaction source src for the order-2 predictor. !
+   ! Call it inside the time loop's parallel region, before the       !
+   ! predictor (an orphaned OMP DO, as burn_step). Every cell writes  !
+   ! only its own k. A cell whose closure can not be evaluated at its !
+   ! state n gets no source (its state at n+1 is evaluated anyway,    !
+   ! and stops the run if it fails).                                  !
+   !******************************************************************!
+   subroutine burn_rate_rs( dt )
+   implicit none
+   real(kind=dp), intent(in) :: dt               ! the step, us
+   integer(kind=int32) :: n, k, i, ifb, ierr
+   real(kind=dp) :: phi2, lam2, p, c, theta, dpdlam
+
+   !$OMP DO
+   do n = 1, nb
+      k = kb(n)
+      i = icell( k )
+      call hvrb_step( phi(k), database(jp,i), dt, prk(k), zrk(k), &
+         mrk(k), xrk(k), pik(k), tauk(k), phi2, lam2 )
+      src(k) = zero
+      if ( rs_reaction_source .and. lam2 > lam(k) ) then
+         call hvrb_state( database(jrho,i), database(je,i), lam(k), ec(k), &
+            database(jr0,i), database(jc0,i), database(js1,i), &
+            database(js2,i), database(jg0,i), cv(k), t0(k), gamk(k), &
+            qk(k), p, c, theta, dpdlam, ifb, ierr )
+         if ( ierr == eos_ok ) src(k) = dpdlam*( lam2 - lam(k) )/dt
+      end if
+      phi(k) = phi2
+      lam(k) = lam2
+   end do
+   !$OMP END DO
+   end subroutine burn_rate_rs
 
    !******************************************************************!
    ! What cell k's pressure needs of its burn (module av, given it    !
