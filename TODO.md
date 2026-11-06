@@ -595,10 +595,13 @@ decks.
 - [x] **Public on GitHub, Nov 5, 2026.** JOSS's six months of public
       history run to May 5, 2027, or to Apr 23 if the source's
       availability on nanoHUB since Oct 23 counts (ask the editors, below).
-- [ ] **Zenodo,** checked with the first release after going public
+- [x] **Zenodo,** checked with the first release after going public
       (v1.3.4: the docs and CI since v1.3.3, exported to nanoHUB too).
       Then the DOI badge in the README and the concept DOI (the one for
-      every version) in `CITATION.cff`.
+      every version) in `CITATION.cff`. Done Nov 6: v1.3.4 archived as
+      doi:10.5281/zenodo.23999298; the concept DOI, for all versions,
+      doi:10.5281/zenodo.23999297, in the README (badge, Citing) and
+      `CITATION.cff`.
 - [ ] **A pre-submission note to the JOSS editors:** does nanoHUB's public
       availability count toward the six months, and is a course's
       reference hydrocode with research use (HVRB, graded materials) in

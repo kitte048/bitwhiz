@@ -1,5 +1,6 @@
 # bitwhiz
 [![tests](https://github.com/kitte048/bitwhiz/actions/workflows/tests.yml/badge.svg)](https://github.com/kitte048/bitwhiz/actions/workflows/tests.yml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23999297.svg)](https://doi.org/10.5281/zenodo.23999297)
 
 A one-dimensional, planar, Lagrangian hydrocode in Fortran (F2018), written for
 the ME 697 class project: a Ta-backed Al flyer impacts Material X behind a PMMA
@@ -227,7 +228,9 @@ the export, nanoHUB's gfortran 8.3) is in `RELEASING.md`.
 
 ## Citing
 If you use bitwhiz, cite the version you used: `CITATION.cff` has the
-details (GitHub's "Cite this repository" reads it).
+details (GitHub's "Cite this repository" reads it). Every release is archived
+on Zenodo; doi:10.5281/zenodo.23999297 stands for all versions and resolves to
+the newest, and each version's own DOI is on its Zenodo page.
 
 ## Contributing
 Questions, bug reports and contributions are welcome: see `CONTRIBUTING.md`.
