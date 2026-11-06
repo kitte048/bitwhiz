@@ -1,8 +1,8 @@
-# Phase 4: five more burn models (draft for approval, Nov 7, 2026)
+# Phase 4: five more burn models (approved Nov 6, 2026)
 
-Status: **draft for approval.** Decisions marked **DK** are David's (Nov 7,
+Status: **approved** Decisions marked **DK** are David's (Nov 6,
 2026); the rest are proposals. Phase 3, HVRB, is `materials.md`; this note
-extends it. No code until this note is approved.
+extends it.
 
 ## The goal (DK)
 
@@ -37,7 +37,7 @@ against the rendered pages, not a text extraction.
 
 ## What the six share
 
-### The closure, factored out first
+### The closure, factored out first (DK)
 
 Phase 3's closure is model-independent once the products are an ideal gas
 with the solid's C_V: the density-temperature mixture, the solid held where
@@ -59,13 +59,69 @@ pressure-equilibrium closure).
 option for now. T in every rate is the closure's one temperature, ϑ/C_V:
 solid and products share it, so burning raises it.
 
-### Per-cell burn state
+### Per-cell parameters and state, ready for grading (DK)
 
-Module `burn` keeps, by cell, the model, its constants and a small state
-vector sized by the model (below), as it keeps HVRB's φ and λ today. Each
-model's mathematics lives in a stateless module of its own, as `hvrb` does;
-`burn_step` and `burn_cell` dispatch on the model. Every cell writes only
-its own state: results stay bit for bit on any number of threads.
+Module `burn` keeps, by cell k, laid out as the main database is (each
+cell's numbers together in memory, one contiguous column per cell):
+
+- `bmod(k)`: the cell's model (0 if it does not burn);
+- `bpar(1:npar, k)`: the constants of its rate law, in slots each model
+  names (HALO: `ip_ed0 = 1`, `ip_betah = 2`, ...); npar is the largest
+  that any model in the run needs;
+- `bst(1:nst, k)`: its state, sized the same way;
+
+and, common to every model as today: λ (`lam(k)`, which the closure, the
+temperature and the outputs read), the products' GAMMA and Q, and the
+closure's held-solid state (`rhold`, `eshold`). A deck without a burn
+allocates nothing (bit for bit, as now).
+
+| `burn =` | `bpar` slots (npar) | `bst` slots (nst) |
+|---|---|---|
+| `hvrb` | PR, ZR, MR, XR, PI, TAU0 (6) | φ (1) |
+| `flashfire` | KFF, AFF, BFF, TA, NS, PR, LAM0 (7) | the detector (5) |
+| `stochasticignite` | MU, SIGMA, AVRAMI, NS, PR, LC, SEED, and Z (8) | the detector, φ (6) |
+| `thermalcascade` | HT, TC, GT, NS, PR (5) | the detector (5) |
+| `halo` | ED0, BETAH, TAUD, DELTA, DFRAC, NH, TAUB, PR (8) | E_D, η, s (3) |
+| `claude` | NMAX, W0, KW, D0, NG, PR (6) | w, M_0, M_1, M_2, M_3 (5) |
+
+The detector's five: h at the last step, its largest value, the shocked
+flag, P_s, t_s. At most 8 + 6 numbers per burning cell.
+
+**Why this layout:** grading a constant (TODO.md, section 7) then changes
+only how `bpar` is filled at setup, by the same profile machinery as the
+velocity profiles; the physics does not change. The t = 0 parameter file
+(TODO.md, section 7) writes these columns. StochasticIgnite's Z is stored
+the same way: a per-cell constant computed once at setup from SEED, the
+cell's initial position and LC, so the realization is in that file too.
+HVRB moves into this layout first (step 3 below), bit for bit; its eight
+arrays (`prk`, `zrk`, ... `qk`) become `bpar` slots and the products'
+common pair.
+
+Each model's mathematics lives in a stateless module of its own, as `hvrb`
+does; `burn_step` and `burn_cell` dispatch on `bmod(k)`. Every cell writes
+only its own column: results stay bit for bit on any number of threads.
+
+### Deck keys (DK)
+
+Flat in the Material block, as HVRB's are (no nested block, so the deck
+grammar and every existing deck are unchanged), under three rules:
+
+1. **One key, one meaning, across all models;** a shared meaning shares the
+   name. PR, HVRB's reference pressure (GPa), serves every model; NS, the
+   exponent on (1 + P_S/PR), serves the three P_S models.
+2. **Each model accepts only its own keys.** Any other burn key is a deck
+   error, as PR without a burn is today (`tests/decks/bad_pr_without_burn
+   .deck`): a key cannot silently do nothing.
+3. **No collisions** with the equation of state's, the temperature's, the
+   products' or HVRB's keys: R0, C0, S1, S2, G0, CV, T0, GAMMA, Q, PR, ZR,
+   MR, XR, PI, TAU0 (PR shared on purpose). Hence ED0, not E0 (which reads
+   as an equation-of-state reference energy); GT, not a second GAMMA (the
+   products'); BETAH and BFF, not one BETA for two meanings; NS, NH and NG
+   distinct (three different exponents).
+
+Keys are case-insensitive, as every key is (`input/README.md`, section 5).
+Which keys are required, and any defaults, are set with each model's deck
+syntax and its bad-deck tests, at implementation.
 
 ### The lead shock, P_S and t_s (Menikoff and Shaw 2010, §4) (DK)
 
@@ -99,7 +155,7 @@ floor on h, an algorithm constant documented here, not a key), and smooth
 (ramp) loading: with no lead shock nothing is marked and nothing burns,
 agreed physically; a ramp that steepens into a shock is marked there.
 
-### Steps that stay exact
+### Steps that stay exact (DK)
 
 Where a model's topology has a closed form, the step integrates a
 potential and maps it to λ (HVRB's φ, SURF's s): exact in λ, no trouble
@@ -109,7 +165,7 @@ exponential. Only FlashFire, whose topology has no closed form, is
 sub-cycled (below). As for HVRB, each model's rate uses the state at the
 start of the step (P^n, T^n), and lam^(n+1) feeds the closure.
 
-### Method RS
+### Method RS (DK)
 
 RS's reaction source, ρ c² σ r = (dP/dλ) (λ^(n+1) - λ^n)/Δt, is the
 closure's (phase 3) and the step's own rate, for every model unchanged.
@@ -120,13 +176,13 @@ The three AI models go in with the minimum repairs that make them
 well-posed, each named in its section and in its equation sheet. Faithful
 where they can run as written; repaired only where they cannot.
 
-## The models
+## The models (DK)
 
 Units throughout are bitwhiz's: mm, us, g/cm^3, km/s, GPa, kJ/g, K. Deck
-keys are proposals (final names with the deck syntax, checked against the
-existing keys, at implementation).
+keys follow the rules under "Deck keys" above; P_ref in an equation is the
+key PR.
 
-### FlashFire (`burn = flashfire`)
+### FlashFire (`burn = flashfire`) (DK)
 
 As proposed: dλ/dt = k (1-λ)^α λ^β exp(-E_a/RT) (1 + P_S/P_ref)^n.
 
@@ -148,14 +204,14 @@ detector's five numbers.
 | AFF, BFF | - | the topology's exponents α (on 1-λ) and β (on λ) |
 | TA | K | activation temperature, E_a/R |
 | NS | - | sensitivity to the lead shock's pressure (n) |
-| PREF | GPa | reference pressure |
+| PR | GPa | reference pressure (HVRB's key, shared) |
 | LAM0 | - | ignition fraction set at the lead shock |
 
 Tests: λ_0 alone at constant state against the closed form for β = 0
 (1-λ)^(1-α) decay; the Arrhenius factor at 50 digits; no lead shock, no
 burn.
 
-### StochasticIgnite (`burn = stochasticignite`)
+### StochasticIgnite (`burn = stochasticignite`) (DK)
 
 As proposed: dλ/dt = g(λ) (μ + σ Z) (1 + P_S/P_ref)^m.
 
@@ -187,7 +243,7 @@ kinds are tidied when it is first used.
 | SIGMA | 1/us | its standard deviation σ |
 | AVRAMI | - | Avrami exponent a (3: random points in 3D) |
 | NS | - | sensitivity to the lead shock's pressure (m) |
-| PREF | GPa | reference pressure |
+| PR | GPa | reference pressure (HVRB's key, shared) |
 | LC | mm | correlation length of Z |
 | SEED | integer | the realization |
 
@@ -195,7 +251,7 @@ Tests: σ = 0 against KJMA's closed form; AS241 against 50 digits; the
 field's mean and variance over the table; the same SEED, the same bits;
 mesh refinement keeps the realization.
 
-### ThermalCascade (`burn = thermalcascade`)
+### ThermalCascade (`burn = thermalcascade`) (DK)
 
 As proposed: dλ/dt = h (1-λ) (T - T_c)^γ (1 + P_S/P_ref)^p.
 
@@ -210,13 +266,13 @@ which raises the rate) is the cascade; the exact step keeps it stable:
 | TC | K | critical temperature |
 | GT | - | temperature exponent γ |
 | NS | - | sensitivity to the lead shock's pressure (p) |
-| PREF | GPa | reference pressure |
+| PR | GPa | reference pressure (HVRB's key, shared) |
 
 Tests: constant T against the exponential closed form; T <= T_c, no burn;
 the cascade's runaway time against a 50-digit integration at constant
 volume.
 
-### HALO (`burn = halo`)
+### HALO (`burn = halo`) (DK)
 
 Kittell's ADRB (2016), revised Nov 7 (DK accepted each change): no shock
 detector and no switches; hot spots are activated by compression and
@@ -230,7 +286,7 @@ dissipated, never reactivated, so a weak first shock desensitizes.
    changed, DK.) The 2016 (1-λ) safeguard is off (DK): bitwhiz burns at
    fixed e, so reaction heat never enters Δe.
 2. **Hot spots,** η in [0, 1]:
-   dη/dt = d/dt Erf[(E_D/E_0)^β] - η (1-λ)^δ/τ_d;
+   dη/dt = d/dt Erf[(E_D/E_D0)^β] - η (1-λ)^δ/τ_d;
    exact step η <- η exp(-(1-λ)^δ Δt/τ_d) + ΔErf.
 3. **Burn,** a potential (DK): ds/dt = η^(1/d) (max(P, 0)/P_ref)^n / τ_b,
    λ = 1 - exp(-s^d): the 2016 rate exactly (chain rule), without its ε.
@@ -240,14 +296,14 @@ Order within a step: E_D, then η, then s (DK's sequence). State: E_D, η, s.
 
 | Key | Units | Meaning |
 |---|---|---|
-| E0 | GPa^(1/2) cm^3/g | activation scale (Erf of 1 is 0.84) |
+| ED0 | GPa^(1/2) cm^3/g | activation scale E_D0 (Erf of 1 is 0.84) |
 | BETAH | - | sharpness of activation (2016: 4) |
 | TAUD | us | hot-spot dissipation time (2016: 0.25) |
 | DELTA | - | reaction-deficit exponent of dissipation (2016: 2) |
 | DFRAC | - | fractal dimension of the burn, 2 to 3 (2016: 2.3) |
 | NH | - | burn-rate pressure exponent (2016: 2) |
-| TAUB | us | burn time at P = PREF, η = 1 |
-| PREF | GPa | pressure unit (only TAUB·PREF^NH matters) |
+| TAUB | us | burn time at P = PR, η = 1 |
+| PR | GPa | pressure unit (only TAUB·PR^NH matters; HVRB's key, shared) |
 
 The 2016 PBX 9502 constants do not carry over (E_D is a different
 quantity, and the production code's cgs units). HALO is not gated: it
@@ -258,7 +314,7 @@ Tests: η and P constant against λ = 1 - exp(-(t/τ)^d) (KJMA; d = 3,
 Hill-Zimmermann); no compression, no burn; dissipation alone, the exact
 exponential; E_D for a double shock below a single shock to the same state.
 
-### CLAUDE (`burn = claude`)
+### CLAUDE (`burn = claude`) (DK)
 
 Proposed by Claude (Anthropic) at DK's invitation, Nov 7, 2026, and on the
 list exactly as described (DK). Built on SAND2025-09228 §2.4's key areas
@@ -293,9 +349,9 @@ State: w, M_0 to M_3.
 | NMAX | 1/mm^3 | burn centers available; NMAX^(-1/3) is their spacing (microstructure: grain or pore spacing) |
 | W0 | kJ/g | dissipated energy that lights 63 % of them (the shock threshold) |
 | KW | - | sharpness of lighting (1: gradual) |
-| D0 | mm/us | deflagration speed at PREF (burning-rate data) |
+| D0 | mm/us | deflagration speed at PR (burning-rate data) |
 | NG | - | its pressure exponent (Vieille; about 1) |
-| PREF | GPa | reference pressure |
+| PR | GPa | reference pressure (HVRB's key, shared) |
 
 **Calibration (DK's caution: SHS never took off, with too many parameters
 that analysts could not interpret).** CLAUDE's answer is that every
@@ -312,7 +368,7 @@ across a shock against the exact entropy jump on the Hugoniot. Risk to
 measure: round-off accumulating into w in smooth flow (max(·, 0) keeps
 every bit of noise).
 
-## Verification, without reference data
+## Verification, without reference data (DK)
 
 None of the five new models has independent reference data (HVRB had G2-G5).
 Each is held to the standard phase 2 set for temperature (T1-T5), and that
@@ -336,21 +392,27 @@ HALO, CLAUDE) should part from HVRB: shock desensitization. The six models
 on the same problems, AV and RS: the SCCM 2027 study, and a figure for the
 JOSS paper.
 
-## Steps (one release each, each to nanoHUB)
+## Steps (one release each, each to nanoHUB) (DK)
 
-1. This note, approved.
-2. The closure in module `mixture`, and `burn`'s state made per-model; HVRB
-   bit for bit. (1.4.0)
-3. The lead-shock detector, with its own tests: shocks of known strength
+1. This note, approved (with the per-cell layout and the deck keys above).
+2. The closure in module `mixture`: a pure move; HVRB bit for bit (G2-G5,
+   the 43 decks, `test_hvrb`).
+3. Module `burn` generalized to `bmod`, `bpar` and `bst`, and the deck
+   reader's burn keys driven by one table (a new model is then a table row
+   and its module); HVRB migrated, bit for bit.
+4. The lead-shock detector, with its own tests: shocks of known strength
    (P_s against the exact Hugoniot), a decaying and a strengthening shock
    (Menikoff and Shaw's Fig. 3), AV and RS.
-4. ThermalCascade (the simplest P_S model, exact step).
-5. FlashFire.
-6. StochasticIgnite, with the noise table.
-7. HALO, with its equation sheet (DK's model, revised).
-8. CLAUDE, last: the closure, the detector and the potential pattern all
+5. ThermalCascade (the simplest P_S model, exact step).
+6. FlashFire.
+7. StochasticIgnite, with the noise table.
+8. HALO, with its equation sheet (DK's model, revised).
+9. CLAUDE, last: the closure, the detector and the potential pattern all
    tested by then, and it is judged on the same footing.
-9. The study: calibration to HVRB's Material X, the double shocks.
+10. The study: calibration to HVRB's Material X, the double shocks.
+
+Steps 2 to 4 change no result: patch releases (1.3.x). Each model is a
+minor release (1.4.0 on).
 
 Each model gets an equation sheet in `Equation_Sheets/` (frozen into `doc/`
 when checked against the code), a design-note section here when built, an
