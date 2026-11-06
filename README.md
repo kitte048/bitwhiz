@@ -1,4 +1,6 @@
 # bitwhiz
+[![tests](https://github.com/kitte048/bitwhiz/actions/workflows/tests.yml/badge.svg)](https://github.com/kitte048/bitwhiz/actions/workflows/tests.yml)
+
 A one-dimensional, planar, Lagrangian hydrocode in Fortran (F2018), written for
 the ME 697 class project: a Ta-backed Al flyer impacts Material X behind a PMMA
 window, and the code predicts the PDV velocity at the Material X/PMMA interface.
@@ -197,7 +199,10 @@ Four kinds of test, all run by `make test`, which stops at the first failure:
 a fourth kind, the **release tests** (`tests/run_release_tests.sh`): both builds
 must print the same results, bit for bit (see Build).
 
-Run it before every commit.
+Run it before every commit. On GitHub, every push to `main` and every pull
+request runs `make test` and `make release` with gfortran 8 (nanoHUB's
+series) and 13, and with the newest gfortran as a warning only
+(`.github/workflows/tests.yml`).
 
 ## nanoHUB
 bitwhiz runs on nanoHUB as the tool **bitwhiz**

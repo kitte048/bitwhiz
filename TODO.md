@@ -207,7 +207,9 @@ release: each costs a push and an install.
       new work through issues and pull requests. The copyright holder
       (above) is still open. Nov 5: `CITATION.cff` (valid, CFF 1.2.0, with
       DK's ORCID), `CONTRIBUTING.md`, and the README as a front page, its
-      release process moved verbatim to `RELEASING.md`. Left: CI, GitHub
+      release process moved verbatim to `RELEASING.md`. CI: `.github/
+      workflows/tests.yml` (`make test` and `make release` in the gcc:8
+      and gcc:13 images, gcc:latest allowed to fail). Left: GitHub
       Releases, then the switch.
 
 ## 3. Verification: the gold-standard data

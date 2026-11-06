@@ -1,0 +1,50 @@
+# bitwhiz's tests on every push to main and every pull request: the same
+# `make test` and `make release` a contributor runs (CONTRIBUTING.md), in
+# the official gcc images, so the compiler versions stay fixed:
+#   gcc:8       nanoHUB's compiler series (it has gfortran 8.3; RELEASING.md)
+#   gcc:13      a current compiler
+#   gcc:latest  the newest, allowed to fail: the strict flags turn a new
+#               compiler's new warnings into errors, worth seeing early
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: gfortran ${{ matrix.gcc }}
+    runs-on: ubuntu-latest
+    container: gcc:${{ matrix.gcc }}
+    continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - gcc: "8"
+            experimental: false
+          - gcc: "13"
+            experimental: false
+          - gcc: latest
+            experimental: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0          # the tags, for the build's version line
+      - name: Trust the checkout (the container runs as root)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Compiler and processors
+        run: |
+          gfortran --version
+          nproc
+      - name: make test
+        run: make test
+      - name: make release
+        run: make release
