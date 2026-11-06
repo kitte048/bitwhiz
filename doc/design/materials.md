@@ -835,4 +835,8 @@ family as its free-surface overshoot), for the AV free-surface study (TODO).
 3. **HVRB** (TODO.md, section 6): reaction progress per cell, ideal-gas
    products, the density-temperature closure (T then feeds P), checked
    against G2-G5. Drafted Nov 4 (Phase 3, above), for approval.
-4. **Graded constants** (section 7): the per-cell e_c already allows them.
+   Done: released as v1.3.0 Nov 4, 2026, on nanoHUB Nov 5.
+4. **Five more burn models** (DK, Nov 7, 2026): FlashFire,
+   StochasticIgnite, ThermalCascade, HALO and CLAUDE, each with ideal-gas
+   products and the common C_V; design in `burn_models.md`.
+5. **Graded constants** (section 7): the per-cell e_c already allows them.

@@ -48,14 +48,18 @@ Medium term, the reactive physics:
 9. HVRB, checked against G2-G5 (sections 3 and 6): the v8 equation sheet
    frozen in `doc/` and G2-G5's inputs checked against it (Nov 4); the
    design (`doc/design/materials.md`, phase 3), steps 2 to 5 done Nov 4:
-   both methods, all of G2-G5, an example deck; 1.3.0. Next for the burn:
-   JWL products, the 25 zones/mm difference (section 3).
+   both methods, all of G2-G5, an example deck; 1.3.0. Next for the burn
+   (DK, Nov 7): phase 4, five more burn models, FlashFire,
+   StochasticIgnite, ThermalCascade, HALO and CLAUDE, each with ideal-gas
+   products and the common C_V (section 6; `doc/design/burn_models.md`,
+   draft for approval), one per release; then JWL products, the 25 zones/mm
+   difference (section 3).
 10. With it or after: a broken cell's temperature (section 5; a burning
-    cell's done in 1.3.3); strength, the spall "knocking", the 2025
-    survey's burn models (section 6).
+    cell's done in 1.3.3); strength, the spall "knocking" (section 6).
 
 Far out, research:
-11. Graded materials (section 7): the path to publishing; the per-cell
+11. Graded materials (section 7), after phase 4 (DK, Nov 7): the path to
+    publishing; the per-cell
     e_c of 1.2.0 was chosen for it. Sampling and ensembles (section 1),
     Bayesian calibration and a ramp drive fitted by inverse problem,
     cylindrical and spherical geometry, 2D, PNG (Ideas).
@@ -429,13 +433,26 @@ decks.
       `input/me697_hvrb_2p00.deck`, exported to nanoHUB with the others
       (decided Nov 4: the model in action, for students who do not use
       Fortran). Released in 1.3.0.
-- [ ] **The burn models from the 2025 survey:** FlashFire,
-      StochasticIgnite and ThermalCascade, from D. E. Kittell et al., "A
-      Short Survey of Current Reactive Burn Model Capabilities as of
-      Mid-Year 2025", SAND2025-09228, Sandia National Laboratories (July
-      2025), doi:10.2172/2585504.
+- [ ] **Phase 4: five more burn models** (DK, Nov 7; design
+      `doc/design/burn_models.md`, draft for approval): six in all, each
+      with ideal-gas products and the common C_V. FlashFire,
+      StochasticIgnite and ThermalCascade, proposed by ChatGPT 4o-mini in
+      D. E. Kittell et al., "A Short Survey of Current Reactive Burn Model
+      Capabilities as of Mid-Year 2025", SAND2025-09228, Sandia National
+      Laboratories (July 2025), doi:10.2172/2585504, repaired where they
+      cannot run as written, with SURF's lead-shock detector for their
+      shock pressure (Menikoff and Shaw 2010); HALO (Hot-spot Activation,
+      Loss and Overlap), DK's 2016 ADRB model revised; and CLAUDE (Centers
+      Lit by Accumulated Unrecoverable Dissipated Energy), proposed by
+      Claude at DK's invitation, on the list as described. Steps: the
+      closure factored out (HVRB bit for bit), the detector, then one model
+      per release, CLAUDE last; then the study (each model tailored to
+      Material X's HVRB for a single shock, then double shocks). Sources
+      in the course folder's `Class_Project/Literature/Burn_Models/`.
 
 ## 7. Graded materials (research)
+After phase 4, the burn models (DK, Nov 7).
+
 - [ ] **Constants graded through a layer** by a profile, as `xvel_profile`
       grades velocity, with the `distributions` module (so after the merge,
       section 1): for example Gamma_0, or P_R in an HVRB material. Deck keys
@@ -639,7 +656,9 @@ decks.
       on Compression of Condensed Matter: June 28-July 2, 2027, Sheraton
       Grand Chicago Riverwalk. An abstract on bitwhiz (the course's verified
       hydrocode, HVRB reimagined, what AV does at a detonation and a free
-      surface); the abstract deadline is not posted yet, so watch the APS
+      surface, and phase 4's six burn models on the same problems, single
+      and double shocks); the abstract deadline is not posted yet, so watch
+      the APS
       page; a proceedings paper if the meeting offers them. The JOSS paper
       could be in review or accepted by the talk.
 

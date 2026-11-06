@@ -30,7 +30,7 @@ make test                                          # every test, about 4 minutes
 |---|---|
 | `input/README.md` | the input deck: its syntax, every block and key, and the files a run writes |
 | `doc/` | the equation sheets the code follows (frozen copies) |
-| `doc/design/` | design notes and studies: velocity profiles, materials and the burn, method AV |
+| `doc/design/` | design notes and studies: velocity profiles, materials and the burn, five more burn models (draft), method AV |
 | `tests/verification/README.md` | the reference data, and the scripts that compare bitwhiz with it |
 | `CONTRIBUTING.md`, `RELEASING.md` | reporting issues and contributing; how a version is released |
 
