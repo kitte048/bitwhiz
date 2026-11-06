@@ -11,6 +11,7 @@ subroutine cmap_kindlmann(nx,ny,fcn,RGB,npr)
 !                                                                      !
 !    See also Kenneth Moreland's paper, entitled "Why we use bad color !
 !    maps and what you can do about it."                               !
+!    Credits, origins and licenses: README.md, "Colormaps".            !
 !                                                                      !
 !  Record of revisions:                                                !
 !      Date       Programmer        Description of change              !

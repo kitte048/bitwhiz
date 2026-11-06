@@ -4,6 +4,7 @@ module inferno
 !  Purpose:
 !    Module contains data to construct inferno color map.
 !      see http://www.kennethmoreland.com/color-advice/
+!      (credits, origins and licenses: README.md, "Colormaps")
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change

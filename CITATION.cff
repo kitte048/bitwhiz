@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use bitwhiz, please cite the version you used."
+title: "bitwhiz: a one-dimensional Lagrangian hydrocode for shock and detonation physics"
+type: software
+authors:
+  - family-names: Kittell
+    given-names: David E.
+    orcid: "https://orcid.org/0000-0002-7065-6780"
+version: 1.3.3
+date-released: 2026-11-05
+license: Apache-2.0
+repository-code: "https://github.com/kitte048/bitwhiz"
+url: "https://nanohub.org/tools/bitwhiz"
+abstract: >-
+  bitwhiz is a one-dimensional, planar, Lagrangian hydrocode in Fortran 2018,
+  the reference code for ME 697, Intermediate Shock and Detonation Theory
+  (Purdue, Fall 2026). It has two solution methods in one code (artificial
+  viscosity, and Godunov's method with an acoustic Riemann solver at first or
+  second order), the Mie-Grüneisen equation of state with temperature, the
+  History Variable Reactive Burn (HVRB) with ideal-gas products,
+  starting-velocity profiles, spall, tracers, a history file of the whole
+  mesh, and pictures. Each method follows a frozen equation sheet, and the
+  code is checked against 50-digit references, exact solutions and
+  independent reference data. It also runs in a browser as a nanoHUB tool.
+keywords:
+  - hydrocode
+  - shock physics
+  - detonation
+  - reactive burn
+  - HVRB
+  - Mie-Grüneisen
+  - Riemann solver
+  - artificial viscosity
+  - Fortran

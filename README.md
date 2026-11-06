@@ -3,6 +3,34 @@ A one-dimensional, planar, Lagrangian hydrocode in Fortran (F2018), written for
 the ME 697 class project: a Ta-backed Al flyer impacts Material X behind a PMMA
 window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 
+bitwhiz is the reference hydrocode for ME 697, Intermediate Shock and
+Detonation Theory (Purdue, Fall 2026). It has two solution methods in one
+code (artificial viscosity, and Godunov's method with an acoustic Riemann
+solver at first or second order), the Mie-Grüneisen equation of state with
+temperature, the History Variable Reactive Burn (HVRB) with ideal-gas
+products, starting-velocity profiles, spall, tracers, a history file of the
+whole mesh, and pictures (t-x diagrams, tracer plots, pressure movies). Each
+method follows an equation sheet kept in `doc/`, and the code is checked
+against 50-digit references, exact solutions and independent reference data.
+
+**Try it in a browser**, with nothing to install:
+https://nanohub.org/tools/bitwhiz (nanoHUB).
+
+**Quick start** (gfortran 8 or newer, and make):
+```
+make                                               # bin/bitwhiz
+./bin/bitwhiz input/me697_double_shock_2p00.deck   # the class problem
+make test                                          # every test, about 4 minutes
+```
+
+| Where | What |
+|---|---|
+| `input/README.md` | the input deck: its syntax, every block and key, and the files a run writes |
+| `doc/` | the equation sheets the code follows (frozen copies) |
+| `doc/design/` | design notes and studies: velocity profiles, materials and the burn, method AV |
+| `tests/verification/README.md` | the reference data, and the scripts that compare bitwhiz with it |
+| `CONTRIBUTING.md`, `RELEASING.md` | reporting issues and contributing; how a version is released |
+
 ## Status
 | Part | State |
 |---|---|
@@ -24,7 +52,9 @@ window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 | Comparison with reference data | data in `tests/verification/` (the class problem; gold-standard sets G1, inert, and G2-G5, HVRB); `tests/verification/gold.py` reads it and reproduces the gold standard's published results; bitwhiz against G1 (inert): `tests/verification/compare_g1.py`, all pass (P, u, rho at 1 mm within 0.001 % of exact; arrivals within 5 ns; TK the formula's at bitwhiz's own state to 1e-11 K, and within 0.011 % of the exact Hugoniot rise at 1 mm); bitwhiz against G2-G5 (HVRB): `tests/verification/compare_hvrb.py`, all pass (run distances equal to the reference's but one, a tracer spacing early; arrivals within 5 ns in G2 and G3; D within 0.31 % of D_CJ; the mesh study converging to the reference's PDV arrival to 0.0 ns); what method AV does at a detonation and a free surface, against mesh: `tests/verification/study_av.py` (`doc/design/av_study.md`) |
 
 ## Build
-Needs gfortran and make.
+Needs gfortran (version 8 or newer) and make. Python 3 with NumPy and mpmath
+is needed only for the scripts in `tests/verification/` and the 50-digit
+reference generators (`tests/*_reference.py`), not for `make test`.
 ```
 make            # bin/bitwhiz, debug build with strict flags and -fopenmp
 make test       # build if needed, then run the unit and deck tests (see Test)
@@ -169,87 +199,13 @@ must print the same results, bit for bit (see Build).
 
 Run it before every commit.
 
-## Releases and nanoHUB
+## nanoHUB
 bitwhiz runs on nanoHUB as the tool **bitwhiz**
 (https://nanohub.org/tools/bitwhiz): a Jupyter notebook in front of the
-optimized executable. The tool has its own git repository on nanoHUB (cloned
-here as `~/Documents/Academic/bitwhiz`), with the notebook, the
-`middleware/invoke` script that starts it, and a small `src/Makefile` around a
-copy of this code in `src/bitwhiz/`.
-
-**The rule: changes flow one way.** Code is changed here, never in the nanoHUB
-copy:
-```
-fix on main  ->  make test, make release  ->  tag vX.Y.Z  ->  export to the
-nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
-```
-- **Branches.** `main` is the release line: every tag, and so every nanoHUB
-  version, is a commit on it (the line was `shock` until Nov 5, 2026, when
-  `main` was brought up to it). New work goes on its own branch (as the
-  velocity profiles did on `distributions`, released in 1.1.0), which takes
-  fixes from `main` by `git merge main`, goes back into `main` when it is
-  finished, and is then deleted.
-- **Tags** are `vMAJOR.MINOR.PATCH`: PATCH for fixes (v1.0.2), MINOR for new
-  features (v1.1.0). The banner prints the tag: here through `git describe`,
-  on nanoHUB through the `VERSION` file the export writes. There is no
-  v1.0.1 here: it was a build fix made in the nanoHUB clone during the first
-  install (Oct 23, 2026), never published, and folded into v1.0.2 the same
-  day; it is why changes now flow one way. The versions published on
-  nanoHUB are 1.0.2, 1.0.3, 1.1.0, 1.2.0 and 1.3.0.
-- **Export** with `sh src/utils/export_nanohub.sh vX.Y.Z
-  ~/Documents/Academic/bitwhiz`: it copies exactly that tag into the clone's
-  `src/bitwhiz/` (no `doc/`, and none of the gold-standard data in
-  `tests/verification/inert_gauges/` and `hvrb/`), writes `src/bitwhiz/VERSION` with the tag, copies
-  the decks and `input/README.md` into the clone's `examples/` and `VERSION`
-  into its `bin/` (an installed tool's `src/` is not readable by its users),
-  lists files the tag no longer has, and prints the commands to commit, tag and
-  push. Then, in the clone, run those commands.
-- **Push once.** nanoHUB has blocked this machine's address for hours after git
-  pushes (support ticket open, Oct 2026), so send the commit and its tag in one
-  `git push origin master vX.Y.Z`, with git's credential helper set
-  (`git config --global credential.helper osxkeychain`).
-- **Install.** On the tool's status page, follow the link **"Wait! I've made
-  more changes"** (for a tool already installed or approved; it tells nanoHUB
-  that new code is in the repository), or mark the code uploaded (status
-  Uploaded) with a short note; nanoHUB's staff run `make install` in the tool's
-  `src/` and set it to Installed. Check what was installed from a notebook cell,
-  `!ls -la /apps/bitwhiz/dev /apps/bitwhiz/dev/bin` (`dev` points to the
-  newest revision, e.g. `r5`; its `bin/` must hold `bitwhiz`), then launch the
-  tool fresh and test it: Run, Redraw pictures only, the movie (it plays,
-  and Files lists the .mp4, not its frames), an error on purpose, the
-  history plot. Approve it on the status page when it works.
-
-**nanoHUB's compiler is gfortran 8.3** (Debian 10). Keep the code to what
-gfortran 8 accepts; Fortran 2018 features it lacks, and their replacements
-here, are:
-
-| Not in gfortran 8 | Use instead |
-|---|---|
-| zero-width `ES`/`EN` edit descriptors (`es0.16e3`) | a fixed width, leading blanks dropped (`trace_mod`, `num17`) |
-| `stop code, quiet=.true.` | `call quit(code)` (module bits) |
-| `random_init` | `random_seed` with a fixed seed (`draw_colormaps`) |
-
-To check before a release, build with gfortran 8 if you can (`make clean;
-make FC=gfortran-8 test`); v1.0.2 was tested with gfortran 8.4, 9, 10, 12
-and 13; v1.1.0 with 13 and 15.2, v1.2.0 with 9, 13 and 15.2, and v1.3.0
-with 9 and 13, their gfortran 8 checks left to nanoHUB's install (8.3).
-
-**How the tool runs** (for the notebook, `bitwhiz.ipynb` in the clone):
-nanoHUB copies the notebook into the session's results folder and starts it
-there, so it finds the installed tool through the `TOOLDIR` environment variable
-(`/apps/bitwhiz/dev`), not through its own folder. It starts in App Mode
-(`start_jupyter -A` in `middleware/invoke`): every cell runs, the code is
-hidden, and the user sees the text, the deck picker and the editor; "Edit App"
-shows the code. Since every cell runs at launch, none may fail before a run.
-The picker offers the decks in the tool's `examples/`, which the export fills
-from `input/`, so a deck added to `input/` here reaches nanoHUB with the next
-export. (The installed tool's `src/` is `drwxr-s---`: users cannot read it.) Runs are written to
-`~/bitwhiz_runs/<title>`. After a run that draws movie frames, the notebook
-makes them one `<title>.mv_p.mp4` with ffmpeg (the recipe in
-`input/README.md`, section 9b) and removes them, so the frames' names,
-`<title>.mv_p_*.bmp`, are part of what the notebook relies on. A session
-sees 24 processors with no CPU limit, shared with other users:
-`num_threads = 1` for class decks, 4 to 8 for large meshes.
+optimized executable, with the decks of `input/` in its picker, so it runs in
+a browser with nothing to install. The tool's wiki there has an "Inspect
+source code" button. How a version reaches nanoHUB (the one-way rule, tags,
+the export, nanoHUB's gfortran 8.3) is in `RELEASING.md`.
 
 ## Layout
 | Folder | What |
@@ -259,10 +215,20 @@ sees 24 processors with no CPU limit, shared with other users:
 | `src/colormaps`, `src/drawings` | bitmap colormaps; `draw_tx`, `draw_trace` and `draw_profile` (a run's pictures; `draw_profile` draws a movie frame, and a tracer plot for `draw_trace`), `draw_colormaps` (demo, kept in the build) |
 | `src/utils` | `make_build_info.sh` (writes the build record), `export_nanohub.sh` (copies a tag into the nanoHUB clone), `run_decks.sh` (`make runs`), `timestamp` (not used by the run), `random` |
 | `input` | decks and the deck syntax spec |
-| `tests` | unit tests (`test_*.f95`, with their 50-digit references `*_reference.py`), deck, OpenMP, history file and release tests, `verification/` reference tracer data, its reader (`gold.py`) and the G1 comparison (`compare_g1.py`) |
+| `tests` | unit tests (`test_*.f95`, with their 50-digit references `*_reference.py`), deck, OpenMP, history file and release tests, `verification/` reference tracer data, its reader (`gold.py`), the comparisons with it (`compare_g1.py`, `compare_hvrb.py`) and the study of method AV (`study_av.py`) |
 | `bin` | the executables: `bitwhiz` (debug), `bitwhiz_release` (optimized) |
 | `build/release` | the release build's objects and module files (made by `make release`, not in git) |
 | `doc` | the equation sheets the code is checked against, frozen copies (`doc/README.md`) |
+
+## Citing
+If you use bitwhiz, cite the version you used: `CITATION.cff` has the
+details (GitHub's "Cite this repository" reads it).
+
+## Contributing
+Questions, bug reports and contributions are welcome: see `CONTRIBUTING.md`.
+
+## License
+Apache License 2.0 (`LICENSE`).
 
 ## Acknowledgements
 `bitwhiz` was designed and written by D. E. Kittell with the assistance of
@@ -283,3 +249,18 @@ The equations and material data come from the open literature, as cited.
 AI models change quickly, so this record is dated: it describes the model and
 the way of working used for this version of the code, not a general claim
 about what such tools can or cannot do.
+
+### Colormaps
+The pictures' colormaps are tables from Kenneth Moreland's color advice
+(https://www.kennethmoreland.com/color-advice/; K. D. Moreland, "Why We Use
+Bad Color Maps and What You Can Do About It", SAND2015-11068C, Sandia
+National Laboratories, 2015). Their origins and terms, as that page gives
+them: smooth cool-warm and bent cool-warm are Moreland's (K. Moreland,
+"Diverging Color Maps for Scientific Visualization", 2009), from ParaView,
+under its BSD license; viridis, plasma and inferno are matplotlib's (Stéfan
+van der Walt and Nathaniel Smith; the page also credits Eric Firing), under
+matplotlib's BSD-compatible license; kindlmann is from G. Kindlmann, E.
+Reinhard and S. Creem, IEEE Visualization 2002 (doi:10.1109/VISUAL.2002.1183788),
+and extended kindlmann derives from it; black body has appeared in the
+literature since at least 1983. Moreland releases his own maps as CC0, and
+the page knows of no one claiming the kindlmann and black body colors.

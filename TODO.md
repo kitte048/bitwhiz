@@ -2,7 +2,7 @@
 
 Plans and open questions for bitwhiz. Items move out of this file when they
 are done (the commit that does one says so). Release steps themselves are in
-README.md, "Releases and nanoHUB".
+RELEASING.md (until Nov 5, 2026, the README's "Releases and nanoHUB").
 
 Started Oct 23, 2026, the day bitwhiz 1.0.2 was approved for publication on
 nanoHUB. Reordered Oct 31, 2026, after 1.0.3, from a brainstorm: one branch
@@ -157,7 +157,7 @@ release: each costs a push and an install.
       clone's history starts from: a new clone lands there, not on
       `shock`. Done Nov 5: `main` fast-forwarded to `shock` (100 commits
       ahead, nothing to merge back), and `main` is the release line from
-      then on (README, "Releases and nanoHUB"; the export works by tag,
+      then on (RELEASING.md; the export works by tag,
       so it needed no change but a comment).
 - [x] **Tag v1.0.1** is in the nanoHUB clone but not here (v1.0, v1.0.2
       and v1.0.3 are in both). Find the commit it names and tag it here, or
@@ -169,7 +169,7 @@ release: each costs a push and an install.
       one-way rule and the export script followed at 13:48. Never
       published: nanoHUB's versions of record are 1.0.2 (Oct 23), 1.0.3
       (Oct 26), 1.1.0 (Nov 2), 1.2.0 (Nov 4) and 1.3.0 (Nov 5). Recorded in
-      the README ("Releases and nanoHUB", Tags).
+      RELEASING.md (Tags).
 - [x] **The verification data may be public** (DK, Nov 5): the reference
       code's output is covered by its existing clearance for work with no
       defense or national-security application (as in DK's published
@@ -183,13 +183,17 @@ release: each costs a push and an install.
       from the tree Oct 6 in 513a16f), almost certainly DK's own photo of a
       model rocket. Removing it would rewrite every commit hash, and the
       docs cite hashes.
-- [ ] **Colormap credits:** Moreland, K. D., "Why We Use Bad Color Maps
+- [x] **Colormap credits:** Moreland, K. D., "Why We Use Bad Color Maps
       and What You Can Do About It", SAND2015-11068C, Sandia National
       Laboratories (2015), for the tables (his color-advice site), and the
       maps' originators where they are not his (viridis, plasma and inferno
       from matplotlib, Smith and van der Walt; Kindlmann et al.): checked
       against his page, in the README, with the colormap headers pointing
-      there.
+      there. Done Nov 5: the README's "Colormaps" (each map's origin and
+      terms as his page gives them: cool-warm from ParaView, BSD; viridis,
+      plasma and inferno from matplotlib, BSD-compatible; kindlmann from
+      Kindlmann, Reinhard and Creem 2002; his own maps CC0), and a line in
+      each colormap routine's and data module's header.
 - [ ] **Going public, for JOSS** (decided Nov 5): JOSS asks for six months
       of public development (releases, issues, pull requests), counted
       from going public, or from six months of public availability with
@@ -201,7 +205,10 @@ release: each costs a push and an install.
       release process moved to a maintainer's doc); CI running `make test`
       on every push; GitHub Releases from the tags. Then the switch, and
       new work through issues and pull requests. The copyright holder
-      (above) is still open.
+      (above) is still open. Nov 5: `CITATION.cff` (valid, CFF 1.2.0, with
+      DK's ORCID), `CONTRIBUTING.md`, and the README as a front page, its
+      release process moved verbatim to `RELEASING.md`. Left: CI, GitHub
+      Releases, then the switch.
 
 ## 3. Verification: the gold-standard data
 In the repository since Nov 2, 2026, byte for byte with `SHA256SUMS`, and left
