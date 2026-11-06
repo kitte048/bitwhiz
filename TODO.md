@@ -21,9 +21,11 @@ at 1.3.0 and working that day.
 
 ## Priorities
 Next, an afternoon each, little risk:
-1. Housekeeping (section 2, open questions): `shock` as GitHub's default
-   branch, the missing v1.0.1 tag, and a follow-up on ticket #516409 (IP
-   blocks) before beta testers use the tool heavily.
+1. Housekeeping and going public (section 2, open questions): `main`
+   brought up to `shock`, the missing v1.0.1 tag, the front-facing files and
+   CI, then the repository public, for JOSS (six months of public history);
+   and a follow-up on ticket #516409 (IP blocks) before beta testers use the
+   tool heavily.
 2. The notebook (section 2), its changes collected into one nanoHUB
    release while beta testing runs: the Stop button first (testers will
    feel it), then a movie frame download, the movie step's timing, a
@@ -145,15 +147,54 @@ release: each costs a push and an install.
       release, with its tag, seems to be safe.
 - [ ] **Copyright holder** on the license line (Apache 2.0, "custom" on
       nanoHUB): David E. Kittell, or the Purdue Research Foundation? Ask OTC.
-- [ ] **Export control:** a written determination from Purdue's export
+- [x] **Export control:** a written determination from Purdue's export
       control office, now that the tool is public. KO, pyko and CAV_KO are
-      precedents for public 1D teaching hydrocodes.
+      precedents for public 1D teaching hydrocodes. Settled Nov 5: two
+      Purdue faculty, familiar with the territory, approved in email that
+      bitwhiz is open literature (DK has the emails, filed). The source is
+      already public: the tool's wiki on nanoHUB has an "Inspect source
+      code" button.
 - [ ] **GitHub's default branch is `main`**, at the year-old commit this
       clone's history starts from: a new clone lands there, not on
-      `shock`. Make `shock` the default in the repository's settings.
+      `shock`. Plan (Nov 5): fast-forward `main` to `shock` (`shock` is 98
+      commits ahead, nothing to merge back) and work on `main` from then
+      on, with the README's and the export's mentions of `shock` updated
+      in the same commit.
 - [ ] **Tag v1.0.1** is in the nanoHUB clone but not here (v1.0, v1.0.2
       and v1.0.3 are in both). Find the commit it names and tag it here, or
       record why there is none.
+- [x] **The verification data may be public** (DK, Nov 5): the reference
+      code's output is covered by its existing clearance for work with no
+      defense or national-security application (as in DK's published
+      papers that show it), and no part of that code's source is in
+      bitwhiz, which was derived from the open literature and the
+      equation sheets.
+- [x] **The reference code stays unnamed** in `tests/verification/` and
+      its READMEs (DK, Nov 5): to be conservative, for now.
+- [x] **`image.bmp` stays in the history** (DK, Nov 5): a 1600x1600 test
+      picture from the June 2026 colormap work (commit e60c05e, deleted
+      from the tree Oct 6 in 513a16f), almost certainly DK's own photo of a
+      model rocket. Removing it would rewrite every commit hash, and the
+      docs cite hashes.
+- [ ] **Colormap credits:** Moreland, K. D., "Why We Use Bad Color Maps
+      and What You Can Do About It", SAND2015-11068C, Sandia National
+      Laboratories (2015), for the tables (his color-advice site), and the
+      maps' originators where they are not his (viridis, plasma and inferno
+      from matplotlib, Smith and van der Walt; Kindlmann et al.): checked
+      against his page, in the README, with the colormap headers pointing
+      there.
+- [ ] **Going public, for JOSS** (decided Nov 5): JOSS asks for six months
+      of public development (releases, issues, pull requests), counted
+      from going public, or from six months of public availability with
+      demonstrated use; the source has been on nanoHUB since Oct 23, 2026
+      (1.0.2), so ask the editors which applies. Before the switch:
+      `CITATION.cff`; `CONTRIBUTING.md` (issues, support, contributions);
+      the README as a front page (what bitwhiz is, the nanoHUB link first,
+      every dependency, Python 3 with NumPy and mpmath included; the
+      release process moved to a maintainer's doc); CI running `make test`
+      on every push; GitHub Releases from the tags. Then the switch, and
+      new work through issues and pull requests. The copyright holder
+      (above) is still open.
 
 ## 3. Verification: the gold-standard data
 In the repository since Nov 2, 2026, byte for byte with `SHA256SUMS`, and left
