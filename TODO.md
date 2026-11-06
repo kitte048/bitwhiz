@@ -209,8 +209,13 @@ release: each costs a push and an install.
       DK's ORCID), `CONTRIBUTING.md`, and the README as a front page, its
       release process moved verbatim to `RELEASING.md`. CI: `.github/
       workflows/tests.yml` (`make test` and `make release` in the gcc:8
-      and gcc:13 images, gcc:latest allowed to fail). Left: GitHub
-      Releases, then the switch.
+      and gcc:13 images, gcc:latest allowed to fail; the first run green
+      on all three). GitHub Releases: v1.0.2 to v1.3.3, eight, notes from
+      each version's commits with its tag and nanoHUB dates; v0.1, v0.9
+      and v1.0 stay plain tags (named in v1.0.2's notes); all 11 tags on
+      GitHub. Left: the switch. No copyright holder is named anywhere yet
+      (LICENSE is the plain Apache 2.0 text), so the switch need not wait
+      for OTC; a NOTICE file when it answers.
 
 ## 3. Verification: the gold-standard data
 In the repository since Nov 2, 2026, byte for byte with `SHA256SUMS`, and left
