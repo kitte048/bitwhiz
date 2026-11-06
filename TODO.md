@@ -159,9 +159,17 @@ release: each costs a push and an install.
       ahead, nothing to merge back), and `main` is the release line from
       then on (README, "Releases and nanoHUB"; the export works by tag,
       so it needed no change but a comment).
-- [ ] **Tag v1.0.1** is in the nanoHUB clone but not here (v1.0, v1.0.2
+- [x] **Tag v1.0.1** is in the nanoHUB clone but not here (v1.0, v1.0.2
       and v1.0.3 are in both). Find the commit it names and tag it here, or
-      record why there is none.
+      record why there is none. None (Nov 5): v1.0.1 is the clone's
+      5fdf5c4 (Oct 23, 12:47, "Build with gfortran 9+"), source edited in
+      the clone during the first install; no commit here has its `src/`
+      (tree hashes compared, Oct 21-25). Its fixes came back in v1.0.2
+      (10804e5, 13:32, whose `src/` is the clone's v1.0.2 exactly), and the
+      one-way rule and the export script followed at 13:48. Never
+      published: nanoHUB's versions of record are 1.0.2 (Oct 23), 1.0.3
+      (Oct 26), 1.1.0 (Nov 2), 1.2.0 (Nov 4) and 1.3.0 (Nov 5). Recorded in
+      the README ("Releases and nanoHUB", Tags).
 - [x] **The verification data may be public** (DK, Nov 5): the reference
       code's output is covered by its existing clearance for work with no
       defense or national-security application (as in DK's published

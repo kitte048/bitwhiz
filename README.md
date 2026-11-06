@@ -191,7 +191,11 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   finished, and is then deleted.
 - **Tags** are `vMAJOR.MINOR.PATCH`: PATCH for fixes (v1.0.2), MINOR for new
   features (v1.1.0). The banner prints the tag: here through `git describe`,
-  on nanoHUB through the `VERSION` file the export writes.
+  on nanoHUB through the `VERSION` file the export writes. There is no
+  v1.0.1 here: it was a build fix made in the nanoHUB clone during the first
+  install (Oct 23, 2026), never published, and folded into v1.0.2 the same
+  day; it is why changes now flow one way. The versions published on
+  nanoHUB are 1.0.2, 1.0.3, 1.1.0, 1.2.0 and 1.3.0.
 - **Export** with `sh src/utils/export_nanohub.sh vX.Y.Z
   ~/Documents/Academic/bitwhiz`: it copies exactly that tag into the clone's
   `src/bitwhiz/` (no `doc/`, and none of the gold-standard data in
