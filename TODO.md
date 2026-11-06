@@ -21,10 +21,10 @@ at 1.3.0 and working that day.
 
 ## Priorities
 Next, an afternoon each, little risk:
-1. Housekeeping and going public (section 2, open questions): the missing
-   v1.0.1 tag, the front-facing files and CI, then the repository public,
-   for JOSS (six months of public history); and a follow-up on ticket
-   #516409 (IP blocks) before beta testers use the tool heavily.
+1. Publication (section 9): v1.3.4 to check Zenodo, the note to JOSS's
+   editors, the public trail toward JOSS (May 2027) and SCCM 2027; and a
+   follow-up on ticket #516409 (IP blocks) before beta testers use the tool
+   heavily.
 2. The notebook (section 2), its changes collected into one nanoHUB
    release while beta testing runs: the Stop button first (testers will
    feel it), then a movie frame download, the movie step's timing, a
@@ -194,9 +194,10 @@ release: each costs a push and an install.
       plasma and inferno from matplotlib, BSD-compatible; kindlmann from
       Kindlmann, Reinhard and Creem 2002; his own maps CC0), and a line in
       each colormap routine's and data module's header.
-- [ ] **Going public, for JOSS** (decided Nov 5): JOSS asks for six months
-      of public development (releases, issues, pull requests), counted
-      from going public, or from six months of public availability with
+- [x] **Going public, for JOSS** (decided Nov 5; public Nov 5, 2026):
+      JOSS asks for six months of public development (releases, issues,
+      pull requests), counted from going public, or from six months of
+      public availability with
       demonstrated use; the source has been on nanoHUB since Oct 23, 2026
       (1.0.2), so ask the editors which applies. Before the switch:
       `CITATION.cff`; `CONTRIBUTING.md` (issues, support, contributions);
@@ -589,6 +590,40 @@ decks.
       traps; the NaN constants are now bit patterns in `bit_mod`. Release
       builds were never affected; gfortran 8.4 and 13 give the same bits
       on every deck.
+
+## 9. Publication: JOSS and SCCM 2027
+- [x] **Public on GitHub, Nov 5, 2026.** JOSS's six months of public
+      history run to May 5, 2027, or to Apr 23 if the source's
+      availability on nanoHUB since Oct 23 counts (ask the editors, below).
+- [ ] **Zenodo,** checked with the first release after going public
+      (v1.3.4: the docs and CI since v1.3.3, exported to nanoHUB too).
+      Then the DOI badge in the README and the concept DOI (the one for
+      every version) in `CITATION.cff`.
+- [ ] **A pre-submission note to the JOSS editors:** does nanoHUB's public
+      availability count toward the six months, and is a course's
+      reference hydrocode with research use (HVRB, graded materials) in
+      scope?
+- [ ] **The public trail through spring:** TODO items opened as issues,
+      work merged through pull requests, and releases at a steady pace
+      (each to nanoHUB). JOSS looks for sustained development, and this is
+      the work anyway.
+- [ ] **Evidence of use,** collected as it happens: nanoHUB's usage
+      figures, course use (ME 697, Fall 2026), any outside users or issues.
+- [ ] **The JOSS paper:** `paper.md` and `paper.bib`. Summary; statement of
+      need (an open, verified 1D hydrocode for teaching and reactive-burn
+      research, in a browser; against KO, pyko and CAV_KO, section 2); the
+      design (frozen equation sheets, verification against 50-digit
+      references, exact answers and independent data, the AV
+      characterization); research impact; and the required AI-usage
+      section, from the README's Acknowledgements. A draft by about March
+      2027, submitted when the six months are up.
+- [ ] **SCCM 2027,** the 25th Biennial Conference of the APS Topical Group
+      on Compression of Condensed Matter: June 28-July 2, 2027, Sheraton
+      Grand Chicago Riverwalk. An abstract on bitwhiz (the course's verified
+      hydrocode, HVRB reimagined, what AV does at a detonation and a free
+      surface); the abstract deadline is not posted yet, so watch the APS
+      page; a proceedings paper if the meeting offers them. The JOSS paper
+      could be in review or accepted by the talk.
 
 ## Ideas (further out)
 - **Values and units on every plot:** the axes' ends (xmin, xmax, ymin,

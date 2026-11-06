@@ -66,7 +66,9 @@ here, are:
 To check before a release, build with gfortran 8 if you can (`make clean;
 make FC=gfortran-8 test`); v1.0.2 was tested with gfortran 8.4, 9, 10, 12
 and 13; v1.1.0 with 13 and 15.2, v1.2.0 with 9, 13 and 15.2, and v1.3.0
-with 9 and 13, their gfortran 8 checks left to nanoHUB's install (8.3).
+with 9 and 13, their gfortran 8 checks left to nanoHUB's install (8.3);
+from v1.3.4, CI tests every push with gfortran 8, 13 and the newest
+(`.github/workflows/tests.yml`).
 
 **How the tool runs** (for the notebook, `bitwhiz.ipynb` in the clone):
 nanoHUB copies the notebook into the session's results folder and starts it
