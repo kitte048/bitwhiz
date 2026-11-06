@@ -29,7 +29,8 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   v1.0.1 here: it was a build fix made in the nanoHUB clone during the first
   install (Oct 23, 2026), never published, and folded into v1.0.2 the same
   day; it is why changes now flow one way. The versions published on
-  nanoHUB are 1.0.2, 1.0.3, 1.1.0, 1.2.0 and 1.3.0.
+  nanoHUB are 1.0.2, 1.0.3, 1.1.0, 1.2.0, 1.3.0 and 1.3.4 (approved Nov 6,
+  2026; 1.3.1 to 1.3.3 reached nanoHUB in it).
 - **Export** with `sh src/utils/export_nanohub.sh vX.Y.Z
   ~/Documents/Academic/bitwhiz`: it copies exactly that tag into the clone's
   `src/bitwhiz/` (no `doc/`, and none of the gold-standard data in
