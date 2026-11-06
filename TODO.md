@@ -593,8 +593,11 @@ decks.
 
 ## 9. Publication: JOSS and SCCM 2027
 - [x] **Public on GitHub, Nov 5, 2026.** JOSS's six months of public
-      history run to May 5, 2027, or to Apr 23 if the source's
-      availability on nanoHUB since Oct 23 counts (ask the editors, below).
+      history run to May 5, 2027. (Nov 6: JOSS's guides make it a hard
+      gate on the repository itself, public for more than six months with
+      activity spread across them, and check how the commits are
+      distributed; nanoHUB's availability since Oct 23 almost certainly
+      does not count. Submit after May 5, 2027.)
 - [x] **Zenodo,** checked with the first release after going public
       (v1.3.4: the docs and CI since v1.3.3, exported to nanoHUB too).
       Then the DOI badge in the README and the concept DOI (the one for
@@ -602,10 +605,17 @@ decks.
       doi:10.5281/zenodo.23999298; the concept DOI, for all versions,
       doi:10.5281/zenodo.23999297, in the README (badge, Citing) and
       `CITATION.cff`.
-- [ ] **A pre-submission note to the JOSS editors:** does nanoHUB's public
-      availability count toward the six months, and is a course's
-      reference hydrocode with research use (HVRB, graded materials) in
-      scope?
+- [ ] **The scope question:** is a course's reference hydrocode with
+      research use (HVRB, graded materials) in JOSS's 2026 scope? JOSS has
+      no pre-submission channel (Nov 6: neither its submission nor its
+      editorial guide describes one); scope is judged after submission, in
+      the public pre-review issue. So: submit in May and let pre-review
+      answer, or write to an editor informally (DK; an outline from Nov 6:
+      what bitwhiz is, research use first, design and verification, AI
+      assistance, the question, the timeline).
+- [ ] **Keep the activity spread to May:** JOSS checks the commits'
+      distribution, and 100 of them fell in Oct-Nov 2026. Steady work
+      through issues, pull requests and releases (above) is the answer.
 - [ ] **The public trail through spring:** TODO items opened as issues,
       work merged through pull requests, and releases at a steady pace
       (each to nanoHUB). JOSS looks for sustained development, and this is
@@ -618,8 +628,13 @@ decks.
       design (frozen equation sheets, verification against 50-digit
       references, exact answers and independent data, the AV
       characterization); research impact; and the required AI-usage
-      section, from the README's Acknowledgements. A draft by about March
-      2027, submitted when the six months are up.
+      section, from the README's Acknowledgements. JOSS requires that
+      section to give the tools or models with versions, where they were
+      used (code, documentation, the paper), the nature and scope of the
+      help, and confirmation that people reviewed and validated the
+      results and made the core design decisions; an incomplete one can be
+      treated as an ethical breach. A draft by about March 2027, submitted
+      after May 5.
 - [ ] **SCCM 2027,** the 25th Biennial Conference of the APS Topical Group
       on Compression of Condensed Matter: June 28-July 2, 2027, Sheraton
       Grand Chicago Riverwalk. An abstract on bitwhiz (the course's verified
