@@ -180,14 +180,15 @@ copy of this code in `src/bitwhiz/`.
 **The rule: changes flow one way.** Code is changed here, never in the nanoHUB
 copy:
 ```
-fix on shock  ->  make test, make release  ->  tag vX.Y.Z  ->  export to the
+fix on main  ->  make test, make release  ->  tag vX.Y.Z  ->  export to the
 nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
 ```
-- **Branches.** `shock` is the release line: every tag, and so every nanoHUB
-  version, is a commit on it. New work goes on its own branch (as the velocity
-  profiles did on `distributions`, released in 1.1.0), which takes fixes from
-  `shock` by `git merge shock`, goes back into `shock` when it is finished, and
-  is then deleted.
+- **Branches.** `main` is the release line: every tag, and so every nanoHUB
+  version, is a commit on it (the line was `shock` until Nov 5, 2026, when
+  `main` was brought up to it). New work goes on its own branch (as the
+  velocity profiles did on `distributions`, released in 1.1.0), which takes
+  fixes from `main` by `git merge main`, goes back into `main` when it is
+  finished, and is then deleted.
 - **Tags** are `vMAJOR.MINOR.PATCH`: PATCH for fixes (v1.0.2), MINOR for new
   features (v1.1.0). The banner prints the tag: here through `git describe`,
   on nanoHUB through the `VERSION` file the export writes.

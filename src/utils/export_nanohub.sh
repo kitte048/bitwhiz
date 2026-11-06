@@ -31,7 +31,7 @@
 #   - shows what changed in the clone, and the commands to commit,     #
 #     tag and push it. It does not commit or push.                     #
 #                                                                      #
-#  The rule this serves: fixes are made here (branch shock), tagged,   #
+#  The rule this serves: fixes are made here (branch main), tagged,    #
 #  and exported; never made in the nanoHUB clone first.                #
 #                                                                      #
 #  D. E. Kittell (with Claude), 10/23/26; VERSION file, 10/24/26;     #

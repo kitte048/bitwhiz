@@ -21,11 +21,10 @@ at 1.3.0 and working that day.
 
 ## Priorities
 Next, an afternoon each, little risk:
-1. Housekeeping and going public (section 2, open questions): `main`
-   brought up to `shock`, the missing v1.0.1 tag, the front-facing files and
-   CI, then the repository public, for JOSS (six months of public history);
-   and a follow-up on ticket #516409 (IP blocks) before beta testers use the
-   tool heavily.
+1. Housekeeping and going public (section 2, open questions): the missing
+   v1.0.1 tag, the front-facing files and CI, then the repository public,
+   for JOSS (six months of public history); and a follow-up on ticket
+   #516409 (IP blocks) before beta testers use the tool heavily.
 2. The notebook (section 2), its changes collected into one nanoHUB
    release while beta testing runs: the Stop button first (testers will
    feel it), then a movie frame download, the movie step's timing, a
@@ -154,12 +153,12 @@ release: each costs a push and an install.
       bitwhiz is open literature (DK has the emails, filed). The source is
       already public: the tool's wiki on nanoHUB has an "Inspect source
       code" button.
-- [ ] **GitHub's default branch is `main`**, at the year-old commit this
+- [x] **GitHub's default branch is `main`**, at the year-old commit this
       clone's history starts from: a new clone lands there, not on
-      `shock`. Plan (Nov 5): fast-forward `main` to `shock` (`shock` is 98
-      commits ahead, nothing to merge back) and work on `main` from then
-      on, with the README's and the export's mentions of `shock` updated
-      in the same commit.
+      `shock`. Done Nov 5: `main` fast-forwarded to `shock` (100 commits
+      ahead, nothing to merge back), and `main` is the release line from
+      then on (README, "Releases and nanoHUB"; the export works by tag,
+      so it needed no change but a comment).
 - [ ] **Tag v1.0.1** is in the nanoHUB clone but not here (v1.0, v1.0.2
       and v1.0.3 are in both). Find the commit it names and tag it here, or
       record why there is none.
