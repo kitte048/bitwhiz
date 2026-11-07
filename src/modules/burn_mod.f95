@@ -3,7 +3,8 @@ module burn
 !
 !  Purpose:
 !    The cells' burn state, for the materials that burn (deck: burn =
-!    hvrb, with eos = mie_gruneisen_t and a products EOS): each such
+!    hvrb or thermalcascade, module burn_table's models, with eos =
+!    mie_gruneisen_t and a products EOS): each such
 !    cell's model, constants, history variables and extent of reaction
 !    lam, by cell, and the burn's step in the time loop. The
 !    physics is module hvrb's (the rate law) and module mixture's (the
@@ -79,6 +80,11 @@ module burn
 !                (with Claude)        detector (module leadshock) for
 !                                     the models that need it (none
 !                                     yet; step 4)
+!    11/07/26    D. E. Kittell        ThermalCascade (module
+!                (with Claude)        thermalcascade, step 5): its case
+!                                     in cell_burn, gated by the lead
+!                                     shock; cell_burn given lam and
+!                                     T^n (module temperature's tk)
 !    11/06/26    D. E. Kittell        The closure from module mixture
 !                (with Claude)        (mix_state, mix_pulls), the rate
 !                                     law from module hvrb
@@ -171,12 +177,14 @@ use bits,        only: dp, int32, int64, zero, half, one
 use shock,       only: kmax, nlay, layer, database, icell, jx, jp, jrho, &
    je, jr0, jc0, js1, js2, jg0, products_ideal_gas
 use burn_table,  only: npar_max, nst_max, burn_none, burn_hvrb, hv_PR, &
-   hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi, burn_uses_ls
-use leadshock,   only: ls_step, ls_nst
+   hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi, burn_uses_ls, burn_tcas, &
+   tc_HT, tc_TC, tc_GT, tc_NS, tc_PR
+use leadshock,   only: ls_step, ls_nst, ls_marked, ls_ps
+use thermalcascade, only: tc_rate, tc_step
 use eos,         only: eos_ok
 use hvrb,        only: hvrb_step
 use mixture,     only: mix_state, mix_pulls, burn_cell_t
-use temperature, only: temp_cold_cell, ec, cv, t0
+use temperature, only: temp_cold_cell, ec, cv, t0, tk
 implicit none
 private
 
@@ -325,7 +333,7 @@ contains
          kbad = min( kbad, k )
          cycle
       end if
-      call cell_burn( bmod(k), bpar(:,k), bst(:,k), &
+      call cell_burn( bmod(k), bpar(:,k), bst(:,k), lam(k), tk(k), &
          database(jp,icell(k)), dt, st2, lam2 )
       bst(:,k) = st2
       lam(k)   = lam2
@@ -353,8 +361,8 @@ contains
    do n = 1, nb
       k = kb(n)
       i = icell( k )
-      call cell_burn( bmod(k), bpar(:,k), bst(:,k), database(jp,i), dt, &
-         st2, lam2 )
+      call cell_burn( bmod(k), bpar(:,k), bst(:,k), lam(k), tk(k), &
+         database(jp,i), dt, st2, lam2 )
       src(k) = zero
       if ( rs_reaction_source .and. lam2 > lam(k) ) then
          call mix_state( database(jrho,i), database(je,i), lam(k), ec(k), &
@@ -372,16 +380,21 @@ contains
    !******************************************************************!
    ! One cell's burn over dt, by its model (module burn_table): its   !
    ! history variables st2 and lam2 at the step's end, from its       !
-   ! constants and history variables at the start and its pressure    !
-   ! P^n. Writes nothing of the module's: the caller stores st2 and   !
-   ! lam2. Its constants are intent(in), here and in the model's      !
-   ! routines (THE CELLS' CONSTANTS).                                 !
+   ! constants, history variables and lam at the start, and its state !
+   ! there, P^n and T^n. Writes nothing of the module's: the caller   !
+   ! stores st2 and lam2. Its constants are intent(in), here and in   !
+   ! the model's routines (THE CELLS' CONSTANTS). A model that uses   !
+   ! the lead shock (burn_uses_ls) burns only once it is marked (the  !
+   ! gate, doc/design/burn_models.md); its detector's numbers, the    !
+   ! first ls_nst of st1, are burn_detect's, and pass through.        !
    !******************************************************************!
-   pure subroutine cell_burn( ib, par, st1, p, dt, st2, lam2 )
+   pure subroutine cell_burn( ib, par, st1, lam1, T, p, dt, st2, lam2 )
    implicit none
    integer(kind=int32), intent(in) :: ib            ! the model
    real(kind=dp), intent(in)  :: par(npar_max)      ! its constants
    real(kind=dp), intent(in)  :: st1(nst_max)       ! history, start
+   real(kind=dp), intent(in)  :: lam1               ! lam, start
+   real(kind=dp), intent(in)  :: T                  ! T^n, K
    real(kind=dp), intent(in)  :: p                  ! P^n, GPa
    real(kind=dp), intent(in)  :: dt                 ! the step, us
    real(kind=dp), intent(out) :: st2(nst_max)       ! history, end
@@ -393,6 +406,11 @@ contains
       call hvrb_step( st1(hv_phi), p, dt, par(hv_PR), par(hv_ZR), &
          par(hv_MR), par(hv_XR), par(hv_PI), par(hv_TAU0), st2(hv_phi), &
          lam2 )
+   case ( burn_tcas )
+      lam2 = lam1
+      if ( ls_marked( st1(1:ls_nst) ) ) lam2 = tc_step( lam1, &
+         tc_rate( T, st1(ls_ps), par(tc_HT), par(tc_TC), par(tc_GT), &
+         par(tc_NS), par(tc_PR) ), dt )
    end select
    end subroutine cell_burn
 

@@ -27,6 +27,10 @@ program test_btab
 !    7. A model that uses the lead shock (burn_uses_ls) has room for
 !       the detector's ls_nst numbers first (module leadshock); HVRB
 !       does not use it.
+!    8. ThermalCascade's row is the slot table's: HT, TC, GT, NS, PR in
+!       slots tc_HT to tc_PR, PR shared with HVRB (one key, one
+!       meaning), the detector's five numbers its history, and its
+!       checks (HT, TC, GT, NS >= 0, so HT = 0 is the inert limit).
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -35,6 +39,8 @@ program test_btab
 !                (with Claude)
 !    11/06/26    D. E. Kittell        7: burn_uses_ls (step 4)
 !                (with Claude)
+!    11/07/26    D. E. Kittell        8: ThermalCascade's row (step 5)
+!                (with Claude)
 !
 !**********************************************************************!
 use bits, only: int32, quit
@@ -42,7 +48,7 @@ use burn_table, only: npar_max, nst_max, nburn, burn_none, burn_hvrb, &
    burn_names, burn_long, nbkey, bkey_name, bkey_check, bkey_note, &
    chk_any, chk_positive, chk_nonneg, burn_npar, burn_key, burn_nst, &
    bkey_index, burn_takes, hv_PR, hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, &
-   hv_phi, burn_uses_ls
+   hv_phi, burn_uses_ls, burn_tcas, tc_HT, tc_TC, tc_GT, tc_NS, tc_PR
 use leadshock, only: ls_nst
 implicit none
 
@@ -57,6 +63,8 @@ character(len=16), parameter, dimension(nother) :: other_keys = (/ &
 character(len=8), parameter, dimension(6) :: hvrb_keys = (/ &
    'PR      ', 'ZR      ', 'MR      ', 'XR      ', 'PI      ', &
    'TAU0    ' /)
+character(len=8), parameter, dimension(5) :: tcas_keys = (/ &
+   'HT      ', 'TC      ', 'GT      ', 'NS      ', 'PR      ' /)
 integer(kind=int32) :: ncheck, nfail, i, j, ib, s, n
 logical :: ok
 
@@ -170,6 +178,24 @@ do ib = 1, nburn
 end do
 call check( ok, '7. a model using the lead shock has its ls_nst slots '// &
    'first; HVRB does not use it' )
+
+!*** 8. ThermalCascade, as the slot table has it.
+ok = trim(burn_names(burn_tcas)) == 'thermalcascade' .and. &
+   burn_npar(burn_tcas) == 5 .and. burn_nst(burn_tcas) == ls_nst .and. &
+   burn_uses_ls(burn_tcas)
+do s = 1, 5
+   if ( trim(bkey_name( burn_key(s,burn_tcas) )) /= trim(tcas_keys(s)) ) &
+      ok = .false.
+end do
+ok = ok .and. tc_HT == 1 .and. tc_TC == 2 .and. tc_GT == 3 .and. &
+   tc_NS == 4 .and. tc_PR == 5 .and. &
+   burn_key(tc_PR,burn_tcas) == burn_key(hv_PR,burn_hvrb)
+do s = 1, 4
+   if ( bkey_check( burn_key(s,burn_tcas) ) /= chk_nonneg ) ok = .false.
+end do
+ok = ok .and. bkey_check( burn_key(tc_PR,burn_tcas) ) == chk_positive
+call check( ok, '8. ThermalCascade: HT TC GT NS PR in slots 1-5 (PR '// &
+   'HVRB''s), the detector its history, its checks' )
 
 if ( nfail > 0 ) then
    write(*,'(a,i0,a,i0,a)') ' test_btab: ', nfail, ' of ', ncheck, &

@@ -34,7 +34,9 @@
 #     0, 0 to 1, never falling), a tracer's XRN in it is the tracer    #
 #     file's, AV and RS; and a burn that never starts (PI out of      #
 #     reach) gives the inert run's heartbeat, tracer rows and frames,  #
-#     bit for bit, AV and RS;                                          #
+#     bit for bit, AV and RS; the same for ThermalCascade (burn =      #
+#     thermalcascade), and at HT = 0 its lead-shock detector, running  #
+#     in the hydro, changes nothing, bit for bit, AV and RS;           #
 #   - a run stopped by cycle_max ends its file with status 2 and a     #
 #     frame at that cycle;                                             #
 #   - a deck with no snapshot keys writes no history file;             #
@@ -90,7 +92,7 @@ CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 . "$(dirname "$0")/report.sh"
-plan 28 "history tests"
+plan 32 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -544,11 +546,22 @@ inert_limit() {   # $1 case name, $2 the inert deck, $3 its twin with a burn
 }
 inert_limit hvrb_inert    tests/decks/ok_temperature.deck    tests/decks/ok_hvrb_inert.deck
 inert_limit hvrb_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_hvrb_inert_rs.deck
+# ThermalCascade at HT = 0 (tests/decks/ok_tcas_inert.deck, and _rs):
+# the lead-shock detector runs in every MatX cell, inside the hydro, and
+# must change nothing (doc/design/burn_models.md, step 5).
+inert_limit tcas_inert    tests/decks/ok_temperature.deck    tests/decks/ok_tcas_inert.deck
+inert_limit tcas_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_tcas_inert_rs.deck
 
 # Case: a burn with method RS (tests/decks/ok_hvrb_rs.deck, order 2: the
 # closure in its state and the reaction's source in its predictor), as
 # the other runs: the file, against the tracer file, the pictures.
 against_tracer hvrb_rs tests/decks/ok_hvrb_rs.deck 0.05 pdv
+
+# Case: ThermalCascade (tests/decks/ok_tcas.deck, and _rs: MatX burns
+# once each cell's lead shock is marked), as the other runs. (Its lam
+# only nears 1, by an exact exponential step, so no "1 at the end".)
+against_tracer tcas    tests/decks/ok_tcas.deck    0.05 pdv
+against_tracer tcas_rs tests/decks/ok_tcas_rs.deck 0.05 pdv
 
 # Case: velocity profiles (xvel_profile, xvel_amplitude). Frame 1 is
 # t = 0, so its face velocities (KMPS, real32) must be what the deck

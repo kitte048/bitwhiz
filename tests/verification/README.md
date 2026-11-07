@@ -92,6 +92,17 @@ minute on 2 cores, `--quick` 20 s):
 
     python3 tests/verification/study_leadshock.py
 
+`study_tcas.py` checks ThermalCascade (`burn = thermalcascade`) in runs. The
+lead shock inside the hydro: set to burn as a clock once marked, a cell's
+first lam gives back the P_s the hydro marked, which must be the replay's
+(`ls_replay`, on the same rows), on the replay's step. And the detonation of
+`input/me697_tcas_2p00.deck` against mesh, AV and RS, beside HVRB's class
+deck: the same products, so the same detonation speed. The results are in
+`doc/design/burn_models.md`, "As built: step 5" (about a minute on 2 cores,
+`--quick` 20 s):
+
+    python3 tests/verification/study_tcas.py
+
 ## Gold-standard sets (subfolders)
 - `inert_gauges/`: the same problem, Material X inert, with 13 tracers (every
   1 mm through Material X) and density and temperature: set G1.

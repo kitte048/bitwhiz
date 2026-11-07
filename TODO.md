@@ -55,10 +55,11 @@ Medium term, the reactive physics:
    approved Nov 6), one per release; steps 2 (the closure in module
    `mixture`), 3 (the burn table, `bmod`, `bpar`, `bst`) and 4 (the
    lead-shock detector, module `leadshock`, checked by
-   `study_leadshock.py`) done Nov 6, HVRB bit for bit; next, step 5,
-   ThermalCascade, with DK's choice on a smooth ramp's foot
-   (`burn_models.md`, "As built: step 4", Open). Then JWL products, the
-   25 zones/mm difference (section 3).
+   `study_leadshock.py`) done Nov 6, HVRB bit for bit; step 5,
+   ThermalCascade (`burn = thermalcascade`, `study_tcas.py`; a smooth
+   ramp's foot opens the gate, P_s -> 0: DK's option (a)), Nov 7: 1.4.0.
+   Next, step 6, FlashFire. Then JWL products, the 25 zones/mm
+   difference (section 3).
 10. With it or after: a broken cell's temperature (section 5; a burning
     cell's done in 1.3.3); strength, the spall "knocking" (section 6).
 
@@ -453,9 +454,10 @@ decks.
       closure factored out (HVRB bit for bit; step 2, done Nov 6), the
       per-cell layout and the deck keys from one table (step 3, done Nov
       6), the detector (step 4, done Nov 6; a smooth ramp's foot is
-      marked, P_s -> 0 with the mesh: DK's call at step 5), then one model
-      per release, CLAUDE last; then the study (each model tailored to
-      Material X's HVRB for a single shock, then double shocks). Sources
+      marked, P_s -> 0 with the mesh: accepted, DK, Nov 7), then one model
+      per release (ThermalCascade, step 5, done Nov 7), CLAUDE last;
+      then the study (each model tailored to Material X's HVRB for a
+      single shock, then double shocks). Sources
       in the course folder's `Class_Project/Literature/Burn_Models/`.
 
 ## 7. Graded materials (research)

@@ -15,7 +15,7 @@ models on one verified footing:
 | `hvrb` | History Variable Reactive Burn | Kerley; Starkenberg (2002); the HVRB sheet | done, 1.3.0 |
 | `flashfire` | FlashFire | SAND2025-09228 §5.2.1 (proposed by ChatGPT 4o-mini) | this note |
 | `stochasticignite` | StochasticIgnite | SAND2025-09228 §5.2.2 (ChatGPT 4o-mini) | this note |
-| `thermalcascade` | ThermalCascade | SAND2025-09228 §5.2.3 (ChatGPT 4o-mini) | this note |
+| `thermalcascade` | ThermalCascade | SAND2025-09228 §5.2.3 (ChatGPT 4o-mini) | done, step 5 |
 | `halo` | HALO: Hot-spot Activation, Loss and Overlap | Kittell (2016), ADRB, revised here | this note |
 | `claude` | CLAUDE: Centers Lit by Accumulated Unrecoverable Dissipated Energy | proposed by Claude (Anthropic), Nov 6, 2026 | this note |
 
@@ -157,6 +157,10 @@ Open, to settle in runs (DK): the detector's noise tolerance (a relative
 floor on h, an algorithm constant documented here, not a key), and smooth
 (ramp) loading: with no lead shock nothing is marked and nothing burns,
 agreed physically; a ramp that steepens into a shock is marked there.
+Settled in runs (step 4, "As built"): the floor is 1e-10 C0², and a smooth
+ramp's foot is marked, at a P_s that falls toward 0 as the mesh refines;
+the gate then opens, and each model's own rate decides what follows
+(**DK**, Nov 7: option (a), as AV's behavior was taken in `av_study.md`).
 
 ### Steps that stay exact (DK)
 
@@ -566,3 +570,70 @@ the mesh, but 0.01 to 0.03 for weak shocks too), or the time from h's peak
 to the mark (the ramp's foot is marked within one to three of the cell's
 sound transits, as quickly as a strong shock). The choice is DK's, at
 step 5.
+
+**Decided (DK, Nov 7): option (a).** Accept and document, as AV's
+behavior was (`av_study.md`): the gate opens at a smooth ramp's foot with
+P_s → 0, and each model's own rate decides what follows (ThermalCascade
+still needs T > TC). The alternative, a threshold on P_s, would be a deck
+key that does not converge with the mesh.
+
+## As built: step 5, ThermalCascade (Nov 7, 2026)
+
+**Module `thermalcascade`** (`src/modules/tcas_mod.f95`, uses only `bits`):
+`tc_rate`, HT (T - TC)^GT (1 + P_s/PR)^NS above TC and 0 at or below it
+(a test, not max(T - TC, 0)^GT: at GT = 0 that would be 0^0, which gfortran
+takes as 1), with P_s below 0 taken as 0; and `tc_step`, exact for the rate
+at the step's start, lam2 = lam1 + (1 - lam1)(1 - exp(-r dt)), with 1 -
+exp(-x) by its series below x = 0.5 (Fortran has no expm1; a first cut at
+0.05 lost a digit just above it, measured). Elemental, no state.
+
+**Its row** (module `burn_table`): `burn_tcas`, keys HT, TC, GT, NS (each
+>= 0, so HT = 0 is the inert limit) and PR (HVRB's, shared), in that slot
+order (`tc_HT` ... `tc_PR`); its history is the detector's five numbers
+(`burn_uses_ls`), and lam is the model's own variable (module `burn`'s
+`lam`). **Module `burn`:** `cell_burn` is given the cell's lam and T^n
+(module `temperature`'s `tk`, the closure's one temperature, as it stands at
+the step's start, both methods) and holds the gate: ThermalCascade burns only
+once its lead shock is marked. The deck reader needed nothing new: the
+table's row made `burn = thermalcascade`, its keys, their checks, the
+resolved deck and every message ("ZR is not a key of burn = thermalcascade
+(it is for burn = hvrb ...)", step 3's rule 2, now reachable).
+
+**Tests.** `tests/test_tcas.f95` (5 checks) against
+`tests/tcas_reference.py` (50 digits): the rate at 11 states (at, below and
+just above TC; GT = 0; P_s < 0) to 3e-16; 1 - exp(-x) from 1e-16 to 50 to
+2e-16; the step to 2e-22; 1000 steps at a fixed rate are one step (exact);
+and the cascade at constant volume (T = Ta + b lam there, the closure's),
+its time to lam = 0.99 first order in dt (errors 7.4e-5, 3.7e-5, 1.9e-5
+for GT = 1; 1.7e-4, 8.5e-5, 4.3e-5 for GT = 1.5), against the 50-digit
+quadrature. `test_btab` gains ThermalCascade's row (9 checks). Decks: two
+good runs (`ok_tcas`, `ok_tcas_rs`: also OpenMP and release decks, and in
+the history tests), two inert limits (`ok_tcas_inert`, `_rs`: HT = 0, the
+detector running in every Material X cell, the inert run's heartbeat,
+tracers and frames bit for bit, AV and RS), and six bad decks (a key left
+out, an HVRB key in ThermalCascade and the reverse, GT < 0, TC without a
+burn, the default eos).
+
+**In runs** (`tests/verification/study_tcas.py`, 16 checks):
+
+- **The lead shock in the hydro is its replay's.** With TC = 0, GT = 0,
+  NS = 1, PR = 1 GPa and a small HT, a marked cell burns as a clock, so its
+  first lam gives P_s back. At five Material X tracers, AV and RS, each
+  cell burns from the row after the one where `ls_replay` marks it, and its
+  P_s is the replay's to 3e-16: step 4's promise, kept inside the hydro.
+- **Its detonation is HVRB's.** The example deck at 2.00 km/s, 25 to 200
+  zones/mm: D over 6 to 9.5 mm within 0.07 % (AV) and 0.09 % (RS) of HVRB's
+  class deck on the same mesh at 200 zones/mm (the same products). Both are
+  0.5 to 0.7 % above D_CJ there: this deck's drive, as `av_study.md` found
+  for HVRB. AV at 25 zones/mm is 2.7 % fast, HVRB's weak detonation again.
+  Run distance 3.0 to 3.3 mm over the meshes (HVRB: 3.25 to 3.4).
+
+**The example deck** (`input/me697_tcas_2p00.deck`; HT = 3e-5, TC = 600 K,
+GT = 1.5, NS = 2, PR = 7 GPa): an example, not a calibration, chosen so
+that at 2.00 km/s it detonates near HVRB's 3.5 mm (at its 35 zones/mm, AV).
+Its threshold is in T, so sharper than HVRB's: 1.75 km/s about 6 mm; 1.50
+reacts first at 1.27 us and does not detonate within 10 mm; 1.25 and below
+never pass TC and do not burn. The run log's "cells burnt out" counts lam
+= 1 exactly, which this exact step reaches only by rounding (0 of 350 at
+2.00 km/s, with lam 1 to round-off behind the front); left as it is, since
+changing it would change HVRB's screen output.

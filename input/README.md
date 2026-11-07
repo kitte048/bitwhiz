@@ -167,12 +167,17 @@ Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
 | `spall_strength` | GPa | 0.01 |
 | `CV` | J/(g K) | required with `mie_gruneisen_t`; not allowed without it |
 | `T0` | K | required with `mie_gruneisen_t`; not allowed without it |
-| `burn` | `hvrb` | none (inert) |
+| `burn` | `hvrb`, `thermalcascade` | none (inert) |
 | `PR`, `ZR`, `MR`, `XR`, `PI`, `TAU0` | GPa, -, -, -, GPa, us | each required with `burn = hvrb`; not allowed without it |
+| `HT`, `TC`, `GT`, `NS`, `PR` | 1/(us K^GT), K, -, -, GPa | each required with `burn = thermalcascade`; not allowed without it |
 | `products` | `ideal_gas` | none: required with `burn` (no default) |
 | `GAMMA`, `Q` | -, kJ/g (= MJ/kg) | each required with `products = ideal_gas`; not allowed without it |
 
-A material that no layer uses gets a warning, not an error.
+A material that no layer uses gets a warning, not an error. A burn key means
+the same thing in every model that takes it (`PR`, the reference pressure, is
+HVRB's and ThermalCascade's), and a model takes only its own: a key of another
+model is an error ("ZR is not a key of burn = thermalcascade (it is for burn =
+hvrb ...)"), as is any burn key without a burn.
 
 **Temperature (`eos = mie_gruneisen_t`).** The same Mie-Gruneisen, the same
 pressure and sound speed to the last bit, plus each cell's temperature:
@@ -221,6 +226,37 @@ bit for bit. Burning changes lam at fixed rho and e, so energy is conserved
 first cell to react and the cells burnt out. Both methods: with RS at order
 2 the reaction is also a source in the predictor's pressure (`doc/design/
 materials.md`, phase 3).
+
+**Burning (`burn = thermalcascade`).** ThermalCascade, proposed by ChatGPT
+4o-mini in SAND2025-09228 (§5.2.3) and repaired where it can not run as
+written (`doc/design/burn_models.md`): the same solid, products and closure as
+HVRB's above, with the rate
+
+    dlam/dt = HT (1 - lam) max(T - TC, 0)^GT (1 + P_s/PR)^NS
+
+**once the cell's lead shock is marked** (before it, nothing burns). T is the
+closure's one temperature, solid and products alike, so burning heats the
+cell and speeds the burn (the cascade); no burn at or below `TC`, for every
+`GT`. P_s is the lead shock's pressure, found by SURF's detector (Menikoff and
+Shaw 2010) from each cell's own history, the same for both methods, and frozen
+there: a later shock acts only through T. The step is exact for the rate at
+its start, so lam nears 1 without ever passing it (the run log's "cells burnt
+out" counts lam = 1 exactly, which only rounding reaches; read `XRN`). `GT =
+0` makes the rate above TC a clock, `HT (1 + P_s/PR)^NS`; `HT = 0` never
+burns (the detector still runs, and changes nothing). A smooth ramp's foot is
+marked too, at a P_s that falls toward 0 as the mesh refines: then T alone
+decides (`doc/design/burn_models.md`, step 5). Example: below, and
+`me697_tcas_2p00.deck` (section 6), an example set, not a calibration:
+
+    burn = thermalcascade
+    HT = 3.0e-5              # 1/(us K^GT)
+    TC = 600.0               # K
+    GT = 1.5
+    NS = 2.0
+    PR = 7.0                 # GPa
+    products = ideal_gas
+    GAMMA = 2.60
+    Q = 4.8828               # kJ/g
 
 **Resolution, with AV.** AV burns inside its smeared shock, and on a coarse
 mesh that makes a weak detonation: the front runs fast, and once an overdrive
@@ -368,6 +404,16 @@ u_fly` for the Pop plot's trend (1.75 and 1.50 km/s detonate later, 1.25 and
 1.00 not within 10 mm). Checked against the gold-standard reactive data by
 `tests/verification/compare_hvrb.py`. About 3 s (release build).
 
+**The same, by ThermalCascade,** `me697_tcas_2p00.deck`: Material X burning
+by `burn = thermalcascade` (Material block, "Burning"), each cell once its
+lead shock is marked, with an example set of constants chosen so that at 2.00
+km/s it detonates about 3.5 mm in, as HVRB's does. Its threshold is in T, so
+sharper: 1.75 km/s detonates about 6 mm in, 1.50 not within 10 mm, and at
+1.25 and below the shocked solid stays at or under TC and nothing burns.
+Watch `TK` rise with `XRN` in the tracer file: the cascade. Its detonation is
+HVRB's (the same products: within 0.1 % at 200 zones/mm,
+`tests/verification/study_tcas.py`). About 3 s (release build).
+
 **Keep the origin near the problem.** Positions are stored as plain numbers, so
 round-off in x grows with the size of x: a cell's width is the difference of
 its two face positions. With the origin in or near the stack (the usual
@@ -434,7 +480,7 @@ Written in the folder the run starts from, laid out like the verification data
     (damage: 0 intact, 1 broken), and, when some material carries T
     (`eos = mie_gruneisen_t`), `TK` (temperature, K; 0 for a tracer whose
     cell's material has no temperature model), and, when some material burns
-    (`burn = hvrb`), `XRN` (extent of reaction, lam, 0 to 1; 0 where the
+    (any `burn`), `XRN` (extent of reaction, lam, 0 to 1; 0 where the
     cell's material does not burn).
 - **When:** cycle 0, then the first cycle at or after each multiple of
   `tracer_dt`, at that cycle's own time (nothing is interpolated), and always
@@ -506,7 +552,7 @@ fraction of a second.
   When some material carries T (`eos = mie_gruneisen_t`), a fifth variable
   follows: `TK`, K, cells, real32, k_max values (0 in a cell whose material
   has no temperature model). A run without T writes the four, byte for byte
-  as before. When some material burns (`burn = hvrb`), a sixth follows it:
+  as before. When some material burns (any `burn`), a sixth follows it:
   `XRN`, -, cells, real32 (lam, 0 to 1; 0 in a cell that does not burn).
 - **Size:** 13 k_max + 24 bytes per frame (17 k_max + 24 with `TK`, 21
   k_max + 24 with `XRN` too). The
@@ -642,8 +688,9 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
              -c:v libx264 -pix_fmt yuv420p -crf 20 <title>.mv_p.mp4
 
   (7 frames a second: 35 frames make 5 s; `yuv420p` so browsers play it).
-  The class deck, `pulse_split_normal.deck`, `steepening_hump.deck` and
-  `me697_hvrb_2p00.deck` make movies (35, 35, 25 and 35 frames).
+  The class deck, `pulse_split_normal.deck`, `steepening_hump.deck`,
+  `me697_hvrb_2p00.deck` and `me697_tcas_2p00.deck` make movies (35, 35,
+  25, 35 and 35 frames).
 
 - **Read from the files, never from memory.** The t-x diagrams come from
   `<title>.hist` and the tracer plots from `<title>.tracers.csv`, so a picture
@@ -792,7 +839,7 @@ so the heartbeat, tracer and history files it reads are never touched.
 | `xvel_profile`, `xvel_amplitude` | `layer(l)%prof_name`, `prof_np`, `prof_par`; `xamp`, `have_amp` |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
 | `Material` keys `eos`, `CV`, `T0` | `material(m)%eos` (`eos_mie_gruneisen`, `eos_mie_gruneisen_t`), `CV` (J/(g K)), `T0`; copied into `layer(l)%eos`, `cv` (kJ/(g K): `CV`/1000), `T0`, then into module `temperature` (`src/modules/temp_mod.f95`), cell by cell |
-| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
+| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `HT` ... `NS`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `thermalcascade` (`tcas_mod.f95`, with `leadshock`, `lshk_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
 | `num_threads` | `nproc` |
 | `Run`, `Output`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `plot_dt`, `colormap`, `CFL`, `stack_resolution`, ...) |
 | `tracer` | `tracer(n)%...`: name, location, `x0`, `kface`, `w`, `kcell` |

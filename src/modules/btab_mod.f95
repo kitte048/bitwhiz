@@ -25,6 +25,7 @@ module burn_table
 !       bkey_index( key )             j of a key, 0 if not a burn key
 !       burn_takes( ib, j )           does model ib take key j
 !       hv_PR ... hv_TAU0, hv_phi     HVRB's slots, in bpar and bst
+!       tc_HT ... tc_PR               ThermalCascade's, in bpar
 !
 !  Three arrays, three lifetimes (module burn keeps the last two):
 !    this table   what a model is: compiled in, never written;
@@ -62,6 +63,9 @@ module burn_table
 !                                     module shock
 !    11/06/26    D. E. Kittell        burn_uses_ls: the models that
 !                (with Claude)        need the lead shock (step 4)
+!    11/07/26    D. E. Kittell        ThermalCascade's row (step 5):
+!                (with Claude)        burn_tcas; keys HT, TC, GT, NS
+!                                     (PR shared); its slots tc_*
 !
 !**********************************************************************!
 use bits, only: int32
@@ -73,6 +77,7 @@ public :: npar_max, nst_max, nburn, burn_none, burn_hvrb, burn_names, &
    chk_positive, chk_nonneg, burn_npar, burn_key, burn_nst, burn_uses_ls, &
    bkey_index, burn_takes
 public :: hv_PR, hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi
+public :: burn_tcas, tc_HT, tc_TC, tc_GT, tc_NS, tc_PR
 
 !*** Per cell, at most (the slot table: StochasticIgnite and HALO take 8
 !*** constants, StochasticIgnite keeps 6 numbers).
@@ -80,13 +85,15 @@ integer(kind=int32), parameter :: npar_max = 8
 integer(kind=int32), parameter :: nst_max  = 6
 
 !*** The models (deck: burn = <name>). burn_none is the default.
-integer(kind=int32), parameter :: nburn     = 1
+integer(kind=int32), parameter :: nburn     = 2
 integer(kind=int32), parameter :: burn_none = 0
 integer(kind=int32), parameter :: burn_hvrb = 1
+integer(kind=int32), parameter :: burn_tcas = 2
 character(len=16), parameter, dimension(nburn) :: burn_names = (/ &
-   'hvrb            ' /)
+   'hvrb            ', 'thermalcascade  ' /)
 character(len=40), parameter, dimension(nburn) :: burn_long = (/ &
-   'History Variable Reactive Burn          ' /)
+   'History Variable Reactive Burn          ', &
+   'ThermalCascade, SAND2025-09228, repaired' /)
 
 !*** Every burn key, each once (rule 1): its name as the resolved deck
 !*** writes it, the check its value must pass, and the resolved deck's
@@ -94,34 +101,44 @@ character(len=40), parameter, dimension(nburn) :: burn_long = (/ &
 integer(kind=int32), parameter :: chk_any      = 0   ! any real
 integer(kind=int32), parameter :: chk_positive = 1   ! > 0
 integer(kind=int32), parameter :: chk_nonneg   = 2   ! >= 0
-integer(kind=int32), parameter :: nbkey = 6
+integer(kind=int32), parameter :: nbkey = 10
 character(len=8), parameter, dimension(nbkey) :: bkey_name = (/ &
    'PR      ', 'ZR      ', 'MR      ', 'XR      ', 'PI      ', &
-   'TAU0    ' /)
+   'TAU0    ', 'HT      ', 'TC      ', 'GT      ', 'NS      ' /)
 integer(kind=int32), parameter, dimension(nbkey) :: bkey_check = (/ &
    chk_positive, chk_nonneg, chk_positive, chk_positive, chk_nonneg, &
-   chk_positive /)
+   chk_positive, chk_nonneg, chk_nonneg, chk_nonneg, chk_nonneg /)
 character(len=32), parameter, dimension(nbkey) :: bkey_note = (/ &
    'GPa, reference pressure         ', 'pressure exponent               ', &
    'delay exponent                  ', 'completion exponent             ', &
-   'GPa, threshold                  ', 'us, time constant               ' /)
+   'GPa, threshold                  ', 'us, time constant               ', &
+   '1/(us K**GT), rate coefficient  ', 'K, critical temperature         ', &
+   'temperature exponent            ', 'exponent on 1 + P_s/PR          ' /)
 
 !*** The models' rows: their keys in slot order (indices into the keys
 !*** above, 0 past the last) and their history variables.
-integer(kind=int32), parameter, dimension(nburn) :: burn_npar = (/ 6 /)
+integer(kind=int32), parameter, dimension(nburn) :: burn_npar = (/ 6, 5 /)
 integer(kind=int32), parameter, dimension(npar_max,nburn) :: burn_key = &
-   reshape( (/ 1, 2, 3, 4, 5, 6, 0, 0 /), (/ npar_max, nburn /) )
-integer(kind=int32), parameter, dimension(nburn) :: burn_nst = (/ 1 /)
+   reshape( (/ 1, 2, 3, 4, 5, 6, 0, 0, &          ! hvrb
+               7, 8, 9, 10, 1, 0, 0, 0 /), &      ! thermalcascade
+            (/ npar_max, nburn /) )
+integer(kind=int32), parameter, dimension(nburn) :: burn_nst = (/ 1, 5 /)
 !*** Which models need the lead shock's pressure, P_s (doc/design/
 !*** burn_models.md, "The lead shock"): their history variables start
 !*** with the detector's five (module leadshock, ls_nst), their own
 !*** after them. HVRB does not.
-logical, parameter, dimension(nburn) :: burn_uses_ls = (/ .false. /)
+logical, parameter, dimension(nburn) :: burn_uses_ls = (/ .false., .true. /)
 
 !*** HVRB's slots: its constants in bpar, its phi in bst.
 integer(kind=int32), parameter :: hv_PR = 1, hv_ZR = 2, hv_MR = 3, &
    hv_XR = 4, hv_PI = 5, hv_TAU0 = 6
 integer(kind=int32), parameter :: hv_phi = 1
+
+!*** ThermalCascade's slots: its constants in bpar (HT, TC, GT, NS, PR,
+!*** the design note's order); its bst is the detector's five, and lam
+!*** is the model's own variable (module burn's lam).
+integer(kind=int32), parameter :: tc_HT = 1, tc_TC = 2, tc_GT = 3, &
+   tc_NS = 4, tc_PR = 5
 
 contains
 
