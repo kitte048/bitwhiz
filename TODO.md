@@ -52,8 +52,10 @@ Medium term, the reactive physics:
    (DK, Nov 6): phase 4, five more burn models, FlashFire,
    StochasticIgnite, ThermalCascade, HALO and CLAUDE, each with ideal-gas
    products and the common C_V (section 6; `doc/design/burn_models.md`,
-   approved Nov 6), one per release; then JWL products, the 25 zones/mm
-   difference (section 3).
+   approved Nov 6), one per release; steps 2 (the closure in module
+   `mixture`) and 3 (the burn table, `bmod`, `bpar`, `bst`) done Nov 6,
+   HVRB bit for bit; next, step 4, the lead-shock detector. Then JWL
+   products, the 25 zones/mm difference (section 3).
 10. With it or after: a broken cell's temperature (section 5; a burning
     cell's done in 1.3.3); strength, the spall "knocking" (section 6).
 
@@ -445,8 +447,9 @@ decks.
       Loss and Overlap), DK's 2016 ADRB model revised; and CLAUDE (Centers
       Lit by Accumulated Unrecoverable Dissipated Energy), proposed by
       Claude at DK's invitation, on the list as described. Steps: the
-      closure factored out (HVRB bit for bit), the detector, then one model
-      per release, CLAUDE last; then the study (each model tailored to
+      closure factored out (HVRB bit for bit; step 2, done Nov 6), the
+      per-cell layout and the deck keys from one table (step 3, done Nov
+      6), the detector, then one model per release, CLAUDE last; then the study (each model tailored to
       Material X's HVRB for a single shock, then double shocks). Sources
       in the course folder's `Class_Project/Literature/Burn_Models/`.
 

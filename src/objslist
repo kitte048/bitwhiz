@@ -9,6 +9,7 @@
 	src/modules/smcw_mod.o \
 	src/modules/btcw_mod.o \
 	src/modules/rand_mod.o \
+	src/modules/btab_mod.o \
 	src/modules/shock_mod.o \
 	src/modules/dist_mod.o \
 	src/modules/eos_mod.o \
@@ -35,6 +36,7 @@
 	src/modules/smoothcoolwarm.mod \
 	src/modules/bentcoolwarm.mod \
 	src/modules/random.mod \
+	src/modules/burn_table.mod \
 	src/modules/shock.mod \
 	src/modules/distributions.mod \
 	src/modules/eos.mod \

@@ -792,7 +792,7 @@ so the heartbeat, tracer and history files it reads are never touched.
 | `xvel_profile`, `xvel_amplitude` | `layer(l)%prof_name`, `prof_np`, `prof_par`; `xamp`, `have_amp` |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
 | `Material` keys `eos`, `CV`, `T0` | `material(m)%eos` (`eos_mie_gruneisen`, `eos_mie_gruneisen_t`), `CV` (J/(g K)), `T0`; copied into `layer(l)%eos`, `cv` (kJ/(g K): `CV`/1000), `T0`, then into module `temperature` (`src/modules/temp_mod.f95`), cell by cell |
-| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`), the constants by their names; copied into `layer(l)%...`, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell; the physics in modules `hvrb` (`hvrb_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
+| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
 | `num_threads` | `nproc` |
 | `Run`, `Output`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `plot_dt`, `colormap`, `CFL`, `stack_resolution`, ...) |
 | `tracer` | `tracer(n)%...`: name, location, `x0`, `kface`, `w`, `kcell` |

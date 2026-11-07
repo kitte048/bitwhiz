@@ -54,6 +54,12 @@ module deck
 !    11/03/26    D. E. Kittell        The resolved deck is written to
 !                (with Claude)        <title>.resolved (maincode), not
 !                                     the screen; its header says so
+!    11/06/26    D. E. Kittell        The burn's keys from module
+!                (with Claude)        burn_table (key_material,
+!                                     close_burn, home_block, the
+!                                     resolved deck): a key another
+!                                     model takes is an error; the
+!                                     constants by key, then by slot
 !
 !**********************************************************************!
 !
@@ -110,10 +116,16 @@ module deck
 !      reproduces the run (tests/run_deck_tests.sh checks this).
 !   6. input/README.md: the key's row in its block's table. Then add a
 !      test deck or two in tests/decks/ (an "# expect:" line on top).
+!  A burn model's key is the exception: a row in module burn_table
+!  (its name, its check, its note, and the models that take it) does
+!  1 to 5; then input/README.md and the test decks, as above.
 !
 !**********************************************************************!
 use bits,  only: dp, int32, int64, zero, one, kpt6, nline
 use shock
+use burn_table, only: nburn, burn_none, burn_names, burn_long, nbkey, &
+   bkey_name, bkey_check, bkey_note, chk_positive, chk_nonneg, &
+   burn_npar, burn_key, burn_takes, bkey_index
 use distributions, only: dist_t, dist_set, dist_nparam, dist_mean, &
    dist_names
 implicit none
@@ -197,14 +209,16 @@ integer(kind=int32) :: line_cv = 0, line_t0 = 0    ! the Material block's
                                                    ! given, or not valid)
 logical             :: bad_eos = .false.           ! its eos was not valid
 !*** The burn's and the products' keys in the Material block (doc/design/
-!*** materials.md, phase 3): where burn and products were given, and
-!*** each constant's line (0 = not given, or not valid), in the order
-!*** of burn_keys; checked when the block closes.
-integer(kind=int32), parameter :: nburnkey = 8     ! 6 HVRB, 2 products
-character(len=5), parameter, dimension(nburnkey) :: burn_keys = (/ &
-   'PR   ', 'ZR   ', 'MR   ', 'XR   ', 'PI   ', 'TAU0 ', 'GAMMA', 'Q    ' /)
+!*** materials.md, phase 3; burn_models.md, "Deck keys"): where burn and
+!*** products were given, and each constant's line (0 = not given, or
+!*** not valid): the burn's in the order of module burn_table's keys,
+!*** the products' in the order of prod_keys; checked when the block
+!*** closes.
+integer(kind=int32), parameter :: nprodkey = 2     ! the ideal gas's
+character(len=5), parameter, dimension(nprodkey) :: prod_keys = (/ &
+   'GAMMA', 'Q    ' /)
 integer(kind=int32) :: line_burn = 0, line_prod = 0
-integer(kind=int32) :: line_bk(nburnkey) = 0
+integer(kind=int32) :: line_bk(nbkey) = 0, line_pk(nprodkey) = 0
 logical             :: bad_burn = .false., bad_prod = .false.
 integer(kind=int32) :: imat_now = 0, ilay_now = 0  ! block being filled
 logical             :: tend_given = .false.        ! t_end appeared
@@ -796,6 +810,7 @@ contains
       line_burn = 0
       line_prod = 0
       line_bk   = 0
+      line_pk   = 0
       bad_burn  = .false.
       bad_prod  = .false.
    case (bk_layer)
@@ -809,54 +824,112 @@ contains
    end subroutine close_block
 
    !*** A Material block's burn and products, at its end (doc/design/
-   !*** materials.md, phase 3): a burn needs eos = mie_gruneisen_t and
-   !*** a products EOS (no default: a deck that burns names them); each
-   !*** of the burn's and the products' constants is required with it,
-   !*** and is an error without it.
+   !*** materials.md, phase 3; burn_models.md, "Deck keys"): a burn
+   !*** needs eos = mie_gruneisen_t and a products EOS (no default: a
+   !*** deck that burns names them); each of the model's constants
+   !*** (module burn_table) is required with it, and every other burn
+   !*** key is an error (rule 2), as is any burn key without a burn;
+   !*** the products' constants likewise.
    subroutine close_burn(lb)
    implicit none
    integer(kind=int32), intent(in) :: lb       ! the block's Begin line
-   integer(kind=int32) :: j
+   integer(kind=int32) :: j, s, ib
    character(len=48) :: who                    ! 'Material ' and a name
+   character(len=:), allocatable :: bname      ! 'burn = <model>'
    associate (m => material(imat_now))
       who = 'Material '//trim(m%name)
-      if (m%burn == burn_hvrb) then
+      ib  = m%burn
+      if (ib /= burn_none) then
+         bname = 'burn = '//trim(burn_names(ib))
          if (.not. bad_eos .and. m%eos /= eos_mie_gruneisen_t) &
-            call deck_error(line_burn, 'burn = hvrb needs eos = '// &
+            call deck_error(line_burn, bname//' needs eos = '// &
             'mie_gruneisen_t (with CV and T0): its closure mixes the '// &
             'solid and the products at one temperature ('//trim(who)//')')
          if (m%products == products_none .and. .not. bad_prod) &
-            call missing(lb, 'products', trim(who)//' with burn = hvrb (the '// &
-            'products'' EOS has no default: products = ideal_gas)')
-         do j = 1, 6
-            if (line_bk(j) == 0 .and. .not. seen(lower(trim(burn_keys(j))))) &
-               call missing(lb, trim(burn_keys(j)), trim(who)//' with burn = hvrb')
+            call missing(lb, 'products', trim(who)//' with '//bname// &
+            ' (the products'' EOS has no default: products = ideal_gas)')
+         do s = 1, burn_npar(ib)
+            j = burn_key(s,ib)
+            if (line_bk(j) == 0 .and. .not. seen(lower(trim(bkey_name(j))))) &
+               call missing(lb, trim(bkey_name(j)), trim(who)//' with '//bname)
+         end do
+         do j = 1, nbkey
+            if (line_bk(j) > 0 .and. .not. burn_takes(ib, j)) &
+               call deck_error(line_bk(j), trim(bkey_name(j))// &
+               ' is not a key of '//bname//' (it is for '// &
+               models_taking(j)//'; '//trim(who)//')')
          end do
       else if (.not. bad_burn) then
          if (line_prod > 0) call deck_error(line_prod, 'products is only '// &
-            'for a material that burns (burn = hvrb); '//trim(who)// &
-            ' has no burn')
-         do j = 1, 6
+            'for a material that burns ('//models_taking(0)//'); '// &
+            trim(who)//' has no burn')
+         do j = 1, nbkey
             if (line_bk(j) > 0) call deck_error(line_bk(j), &
-               trim(burn_keys(j))//' is only for burn = hvrb ('//trim(who)// &
-               ' has no burn)')
+               trim(bkey_name(j))//' is only for '//models_taking(j)// &
+               ' ('//trim(who)//' has no burn)')
          end do
       end if
       if (m%products == products_ideal_gas) then
-         do j = 7, nburnkey
-            if (line_bk(j) == 0 .and. .not. seen(lower(trim(burn_keys(j))))) &
-               call missing(lb, trim(burn_keys(j)), trim(who)// &
+         do j = 1, nprodkey
+            if (line_pk(j) == 0 .and. .not. seen(lower(trim(prod_keys(j))))) &
+               call missing(lb, trim(prod_keys(j)), trim(who)// &
                ' with products = ideal_gas')
          end do
       else if (.not. bad_prod) then
-         do j = 7, nburnkey
-            if (line_bk(j) > 0) call deck_error(line_bk(j), &
-               trim(burn_keys(j))//' is only for products = ideal_gas ('// &
+         do j = 1, nprodkey
+            if (line_pk(j) > 0) call deck_error(line_pk(j), &
+               trim(prod_keys(j))//' is only for products = ideal_gas ('// &
                trim(who)//' has no products)')
          end do
       end if
    end associate
    end subroutine close_burn
+
+   !*** The models that take burn key j, for a message: 'burn = hvrb',
+   !*** or 'burn = a, b or c' (module burn_table); j = 0: every model.
+   function models_taking(j) result(s)
+   implicit none
+   integer(kind=int32), intent(in) :: j
+   character(len=:), allocatable :: s
+   integer(kind=int32) :: ib, n, nt
+   nt = 0
+   do ib = 1, nburn
+      if (j == 0 .or. burn_takes(ib, j)) nt = nt + 1
+   end do
+   s = 'burn = '
+   n = 0
+   do ib = 1, nburn
+      if (.not. (j == 0 .or. burn_takes(ib, j))) cycle
+      n = n + 1
+      if (n > 1 .and. n < nt) s = s//', '
+      if (n > 1 .and. n == nt) s = s//' or '
+      s = s//trim(burn_names(ib))
+   end do
+   end function models_taking
+
+   !*** The burn models, for a message: 'hvrb (History Variable
+   !*** Reactive Burn)', then ', ' and the next.
+   function burn_menu() result(s)
+   implicit none
+   character(len=:), allocatable :: s
+   integer(kind=int32) :: ib
+   s = ''
+   do ib = 1, nburn
+      if (ib > 1) s = s//', '
+      s = s//trim(burn_names(ib))//' ('//trim(burn_long(ib))//')'
+   end do
+   end function burn_menu
+
+   !*** The burn keys, for the unknown-key hint: 'PR, ZR, ...'.
+   function burn_key_list() result(s)
+   implicit none
+   character(len=:), allocatable :: s
+   integer(kind=int32) :: j
+   s = trim(bkey_name(1))
+   do j = 2, nbkey
+      s = s//', '//trim(bkey_name(j))
+   end do
+   end function burn_key_list
 
    !*** True if key k (lower case) appeared in the innermost block.
    logical function seen(k)
@@ -1222,6 +1295,7 @@ contains
    integer(kind=int32), intent(in) :: ln
    character(len=*), intent(in) :: k, key, val
    real(kind=dp) :: x
+   integer(kind=int32) :: ib, j
    logical :: ok
 
    select case (k)
@@ -1282,14 +1356,17 @@ contains
       ! The burn (doc/design/materials.md, phase 3). Its needs (eos,
       ! products, its constants) are checked when the block closes.
       line_burn = ln
-      select case (lower(val))
-      case ('hvrb')
-         material(imat_now)%burn = burn_hvrb
-      case default
+      ib = 0
+      do j = 1, nburn
+         if (lower(val) == trim(burn_names(j))) ib = j
+      end do
+      if (ib > 0) then
+         material(imat_now)%burn = ib
+      else
          bad_burn = .true.
          call deck_error(ln, 'burn = '//trim(val)//' is not one of '// &
-            'hvrb (History Variable Reactive Burn)')
-      end select
+            burn_menu())
+      end if
    case ('products')
       ! The products' EOS: no default, so a deck that burns says it.
       ! HVRB is usually paired with a JWL or tabular products EOS; the
@@ -1303,42 +1380,53 @@ contains
          call deck_error(ln, 'products = '//trim(val)//' is not one of '// &
             'ideal_gas (P = (GAMMA - 1) rho C_V T)')
       end select
-   case ('pr', 'zr', 'mr', 'xr', 'pi', 'tau0', 'gamma', 'q')
-      ! PR, PI in GPa; TAU0 in us; Q in kJ/g (= MJ/kg). Whether this
-      ! material's burn and products take them: at the block's end.
+   case ('gamma', 'q')
+      ! Q in kJ/g (= MJ/kg). Whether this material's products take them:
+      ! at the block's end.
       call get_real(ln, key, val, x, ok)
       if (.not. ok) return
-      select case (k)
-      case ('pr', 'mr', 'xr', 'tau0')
-         call positive(ln, key, x, ok)
-      case ('zr', 'pi', 'q')
+      if (k == 'q') then
          if (x < zero) then
             call deck_error(ln, trim(key)//' must be 0 or more')
             ok = .false.
          end if
-      case ('gamma')
-         if (.not. ( x > one )) then
-            call deck_error(ln, 'GAMMA must be greater than 1')
+      else if (.not. ( x > one )) then
+         call deck_error(ln, 'GAMMA must be greater than 1')
+         ok = .false.
+      end if
+      if (.not. ok) return
+      if (k == 'gamma') then
+         material(imat_now)%GAMMA = x
+         line_pk(1) = ln
+      else
+         material(imat_now)%Q = x
+         line_pk(2) = ln
+      end if
+   case default
+      ! A burn key (module burn_table: its check, the same in every
+      ! model). Whether this material's burn takes it: at the block's
+      ! end.
+      j = bkey_index(k)
+      if (j == 0) then
+         call unknown_key(ln, key, 'in a Material block', &
+            'eos, R0, C0, S1, S2, G0, spall_strength, CV, T0, burn, '// &
+            burn_key_list()//', products, GAMMA, Q')
+         return
+      end if
+      call get_real(ln, key, val, x, ok)
+      if (.not. ok) return
+      select case (bkey_check(j))
+      case (chk_positive)
+         call positive(ln, key, x, ok)
+      case (chk_nonneg)
+         if (x < zero) then
+            call deck_error(ln, trim(key)//' must be 0 or more')
             ok = .false.
          end if
       end select
       if (.not. ok) return
-      associate (m => material(imat_now))
-         select case (k)
-         case ('pr');    m%PR    = x; line_bk(1) = ln
-         case ('zr');    m%ZR    = x; line_bk(2) = ln
-         case ('mr');    m%MR    = x; line_bk(3) = ln
-         case ('xr');    m%XR    = x; line_bk(4) = ln
-         case ('pi');    m%PI    = x; line_bk(5) = ln
-         case ('tau0');  m%TAU0  = x; line_bk(6) = ln
-         case ('gamma'); m%GAMMA = x; line_bk(7) = ln
-         case ('q');     m%Q     = x; line_bk(8) = ln
-         end select
-      end associate
-   case default
-      call unknown_key(ln, key, 'in a Material block', &
-         'eos, R0, C0, S1, S2, G0, spall_strength, CV, T0, burn, PR, '// &
-         'ZR, MR, XR, PI, TAU0, products, GAMMA, Q')
+      material(imat_now)%bkey(j) = x
+      line_bk(j) = ln
    end select
    end subroutine key_material
 
@@ -1557,8 +1645,7 @@ contains
    case ('method', 'bl', 'bq', 'cfl', 'order')
       b = 'the Solver block'
    case ('eos', 'r0', 'c0', 's1', 's2', 'g0', 'spall_strength', 'cv', 't0', &
-         'burn', 'products', 'pr', 'zr', 'mr', 'xr', 'pi', 'tau0', 'gamma', &
-         'q')
+         'burn', 'products', 'gamma', 'q')
       b = 'a Material block'
    case ('origin', 'x_left')
       b = 'the Stack block'
@@ -1567,6 +1654,7 @@ contains
       b = 'a Layer block'
    case default
       b = ''
+      if (bkey_index(k) > 0) b = 'a Material block'   ! a burn key
    end select
    end function home_block
 
@@ -1579,7 +1667,7 @@ contains
    !*******************************************************************!
    subroutine resolve_deck()
    implicit none
-   integer(kind=int32) :: l, l2, im, it, ksum, nz
+   integer(kind=int32) :: l, l2, im, it, ksum, nz, ib, s
    real(kind=dp) :: res, xz, xraw, shift
    real(kind=dp), allocatable :: xstart(:)
    character(len=:), allocatable :: msg
@@ -1613,13 +1701,11 @@ contains
       end if
       layer(l)%burn     = material(im)%burn
       layer(l)%products = material(im)%products
-      if (material(im)%burn == burn_hvrb) then
-         layer(l)%PR    = material(im)%PR
-         layer(l)%ZR    = material(im)%ZR
-         layer(l)%MR    = material(im)%MR
-         layer(l)%XR    = material(im)%XR
-         layer(l)%PI    = material(im)%PI
-         layer(l)%TAU0  = material(im)%TAU0
+      if (material(im)%burn /= burn_none) then  ! by key to by slot
+         ib = material(im)%burn
+         do s = 1, burn_npar(ib)
+            layer(l)%bpar(s) = material(im)%bkey(burn_key(s,ib))
+         end do
       end if
       if (material(im)%products == products_ideal_gas) then
          layer(l)%GAMMA = material(im)%GAMMA
@@ -1936,7 +2022,7 @@ contains
    subroutine write_resolved_deck(lu)
    implicit none
    integer, intent(in) :: lu
-   integer(kind=int32) :: id, im, l, it, j
+   integer(kind=int32) :: id, im, l, it, j, s
    character(len=:), allocatable :: where, prof
 
    write(lu,'(a)') '#'//repeat('*',70)//'#'
@@ -2047,15 +2133,14 @@ contains
             call kv(lu, 2, 'CV', fmt_real(m%CV), 'J/(g K), constant')
             call kv(lu, 2, 'T0', fmt_real(m%T0), 'K, at R0 and e = 0')
          end if
-         if (m%burn == burn_hvrb) then
+         if (m%burn /= burn_none) then          ! its keys, in slot order
             call kv(lu, 2, 'burn', trim(burn_names(m%burn)), &
-               'History Variable Reactive Burn')
-            call kv(lu, 2, 'PR', fmt_real(m%PR), 'GPa, reference pressure')
-            call kv(lu, 2, 'ZR', fmt_real(m%ZR), 'pressure exponent')
-            call kv(lu, 2, 'MR', fmt_real(m%MR), 'delay exponent')
-            call kv(lu, 2, 'XR', fmt_real(m%XR), 'completion exponent')
-            call kv(lu, 2, 'PI', fmt_real(m%PI), 'GPa, threshold')
-            call kv(lu, 2, 'TAU0', fmt_real(m%TAU0), 'us, time constant')
+               trim(burn_long(m%burn)))
+            do s = 1, burn_npar(m%burn)
+               j = burn_key(s,m%burn)
+               call kv(lu, 2, trim(bkey_name(j)), fmt_real(m%bkey(j)), &
+                  trim(bkey_note(j)))
+            end do
          end if
          if (m%products == products_ideal_gas) then
             call kv(lu, 2, 'products', trim(products_names(m%products)), &

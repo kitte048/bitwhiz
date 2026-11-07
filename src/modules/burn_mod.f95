@@ -4,8 +4,8 @@ module burn
 !  Purpose:
 !    The cells' burn state, for the materials that burn (deck: burn =
 !    hvrb, with eos = mie_gruneisen_t and a products EOS): each such
-!    cell's history variable phi and extent of reaction lam, and its
-!    constants, by cell, and the burn's step in the time loop. The
+!    cell's model, constants, history variables and extent of reaction
+!    lam, by cell, and the burn's step in the time loop. The
 !    physics is module hvrb's (the rate law) and module mixture's (the
 !    closure), both stateless; this module keeps the state and hands
 !    each cell to them.
@@ -18,7 +18,13 @@ module burn
 !       burn_cell( k )                          what cell k's pressure
 !                                               needs (module av)
 !       call burn_track( time, ncycle )         every cycle, after it
+!       call burn_audit( nchg )                 at the run's end: the
+!                                               cells whose constants
+!                                               changed (THE CELLS'
+!                                               CONSTANTS, below)
 !       lam(k), qk(k)                           cell k's lam and Q (0: none)
+!       bmod(k), bpar(:,k), bst(:,k)            its model, constants and
+!                                               history variables
 !       rhold(k), eshold(k)                     where its solid is held
 !                                               (0: not held; THE SOLID
 !                                               HELD, below)
@@ -35,12 +41,12 @@ module burn
 !
 !    Why a module of its own, and not module hvrb's arrays: hvrb is the
 !    model, pure math; this is the state of whichever burn a cell has.
-!    A second burn model (the 2025 survey's, TODO.md section 6) is a
-!    second branch in burn_step and burn_cell, with nothing else in the
-!    code needing to know which model a cell burns with. And every
-!    constant is kept by cell, filled from its layer at setup, so
-!    constants graded through a layer (TODO.md, section 7) change how
-!    these arrays are filled, not the physics.
+!    A second burn model (doc/design/burn_models.md) is a row in module
+!    burn_table and a case in cell_burn, with nothing else in the code
+!    needing to know which model a cell burns with. And every constant
+!    is kept by cell, filled from its layer at setup, so constants
+!    graded through a layer (TODO.md, section 7) change how these
+!    arrays are filled, not the physics.
 !
 !  Units, as everywhere in bitwhiz: us, GPa, kJ/g; phi and lam are
 !  dimensionless.
@@ -61,6 +67,14 @@ module burn
 !    11/05/26    D. E. Kittell        rhold, eshold and burn_hold: the
 !                (with Claude)        solid held where it first pulled
 !                                     (module hvrb, THE SOLID HELD)
+!    11/06/26    D. E. Kittell        The cells' burn by model (doc/
+!                (with Claude)        design/burn_models.md, step 3):
+!                                     bmod, bpar and bst (module
+!                                     burn_table's slots) for phi and
+!                                     HVRB's six constants; cell_burn,
+!                                     one case per model; burn_audit,
+!                                     the constants checked at the
+!                                     run's end
 !    11/06/26    D. E. Kittell        The closure from module mixture
 !                (with Claude)        (mix_state, mix_pulls), the rate
 !                                     law from module hvrb
@@ -124,14 +138,36 @@ module burn
 !  RS's source (burn_rate_rs, the next cycle, at the same state n) and
 !  T (module temperature, temp_update).
 !
+!  THE CELLS' CONSTANTS, AND WHAT GUARDS THEM
+!  ==========================================
+!  Three arrays, three lifetimes (module burn_table):
+!    bmod(k)      cell k's model (burn_none, burn_hvrb, ...)
+!    bpar(s,k)    its constants, in the model's slot order: written
+!                 once, here in alloc_burn, from the cell's layer, and
+!                 never again (graded constants, later, vary in space,
+!                 never in time)
+!    bst(s,k)     its history variables (HVRB: phi): written every
+!                 cycle, by cell k only, so any number of threads gives
+!                 the same bits
+!  What keeps bpar (and bmod, qk, gamk) constant: they are protected,
+!  so no other module can assign to them (it does not compile); in
+!  this module only alloc_burn does; and the step hands them to a
+!  model's routines as intent(in), elemental or pure, which can not
+!  write them either. burn_audit checks it at the run's end anyway: it
+!  fills every cell's constants again from its layer, as alloc_burn
+!  did, and counts the cells whose bits differ (maincode stops with
+!  an error if any do). One pass over the cells, no copy kept.
+!
 !***NOTE: rs_reaction_source turns the source off, for checking its
 ! effect (design note: G2, on and off); a development switch, not a
 ! deck key.
 !
 !**********************************************************************!
-use bits,        only: dp, int32, zero, half, one
+use bits,        only: dp, int32, int64, zero, half, one
 use shock,       only: kmax, nlay, layer, database, icell, jx, jp, jrho, &
-   je, jr0, jc0, js1, js2, jg0, burn_none, burn_hvrb, products_ideal_gas
+   je, jr0, jc0, js1, js2, jg0, products_ideal_gas
+use burn_table,  only: npar_max, nst_max, burn_none, burn_hvrb, hv_PR, &
+   hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi
 use eos,         only: eos_ok
 use hvrb,        only: hvrb_step
 use mixture,     only: mix_state, mix_pulls, burn_cell_t
@@ -140,9 +176,9 @@ implicit none
 private
 
 public :: burn_in_run, alloc_burn, dealloc_burn, burn_step, burn_cell, &
-   burn_track, burn_rate_rs, burn_hold
-public :: lam, qk, phi, nb, kb, first_k, first_time, first_cycle, first_x, &
-   lam_max, burnable, src, rhold, eshold
+   burn_track, burn_rate_rs, burn_hold, burn_audit
+public :: lam, qk, bmod, bpar, bst, nb, kb, first_k, first_time, &
+   first_cycle, first_x, lam_max, burnable, src, rhold, eshold
 
 !**********************************************************************!
 ! Data dictionary: each cell's burn, cell k at index k (1 to kmax).
@@ -151,15 +187,17 @@ public :: lam, qk, phi, nb, kb, first_k, first_time, first_cycle, first_x, &
 ! only by this module, cell by cell (burn_step), so the threads never
 ! share a value.
 !**********************************************************************!
-real(kind=dp), allocatable, protected :: phi(:)   ! history variable
+integer(kind=int32), allocatable, protected :: bmod(:) ! the model
+real(kind=dp), allocatable, protected :: bpar(:,:)! (1:npar_max, k): its
+                                                  ! constants, by slot
+real(kind=dp), allocatable, protected :: bst(:,:) ! (1:nst_max, k): its
+                                                  ! history variables
 real(kind=dp), allocatable, protected :: lam(:)   ! extent of reaction
 real(kind=dp), allocatable, protected :: qk(:)    ! Q, kJ/g (products)
 real(kind=dp), allocatable, protected :: rhold(:) ! the solid held at,
                                                   ! g/cm^3 (0: not held)
 real(kind=dp), allocatable, protected :: eshold(:)! e_S there, kJ/g
-real(kind=dp), allocatable :: prk(:), zrk(:), mrk(:), xrk(:), pik(:), &
-   tauk(:)                                        ! HVRB's, as layer_t's
-real(kind=dp), allocatable :: gamk(:)             ! the products' gamma
+real(kind=dp), allocatable, protected :: gamk(:) ! the products' gamma
 integer(kind=int32), allocatable, protected :: kb(:)  ! the cells that
                                                   ! can burn, left to right
 integer(kind=int32), protected :: nb = 0          ! how many
@@ -207,45 +245,29 @@ contains
       if ( layer(l)%burn /= burn_none ) &
          nb = nb + layer(l)%klast - layer(l)%kfirst + 1
    end do
-   allocate( phi(kmax), lam(kmax), qk(kmax), prk(kmax), zrk(kmax), &
-      mrk(kmax), xrk(kmax), pik(kmax), tauk(kmax), gamk(kmax), kb(nb), &
-      burnable(kmax), src(kmax), rhold(kmax), eshold(kmax), stat=status )
+   allocate( bmod(kmax), bpar(npar_max,kmax), bst(nst_max,kmax), &
+      lam(kmax), qk(kmax), gamk(kmax), kb(nb), burnable(kmax), src(kmax), &
+      rhold(kmax), eshold(kmax), stat=status )
    if ( status /= 0 ) then
       kerr = kerr + 1
       nb   = 0
       return
    end if
-   phi = zero
+   bst = zero
    lam = zero
-   qk  = zero
-   prk = zero
-   zrk = zero
-   mrk = zero
-   xrk = zero
-   pik = zero
-   tauk = zero
-   gamk = zero
+   call fill_constants( bmod, bpar, qk, gamk )
+
    src  = zero
    rhold  = zero
    eshold = zero
    burnable = .false.
    nb  = 0
    do l = 1, nlay
-      if ( layer(l)%burn /= burn_hvrb ) cycle
+      if ( layer(l)%burn == burn_none ) cycle
       do k = layer(l)%kfirst, layer(l)%klast
          nb = nb + 1
          kb(nb)  = k
          burnable(k) = .true.
-         prk(k)  = layer(l)%PR
-         zrk(k)  = layer(l)%ZR
-         mrk(k)  = layer(l)%MR
-         xrk(k)  = layer(l)%XR
-         pik(k)  = layer(l)%PI
-         tauk(k) = layer(l)%TAU0
-         if ( layer(l)%products == products_ideal_gas ) then
-            gamk(k) = layer(l)%GAMMA
-            qk(k)   = layer(l)%Q
-         end if
       end do
    end do
    first_k = 0
@@ -260,8 +282,8 @@ contains
    integer(kind=int32), intent(inout) :: kerr
    integer(kind=int32) :: status
    if ( .not. allocated(lam) ) return
-   deallocate( phi, lam, qk, prk, zrk, mrk, xrk, pik, tauk, gamk, kb, &
-      burnable, src, rhold, eshold, stat=status )
+   deallocate( bmod, bpar, bst, lam, qk, gamk, kb, burnable, src, rhold, &
+      eshold, stat=status )
    if ( status /= 0 ) kerr = kerr + 1
    nb = 0
    end subroutine dealloc_burn
@@ -282,7 +304,7 @@ contains
    real(kind=dp), intent(in) :: dt               ! the step, us
    integer(kind=int32), intent(inout) :: kbad    ! first failure, or huge
    integer(kind=int32) :: n, k, ierr
-   real(kind=dp) :: phi2, lam2
+   real(kind=dp) :: st2(nst_max), lam2
 
    !$OMP DO REDUCTION(min: kbad)
    do n = 1, nb
@@ -292,10 +314,10 @@ contains
          kbad = min( kbad, k )
          cycle
       end if
-      call hvrb_step( phi(k), database(jp,icell(k)), dt, prk(k), zrk(k), &
-         mrk(k), xrk(k), pik(k), tauk(k), phi2, lam2 )
-      phi(k) = phi2
-      lam(k) = lam2
+      call cell_burn( bmod(k), bpar(:,k), bst(:,k), &
+         database(jp,icell(k)), dt, st2, lam2 )
+      bst(:,k) = st2
+      lam(k)   = lam2
       call burn_hold( k )
    end do
    !$OMP END DO
@@ -314,14 +336,14 @@ contains
    implicit none
    real(kind=dp), intent(in) :: dt               ! the step, us
    integer(kind=int32) :: n, k, i, ifb, ierr
-   real(kind=dp) :: phi2, lam2, p, c, theta, dpdlam
+   real(kind=dp) :: st2(nst_max), lam2, p, c, theta, dpdlam
 
    !$OMP DO
    do n = 1, nb
       k = kb(n)
       i = icell( k )
-      call hvrb_step( phi(k), database(jp,i), dt, prk(k), zrk(k), &
-         mrk(k), xrk(k), pik(k), tauk(k), phi2, lam2 )
+      call cell_burn( bmod(k), bpar(:,k), bst(:,k), database(jp,i), dt, &
+         st2, lam2 )
       src(k) = zero
       if ( rs_reaction_source .and. lam2 > lam(k) ) then
          call mix_state( database(jrho,i), database(je,i), lam(k), ec(k), &
@@ -330,11 +352,96 @@ contains
             qk(k), p, c, theta, dpdlam, ifb, ierr, rhold(k), eshold(k) )
          if ( ierr == eos_ok ) src(k) = dpdlam*( lam2 - lam(k) )/dt
       end if
-      phi(k) = phi2
-      lam(k) = lam2
+      bst(:,k) = st2
+      lam(k)   = lam2
    end do
    !$OMP END DO
    end subroutine burn_rate_rs
+
+   !******************************************************************!
+   ! One cell's burn over dt, by its model (module burn_table): its   !
+   ! history variables st2 and lam2 at the step's end, from its       !
+   ! constants and history variables at the start and its pressure    !
+   ! P^n. Writes nothing of the module's: the caller stores st2 and   !
+   ! lam2. Its constants are intent(in), here and in the model's      !
+   ! routines (THE CELLS' CONSTANTS).                                 !
+   !******************************************************************!
+   pure subroutine cell_burn( ib, par, st1, p, dt, st2, lam2 )
+   implicit none
+   integer(kind=int32), intent(in) :: ib            ! the model
+   real(kind=dp), intent(in)  :: par(npar_max)      ! its constants
+   real(kind=dp), intent(in)  :: st1(nst_max)       ! history, start
+   real(kind=dp), intent(in)  :: p                  ! P^n, GPa
+   real(kind=dp), intent(in)  :: dt                 ! the step, us
+   real(kind=dp), intent(out) :: st2(nst_max)       ! history, end
+   real(kind=dp), intent(out) :: lam2               ! lam, end
+   st2  = st1
+   lam2 = zero
+   select case ( ib )
+   case ( burn_hvrb )
+      call hvrb_step( st1(hv_phi), p, dt, par(hv_PR), par(hv_ZR), &
+         par(hv_MR), par(hv_XR), par(hv_PI), par(hv_TAU0), st2(hv_phi), &
+         lam2 )
+   end select
+   end subroutine cell_burn
+
+   !******************************************************************!
+   ! Every cell's model and constants, from its layer (THE CELLS'     !
+   ! CONSTANTS): alloc_burn's fill, and burn_audit's check of it.     !
+   ! Cells that do not burn get burn_none and zeros.                  !
+   !******************************************************************!
+   subroutine fill_constants( md, par, q, gam )
+   implicit none
+   integer(kind=int32), intent(out) :: md(:)        ! (kmax)
+   real(kind=dp), intent(out) :: par(:,:)           ! (npar_max, kmax)
+   real(kind=dp), intent(out) :: q(:), gam(:)       ! (kmax)
+   integer(kind=int32) :: l, k
+   md  = burn_none
+   par = zero
+   q   = zero
+   gam = zero
+   do l = 1, nlay
+      if ( layer(l)%burn == burn_none ) cycle
+      do k = layer(l)%kfirst, layer(l)%klast
+         md(k)    = layer(l)%burn
+         par(:,k) = layer(l)%bpar
+         if ( layer(l)%products == products_ideal_gas ) then
+            gam(k) = layer(l)%GAMMA
+            q(k)   = layer(l)%Q
+         end if
+      end do
+   end do
+   end subroutine fill_constants
+
+   !******************************************************************!
+   ! At the run's end: nchg, the cells whose model or constants (bmod,!
+   ! bpar, qk, gamk) differ by any bit from their layer's, filled     !
+   ! again as alloc_burn filled them. 0 when nothing burns. Serial,   !
+   ! one pass; the arrays it fills are its own, freed on return.      !
+   !******************************************************************!
+   subroutine burn_audit( nchg )
+   implicit none
+   integer(kind=int32), intent(out) :: nchg
+   integer(kind=int32), allocatable :: md(:)
+   real(kind=dp), allocatable :: par(:,:), q(:), gam(:)
+   integer(kind=int32) :: k
+   nchg = 0
+   if ( .not. allocated(lam) ) return
+   allocate( md(kmax), par(npar_max,kmax), q(kmax), gam(kmax) )
+   call fill_constants( md, par, q, gam )
+   do k = 1, kmax
+      if ( md(k) /= bmod(k) .or. differ( par(:,k), bpar(:,k) ) .or. &
+         differ( (/ q(k), gam(k) /), (/ qk(k), gamk(k) /) ) ) &
+         nchg = nchg + 1
+   end do
+   deallocate( md, par, q, gam )
+   contains
+      pure logical function differ( a, b )       ! any bit, not just ==
+      real(kind=dp), intent(in) :: a(:), b(:)
+      differ = any( transfer( a, 1_int64, size(a) ) /= &
+         transfer( b, 1_int64, size(b) ) )
+      end function differ
+   end subroutine burn_audit
 
    !******************************************************************!
    ! What cell k's pressure needs of its burn (module av, given it    !

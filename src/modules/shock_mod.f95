@@ -54,6 +54,11 @@ module shock
 !                                     temperature)
 !    11/05/26    D. E. Kittell        alloc_database: snan_dp (module
 !                (with Claude)        bits), not ieee_value (gfortran 8)
+!    11/06/26    D. E. Kittell        The burn's constants as arrays,
+!                (with Claude)        material_t's bkey (by key) and
+!                                     layer_t's bpar (by slot); the
+!                                     burn codes and names from module
+!                                     burn_table
 !
 !**********************************************************************!
 !
@@ -109,6 +114,7 @@ module shock
 !
 !**********************************************************************!
 use bits, only: dp, int32, zero, one
+use burn_table, only: burn_none, burn_hvrb, burn_names, npar_max, nbkey
 implicit none
 save
 
@@ -454,15 +460,13 @@ character(len=16), parameter, dimension(2) :: eos_names = (/ &
 !*** A burn, and its products (deck keys burn and products; doc/design/
 !*** materials.md, phase 3). A burn needs eos = mie_gruneisen_t (its
 !*** closure needs the cold curve and T) and a products EOS, named in
-!*** the deck: products has no default. Today there is one of each:
-!*** HVRB (module hvrb) with ideal-gas products (module products). The
-!*** names are the deck's, in burn_names and products_names.
-integer(kind=int32), parameter :: burn_none          = 0  ! the default
-integer(kind=int32), parameter :: burn_hvrb          = 1
+!*** the deck: products has no default. The burn models, their codes
+!*** (burn_none, burn_hvrb, ...), names and keys are module burn_table's
+!*** (used here, and so seen by every user of this module); today one
+!*** products model, the ideal gas (module products). The names are the
+!*** deck's, in burn_names and products_names.
 integer(kind=int32), parameter :: products_none      = 0  ! the default
 integer(kind=int32), parameter :: products_ideal_gas = 1
-character(len=16), parameter, dimension(1) :: burn_names = (/ &
-   'hvrb            ' /)
 character(len=16), parameter, dimension(1) :: products_names = (/ &
    'ideal_gas       ' /)
 
@@ -483,13 +487,10 @@ type :: material_t
    real(kind=dp)       :: T0     = unset  ! K, at R0 and e = 0; ditto
    integer(kind=int32) :: burn     = burn_none      ! burn = hvrb
    integer(kind=int32) :: products = products_none  ! products = ideal_gas
-   ! HVRB (burn = hvrb), each REQUIRED there and only there:
-   real(kind=dp)       :: PR     = unset  ! GPa, reference pressure, > 0
-   real(kind=dp)       :: ZR     = unset  ! pressure exponent, >= 0
-   real(kind=dp)       :: MR     = unset  ! delay exponent, > 0
-   real(kind=dp)       :: XR     = unset  ! completion exponent, > 0
-   real(kind=dp)       :: PI     = unset  ! GPa, threshold, >= 0
-   real(kind=dp)       :: TAU0   = unset  ! us, time constant, > 0
+   ! The burn's constants by key (module burn_table: bkey(j) is key
+   ! bkey_name(j)), as the deck gives them; each of the model's keys
+   ! REQUIRED with it, and every other an error:
+   real(kind=dp)       :: bkey(nbkey) = unset
    ! The ideal-gas products (products = ideal_gas), ditto:
    real(kind=dp)       :: GAMMA  = unset  ! ratio of specific heats, > 1
    real(kind=dp)       :: Q      = unset  ! kJ/g (= MJ/kg), heat of
@@ -540,13 +541,13 @@ type :: layer_t
    real(kind=dp)       :: T0         = zero   ! K; 0 = no T
    integer(kind=int32) :: burn       = burn_none      ! as the material's
    integer(kind=int32) :: products   = products_none
-   real(kind=dp)       :: PR         = zero   ! the burn's and products'
-   real(kind=dp)       :: ZR         = zero   ! constants, as the deck
-   real(kind=dp)       :: MR         = zero   ! gives them (PR, PI in
-   real(kind=dp)       :: XR         = zero   ! GPa; TAU0 in us; Q in
-   real(kind=dp)       :: PI         = zero   ! kJ/g); all 0 for a layer
-   real(kind=dp)       :: TAU0       = zero   ! that does not burn
-   real(kind=dp)       :: GAMMA      = zero
+   real(kind=dp)       :: bpar(npar_max) = zero ! the burn's constants,
+                                              ! in its slot order (module
+                                              ! burn_table, burn_key);
+                                              ! all 0 for a layer that
+                                              ! does not burn, and past
+                                              ! the model's last slot
+   real(kind=dp)       :: GAMMA      = zero   ! the products' (Q in kJ/g)
    real(kind=dp)       :: Q          = zero
    ! Filled in once the whole deck is read:
    real(kind=dp)       :: xleft      = zero   ! mm, left face position

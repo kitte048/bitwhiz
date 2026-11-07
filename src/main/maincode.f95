@@ -104,6 +104,11 @@ program bitwhiz
 !    11/05/26    D. E. Kittell        Method RS's cell loop: burn_hold
 !                (with Claude)        after e_S moves (module burn);
 !                                     temp_update given rhold, eshold
+!    11/06/26    D. E. Kittell        Setup check (8) on every history
+!                (with Claude)        variable (bst, module burn); at
+!                                     the time loop's end, burn_audit:
+!                                     a cell whose burn constants
+!                                     changed stops the run
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one,quit
@@ -121,7 +126,7 @@ use temperature, only: alloc_temperature,dealloc_temperature, &
    temp_update,temp_cold_cell,nt,kt,tk,etac,tmin_run,tmax_run,hot_k, &
    hot_time,hot_x
 use burn, only: alloc_burn,dealloc_burn,burn_step,burn_cell,burn_track, &
-   burn_rate_rs,burn_hold,rhold,eshold,lam,qk,phi,nb,kb,first_k, &
+   burn_rate_rs,burn_hold,burn_audit,rhold,eshold,lam,qk,bst,nb,kb,first_k, &
    first_time,first_x,lam_max, &
    burnable,src
 use deck, only: read_deck,write_resolved_deck,fmt_real
@@ -992,11 +997,12 @@ if ( nz > 0 ) call setup_fail( 'T is not T0 at the reference state in '// &
    itoa(nz)//' cells' )
 
 ! (8) The burn, in the cells that can burn: nothing burnt at t = 0
-!     (phi = lam = 0 exactly), so a cell starts as the inert material.
+!     (every history variable, HVRB's phi among them, and lam = 0
+!     exactly), so a cell starts as the inert material.
 nz = 0
 do j = 1, nb
    k = kb(j)
-   if ( abs( phi(k) ) > zero .or. abs( lam(k) ) > zero ) nz = nz + 1
+   if ( any( abs( bst(:,k) ) > zero ) .or. abs( lam(k) ) > zero ) nz = nz + 1
 end do
 if ( nz > 0 ) call setup_fail( 'the burn has started at t = 0 in '// &
    itoa(nz)//' cells' )
@@ -1431,6 +1437,21 @@ time_loop: do while ( .not. done )
    call history_frame( ncycle, time, done )
 
 end do time_loop
+
+!*** The burn's constants, unchanged since setup (module burn, THE
+!*** CELLS' CONSTANTS): a cell whose constants changed is a bug in
+!*** bitwhiz, and the run's results can not be trusted, so it stops.
+if ( burning ) then
+   call burn_audit( nz )
+   if ( nz > 0 ) then
+      write( kpt6, '(1x,a,i0,a)' ) 'bitwhiz: the burn''s constants '// &
+         'changed during the run in ', nz, ' '//trim(merge('cell ', &
+         'cells', nz == 1))//'. This is a bug in bitwhiz, not in the deck.'
+      call close_outputs( 'burn constants changed in '//itoa(nz)//' '// &
+         trim(merge('cell ', 'cells', nz == 1)) )
+      call quit( 1 )
+   end if
+end if
 
 !*** Report.
 write( kpt6, 202 ) repeat('-',56)

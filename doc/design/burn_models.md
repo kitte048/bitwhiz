@@ -1,6 +1,6 @@
 # Phase 4: five more burn models (approved Nov 6, 2026)
 
-Status: **approved** Decisions marked **DK** are David's (Nov 6,
+Status: **approved.** Decisions marked **DK** are David's (Nov 6,
 2026); the rest are proposals. Phase 3, HVRB, is `materials.md`; this note
 extends it.
 
@@ -65,10 +65,11 @@ Module `burn` keeps, by cell k, laid out as the main database is (each
 cell's numbers together in memory, one contiguous column per cell):
 
 - `bmod(k)`: the cell's model (0 if it does not burn);
-- `bpar(1:npar, k)`: the constants of its rate law, in slots each model
-  names (HALO: `ip_ed0 = 1`, `ip_betah = 2`, ...); npar is the largest
-  that any model in the run needs;
-- `bst(1:nst, k)`: its state, sized the same way;
+- `bpar(1:npar_max, k)`: the constants of its rate law, in slots each
+  model names (HVRB: `hv_PR = 1`, `hv_ZR = 2`, ...; HALO's would be
+  `ha_ED0 = 1`, ...); npar_max = 8, the most any model needs (**DK**,
+  Nov 6: sized by the table's high-water mark, the same for every deck);
+- `bst(1:nst_max, k)`: its state, sized the same way (nst_max = 6);
 
 and, common to every model as today: λ (`lam(k)`, which the closure, the
 temperature and the outputs read), the products' GAMMA and Q, and the
@@ -98,8 +99,10 @@ arrays (`prk`, `zrk`, ... `qk`) become `bpar` slots and the products'
 common pair.
 
 Each model's mathematics lives in a stateless module of its own, as `hvrb`
-does; `burn_step` and `burn_cell` dispatch on `bmod(k)`. Every cell writes
-only its own column: results stay bit for bit on any number of threads.
+does; one routine, `cell_burn`, dispatches on `bmod(k)` for `burn_step`
+and `burn_rate_rs` (`burn_cell`, what the closure needs, is common).
+Every cell writes only its own column: results stay bit for bit on any
+number of threads.
 
 ### Deck keys (DK)
 
@@ -417,3 +420,68 @@ minor release (1.4.0 on).
 Each model gets an equation sheet in `Equation_Sheets/` (frozen into `doc/`
 when checked against the code), a design-note section here when built, an
 example deck, and the deck reference in `input/README.md`.
+
+## As built: step 2, the closure in module `mixture` (Nov 6, 2026)
+
+`src/modules/mix_mod.f95` (module `mixture`): the closure moved out of
+module `hvrb` with its notes, `hvrb_state`, `hvrb_pulls` and `hvrb_c_*`
+renamed `mix_state`, `mix_pulls` and `mix_c_*`, `burn_cell_t` with them;
+the code otherwise the same, character for character (checked by script).
+Module `hvrb` keeps the rate law, the topology and the step, and uses only
+module `bits`. HVRB bit for bit: the 43 decks against the commit before,
+`make test`, `make release`, and `compare_hvrb.py --quick` (AV 31 passed,
+RS 26) with the same output.
+
+## As built: step 3, the burn table and the per-cell arrays (Nov 6, 2026)
+
+**Module `burn_table`** (`src/modules/btab_mod.f95`, uses only `bits`):
+constants only. The model codes (`burn_none`, `burn_hvrb`) and names,
+moved from module `shock`; `npar_max = 8`, `nst_max = 6`; every burn key
+once (`bkey_name`, `bkey_check`: `> 0` or `>= 0`, `bkey_note`: the
+resolved deck's comment); each model's row (`burn_npar`, `burn_key(s, ib)`:
+its keys in slot order, as indices into the keys; `burn_nst`); HVRB's
+slots by name (`hv_PR` ... `hv_TAU0`, `hv_phi`). A row longer than
+`npar_max` does not compile.
+
+**The deck** (module `deck`): the burn keys are looked up in the table
+(`key_material`, `home_block`, the unknown-key hint); a material keeps
+them by key (`material_t%bkey(nbkey)`), and its layers by slot
+(`layer_t%bpar(npar_max)`, filled from the model's row). At the block's
+end (`close_burn`): the model's keys required, any other burn key an
+error, "PR is not a key of burn = ... (it is for burn = hvrb; ...)" (rule
+2; no deck can reach it until a second model), and with no burn the
+messages as before ("PR is only for burn = hvrb"), built from the table.
+The resolved deck writes the model's keys in slot order with the table's
+notes: the same file as before.
+
+**The cells** (module `burn`): `bmod(k)`, `bpar(npar_max, k)` and
+`bst(nst_max, k)`, protected, replace `phi` and the six HVRB arrays;
+`lam`, `qk`, `gamk` (now protected), `rhold` and `eshold` are as they
+were. `cell_burn`, pure, is the one place a model is chosen (`select
+case (bmod(k))`) and takes the cell's constants as `intent(in)`;
+`burn_step` and `burn_rate_rs` store what it returns. `maincode`'s setup
+check (8) requires every `bst` and `lam` to be 0.
+
+**The guards on the constants** (`bmod`, `bpar`, `qk`, `gamk`): protected
+(another module that assigns to them does not compile); in module `burn`,
+written only by `fill_constants`, from `alloc_burn`; handed to the models
+as `intent(in)`, in pure and elemental routines. And `burn_audit`, at the
+time loop's end: the constants filled again from the layers and compared
+bit by bit with the cells'; any difference stops the run with an error
+(a bug in bitwhiz, not in the deck). Silent when they agree, so a run's
+output is unchanged; every burning deck in `make test` runs it. Each guard
+was tried once in a scratch build (Nov 6): an assignment to `bpar` in
+`maincode`, and to a model's constants in `cell_burn`, do not compile
+(PROTECTED; INTENT(IN)); one cell's PR doubled at cycle 10 from inside
+module `burn` (`ok_hvrb.deck`) stops the run, exit status 1, "the burn's
+constants changed during the run in 1 cell", in the heartbeat's end line
+too.
+
+**Tests:** `tests/test_btab.f95` (7 checks, in `make test`): the keys'
+rules on the table (unique names; no burn key named as another Material
+key; each row's slots, `npar <= npar_max`, `nst <= nst_max`; every key a
+model's, with a check and a note; the lookups; HVRB's row as the slot
+table has it). HVRB bit for bit: the 43 decks (their resolved decks too)
+against step 2's commit, `make test` (188 deck tests, their messages
+unchanged), `make release`, and `compare_hvrb.py --quick`, AV and RS, with
+the same output.

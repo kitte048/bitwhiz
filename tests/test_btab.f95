@@ -1,0 +1,207 @@
+program test_btab
+!**********************************************************************!
+!
+!  Purpose:
+!    Unit test for the burn models' table (module burn_table): that it
+!    keeps the deck-key rules of doc/design/burn_models.md ("Deck
+!    keys", approved 11/06/26) and fits the per-cell arrays. Run by
+!    "make test"; the exit status is 0 if every check passes, 1 if any
+!    check fails, so make (and any script) can tell.
+!
+!  What it checks, on the table alone (no deck, no hydro):
+!    1. Names: every burn key and every model name is unique, in any
+!       case (rule 1: one key, one meaning).
+!    2. No burn key has the name of another Material key (rule 3): R0,
+!       C0, S1, S2, G0, CV, T0, GAMMA, Q, eos, burn, products,
+!       spall_strength, name.
+!    3. Each model's row: npar between 1 and npar_max, its slots
+!       1 to npar each a key (1 to nbkey), none twice, and 0 past the
+!       last; nst between 1 and nst_max.
+!    4. Every key is taken by some model (none left over), and has a
+!       known check.
+!    5. bkey_index finds every key in either case, and nothing else;
+!       burn_takes agrees with the rows.
+!    6. HVRB's row is the slot table's: PR, ZR, MR, XR, PI, TAU0 in
+!       slots hv_PR to hv_TAU0, phi in bst(hv_phi), one history
+!       variable.
+!
+!  Record of revisions:
+!      Date       Programmer          Description of change
+!      ====       ==========          =====================
+!    11/06/26    D. E. Kittell        Original code
+!                (with Claude)
+!
+!**********************************************************************!
+use bits, only: int32, quit
+use burn_table, only: npar_max, nst_max, nburn, burn_none, burn_hvrb, &
+   burn_names, burn_long, nbkey, bkey_name, bkey_check, bkey_note, &
+   chk_any, chk_positive, chk_nonneg, burn_npar, burn_key, burn_nst, &
+   bkey_index, burn_takes, hv_PR, hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, &
+   hv_phi
+implicit none
+
+!*** The Material block's other keys (module deck, key_material).
+integer(kind=int32), parameter :: nother = 14
+character(len=16), parameter, dimension(nother) :: other_keys = (/ &
+   'R0              ', 'C0              ', 'S1              ', &
+   'S2              ', 'G0              ', 'CV              ', &
+   'T0              ', 'GAMMA           ', 'Q               ', &
+   'EOS             ', 'BURN            ', 'PRODUCTS        ', &
+   'SPALL_STRENGTH  ', 'NAME            ' /)
+character(len=8), parameter, dimension(6) :: hvrb_keys = (/ &
+   'PR      ', 'ZR      ', 'MR      ', 'XR      ', 'PI      ', &
+   'TAU0    ' /)
+integer(kind=int32) :: ncheck, nfail, i, j, ib, s, n
+logical :: ok
+
+ncheck = 0
+nfail  = 0
+write(*,'(a)') ' test_btab: the burn models'' table (module burn_table)'
+
+!*** 1. Unique names, in any case.
+ok = .true.
+do i = 1, nbkey
+   if ( len_trim(bkey_name(i)) == 0 ) ok = .false.
+   do j = i + 1, nbkey
+      if ( upper(bkey_name(i)) == upper(bkey_name(j)) ) ok = .false.
+   end do
+end do
+call check( ok, '1. every burn key''s name is unique' )
+ok = burn_none == 0
+do i = 1, nburn
+   if ( len_trim(burn_names(i)) == 0 .or. len_trim(burn_long(i)) == 0 ) &
+      ok = .false.
+   do j = i + 1, nburn
+      if ( upper(burn_names(i)) == upper(burn_names(j)) ) ok = .false.
+   end do
+end do
+call check( ok, '1. every model''s name is unique (burn_none = 0)' )
+
+!*** 2. No collisions with the Material block's other keys.
+ok = .true.
+do i = 1, nbkey
+   do j = 1, nother
+      if ( upper(bkey_name(i)) == trim(other_keys(j)) ) then
+         ok = .false.
+         write(*,'(a)') '         '//trim(bkey_name(i))// &
+            ' is another Material key'
+      end if
+   end do
+end do
+call check( ok, '2. no burn key is another Material key (rule 3)' )
+
+!*** 3. Each model's row fits the per-cell arrays.
+ok = .true.
+do ib = 1, nburn
+   n = burn_npar(ib)
+   if ( n < 1 .or. n > npar_max ) ok = .false.
+   if ( burn_nst(ib) < 1 .or. burn_nst(ib) > nst_max ) ok = .false.
+   do s = 1, npar_max
+      j = burn_key(s,ib)
+      if ( s <= n ) then
+         if ( j < 1 .or. j > nbkey ) ok = .false.
+         if ( j >= 1 ) then
+            if ( count( burn_key(1:n,ib) == j ) /= 1 ) ok = .false.
+         end if
+      else if ( j /= 0 ) then
+         ok = .false.
+      end if
+   end do
+end do
+call check( ok, '3. each row: keys in slots 1 to npar <= npar_max, '// &
+   'none twice, nst <= nst_max' )
+
+!*** 4. Every key has a model and a known check.
+ok = .true.
+do j = 1, nbkey
+   if ( .not. any( (/ ( burn_takes( ib, j ), ib = 1, nburn ) /) ) ) &
+      ok = .false.
+   if ( bkey_check(j) /= chk_any .and. bkey_check(j) /= chk_positive &
+      .and. bkey_check(j) /= chk_nonneg ) ok = .false.
+   if ( len_trim(bkey_note(j)) == 0 ) ok = .false.
+end do
+call check( ok, '4. every key is some model''s, with a check and a note' )
+
+!*** 5. The lookups.
+ok = bkey_index('R0') == 0 .and. bkey_index('') == 0 .and. &
+   bkey_index('P') == 0 .and. bkey_index('PRX') == 0
+do j = 1, nbkey
+   if ( bkey_index( trim(bkey_name(j)) ) /= j ) ok = .false.
+   if ( bkey_index( lower(bkey_name(j)) ) /= j ) ok = .false.
+end do
+do ib = 1, nburn
+   do j = 1, nbkey
+      if ( burn_takes( ib, j ) .neqv. &
+         any( burn_key(1:burn_npar(ib),ib) == j ) ) ok = .false.
+   end do
+end do
+ok = ok .and. .not. burn_takes( burn_none, 1 ) .and. &
+   .not. burn_takes( nburn + 1, 1 ) .and. .not. burn_takes( 1, 0 )
+call check( ok, '5. bkey_index (either case) and burn_takes' )
+
+!*** 6. HVRB, as the slot table has it.
+ok = trim(burn_names(burn_hvrb)) == 'hvrb' .and. burn_npar(burn_hvrb) == 6 &
+   .and. burn_nst(burn_hvrb) == 1 .and. hv_phi == 1
+do s = 1, 6
+   if ( trim(bkey_name( burn_key(s,burn_hvrb) )) /= trim(hvrb_keys(s)) ) &
+      ok = .false.
+end do
+ok = ok .and. hv_PR == 1 .and. hv_ZR == 2 .and. hv_MR == 3 .and. &
+   hv_XR == 4 .and. hv_PI == 5 .and. hv_TAU0 == 6
+ok = ok .and. bkey_check( burn_key(hv_PR,burn_hvrb) ) == chk_positive &
+   .and. bkey_check( burn_key(hv_ZR,burn_hvrb) ) == chk_nonneg &
+   .and. bkey_check( burn_key(hv_MR,burn_hvrb) ) == chk_positive &
+   .and. bkey_check( burn_key(hv_XR,burn_hvrb) ) == chk_positive &
+   .and. bkey_check( burn_key(hv_PI,burn_hvrb) ) == chk_nonneg &
+   .and. bkey_check( burn_key(hv_TAU0,burn_hvrb) ) == chk_positive
+call check( ok, '6. HVRB: PR ZR MR XR PI TAU0 in slots 1-6, phi in '// &
+   'bst(1), its checks' )
+
+if ( nfail > 0 ) then
+   write(*,'(a,i0,a,i0,a)') ' test_btab: ', nfail, ' of ', ncheck, &
+      ' checks FAILED'
+   call quit( 1 )
+end if
+write(*,'(a,i0,a)') ' test_btab: all ', ncheck, ' checks passed'
+
+contains
+
+   subroutine check( okk, what )
+   implicit none
+   logical, intent(in) :: okk
+   character(len=*), intent(in) :: what
+   ncheck = ncheck + 1
+   if ( okk ) then
+      write(*,'(a)') '   pass  '//what
+   else
+      write(*,'(a)') '   FAIL  '//what
+      nfail = nfail + 1
+   end if
+   end subroutine check
+
+   !*** Upper and lower case, trimmed (ASCII).
+   function upper( text ) result( s )
+   implicit none
+   character(len=*), intent(in) :: text
+   character(len=:), allocatable :: s
+   integer(kind=int32) :: k
+   s = trim(text)
+   do k = 1, len(s)
+      if ( s(k:k) >= 'a' .and. s(k:k) <= 'z' ) &
+         s(k:k) = achar( iachar(s(k:k)) - 32 )
+   end do
+   end function upper
+
+   function lower( text ) result( s )
+   implicit none
+   character(len=*), intent(in) :: text
+   character(len=:), allocatable :: s
+   integer(kind=int32) :: k
+   s = trim(text)
+   do k = 1, len(s)
+      if ( s(k:k) >= 'A' .and. s(k:k) <= 'Z' ) &
+         s(k:k) = achar( iachar(s(k:k)) + 32 )
+   end do
+   end function lower
+
+end program test_btab

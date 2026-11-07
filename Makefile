@@ -49,6 +49,9 @@
 #Revision: 1.25 (11-04-26, with Claude: rs uses hvrb)
 #Revision: 1.26 (11-06-26, with Claude: mixture module, the closure
 #                moved out of hvrb; av, rs and burn use mixture)
+#Revision: 1.27 (11-06-26, with Claude: burn_table module, the burn
+#                models' keys and slots; shock, deck and burn use it;
+#                its unit test, test_btab, in 'make test')
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -172,9 +175,10 @@ $(LIB_OBJS) $(BIN): $(MOD_OBJS)
 ###  argument $(1) is the folder put in front of every name).
 ############################################################
 define MOD_ORDER
-$(1)src/modules/shock_mod.o: $(1)src/modules/bit_mod.o
+$(1)src/modules/btab_mod.o:  $(1)src/modules/bit_mod.o
+$(1)src/modules/shock_mod.o: $(1)src/modules/bit_mod.o $(1)src/modules/btab_mod.o
 $(1)src/modules/deck_mod.o:  $(1)src/modules/shock_mod.o $(1)src/modules/bit_mod.o \
-                             $(1)src/modules/dist_mod.o
+                             $(1)src/modules/dist_mod.o $(1)src/modules/btab_mod.o
 $(1)src/modules/eos_mod.o:   $(1)src/modules/bit_mod.o
 $(1)src/modules/av_mod.o:    $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
                              $(1)src/modules/bit_mod.o $(1)src/modules/mix_mod.o
@@ -185,6 +189,7 @@ $(1)src/modules/mix_mod.o:   $(1)src/modules/eos_mod.o $(1)src/modules/prod_mod.
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/hvrb_mod.o:  $(1)src/modules/bit_mod.o
 $(1)src/modules/burn_mod.o:  $(1)src/modules/hvrb_mod.o $(1)src/modules/mix_mod.o \
+                             $(1)src/modules/btab_mod.o \
                              $(1)src/modules/temp_mod.o \
                              $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
                              $(1)src/modules/bit_mod.o
@@ -223,7 +228,7 @@ $(eval $(call MOD_ORDER,))
 ###  call bmpmaker and the colormaps.
 ############################################################
 UNIT_TESTS = ./bin/test_eos ./bin/test_hist ./bin/test_dist ./bin/test_temp \
-	./bin/test_hvrb
+	./bin/test_hvrb ./bin/test_btab
 
 ./bin/test_%: tests/test_%.f95 $(MOD_OBJS) $(LIB_OBJS)
 	@mkdir -p ./bin
@@ -234,6 +239,7 @@ test: $(EXECS) $(UNIT_TESTS)
 	./bin/test_dist
 	./bin/test_temp
 	./bin/test_hvrb
+	./bin/test_btab
 	BIN=$(EXECS) ./tests/run_deck_tests.sh
 	BIN=$(EXECS) ./tests/run_omp_tests.sh
 	BIN=$(EXECS) ./tests/run_hist_tests.sh
