@@ -109,6 +109,8 @@ program bitwhiz
 !                                     the time loop's end, burn_audit:
 !                                     a cell whose burn constants
 !                                     changed stops the run
+!    11/06/26    D. E. Kittell        burn_detect, the lead shock, each
+!                (with Claude)        cycle before burn_track (step 4)
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one,quit
@@ -126,7 +128,8 @@ use temperature, only: alloc_temperature,dealloc_temperature, &
    temp_update,temp_cold_cell,nt,kt,tk,etac,tmin_run,tmax_run,hot_k, &
    hot_time,hot_x
 use burn, only: alloc_burn,dealloc_burn,burn_step,burn_cell,burn_track, &
-   burn_rate_rs,burn_hold,burn_audit,rhold,eshold,lam,qk,bst,nb,kb,first_k, &
+   burn_rate_rs,burn_hold,burn_audit,burn_detect,rhold,eshold,lam,qk, &
+   bst,nb,kb,first_k, &
    first_time,first_x,lam_max, &
    burnable,src
 use deck, only: read_deck,write_resolved_deck,fmt_real
@@ -1400,7 +1403,10 @@ time_loop: do while ( .not. done )
    else
       call temp_update( use_team, time, ncycle, kbad )
    end if
-   if ( burning ) call burn_track( time, ncycle )
+   if ( burning ) then                    ! the lead shock, then the record
+      call burn_detect( time, dt_used )
+      call burn_track( time, ncycle )
+   end if
    if ( kbad < huge(kbad) ) then
       write( kpt6, '(1x,a,i0,3a,i0)' ) 'bitwhiz: the cold curve '// &
          '(temperature) failed in cell ', kbad, ' (layer ', &

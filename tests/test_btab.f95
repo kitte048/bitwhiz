@@ -24,11 +24,16 @@ program test_btab
 !    6. HVRB's row is the slot table's: PR, ZR, MR, XR, PI, TAU0 in
 !       slots hv_PR to hv_TAU0, phi in bst(hv_phi), one history
 !       variable.
+!    7. A model that uses the lead shock (burn_uses_ls) has room for
+!       the detector's ls_nst numbers first (module leadshock); HVRB
+!       does not use it.
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
 !      ====       ==========          =====================
 !    11/06/26    D. E. Kittell        Original code
+!                (with Claude)
+!    11/06/26    D. E. Kittell        7: burn_uses_ls (step 4)
 !                (with Claude)
 !
 !**********************************************************************!
@@ -37,7 +42,8 @@ use burn_table, only: npar_max, nst_max, nburn, burn_none, burn_hvrb, &
    burn_names, burn_long, nbkey, bkey_name, bkey_check, bkey_note, &
    chk_any, chk_positive, chk_nonneg, burn_npar, burn_key, burn_nst, &
    bkey_index, burn_takes, hv_PR, hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, &
-   hv_phi
+   hv_phi, burn_uses_ls
+use leadshock, only: ls_nst
 implicit none
 
 !*** The Material block's other keys (module deck, key_material).
@@ -156,6 +162,14 @@ ok = ok .and. bkey_check( burn_key(hv_PR,burn_hvrb) ) == chk_positive &
    .and. bkey_check( burn_key(hv_TAU0,burn_hvrb) ) == chk_positive
 call check( ok, '6. HVRB: PR ZR MR XR PI TAU0 in slots 1-6, phi in '// &
    'bst(1), its checks' )
+
+!*** 7. The lead shock's room.
+ok = .not. burn_uses_ls(burn_hvrb) .and. ls_nst <= nst_max
+do ib = 1, nburn
+   if ( burn_uses_ls(ib) .and. burn_nst(ib) < ls_nst ) ok = .false.
+end do
+call check( ok, '7. a model using the lead shock has its ls_nst slots '// &
+   'first; HVRB does not use it' )
 
 if ( nfail > 0 ) then
    write(*,'(a,i0,a,i0,a)') ' test_btab: ', nfail, ' of ', ncheck, &

@@ -75,6 +75,10 @@ module burn
 !                                     one case per model; burn_audit,
 !                                     the constants checked at the
 !                                     run's end
+!    11/06/26    D. E. Kittell        burn_detect: the lead-shock
+!                (with Claude)        detector (module leadshock) for
+!                                     the models that need it (none
+!                                     yet; step 4)
 !    11/06/26    D. E. Kittell        The closure from module mixture
 !                (with Claude)        (mix_state, mix_pulls), the rate
 !                                     law from module hvrb
@@ -167,7 +171,8 @@ use bits,        only: dp, int32, int64, zero, half, one
 use shock,       only: kmax, nlay, layer, database, icell, jx, jp, jrho, &
    je, jr0, jc0, js1, js2, jg0, products_ideal_gas
 use burn_table,  only: npar_max, nst_max, burn_none, burn_hvrb, hv_PR, &
-   hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi
+   hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi, burn_uses_ls
+use leadshock,   only: ls_step, ls_nst
 use eos,         only: eos_ok
 use hvrb,        only: hvrb_step
 use mixture,     only: mix_state, mix_pulls, burn_cell_t
@@ -176,7 +181,7 @@ implicit none
 private
 
 public :: burn_in_run, alloc_burn, dealloc_burn, burn_step, burn_cell, &
-   burn_track, burn_rate_rs, burn_hold, burn_audit
+   burn_track, burn_rate_rs, burn_hold, burn_audit, burn_detect
 public :: lam, qk, bmod, bpar, bst, nb, kb, first_k, first_time, &
    first_cycle, first_x, lam_max, burnable, src, rhold, eshold
 
@@ -202,6 +207,8 @@ integer(kind=int32), allocatable, protected :: kb(:)  ! the cells that
                                                   ! can burn, left to right
 integer(kind=int32), protected :: nb = 0          ! how many
 logical, allocatable, protected :: burnable(:)    ! by cell: can burn
+logical, protected :: any_ls = .false.            ! some cell's model needs
+                                                  ! the lead shock
 real(kind=dp), allocatable, protected :: src(:)   ! by cell: RS's reaction
                                                   ! source, GPa/us (0: none)
 logical, parameter :: rs_reaction_source = .true. ! (NOTE above)
@@ -237,7 +244,7 @@ contains
    subroutine alloc_burn( kerr )
    implicit none
    integer(kind=int32), intent(inout) :: kerr
-   integer(kind=int32) :: status, l, k
+   integer(kind=int32) :: status, l, k, n
 
    if ( allocated(lam) .or. .not. burn_in_run() ) return
    nb = 0
@@ -269,6 +276,10 @@ contains
          kb(nb)  = k
          burnable(k) = .true.
       end do
+   end do
+   any_ls = .false.
+   do n = 1, nb
+      if ( burn_uses_ls( bmod(kb(n)) ) ) any_ls = .true.
    end do
    first_k = 0
    lam_max = zero
@@ -442,6 +453,29 @@ contains
          transfer( b, 1_int64, size(b) ) )
       end function differ
    end subroutine burn_audit
+
+   !******************************************************************!
+   ! The lead-shock detector (module leadshock), one step, for every  !
+   ! cell whose model needs it (burn_uses_ls): from the cell's state  !
+   ! at the step's end (rho, e and P^(n+1), so after the pressures)   !
+   ! and the time after the step, t, us; its five numbers are the     !
+   ! cell's bst(1:ls_nst). Nothing to do, and nothing done, when no   !
+   ! model in the run needs it. Serial (each cell its own column, so  !
+   ! the same bits on any number of threads), with burn_track.        !
+   !******************************************************************!
+   subroutine burn_detect( t, dt )
+   implicit none
+   real(kind=dp), intent(in) :: t, dt            ! us, after the step
+   integer(kind=int32) :: n, k, i
+   if ( .not. any_ls ) return
+   do n = 1, nb
+      k = kb(n)
+      if ( .not. burn_uses_ls( bmod(k) ) ) cycle
+      i = icell( k )
+      call ls_step( bst(1:ls_nst,k), database(jrho,i), database(je,i), &
+         database(jp,i), database(jr0,i), database(jc0,i), t, dt )
+   end do
+   end subroutine burn_detect
 
    !******************************************************************!
    ! What cell k's pressure needs of its burn (module av, given it    !

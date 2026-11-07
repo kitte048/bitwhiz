@@ -16,6 +16,7 @@
 	src/modules/temp_mod.o \
 	src/modules/prod_mod.o \
 	src/modules/mix_mod.o \
+	src/modules/lshk_mod.o \
 	src/modules/hvrb_mod.o \
 	src/modules/burn_mod.o \
 	src/modules/av_mod.o \
@@ -43,6 +44,7 @@
 	src/modules/temperature.mod \
 	src/modules/products.mod \
 	src/modules/mixture.mod \
+	src/modules/leadshock.mod \
 	src/modules/hvrb.mod \
 	src/modules/burn.mod \
 	src/modules/av.mod \

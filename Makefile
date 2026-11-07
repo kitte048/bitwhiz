@@ -52,6 +52,10 @@
 #Revision: 1.27 (11-06-26, with Claude: burn_table module, the burn
 #                models' keys and slots; shock, deck and burn use it;
 #                its unit test, test_btab, in 'make test')
+#Revision: 1.28 (11-06-26, with Claude: leadshock module and its unit
+#                test, test_lshk, in 'make test'; burn uses it;
+#                bin/ls_replay, for tests/verification/
+#                study_leadshock.py, built by 'make ls_replay')
 #
 # This is a bare bones Makefile system for gfortran.
 #
@@ -188,8 +192,9 @@ $(1)src/modules/prod_mod.o:  $(1)src/modules/bit_mod.o
 $(1)src/modules/mix_mod.o:   $(1)src/modules/eos_mod.o $(1)src/modules/prod_mod.o \
                              $(1)src/modules/bit_mod.o
 $(1)src/modules/hvrb_mod.o:  $(1)src/modules/bit_mod.o
+$(1)src/modules/lshk_mod.o:  $(1)src/modules/bit_mod.o
 $(1)src/modules/burn_mod.o:  $(1)src/modules/hvrb_mod.o $(1)src/modules/mix_mod.o \
-                             $(1)src/modules/btab_mod.o \
+                             $(1)src/modules/btab_mod.o $(1)src/modules/lshk_mod.o \
                              $(1)src/modules/temp_mod.o \
                              $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
                              $(1)src/modules/bit_mod.o
@@ -228,9 +233,20 @@ $(eval $(call MOD_ORDER,))
 ###  call bmpmaker and the colormaps.
 ############################################################
 UNIT_TESTS = ./bin/test_eos ./bin/test_hist ./bin/test_dist ./bin/test_temp \
-	./bin/test_hvrb ./bin/test_btab
+	./bin/test_hvrb ./bin/test_btab ./bin/test_lshk
 
 ./bin/test_%: tests/test_%.f95 $(MOD_OBJS) $(LIB_OBJS)
+	@mkdir -p ./bin
+	$(FC) $(INCLUDES) $(FCFLAGS) $(OMPFLAGS) -o $@ $< $(MOD_OBJS) $(LIB_OBJS)
+
+############################################################
+###  NOTES: bin/ls_replay replays the lead-shock detector on
+###  a run's tracer file (tests/verification/ls_replay.f95);
+###  study_leadshock.py builds it with 'make ls_replay'. Not a
+###  unit test, so not in 'make test'.
+############################################################
+ls_replay: ./bin/ls_replay
+./bin/ls_replay: tests/verification/ls_replay.f95 $(MOD_OBJS) $(LIB_OBJS)
 	@mkdir -p ./bin
 	$(FC) $(INCLUDES) $(FCFLAGS) $(OMPFLAGS) -o $@ $< $(MOD_OBJS) $(LIB_OBJS)
 
@@ -240,6 +256,7 @@ test: $(EXECS) $(UNIT_TESTS)
 	./bin/test_temp
 	./bin/test_hvrb
 	./bin/test_btab
+	./bin/test_lshk
 	BIN=$(EXECS) ./tests/run_deck_tests.sh
 	BIN=$(EXECS) ./tests/run_omp_tests.sh
 	BIN=$(EXECS) ./tests/run_hist_tests.sh
@@ -347,7 +364,7 @@ runs: $(RUN_EXE)
 clean: tidy
 	rm -f $(EXECS) $(MOD_OBJS) $(LIB_OBJS) $(BIN) $(MOD_FILS)
 	rm -f $(BUILD_SRC) $(BUILD_OBJ) src/modules/build.mod
-	rm -f bitwhiz *.mod $(UNIT_TESTS)
+	rm -f bitwhiz *.mod $(UNIT_TESTS) ./bin/ls_replay
 	rm -rf $(RDIR) $(REL_EXEC)
 	rm -rf ./bin/*.dSYM
 
@@ -363,5 +380,5 @@ bmpclean:
 .f95.o:
 	$(FC) $(INCLUDES) -c $(FCFLAGS) $(OMPFLAGS) $< -o $@
 
-.PHONY : bitwhiz test release runs clean tidy bmpclean FORCE
+.PHONY : bitwhiz test release runs clean tidy bmpclean ls_replay FORCE
 # End of the makefile

@@ -77,6 +77,21 @@ about 2; needs mpmath too):
 
     python3 tests/verification/study_av.py
 
+`study_leadshock.py` checks the lead-shock detector (module `leadshock`, for
+the burn models that need the lead shock's pressure) on real runs, before any
+model uses it: each run writes its tracers every cycle, and `bin/ls_replay`
+(`ls_replay.f95`, built by `make ls_replay`) steps the detector through a
+tracer's rows exactly as module `burn` will step a cell. Square shocks of
+known strength, 0.75 to 78 GPa (`av_study/fs_square.deck`: P_s against the
+exact Hugoniot), a ramp (`input/ramp_linear.deck`: its smooth foot, and the
+shock it steepens into), a decaying shock (`leadshock/decay.deck`, a thin
+flyer), AV and RS, 25 to 200 zones/mm; and, with an independent Python twin
+of the detector, the range of its floor and stall constants that work. The
+results are in `doc/design/burn_models.md`, "As built: step 4" (about a
+minute on 2 cores, `--quick` 20 s):
+
+    python3 tests/verification/study_leadshock.py
+
 ## Gold-standard sets (subfolders)
 - `inert_gauges/`: the same problem, Material X inert, with 13 tracers (every
   1 mm through Material X) and density and temperature: set G1.

@@ -19,6 +19,9 @@ module burn_table
 !                                     burn_npar(ib), as indices j into
 !                                     the keys (0 past the last)
 !       burn_nst(ib)                  its history variables
+!       burn_uses_ls(ib)              does it need the lead shock
+!                                     (module leadshock: its five
+!                                     numbers are then bst(1:5))
 !       bkey_index( key )             j of a key, 0 if not a burn key
 !       burn_takes( ib, j )           does model ib take key j
 !       hv_PR ... hv_TAU0, hv_phi     HVRB's slots, in bpar and bst
@@ -57,6 +60,8 @@ module burn_table
 !                                     had them), and burn_none,
 !                                     burn_hvrb and burn_names from
 !                                     module shock
+!    11/06/26    D. E. Kittell        burn_uses_ls: the models that
+!                (with Claude)        need the lead shock (step 4)
 !
 !**********************************************************************!
 use bits, only: int32
@@ -65,8 +70,8 @@ private
 
 public :: npar_max, nst_max, nburn, burn_none, burn_hvrb, burn_names, &
    burn_long, nbkey, bkey_name, bkey_check, bkey_note, chk_any, &
-   chk_positive, chk_nonneg, burn_npar, burn_key, burn_nst, bkey_index, &
-   burn_takes
+   chk_positive, chk_nonneg, burn_npar, burn_key, burn_nst, burn_uses_ls, &
+   bkey_index, burn_takes
 public :: hv_PR, hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi
 
 !*** Per cell, at most (the slot table: StochasticIgnite and HALO take 8
@@ -107,6 +112,11 @@ integer(kind=int32), parameter, dimension(nburn) :: burn_npar = (/ 6 /)
 integer(kind=int32), parameter, dimension(npar_max,nburn) :: burn_key = &
    reshape( (/ 1, 2, 3, 4, 5, 6, 0, 0 /), (/ npar_max, nburn /) )
 integer(kind=int32), parameter, dimension(nburn) :: burn_nst = (/ 1 /)
+!*** Which models need the lead shock's pressure, P_s (doc/design/
+!*** burn_models.md, "The lead shock"): their history variables start
+!*** with the detector's five (module leadshock, ls_nst), their own
+!*** after them. HVRB does not.
+logical, parameter, dimension(nburn) :: burn_uses_ls = (/ .false. /)
 
 !*** HVRB's slots: its constants in bpar, its phi in bst.
 integer(kind=int32), parameter :: hv_PR = 1, hv_ZR = 2, hv_MR = 3, &

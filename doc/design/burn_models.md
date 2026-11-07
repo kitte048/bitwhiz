@@ -485,3 +485,84 @@ table has it). HVRB bit for bit: the 43 decks (their resolved decks too)
 against step 2's commit, `make test` (188 deck tests, their messages
 unchanged), `make release`, and `compare_hvrb.py --quick`, AV and RS, with
 the same output.
+
+## As built: step 4, the lead-shock detector (Nov 6, 2026)
+
+**Module `leadshock`** (`src/modules/lshk_mod.f95`, uses only `bits`):
+`ls_h`, h = e - ½(V_0 - V) P from the cell's own state at t = 0 (e_0 = P_0
+= 0, V_0 = 1/R0), and `ls_step`, pure, one step of the detector on its five
+numbers (h at the last step, its largest since armed, the flag, P_s, t_s),
+from the cell's state at the step's end. Module `burn` keeps them in a
+cell's `bst(1:5)` and steps them in `burn_detect`, after the pressures,
+for a model whose row says `burn_uses_ls` (module `burn_table`); no model
+does yet, so `burn_detect` returns at once and every result is unchanged.
+
+**The rule, as measured** (it differs from "The lead shock" above in three
+details, each from a measurement below):
+
+- **Armed** when the cell is compressed and h > `ls_floor`·C0², with
+  `ls_floor` = 1e-10: a floor in the material's own energy scale (C0² in
+  kJ/g), not one relative to h, which has no scale of its own at the start
+  (a wave's first rows carry an exponentially small precursor, P down to
+  1e-233 GPa, and h/(½ΔV·P) is about 1 there for any wave).
+- **Marked** at the first of, after h's peak: h ≤ 0 (t_s interpolated);
+  a local minimum, however shallow (t_s at the minimum); or a **stall**,
+  the step's fall below `ls_knee` = 0.01 of the largest since the peak
+  (t_s at that step). P_s is P at the step that marks it. Before the mark
+  the P_s slot holds that largest fall, so five numbers still suffice.
+- **No hysteresis:** a weak shock's h does not come back down (AV, 0.75
+  GPa: from 3.1e-5 to a plateau at 3.0e-5 kJ/g), so a minimum "below half
+  the peak" misses every weak shock.
+
+**The study** (`tests/verification/study_leadshock.py`, 69 checks, all
+pass; tolerances set from these runs). The runs write tracers every cycle,
+and `bin/ls_replay` steps the detector through a tracer's rows exactly as
+module `burn` steps a cell; an independent Python twin agrees with it on
+all 96 tracers to 1e-12.
+
+| Square shock, Al on Al, 1.5 mm deep | exact P (GPa) | P_s, AV, 25-200 zones/mm | P_s, RS | t_s lag, 25 → 200 zones/mm |
+|---|---|---|---|---|
+| u_p = 0.05 km/s | 0.7460 | -0.37 to -0.04 % | -0.05 to +0.01 % | AV 36 → 14 ns, RS 39 → 6 |
+| u_p = 0.2 | 3.0958 | -0.31 to -0.03 % | -0.03 to 0.00 % | AV 33 → 6.5, RS 31 → 4 |
+| u_p = 1 | 18.459 | +0.15 to +0.55 % | -0.10 to -0.05 % | AV 13 → 1.2, RS 18 → 1.8 |
+| u_p = 3 | 77.729 | +0.97 to +1.09 % | +0.46 to +0.77 % | AV 8 → 0.7, RS 8 → 0.7 |
+
+AV's P_s at strong shocks is high by about 1 % on every mesh: its
+post-shock ringing, which the mark samples at a phase; RS's ringing is
+smaller. The lag is the smeared shock's rise: first order for strong
+shocks, slower for weak ones.
+
+- **A decaying shock** (`leadshock/decay.deck`, a 0.25 mm flyer): P_s at
+  0.5 and 1 mm within 0.5 % of 18.459 GPa on every mesh, then falling with
+  depth as the release overtakes the shock, 17.2, 14.5 and 11.3 GPa at 3, 4
+  and 6 mm (200 zones/mm), AV and RS within 0.6 %.
+- **A ramp that steepens into a shock** (`ramp_linear`, 0.3 mm into the
+  window): marked at the shock, 8.38 to 8.57 GPa, every mesh, AV and RS
+  within 2.0 %.
+- **The floor:** every value from 1e-14 to 1e-7 (times C0²) marks every
+  shock above and none at P ≈ 0; with none, two false marks at P ≈ 0 (a
+  precursor's round-off wiggle read as a minimum); at 1e-6 five weak
+  shocks are missed. 1e-10, three decades from either edge.
+- **The stall:** without it, a weak shock in AV was marked at h's first
+  local minimum, where round-off ends a slow creep: 36, 38, 73 and 117 ns
+  after the shock at 25, 50, 100 and 200 zones/mm, growing with the mesh,
+  so not converging. With it, the lag shrinks for every value from 0.003
+  up; larger values mark sooner but move P_s where P falls right behind
+  the front (a decaying shock: up to 1.3 % at 0.003, 2.7 % at 0.03 and 0.1,
+  5 % at 0.3, against 0.01). 0.01.
+
+**Open (DK): a smooth ramp.** Its foot is a compression front too, and the
+detector, as Menikoff and Shaw wrote it, marks the first one: h rises a
+little there (AV's q, RS's dissipation) and comes back as the ramp goes on.
+So `ramp_linear` 0.05 mm into the window, where the ramp still takes 0.34
+us to rise, is marked at its foot, at a P_s that falls with the mesh: AV
+0.67, 0.44, 0.30, 0.20 GPa and RS 0.47, 0.30, 0.19, 0.11 at 25, 50, 100,
+200 zones/mm (toward 0, about as Δx^0.6 for AV and Δx^0.7 for RS). This
+differs from "with no lead shock nothing is marked" above: the gate of the
+three P_S models opens at a smooth ramp's arrival, with P_s → 0. Nothing
+tried tells a smooth ramp from a weak shock on a coarse mesh: the size of
+h's peak against the work ½ΔV·P (0.009 to 0.03 for the ramp, falling with
+the mesh, but 0.01 to 0.03 for weak shocks too), or the time from h's peak
+to the mark (the ramp's foot is marked within one to three of the cell's
+sound transits, as quickly as a strong shock). The choice is DK's, at
+step 5.
