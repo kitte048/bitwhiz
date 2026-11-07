@@ -2,13 +2,13 @@ program test_hvrb
 !**********************************************************************!
 !
 !  Purpose:
-!    Unit test for the burn (module hvrb: the rate law, the topology,
-!    the closure) and the ideal-gas products (module products). Run by
-!    "make test"; the exit status is 0 if every check passes, 1 if any
-!    check fails, so make (and any script) can tell.
+!    Unit test for the burn (module hvrb: the rate law, the topology;
+!    module mixture: the closure) and the ideal-gas products (module
+!    products). Run by "make test"; the exit status is 0 if every check
+!    passes, 1 if any check fails, so make (and any script) can tell.
 !
 !  Where the expected values come from:
-!    NOT from module hvrb. The "lam" and "mix" tables were computed in
+!    NOT from the modules. The "lam" and "mix" tables were computed in
 !    Python with 50-digit arithmetic (mpmath) from the definitions in
 !    doc/HVRB_Eqns_v8: the topology's closed form; the isentrope from
 !    rest by quadrature of the cold-curve integral; the pressure by the
@@ -29,6 +29,9 @@ program test_hvrb
 !                (with Claude)
 !    11/05/26    D. E. Kittell        12: the solid held (module hvrb,
 !                (with Claude)        THE SOLID HELD)
+!    11/06/26    D. E. Kittell        The closure from module mixture
+!                (with Claude)        (mix_state, mix_c_*), the rate
+!                                     law from module hvrb
 !
 !**********************************************************************!
 use, intrinsic :: iso_fortran_env, only: int64
@@ -36,8 +39,8 @@ use bits, only: dp, int32, zero, half, one, quit
 use eos, only: mg_eos, mg_soundspeed, mg_pressure, eos_ok, &
    eos_too_compressed, eos_bad_soundspeed
 use products, only: idg_state
-use hvrb, only: hvrb_phi_end, hvrb_lambda, hvrb_rate, hvrb_step, &
-   hvrb_state, hvrb_c_exact, hvrb_c_mass
+use hvrb, only: hvrb_phi_end, hvrb_lambda, hvrb_rate, hvrb_step
+use mixture, only: mix_state, mix_c_exact, mix_c_mass
 implicit none
 
 !**********************************************************************!
@@ -702,10 +705,10 @@ w = zero
 nbad = 0
 do i = 1, size(mix)
    m = mix(i)%m
-   call hvrb_state( mix(i)%rho, mix(i)%e, mix(i)%lam, mix(i)%es, &
+   call mix_state( mix(i)%rho, mix(i)%e, mix(i)%lam, mix(i)%es, &
       mat(1,m), mat(2,m), mat(3,m), mat(4,m), mat(5,m), brn(1,m), &
       brn(2,m), brn(3,m), brn(4,m), p, c, th, dpl, ifb, ierr )
-   if ( ierr /= eos_ok .or. ifb /= hvrb_c_exact ) then
+   if ( ierr /= eos_ok .or. ifb /= mix_c_exact ) then
       nbad = nbad + 1
       cycle
    end if
@@ -726,7 +729,7 @@ ok = .true.
 do i = 1, size(mix)
    if ( mix(i)%lam > zero ) cycle
    m = mix(i)%m
-   call hvrb_state( mix(i)%rho, mix(i)%e, zero, mix(i)%es, mat(1,m), &
+   call mix_state( mix(i)%rho, mix(i)%e, zero, mix(i)%es, mat(1,m), &
       mat(2,m), mat(3,m), mat(4,m), mat(5,m), brn(1,m), brn(2,m), &
       brn(3,m), brn(4,m), p, c, th, dpl, ifb, ierr )
    call mg_eos( mix(i)%rho, mix(i)%e, mat(1,m), mat(2,m), mat(3,m), &
@@ -740,7 +743,7 @@ call check( ok, 'lam = 0: P and c are mg_eos''s, bit for bit' )
 !    burnt out, P = (gamma - 1) R0 Q = 1.6*1.6*4.8828 = 12.499968 GPa;
 !    and vartheta = Q there (T = Q/C_V).
 !=====================================================================!
-call hvrb_state( mat(1,1), zero, one, zero, mat(1,1), mat(2,1), mat(3,1), &
+call mix_state( mat(1,1), zero, one, zero, mat(1,1), mat(2,1), mat(3,1), &
    mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), p, c, th, &
    dpl, ifb, ierr )
 call check( ierr == eos_ok .and. abs(p - 12.499968_dp) <= 1.0e-13_dp*p &
@@ -754,11 +757,11 @@ call check( ierr == eos_ok .and. abs(p - 12.499968_dp) <= 1.0e-13_dp*p &
 !    gives P = (gamma - 1) rho vartheta.
 !=====================================================================!
 x = mat(1,2)/( one - 0.75_dp )                         ! rho at eta = 0.75
-call hvrb_state( x, 5.0_dp, half, 3.0_dp, mat(1,2), mat(2,2), mat(3,2), &
+call mix_state( x, 5.0_dp, half, 3.0_dp, mat(1,2), mat(2,2), mat(3,2), &
    mat(4,2), mat(5,2), brn(1,2), brn(2,2), brn(3,2), brn(4,2), p, c, th, &
    dpl, ifb, ierr )
 ok = ierr == eos_too_compressed
-call hvrb_state( x, 5.0_dp, one, 3.0_dp, mat(1,2), mat(2,2), mat(3,2), &
+call mix_state( x, 5.0_dp, one, 3.0_dp, mat(1,2), mat(2,2), mat(3,2), &
    mat(4,2), mat(5,2), brn(1,2), brn(2,2), brn(3,2), brn(4,2), p, c, th, &
    dpl, ifb, ierr )
 ok = ok .and. ierr == eos_ok .and. &
@@ -774,17 +777,17 @@ call check( ok, 'past the reach: lam = 0.5 stops the run; lam = 1 '// &
 !    mass-weighted one takes over, c**2 = (1/2) c_sol**2 at P = 0,
 !    which at rest is C0**2/2.
 !=====================================================================!
-call hvrb_state( mat(1,1), -brn(4,1), one, zero, mat(1,1), mat(2,1), &
+call mix_state( mat(1,1), -brn(4,1), one, zero, mat(1,1), mat(2,1), &
    mat(3,1), mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), &
    p, c, th, dpl, ifb, ierr )
 ok = ierr == eos_bad_soundspeed .and. abs(th) <= 1.0e-15_dp
 x = -brn(1,1)*brn(2,1)                                 ! ecs at rest
-call hvrb_state( mat(1,1), half*x - half*brn(4,1) - 0.01_dp, half, zero, &
+call mix_state( mat(1,1), half*x - half*brn(4,1) - 0.01_dp, half, zero, &
    mat(1,1), mat(2,1), mat(3,1), mat(4,1), mat(5,1), brn(1,1), brn(2,1), &
    brn(3,1), brn(4,1), p, c, th, dpl, ifb, ierr )
 call mg_soundspeed( mat(1,1), zero, mat(1,1), mat(2,1), mat(3,1), &
    mat(4,1), mat(5,1), cm, n )
-ok = ok .and. ierr == eos_ok .and. ifb == hvrb_c_mass .and. th < zero &
+ok = ok .and. ierr == eos_ok .and. ifb == mix_c_mass .and. th < zero &
    .and. abs(p) <= zero .and. abs( c - sqrt(half)*cm ) <= 1.0e-14_dp*c
 call check( ok, 'guards: vartheta = 0 burnt out has no sound speed; '// &
    'vartheta < 0 half burnt falls back to the mass-weighted c' )
@@ -804,13 +807,13 @@ call check( ok, 'ideal gas by hand; no pressure at vartheta <= 0' )
 ! 11. Elemental: the whole table in one call gives the same bits as one
 !     call per state.
 !=====================================================================!
-call hvrb_state( mix%rho, mix%e, mix%lam, mix%es, mat(1,mix%m), &
+call mix_state( mix%rho, mix%e, mix%lam, mix%es, mat(1,mix%m), &
    mat(2,mix%m), mat(3,mix%m), mat(4,mix%m), mat(5,mix%m), brn(1,mix%m), &
    brn(2,mix%m), brn(3,mix%m), brn(4,mix%m), pa, ca, tha, dpla, ifba, ierra )
 ok = .true.
 do i = 1, size(mix)
    m = mix(i)%m
-   call hvrb_state( mix(i)%rho, mix(i)%e, mix(i)%lam, mix(i)%es, &
+   call mix_state( mix(i)%rho, mix(i)%e, mix(i)%lam, mix(i)%es, &
       mat(1,m), mat(2,m), mat(3,m), mat(4,m), mat(5,m), brn(1,m), &
       brn(2,m), brn(3,m), brn(4,m), p, c, th, dpl, ifb, ierr )
    if ( .not. ( same(p, pa(i)) .and. same(c, ca(i)) .and. same(th, tha(i)) &
@@ -820,7 +823,7 @@ end do
 call check( ok, 'array (elemental) call == one call per state' )
 
 !=====================================================================!
-! 12. The solid held where it first pulled (module hvrb, THE SOLID
+! 12. The solid held where it first pulled (module mixture, THE SOLID
 !     HELD). Material X held at rhold = 1.4 (eta < 0) with eshold =
 !     0.02 kJ/g, at lam = 0.3; there P_sol = P_cold + R0 G0 vartheta,
 !     P_cold = P_sol(rhold, ecs) < 0, so vartheta = 0.5 and 3 times
@@ -845,18 +848,18 @@ call mg_pressure( rh, ecsh, mat(1,1), mat(2,1), mat(3,1), mat(4,1), &
 ok = ierr == eos_ok .and. pcold < zero
 !*** a.
 ee = 0.5_dp*( -pcold/( mat(1,1)*mat(5,1) ) ) + ( one - lm )*ecsh - lm*brn(4,1)
-call hvrb_state( rh, ee, lm, eh, mat(1,1), mat(2,1), mat(3,1), mat(4,1), &
+call mix_state( rh, ee, lm, eh, mat(1,1), mat(2,1), mat(3,1), mat(4,1), &
    mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), p, c, th, dpl, ifb, &
    ierr )
-call hvrb_state( rh, ee, lm, eh, mat(1,1), mat(2,1), mat(3,1), mat(4,1), &
+call mix_state( rh, ee, lm, eh, mat(1,1), mat(2,1), mat(3,1), mat(4,1), &
    mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pm, cm, x, d1, ifb1, &
    ierr1, rh, 7.0_dp )
 ok = ok .and. same(p, pm) .and. same(c, cm) .and. same(th, x) .and. &
    same(dpl, d1) .and. ifb == ifb1 .and. ierr == ierr1
-call hvrb_state( 0.9_dp, 0.1_dp, zero, -0.01_dp, mat(1,1), mat(2,1), &
+call mix_state( 0.9_dp, 0.1_dp, zero, -0.01_dp, mat(1,1), mat(2,1), &
    mat(3,1), mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), &
    p, c, th, dpl, ifb, ierr )
-call hvrb_state( 0.9_dp, 0.1_dp, zero, -0.01_dp, mat(1,1), mat(2,1), &
+call mix_state( 0.9_dp, 0.1_dp, zero, -0.01_dp, mat(1,1), mat(2,1), &
    mat(3,1), mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), &
    pm, cm, x, d1, ifb1, ierr1, rh, eh )
 ok = ok .and. same(p, pm) .and. same(c, cm) .and. same(th, x) .and. &
@@ -870,10 +873,10 @@ rr = 0.9_dp
 do j = 1, 2
    x  = merge( 0.5_dp, 3.0_dp, j == 1 )*( -pcold/( mat(1,1)*mat(5,1) ) )
    ee = x + ( one - lm )*ecsh - lm*brn(4,1)            ! vartheta = x
-   call hvrb_state( rr, ee, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+   call mix_state( rr, ee, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
       mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), p, c, th, &
       dpl, ifb, ierr, rh, eh )
-   ok = ok .and. ierr == eos_ok .and. ifb == hvrb_c_exact .and. &
+   ok = ok .and. ierr == eos_ok .and. ifb == mix_c_exact .and. &
       abs(th - x) <= 1.0e-14_dp*x
    if ( j == 1 ) then                                  ! dropped: P = lam P_gas
       ok = ok .and. abs( p - lm*( brn(3,1) - one )*rr*x ) <= 1.0e-14_dp*p
@@ -881,27 +884,27 @@ do j = 1, 2
       ok = ok .and. p > lm*( brn(3,1) - one )*rr*x*( one + 1.0e-3_dp )
    end if
    h = 1.0e-5_dp*rr
-   call hvrb_state( rr + h, ee, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+   call mix_state( rr + h, ee, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
       mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pp, cm, &
       x, d1, ifb1, ierr1, rh, eh )
-   call hvrb_state( rr - h, ee, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+   call mix_state( rr - h, ee, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
       mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pq, cm, &
       x, d1, ifb1, ierr1, rh, eh )
    dpr = ( pp - pq )/( 2.0_dp*h )
    h = 1.0e-5_dp
-   call hvrb_state( rr, ee + h, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+   call mix_state( rr, ee + h, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
       mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pp, cm, &
       x, d1, ifb1, ierr1, rh, eh )
-   call hvrb_state( rr, ee - h, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+   call mix_state( rr, ee - h, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
       mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pq, cm, &
       x, d1, ifb1, ierr1, rh, eh )
    dpe  = ( pp - pq )/( 2.0_dp*h )
    c2fd = dpr + p/rr**2*dpe
    h = 1.0e-6_dp
-   call hvrb_state( rr, ee, lm + h, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+   call mix_state( rr, ee, lm + h, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
       mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pp, cm, &
       x, d1, ifb1, ierr1, rh, eh )
-   call hvrb_state( rr, ee, lm - h, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+   call mix_state( rr, ee, lm - h, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
       mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), pq, cm, &
       x, d1, ifb1, ierr1, rh, eh )
    dlfd  = ( pp - pq )/( 2.0_dp*h )
@@ -917,19 +920,19 @@ ok2 = .true.
 n   = 20000
 do j = 1, n
    r2 = r1*exp( log( 0.01_dp )/real(n, dp) )
-   call hvrb_state( r1, e1, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+   call mix_state( r1, e1, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
       mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), p1, c1, &
       th1, d1, ifb1, ierr1, rh, eh )
    x = sqrt( r1*r2 )                                   ! the midpoint
-   call hvrb_state( x, e1 - p1*( one/x - one/r1 ), lm, -99.0_dp, &
+   call mix_state( x, e1 - p1*( one/x - one/r1 ), lm, -99.0_dp, &
       mat(1,1), mat(2,1), mat(3,1), mat(4,1), mat(5,1), brn(1,1), brn(2,1), &
       brn(3,1), brn(4,1), p2, c1, th1, d1, ifb1, ierr1, rh, eh )
    e1 = e1 - p2*( one/r2 - one/r1 )
    r1 = r2
-   call hvrb_state( r1, e1, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
+   call mix_state( r1, e1, lm, -99.0_dp, mat(1,1), mat(2,1), mat(3,1), &
       mat(4,1), mat(5,1), brn(1,1), brn(2,1), brn(3,1), brn(4,1), p1, c1, &
       th1, d1, ifb1, ierr1, rh, eh )
-   if ( ierr1 /= eos_ok .or. ifb1 /= hvrb_c_exact .or. .not. th1 > zero ) &
+   if ( ierr1 /= eos_ok .or. ifb1 /= mix_c_exact .or. .not. th1 > zero ) &
       ok2 = .false.
 end do
 x = th0*( 0.01_dp )**( lm*( brn(3,1) - one ) )

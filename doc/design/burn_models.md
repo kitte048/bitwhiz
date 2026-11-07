@@ -17,7 +17,7 @@ models on one verified footing:
 | `stochasticignite` | StochasticIgnite | SAND2025-09228 §5.2.2 (ChatGPT 4o-mini) | this note |
 | `thermalcascade` | ThermalCascade | SAND2025-09228 §5.2.3 (ChatGPT 4o-mini) | this note |
 | `halo` | HALO: Hot-spot Activation, Loss and Overlap | Kittell (2016), ADRB, revised here | this note |
-| `claude` | CLAUDE: Centers Lit by Accumulated Unrecoverable Dissipated Energy | proposed by Claude (Anthropic), Nov 7, 2026 | this note |
+| `claude` | CLAUDE: Centers Lit by Accumulated Unrecoverable Dissipated Energy | proposed by Claude (Anthropic), Nov 6, 2026 | this note |
 
 Then graded materials (TODO.md, section 7) (**DK**). The order serves the
 JOSS case (sustained work, one model per release) and an SCCM 2027 study.
@@ -42,7 +42,7 @@ against the rendered pages, not a text extraction.
 Phase 3's closure is model-independent once the products are an ideal gas
 with the solid's C_V: the density-temperature mixture, the solid held where
 it first pulled, the exact sound speed with its guards, and dP/dλ for RS's
-source. Step 1 moves it out of module `hvrb` into a module of its own
+source. Step 2 moves it out of module `hvrb` into a module of its own
 (proposed: `mixture`, `mix_mod.f95`); module `hvrb` keeps HVRB's rate law
 and topology. **HVRB bit for bit** through the move: G2-G5, the 43 decks,
 `test_hvrb`. Each new model then adds only its rate, its per-cell state and
@@ -215,7 +215,7 @@ burn.
 
 As proposed: dλ/dt = g(λ) (μ + σ Z) (1 + P_S/P_ref)^m.
 
-Choices (g(λ) Claude's, DK Nov 7; the clock burning as proposed):
+Choices (g(λ) Claude's, DK Nov 6; the clock burning as proposed):
 - **g(λ): KJMA** with Avrami exponent a: λ = 1 - exp(-φ^a), dφ/dt = (μ +
   σZ)_+ (1 + P_S/P_ref)^m. A potential, so exact steps and a natural start.
   After the lead shock the rate is constant but for λ: a burn on a clock
@@ -274,7 +274,7 @@ volume.
 
 ### HALO (`burn = halo`) (DK)
 
-Kittell's ADRB (2016), revised Nov 7 (DK accepted each change): no shock
+Kittell's ADRB (2016), revised Nov 6 (DK accepted each change): no shock
 detector and no switches; hot spots are activated by compression and
 dissipated, never reactivated, so a weak first shock desensitizes.
 
@@ -316,7 +316,7 @@ exponential; E_D for a double shock below a single shock to the same state.
 
 ### CLAUDE (`burn = claude`) (DK)
 
-Proposed by Claude (Anthropic) at DK's invitation, Nov 7, 2026, and on the
+Proposed by Claude (Anthropic) at DK's invitation, Nov 6, 2026, and on the
 list exactly as described (DK). Built on SAND2025-09228 §2.4's key areas
 (burn centers from the shock, growth by deflagration, overlap, quenching),
 exact where the others approximate. Like the ChatGPT models of §5.2 it is

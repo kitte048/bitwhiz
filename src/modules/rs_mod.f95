@@ -45,6 +45,8 @@ module rs
 !                                     src), and a burning cell's state
 !                                     from the HVRB closure (optional
 !                                     brn, through cell_pressure)
+!    11/06/26    D. E. Kittell        burn_cell_t from module mixture
+!                (with Claude)        (was hvrb)
 !
 !**********************************************************************!
 use bits,  only: dp, int32, zero, half, one
@@ -52,7 +54,7 @@ use shock, only: nvar, jx, jm, jrho, je, jp, jc, juc, ju_star, jp_star, &
    ju_lf, ju_rf, jp_lf, jp_rf
 use eos,   only: eos_ok
 use av,    only: cell_pressure
-use hvrb,  only: burn_cell_t
+use mixture, only: burn_cell_t
 implicit none
 private
 

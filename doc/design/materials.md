@@ -2,7 +2,7 @@
 
 Started Nov 3, 2026, on `shock` after `f81f2b7` (movies). Status: **approved
 Nov 3, 2026** (decisions below); phase 2 built Nov 3 (As built, below);
-phase 3, HVRB, drafted Nov 4 (Phase 3, below). TODO.md, sections 5 and 6, is
+phase 3, HVRB, built Nov 4 (Phase 3, below). TODO.md, sections 5 and 6, is
 the brief: room in the code for more than one material model, Mie-Grüneisen
 kept as the default and unchanged, bit for bit; the first new model is
 Mie-Grüneisen with temperature, so that G1's temperatures can be compared;
@@ -321,12 +321,12 @@ G1's 298.0014 K start and show the tool's linearized model in tension. The
 book on the reference's temperatures is closed there; bitwhiz keeps the
 exact cold curve.
 
-## Phase 3: HVRB (draft for approval, Nov 4, 2026)
+## Phase 3: HVRB (approved Nov 4, 2026)
 
 The model is `doc/HVRB_Eqns_v8` (frozen Nov 4; the inputs of the
 gold-standard reactive sets G2-G5, `tests/verification/hvrb/`). Decisions
 from D. E. Kittell's review of the plan and his answers (Nov 4) are marked
-**DK**; none is left open. Nothing in this section is built yet.
+**DK**; none is left open. Built Nov 4 (the As built sections below).
 
 ### The deck
 
@@ -836,7 +836,7 @@ family as its free-surface overshoot), for the AV free-surface study (TODO).
    products, the density-temperature closure (T then feeds P), checked
    against G2-G5. Drafted Nov 4 (Phase 3, above), for approval.
    Done: released as v1.3.0 Nov 4, 2026, on nanoHUB Nov 5.
-4. **Five more burn models** (DK, Nov 7, 2026): FlashFire,
+4. **Five more burn models** (DK, Nov 6, 2026): FlashFire,
    StochasticIgnite, ThermalCascade, HALO and CLAUDE, each with ideal-gas
    products and the common C_V; design in `burn_models.md`.
 5. **Graded constants** (section 7): the per-cell e_c already allows them.

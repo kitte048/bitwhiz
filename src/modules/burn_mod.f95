@@ -6,8 +6,9 @@ module burn
 !    hvrb, with eos = mie_gruneisen_t and a products EOS): each such
 !    cell's history variable phi and extent of reaction lam, and its
 !    constants, by cell, and the burn's step in the time loop. The
-!    physics is module hvrb's (the rate law and the closure, stateless);
-!    this module keeps the state and hands each cell to it.
+!    physics is module hvrb's (the rate law) and module mixture's (the
+!    closure), both stateless; this module keeps the state and hands
+!    each cell to them.
 !
 !       call alloc_burn( kerr )                 once, after the t = 0 state
 !       call burn_step( dt, kbad )              every cycle, inside the
@@ -60,6 +61,9 @@ module burn
 !    11/05/26    D. E. Kittell        rhold, eshold and burn_hold: the
 !                (with Claude)        solid held where it first pulled
 !                                     (module hvrb, THE SOLID HELD)
+!    11/06/26    D. E. Kittell        The closure from module mixture
+!                (with Claude)        (mix_state, mix_pulls), the rate
+!                                     law from module hvrb
 !
 !**********************************************************************!
 !
@@ -95,7 +99,7 @@ module burn
 !        with r = (lam^(n+1) - lam^n)/dt, the step's own rate (not
 !        g(lam) Phi: g is infinite at lam = 0 when MR < 1), and rho c**2
 !        sigma = (dP/dlam) at fixed rho and e, from the closure at the
-!        cell's state n (module hvrb), held over the step as Z is.
+!        cell's state n (module mixture), held over the step as Z is.
 !    0.  the predictor, given src for a cell that burns this step
 !    2.  the cell loop: rho, u, e, then e_S to the new volume
 !        (temp_cold_cell), burn_hold, then the state (the closure if
@@ -104,8 +108,8 @@ module burn
 !  The source shapes only the face pressures the Riemann problem is
 !  given; the conservative update, and so energy, are untouched.
 !
-!  THE SOLID HELD (module hvrb has the physics)
-!  ============================================
+!  THE SOLID HELD (module mixture has the physics)
+!  ===============================================
 !  A partly burnt cell's solid is held at rhold, with e_S there, eshold,
 !  once it pulls: burn_hold, per cell, once a step, after e_S is at the
 !  cell's new volume and lam is lam^(n+1), and before the cell's P:
@@ -129,7 +133,8 @@ use bits,        only: dp, int32, zero, half, one
 use shock,       only: kmax, nlay, layer, database, icell, jx, jp, jrho, &
    je, jr0, jc0, js1, js2, jg0, burn_none, burn_hvrb, products_ideal_gas
 use eos,         only: eos_ok
-use hvrb,        only: hvrb_step, hvrb_state, hvrb_pulls, burn_cell_t
+use hvrb,        only: hvrb_step
+use mixture,     only: mix_state, mix_pulls, burn_cell_t
 use temperature, only: temp_cold_cell, ec, cv, t0
 implicit none
 private
@@ -319,7 +324,7 @@ contains
          mrk(k), xrk(k), pik(k), tauk(k), phi2, lam2 )
       src(k) = zero
       if ( rs_reaction_source .and. lam2 > lam(k) ) then
-         call hvrb_state( database(jrho,i), database(je,i), lam(k), ec(k), &
+         call mix_state( database(jrho,i), database(je,i), lam(k), ec(k), &
             database(jr0,i), database(jc0,i), database(js1,i), &
             database(js2,i), database(jg0,i), cv(k), t0(k), gamk(k), &
             qk(k), p, c, theta, dpdlam, ifb, ierr, rhold(k), eshold(k) )
@@ -365,7 +370,7 @@ contains
    i   = icell( k )
    rho = database(jrho,i)
    if ( rho < rhold(k) .and. lam(k) > zero .and. lam(k) < one ) return
-   if ( hvrb_pulls( rho, database(je,i), lam(k), ec(k), database(jr0,i), &
+   if ( mix_pulls( rho, database(je,i), lam(k), ec(k), database(jr0,i), &
       database(jc0,i), database(js1,i), database(js2,i), database(jg0,i), &
       cv(k), t0(k), qk(k) ) ) then
       rhold(k)  = rho                            ! held from here

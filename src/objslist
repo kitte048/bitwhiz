@@ -14,6 +14,7 @@
 	src/modules/eos_mod.o \
 	src/modules/temp_mod.o \
 	src/modules/prod_mod.o \
+	src/modules/mix_mod.o \
 	src/modules/hvrb_mod.o \
 	src/modules/burn_mod.o \
 	src/modules/av_mod.o \
@@ -39,6 +40,7 @@
 	src/modules/eos.mod \
 	src/modules/temperature.mod \
 	src/modules/products.mod \
+	src/modules/mixture.mod \
 	src/modules/hvrb.mod \
 	src/modules/burn.mod \
 	src/modules/av.mod \

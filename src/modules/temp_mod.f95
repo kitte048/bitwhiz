@@ -423,13 +423,13 @@ contains
       tk(k)   = temp_of( eta, database(je,i), ec2, database(jg0,i), &
          cv(k), t0(k) )
       !***NOTE: a burning cell (lam > 0, module burn) is at vartheta/C_V,
-      ! vartheta = e - (1 - lam)(e_c - C_V T_S) + lam Q (module hvrb):
+      ! vartheta = e - (1 - lam)(e_c - C_V T_S) + lam Q (module mixture):
       ! the inert T above plus lam (e_c - C_V T_S + Q)/C_V. At lam = 0
       ! nothing is added, so an unburnt cell's T is the inert model's,
       ! bit for bit.
       !***NOTE: held (module burn: the solid held where it first pulled,
       ! rho < rhold), the solid's e_c is at rhold, with e_S = eshold
-      ! there: T = vartheta/C_V with that e_c, as module hvrb's closure.
+      ! there: T = vartheta/C_V with that e_c, as module mixture's closure.
       if ( burns ) then
          if ( lam(k) > zero ) then
             if ( holds ) then

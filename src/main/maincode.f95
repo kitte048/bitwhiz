@@ -206,7 +206,7 @@ integer(kind=int32) :: kburn            ! first cell the burn's cold-curve
 integer(kind=int32) :: kc               ! a cell's k, in the time loop
 integer(kind=int32) :: ifl              ! a burning cell's c rule (hvrb)
 integer(kind=int32) :: nfall            ! burning cell-steps whose c came
-                                        ! from a guard (module hvrb)
+                                        ! from a guard (module mixture)
 integer(kind=int32) :: nfall_run        ! ... over the whole run
 logical :: burning                      ! some material burns (module burn)
 integer(kind=int32) :: tens_k           ! first tensile cell, 0 = none

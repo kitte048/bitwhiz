@@ -49,16 +49,16 @@ Medium term, the reactive physics:
    frozen in `doc/` and G2-G5's inputs checked against it (Nov 4); the
    design (`doc/design/materials.md`, phase 3), steps 2 to 5 done Nov 4:
    both methods, all of G2-G5, an example deck; 1.3.0. Next for the burn
-   (DK, Nov 7): phase 4, five more burn models, FlashFire,
+   (DK, Nov 6): phase 4, five more burn models, FlashFire,
    StochasticIgnite, ThermalCascade, HALO and CLAUDE, each with ideal-gas
    products and the common C_V (section 6; `doc/design/burn_models.md`,
-   draft for approval), one per release; then JWL products, the 25 zones/mm
+   approved Nov 6), one per release; then JWL products, the 25 zones/mm
    difference (section 3).
 10. With it or after: a broken cell's temperature (section 5; a burning
     cell's done in 1.3.3); strength, the spall "knocking" (section 6).
 
 Far out, research:
-11. Graded materials (section 7), after phase 4 (DK, Nov 7): the path to
+11. Graded materials (section 7), after phase 4 (DK, Nov 6): the path to
     publishing; the per-cell
     e_c of 1.2.0 was chosen for it. Sampling and ensembles (section 1),
     Bayesian calibration and a ramp drive fitted by inverse problem,
@@ -433,8 +433,8 @@ decks.
       `input/me697_hvrb_2p00.deck`, exported to nanoHUB with the others
       (decided Nov 4: the model in action, for students who do not use
       Fortran). Released in 1.3.0.
-- [ ] **Phase 4: five more burn models** (DK, Nov 7; design
-      `doc/design/burn_models.md`, draft for approval): six in all, each
+- [ ] **Phase 4: five more burn models** (DK, Nov 6; design
+      `doc/design/burn_models.md`, approved Nov 6): six in all, each
       with ideal-gas products and the common C_V. FlashFire,
       StochasticIgnite and ThermalCascade, proposed by ChatGPT 4o-mini in
       D. E. Kittell et al., "A Short Survey of Current Reactive Burn Model
@@ -451,7 +451,7 @@ decks.
       in the course folder's `Class_Project/Literature/Burn_Models/`.
 
 ## 7. Graded materials (research)
-After phase 4, the burn models (DK, Nov 7).
+After phase 4, the burn models (DK, Nov 6).
 
 - [ ] **Constants graded through a layer** by a profile, as `xvel_profile`
       grades velocity, with the `distributions` module (so after the merge,

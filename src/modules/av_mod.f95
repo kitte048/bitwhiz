@@ -53,6 +53,8 @@ module av
 !    11/05/26    D. E. Kittell        cell_pressure: a burning cell's
 !                (with Claude)        solid where it is held (brn's
 !                                     rhold, eshold; module hvrb)
+!    11/06/26    D. E. Kittell        burn_cell_t and the closure from
+!                (with Claude)        module mixture (was hvrb)
 !
 !**********************************************************************!
 !
@@ -85,7 +87,7 @@ use bits,  only: dp, int32, zero, half, one
 use shock, only: nvar, jx, ju, ju_old, jmf, jm, jrho, je, &
    jp, jq, jrho_old, jr0, jc0, js1, js2, jg0, jdam, jsp
 use eos,   only: mg_pressure, mg_soundspeed, eos_ok, eos_bad_soundspeed
-use hvrb,  only: burn_cell_t, hvrb_state
+use mixture, only: burn_cell_t, mix_state
 implicit none
 private
 
@@ -301,7 +303,7 @@ contains
    type(burn_cell_t), intent(in), optional :: brn  ! a burning cell's
                                                 ! burn: given for a cell
                                                 ! that may burn (0.)
-   integer(kind=int32), intent(out), optional :: cflag ! hvrb_state's ifb
+   integer(kind=int32), intent(out), optional :: cflag ! mix_state's ifb
    real(kind=dp), parameter :: ftens = 1.0e-9_dp ! round-off floor / K0
    real(kind=dp) :: rho, pfail, theta, dpdlam
    integer(kind=int32) :: ifb
@@ -317,14 +319,14 @@ contains
    if ( present( cflag ) ) cflag = 0
 
    !*** 0. A cell that has started to burn (lam > 0): P and c from the
-   !***    HVRB closure (module hvrb). It holds no tension (the gas fills
+   !***    closure (module mixture). It holds no tension (the gas fills
    !***    the cracks of a reacting solid: P >= 0 always), so it is never
    !***    tensile and never breaks; a gas with no temperature (no sound
    !***    speed) is treated as void, as an inert cell past c = 0 is. A
    !***    cell at lam = 0 goes on below, exactly as any other.
    if ( present( brn ) ) then
       if ( brn%lam > zero ) then
-         call hvrb_state( rho, s(je), brn%lam, brn%es, s(jr0), s(jc0), &
+         call mix_state( rho, s(je), brn%lam, brn%es, s(jr0), s(jc0), &
             s(js1), s(js2), s(jg0), brn%cv, brn%T0, brn%gamma, brn%Q, &
             p, cs, theta, dpdlam, ifb, ierr, brn%rhold, brn%eshold )
          if ( present( cflag ) ) cflag = ifb
