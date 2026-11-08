@@ -7,14 +7,15 @@ the ME 697 class project: a Ta-backed Al flyer impacts Material X behind a PMMA
 window, and the code predicts the PDV velocity at the Material X/PMMA interface.
 
 bitwhiz is the reference hydrocode for ME 697, Intermediate Shock and
-Detonation Theory (Purdue, Fall 2026). It has two solution methods in one
-code (artificial viscosity, and Godunov's method with an acoustic Riemann
-solver at first or second order), the Mie-Grüneisen equation of state with
-temperature, the History Variable Reactive Burn (HVRB) with ideal-gas
-products, starting-velocity profiles, spall, tracers, a history file of the
-whole mesh, and pictures (t-x diagrams, tracer plots, pressure movies). Each
-method follows an equation sheet kept in `doc/`, and the code is checked
-against 50-digit references, exact solutions and independent reference data.
+Detonation Theory (Purdue, Fall 2026). It has two solution methods in one code
+(artificial viscosity, and Godunov's method with an acoustic Riemann solver at
+first or second order), the Mie-Grüneisen equation of state with temperature,
+two reactive burn models (the History Variable Reactive Burn, HVRB, and
+ThermalCascade) with ideal-gas products, starting-velocity profiles, spall,
+tracers, a history file of the whole mesh, and pictures (t-x diagrams, tracer
+plots, pressure movies). Each method follows an equation sheet kept in `doc/`,
+and the code is checked against 50-digit references, exact solutions and
+independent reference data.
 
 **Try it in a browser**, with nothing to install:
 https://nanohub.org/tools/bitwhiz (nanoHUB).
@@ -30,9 +31,34 @@ make test                                          # every test, about 4 minutes
 |---|---|
 | `input/README.md` | the input deck: its syntax, every block and key, and the files a run writes |
 | `doc/` | the equation sheets the code follows (frozen copies) |
-| `doc/design/` | design notes and studies: velocity profiles, materials and the burn, five more burn models (draft), method AV |
+| `doc/design/` | design notes and studies: velocity profiles, materials and the burn, five more burn models (ThermalCascade built, four to come), the lead shock, method AV |
 | `tests/verification/README.md` | the reference data, and the scripts that compare bitwhiz with it |
 | `CONTRIBUTING.md`, `RELEASING.md` | reporting issues and contributing; how a version is released |
+
+## Open source burn models
+bitwhiz began as the class project's code. From 1.4.0 it is also a home for
+**open source burn models**: reactive burn models written down in full, built
+into a public code under the Apache License 2.0, and checked in the open. Each
+one comes from the open literature or is proposed here; has an equation sheet
+in `doc/` and a design note (`doc/design/burn_models.md`); shares one closure,
+one products EOS and one lead-shock detector with the others, so that
+differences in results are differences in rate laws; and is tested like the
+rest of the code (50-digit references, its inert limit, mesh convergence, both
+methods). The example burn decks run method RS at order 2: a sharp shock and a
+smooth burn behind it.
+
+| `burn =` | Model | Source | Since |
+|---|---|---|---|
+| `hvrb` | History Variable Reactive Burn | Starkenberg (2002); the HVRB sheet | 1.3.0 |
+| `thermalcascade` | ThermalCascade | SAND2025-09228 §5.2.3 (proposed by ChatGPT 4o-mini), repaired | 1.4.0 |
+| `flashfire`, `stochasticignite` | FlashFire, StochasticIgnite | SAND2025-09228 §5.2.1-5.2.2, repaired | planned |
+| `halo` | HALO | Kittell (2016), revised | planned |
+| `claude` | CLAUDE | proposed by Claude (Anthropic), 2026 | planned |
+
+**Out of scope:** models whose definitions are not public or are
+export-controlled, such as the national laboratories' proprietary burn models;
+they can not be released this way. New open models are welcome: see
+`CONTRIBUTING.md`.
 
 ## Status
 | Part | State |

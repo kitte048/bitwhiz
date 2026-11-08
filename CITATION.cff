@@ -23,7 +23,9 @@ abstract: >-
   starting-velocity profiles, spall, tracers, a history file of the whole
   mesh, and pictures. Each method follows a frozen equation sheet, and the
   code is checked against 50-digit references, exact solutions and
-  independent reference data. It also runs in a browser as a nanoHUB tool.
+  independent reference data. It is also a home for open source burn models,
+  each written down in an equation sheet and checked in the open, and it runs
+  in a browser as a nanoHUB tool.
 keywords:
   - hydrocode
   - shock physics

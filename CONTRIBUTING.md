@@ -45,6 +45,20 @@ can be agreed before the work. Then, on a branch of your own:
    say which and for what in the pull request, as the README's
    Acknowledgements do for bitwhiz itself.
 
+### Contributing a burn model
+
+bitwhiz hosts **open source burn models** (README, "Open source burn models").
+A new model is welcome if its definition comes from the open literature or is
+your own, and is neither proprietary nor export-controlled: anything that can
+not be published openly does not belong here. It joins the others the way
+ThermalCascade did (`doc/design/burn_models.md`, steps 3 to 5): an equation
+sheet first; a row in the burn table (`src/modules/btab_mod.f95`: its name,
+its deck keys, one meaning each, and its per-cell slots) and a module of its
+own for its rate; the shared closure, products and, if it needs one, the lead
+shock; and its tests: a unit test against a 50-digit reference, its inert
+limit, decks for its errors, and a study of its detonation against mesh, AV
+and RS.
+
 Contributions are made under the project's license, the Apache License 2.0
 (`LICENSE`, section 5).
 
