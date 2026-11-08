@@ -1,0 +1,131 @@
+% =====================================================================
+%  ME 697 -- bitwhiz: Reactive Burn, the Lead Shock                 v1
+%  v1 (Nov 7, 2026, with Claude): the front matter and the first two
+%  boxes, for DK's review, beside ThermalCascade_rev-0 (v2).  DK's
+%  decisions (Nov 7): its own sheet, shared by the burn models that use
+%  the lead shock (ThermalCascade now; FlashFire and StochasticIgnite to
+%  come); student-facing, not part of the class project; Menikoff and
+%  Shaw's h written as calligraphic H (h is U3's areal mass coordinate).
+%
+%  VERIFIED: Eqs. (10) and (11) and Sec. 4's two cases (zero crossing,
+%  local minimum) against the rendered pages 5-6 of Menikoff and Shaw
+%  (2010); its DOI against page 1.  H = q (V0 - V)/2 on a steady AV
+%  profile: derived (steady mass, momentum, energy) and checked to
+%  round-off by bitwhiz's tests/test_lshk.f95, check 1.
+%
+%  STUB CONVENTION: \tbd{...} RED = still DK's decision.  Black =
+%  verified.
+%
+%  PLANNED (not drafted): finding the lead shock on a mesh (armed above
+%  a floor; marked at a zero crossing, a local minimum or a stall; P_S
+%  frozen), with the measured reasons for each rule (bitwhiz's
+%  doc/design/burn_models.md, "As built: step 4"); what to expect
+%  (P_S against exact Hugoniot states, a smooth ramp's foot); a figure
+%  of H(t) for one cell, drawn from a solved run; references.
+% =====================================================================
+\documentclass[11pt,addpoints]{exam}
+\usepackage{amsfonts,amssymb,amsmath, amsthm}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{systeme}
+\usepackage{pgf,tikz,pgfplots}
+\pgfplotsset{compat=1.15}
+\usepgfplotslibrary{fillbetween}
+\usepackage{mathrsfs}
+\usepackage{multicol}
+\usepackage{booktabs}
+\usepackage[many]{tcolorbox}
+\usepackage{bm}
+\usepackage{cancel}
+\allowdisplaybreaks
+
+% Good Volume Symbol
+\newcommand{\volume}{{\ooalign{$V$\cr\hfil\raisebox{0.35em}{\rule{2.1mm}{0.1ex}}\hfil\cr}}}
+
+%%% Strike-out font
+\usepackage{ulem}
+\normalem
+\pagestyle{headandfoot}
+
+% ---- Warm theme to match the figures (U5 onward) ----
+\definecolor{slate}{HTML}{2C3E50}
+\definecolor{oiblue}{HTML}{0072B2}
+\tcbset{colback=oiblue!4!white, colframe=slate, boxrule=0.5pt, arc=1.5mm}
+
+% ---- Stub marker: red = placeholder (delete when the sheet is final) ----
+\newcommand{\tbd}[1]{\textcolor{red}{#1}}
+
+\firstpageheader{ME 697 Equations}{bitwhiz: Reactive Burn, the Lead Shock}{Fall 2026 -- D. Kittell}
+\runningheader{ME 697 Equations}{bitwhiz: Reactive Burn, the Lead Shock}{Fall 2026 -- D. Kittell}
+\runningheadrule
+\firstpagefooter{}{}{}
+\runningfooter{}{}{}
+
+\makeatletter
+\renewcommand*\env@matrix[1][*\c@MaxMatrixCols c]{%
+  \hskip -\arraycolsep
+  \let\@ifnextchar\new@ifnextchar
+  \array{#1}}
+\makeatother
+
+
+
+\begin{document}
+
+\noindent
+\bf{Instructor's Note:}\normalfont\\
+
+\noindent
+\it{Not part of the class project, and not extra credit. Three of the burn models in bitwhiz, the course's open-source hydrocode, need the pressure of the first shock to reach each cell, and burn only after it arrives. A hydrocode smears every shock over a few cells, so which state is ``the shock''? Menikoff and Shaw's answer uses nothing but the cell's own history and the Hugoniot jump condition for energy \cite{menikoff2010}. This sheet gives it, with the rules bitwhiz adds to make it work on a mesh.}\normalfont\vspace{1.5em}
+
+\textbf{These equations build upon U5. Rankine-Hugoniot Analysis and the Class Project: Hydrocode sheets (Method AV and Method RS)}\vspace{1em}
+
+
+\begin{tcolorbox}[breakable]
+\textbf{What the Lead Shock Adds to Your Hydrocode:}\vspace{.5em}
+\begin{itemize}
+\item Two numbers per cell, \hspace{3mm} \bm{$t_S$}, the time the lead shock arrives, \hspace{2mm} and \bm{$P_S$}, its pressure: \hspace{2mm} found from the cell's own history, then frozen\vspace{.5em}
+\item A gate, \hspace{3mm} a burn model that uses \bm{$P_S$} burns nothing before \bm{$t_S$} \hspace{7mm} ThermalCascade, FlashFire, StochasticIgnite\vspace{.5em}
+\item Frozen means frozen: \hspace{2mm} a second shock does not change \bm{$P_S$}; it acts only through the cell's own \bm{$P$} and \bm{$T$} \hspace{3mm} (one route to shock desensitization)\vspace{.5em}
+\item Carried from step to step, \hspace{3mm} five numbers per cell: \hspace{2mm} \bm{$\mathcal{H}$} at the last step, its largest value, a step flag, \bm{$P_S$}, \bm{$t_S$}\vspace{.5em}
+\item Notation, \hspace{3mm} Hugoniot function \bm{$\mathcal{H}$} (Menikoff and Shaw's \bm{$h$}; not U3's areal mass coordinate \bm{$h$}); \hspace{2mm} the state ahead of the shock \bm{$\left(\;\;\right)_0$}; \hspace{2mm} artificial viscosity \bm{$q$} (Method AV)\vspace{.5em}
+\item \textbf{\emph{One check per cell per cycle, after the pressures: the hydro itself is unchanged}}
+\end{itemize}
+\end{tcolorbox}
+
+
+\clearpage
+
+\begin{tcolorbox}[breakable]
+\textbf{The Hugoniot Function \cite{menikoff2010}:}\vspace{.5em}
+\begin{itemize}
+\item Energy jump, \hspace{3mm} \bm{$\displaystyle e_H-e_0\;=\;\frac{1}{2}\left(P_H+P_0\right)\left(\text{V}_0-\text{V}_H\right)$} \hspace{5mm} U5, any shock from the state \bm{$\left(\;\;\right)_0$}\vspace{1.0em}
+\item Hugoniot function, \hspace{3mm} \bm{$\displaystyle \mathcal{H}\left(\text{V},e\right)\;=\;e-e_0-\frac{1}{2}\left(\text{V}_0-\text{V}\right)\left[P\left(\text{V},e\right)+P_0\right]$} \hspace{5mm} zero on the Hugoniot\vspace{1.0em}
+\item Erratum, \hspace{3mm} Menikoff and Shaw print \bm{$P-P_0$} in their Eq.~(10); \hspace{2mm} the jump condition has \bm{$P+P_0$}, \hspace{2mm} and at \bm{$P_0=0$} the two agree\vspace{1.0em}
+\item At rest, \hspace{3mm} every cell starts at \bm{$\rho_0$} with \bm{$e_0=0$}, \bm{$P_0=0$}: \hspace{5mm} \bm{$\displaystyle \mathcal{H}\;=\;e-\frac{1}{2}\left(\text{V}_0-\text{V}\right)P$}\vspace{1.0em}
+\item Each cell, after each step, \hspace{3mm} \bm{$\mathcal{H}^{n+1}=\mathcal{H}\left(\text{V}^{n+1},e^{n+1}\right)$} \hspace{5mm} their Eq.~(11): a history, cell by cell\vspace{1.0em}
+\item Inside a steady smeared shock, \hspace{3mm} \bm{$\sigma=P+q$} is linear in \bm{$\text{V}$} (the Rayleigh line), and steady energy gives \bm{$\displaystyle e-e_0=\frac{1}{2}\left(\sigma+P_0\right)\left(\text{V}_0-\text{V}\right)$}, so\vspace{.5em} \\
+.~~~~~~~~~~\bm{$\displaystyle \mathcal{H}\;=\;\frac{1}{2}\,q\left(\text{V}_0-\text{V}\right)\;\ge\;0$} \hspace{5mm} it rises through the shock and returns to zero behind it\vspace{1.0em}
+\item Smooth, isentropic compression from rest, \hspace{3mm} \bm{$\mathcal{H}\le 0$}: \hspace{2mm} the chord from \bm{$\left(\text{V}_0,0\right)$} to \bm{$\left(\text{V},P\right)$} lies above the convex isentrope beneath it\vspace{.5em}
+\item \textbf{\emph{From rest, a cell's \bm{$\mathcal{H}$} first turns positive in a shock: the lead shock is where it first rises and falls back}} \hspace{3mm} (a release behind a shock keeps \bm{$\mathcal{H}>0$}: the shock's entropy stays)
+\end{itemize}
+\end{tcolorbox}
+
+
+\clearpage
+
+\begin{tcolorbox}[breakable]
+\textbf{References:}\vspace{.5em}
+
+% Ledger: README.md in this folder.  One \bibitem per ledger row, same key.
+\begingroup
+\renewcommand{\section}[2]{}% suppress the "References" heading inside the box
+\begin{thebibliography}{9}
+\setlength{\itemsep}{0.25em}
+\bibitem{menikoff2010}
+R.~Menikoff and M.~S. Shaw, ``Reactive burn models and ignition \& growth concept,'' \emph{EPJ Web of Conferences} \textbf{10}, 00003 (2010), doi:10.1051/epjconf/20101000003.
+\end{thebibliography}
+\endgroup
+\end{tcolorbox}
+
+\end{document}

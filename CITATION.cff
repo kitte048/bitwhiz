@@ -6,9 +6,9 @@ authors:
   - family-names: Kittell
     given-names: David E.
     orcid: "https://orcid.org/0000-0002-7065-6780"
-version: 1.3.4
+version: 1.4.0
 doi: 10.5281/zenodo.23999297
-date-released: 2026-11-05
+date-released: 2026-11-07
 license: Apache-2.0
 repository-code: "https://github.com/kitte048/bitwhiz"
 url: "https://nanohub.org/tools/bitwhiz"
@@ -18,7 +18,8 @@ abstract: >-
   (Purdue, Fall 2026). It has two solution methods in one code (artificial
   viscosity, and Godunov's method with an acoustic Riemann solver at first or
   second order), the Mie-Grüneisen equation of state with temperature, the
-  History Variable Reactive Burn (HVRB) with ideal-gas products,
+  History Variable Reactive Burn (HVRB) and ThermalCascade (gated by a
+  lead-shock detector) with ideal-gas products,
   starting-velocity profiles, spall, tracers, a history file of the whole
   mesh, and pictures. Each method follows a frozen equation sheet, and the
   code is checked against 50-digit references, exact solutions and
@@ -29,6 +30,7 @@ keywords:
   - detonation
   - reactive burn
   - HVRB
+  - ThermalCascade
   - Mie-Grüneisen
   - Riemann solver
   - artificial viscosity

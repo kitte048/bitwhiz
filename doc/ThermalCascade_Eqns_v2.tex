@@ -1,0 +1,135 @@
+% =====================================================================
+%  ME 697 -- bitwhiz: Reactive Burn, ThermalCascade                v2
+%  v2 (Nov 7, 2026, with Claude): DK's answers to v1's red items.  Not
+%  part of the class project and not extra credit: the burn models are
+%  for bitwhiz's public repository; the tone stays aimed at students,
+%  who will find them.  Header 'Class Project:' -> 'bitwhiz:'; the
+%  Instructor's Note rewritten to say so; the Lead Shock sheet exists
+%  (LeadShock_rev-0, v1), so its name is black.  No other change.
+%
+%  v1 (Nov 7, 2026, with Claude): the front matter and the first two
+%  boxes only, for DK's review before the rest is drafted.  DK's
+%  decisions (Nov 7): student-facing, as the HVRB sheet; the lead shock
+%  on a sheet of its own (one line here points to it); the deck keys as
+%  symbols, H_T, T_C, G_T, N_S, P_R (the report's h, gamma and p clash
+%  with the house h, the products' gamma and P); ChatGPT 4o-mini and
+%  the report named.
+%
+%  VERIFIED: the rate law "as proposed" against the rendered page 22 of
+%  SAND2025-09228 (Sec. 5.2.3), Nov 7; the report's title, authors,
+%  number and DOI against Sandia's publication page (ledger, README.md).
+%
+%  STUB CONVENTION: \tbd{...} RED = still DK's decision, or a sheet that
+%  does not exist yet.  Black = verified.
+%
+%  PLANNED (not drafted): the cascade at constant volume (T linear in
+%  lambda, the closed form at G_T = 1, a figure to scale for Material
+%  X); adding burn to one cycle (the exact step); parameters and checks;
+%  references.  Numbers verified by script before they go on.
+% =====================================================================
+\documentclass[11pt,addpoints]{exam}
+\usepackage{amsfonts,amssymb,amsmath, amsthm}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{systeme}
+\usepackage{pgf,tikz,pgfplots}
+\pgfplotsset{compat=1.15}
+\usepgfplotslibrary{fillbetween}
+\usepackage{mathrsfs}
+\usepackage{multicol}
+\usepackage{booktabs}
+\usepackage[many]{tcolorbox}
+\usepackage{bm}
+\usepackage{cancel}
+\allowdisplaybreaks
+
+% Good Volume Symbol
+\newcommand{\volume}{{\ooalign{$V$\cr\hfil\raisebox{0.35em}{\rule{2.1mm}{0.1ex}}\hfil\cr}}}
+
+%%% Strike-out font
+\usepackage{ulem}
+\normalem
+\pagestyle{headandfoot}
+
+% ---- Warm theme to match the figures (U5 onward) ----
+\definecolor{slate}{HTML}{2C3E50}
+\definecolor{oiblue}{HTML}{0072B2}
+\tcbset{colback=oiblue!4!white, colframe=slate, boxrule=0.5pt, arc=1.5mm}
+
+% ---- Stub marker: red = placeholder (delete when the sheet is final) ----
+\newcommand{\tbd}[1]{\textcolor{red}{#1}}
+
+\firstpageheader{ME 697 Equations}{bitwhiz: Reactive Burn, ThermalCascade}{Fall 2026 -- D. Kittell}
+\runningheader{ME 697 Equations}{bitwhiz: Reactive Burn, ThermalCascade}{Fall 2026 -- D. Kittell}
+\runningheadrule
+\firstpagefooter{}{}{}
+\runningfooter{}{}{}
+
+\makeatletter
+\renewcommand*\env@matrix[1][*\c@MaxMatrixCols c]{%
+  \hskip -\arraycolsep
+  \let\@ifnextchar\new@ifnextchar
+  \array{#1}}
+\makeatother
+
+
+
+\begin{document}
+
+\noindent
+\bf{Instructor's Note:}\normalfont\\
+
+\noindent
+\it{Not part of the class project, and not extra credit. ThermalCascade is one of three rate laws that ChatGPT 4o-mini proposed when asked for new reactive burn models; the report prints them as the model wrote them, with no human-generated content \cite{kittell2025sand}. As written it cannot run. This sheet gives the two repairs that make it run; it is the second burn model in bitwhiz, the course's open-source hydrocode (\texttt{burn = thermalcascade}), for anyone to use. Find it, run it beside HVRB, and see what a temperature-driven rate does differently.}\normalfont\vspace{1.5em}
+
+\textbf{These equations build upon U3. Continuum Mechanics {\&} Balance Laws, the Class Project: Hydrocode sheets (Method AV and Method RS), Class Project: Reactive Burn, HVRB (its products and closure), and bitwhiz: Reactive Burn, the Lead Shock}\vspace{1em}
+
+
+\begin{tcolorbox}[breakable]
+\textbf{What ThermalCascade Adds to Your Hydrocode:}\vspace{.5em}
+\begin{itemize}
+\item The HVRB sheet's progress variable, \hspace{3mm} \bm{$\lambda$}, \hspace{2mm} in every Material X cell: \hspace{2mm} \bm{$\lambda=0$} unreacted, \bm{$\lambda=1$} fully reacted\vspace{.5em}
+\item A rate law, \hspace{3mm} temperature and lead shock \bm{$\rightarrow$} \bm{$\lambda$} \hspace{7mm} page 2\vspace{.5em}
+\item The HVRB sheet's products and closure, unchanged, \hspace{3mm} \bm{$\left(\rho,\;e,\;\lambda\right)\rightarrow P,\;T$} \hspace{5mm} here \bm{$T$} drives the rate; it is no longer only an intermediate result\vspace{.5em}
+\item A lead shock in every cell, \hspace{3mm} its pressure \bm{$P_S$}, found from the cell's own history and then frozen; \hspace{2mm} nothing burns before it \hspace{7mm} the Lead Shock sheet\vspace{.5em}
+\item Notation, \hspace{3mm} rate coefficient \bm{$H_T$}, \hspace{2mm} critical temperature \bm{$T_C$}, \hspace{2mm} exponents \bm{$G_T$} and \bm{$N_S$}, \hspace{2mm} reference pressure \bm{$P_R$} (HVRB's); \hspace{2mm} time level \bm{$n$}\vspace{.5em}
+\item \bm{$G_T$} is not the products' \bm{$\gamma$}, and \bm{$H_T$} is not U3's areal mass coordinate \bm{$h$}: \hspace{2mm} the report's letters, renamed (next box)\vspace{.5em}
+\item \textbf{\emph{Everything else in your cycle is unchanged; the lead shock adds one check per cell per cycle}}
+\end{itemize}
+\end{tcolorbox}
+
+
+\clearpage
+
+\begin{tcolorbox}[breakable]
+\textbf{Rate Law --- as Proposed, and as Repaired \cite{kittell2025sand}:}\vspace{.5em}
+\begin{itemize}
+\item As proposed, \hspace{3mm} \bm{$\displaystyle \frac{d\lambda}{dt}\;=\;h\left(1-\lambda\right)\left(T-T_c\right)^{\gamma}\left(1+\frac{P_S}{P_{ref}}\right)^{p}$} \hspace{5mm} verbatim, Sec.~5.2.3\vspace{1.0em}
+\item Renamed, \hspace{3mm} \bm{$h\rightarrow H_T$} (``a heat transfer coefficient'' there; here in 1/(\bm{$\mu$}s K\bm{$^{G_T}$})), \hspace{2mm} \bm{$\gamma\rightarrow G_T$}, \hspace{2mm} \bm{$p\rightarrow N_S$}, \hspace{2mm} \bm{$T_c\rightarrow T_C$}, \hspace{2mm} \bm{$P_{ref}\rightarrow P_R$}\vspace{1.0em}
+\item Repair 1, \hspace{3mm} \bm{$\displaystyle \left(T-T_C\right)^{G_T}\;\rightarrow\;\left[{\max}\left(T-T_C,\;0\right)\right]^{G_T}$} \hspace{5mm} below \bm{$T_C$} a non-integer power is not real, and a cell there must not burn\vspace{1.0em}
+\item Repair 2, \hspace{3mm} the gate: \hspace{2mm} \bm{$D\lambda/Dt=0$} until the cell's lead shock is found, \hspace{2mm} then \bm{$P_S$} is frozen \hspace{5mm} the report never says how \bm{$P_S$} is found\vspace{1.0em}
+\item As repaired, \hspace{3mm} \bm{$\displaystyle \frac{D\lambda}{Dt}\;=\;H_T\left(1-\lambda\right)\left[{\max}\left(T-T_C,\;0\right)\right]^{G_T}\left(1+\frac{P_S}{P_R}\right)^{N_S}$}\vspace{1.0em}
+\item First order in \bm{$1-\lambda$}, \hspace{3mm} \bm{$g\left(\lambda\right)=1-\lambda$} is largest at \bm{$\lambda=0$}, unlike HVRB's \bm{$g\left(0\right)=0$}: \hspace{2mm} the delay behind the shock comes from \bm{$T$} instead\vspace{.5em}
+\item \bm{$G_T=0$}, \hspace{3mm} read \bm{$\left[\;\cdot\;\right]^{0}$} as 1 above \bm{$T_C$} and 0 at or below it: \hspace{2mm} a clock, once the lead shock is found\vspace{.5em}
+\item \textbf{\emph{The cascade: burning heats the cell, and a hotter cell burns faster}}
+\end{itemize}
+\end{tcolorbox}
+
+
+\clearpage
+
+\begin{tcolorbox}[breakable]
+\textbf{References:}\vspace{.5em}
+
+% Ledger: README.md in this folder.  One \bibitem per ledger row, same key.
+\begingroup
+\renewcommand{\section}[2]{}% suppress the "References" heading inside the box
+\begin{thebibliography}{9}
+\setlength{\itemsep}{0.25em}
+\bibitem{kittell2025sand}
+D.~E. Kittell, A.~R. Garcia, M.~L. Hobbs, W.~W. Erikson, K.~P. Ruggirello, J.~A. Brown, D.~L. Damm, J.~A. Stewart, P.~A. Sable, J.~W. LaJeunesse, E.~N. Harstad, L.~W. Tuttle, and A.~L. Brundage, ``A Short Survey of Current Reactive Burn Model Capabilities as of Mid-Year 2025,'' Sandia National Laboratories, SAND2025-09228 (July 2025), doi:10.2172/2585504.
+\end{thebibliography}
+\endgroup
+\end{tcolorbox}
+
+\end{document}

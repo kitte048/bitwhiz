@@ -265,8 +265,8 @@ away as the mesh refines. For Material X (a reaction zone of about 0.14 mm):
 D is 3 % fast at 25 zones/mm, 0.4 % at 50, 0.2 % at 100 and within 0.03 % from
 200 (about 28 cells across the reaction zone); the class deck, at 35, runs
 1.6 % ahead of RS from about 0.85 us. RS at order 2 gets D right from 25
-zones/mm. Measured by `tests/verification/study_av.py` (`doc/design/
-av_study.md`).
+zones/mm, so the example burn decks run it (from 1.4.0). Measured by
+`tests/verification/study_av.py` (`doc/design/av_study.md`).
 Example, the HVRB sheet's Material X set (`doc/design/materials.md`, phase 3):
 
     eos = mie_gruneisen_t
@@ -395,7 +395,9 @@ as above.
 
 **A detonation,** `me697_hvrb_2p00.deck`: the class problem with Material X
 burning (`burn = hvrb`, `products = ideal_gas`, the HVRB equation sheet's
-Material X constants; Material block, "Burning"). At 2.00 km/s the shock
+Material X constants; Material block, "Burning"), run by method RS at order
+2: a shock 1-2 cells sharp and a smooth burn behind it (`method = AV` to
+compare; Material block, "Resolution, with AV"). At 2.00 km/s the shock
 grows into a detonation about 3.5 mm into Material X and runs at D_CJ =
 7.5 km/s, a von Neumann spike at its front and the products' Taylor wave
 behind; the P t-x diagram and the pressure movie (35 frames) show it, and
@@ -407,9 +409,11 @@ u_fly` for the Pop plot's trend (1.75 and 1.50 km/s detonate later, 1.25 and
 **The same, by ThermalCascade,** `me697_tcas_2p00.deck`: Material X burning
 by `burn = thermalcascade` (Material block, "Burning"), each cell once its
 lead shock is marked, with an example set of constants chosen so that at 2.00
-km/s it detonates about 3.5 mm in, as HVRB's does. Its threshold is in T, so
-sharper: 1.75 km/s detonates about 6 mm in, 1.50 not within 10 mm, and at
-1.25 and below the shocked solid stays at or under TC and nothing burns.
+km/s it detonates about 3.5 mm in, as HVRB's does; RS at order 2, as above.
+Its threshold is in T, so sharper: 1.75 km/s detonates about 5.5 mm in; at
+1.50 a slow burn behind the shock never detonates within 10 mm; at 1.25 only
+the cell at the impact face burns (the impact's start-up heats it far over
+TC), and at 1.00 nothing burns.
 Watch `TK` rise with `XRN` in the tracer file: the cascade. Its detonation is
 HVRB's (the same products: within 0.1 % at 200 zones/mm,
 `tests/verification/study_tcas.py`). About 3 s (release build).

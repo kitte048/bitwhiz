@@ -24,8 +24,9 @@ JOSS case (sustained work, one model per release) and an SCCM 2027 study.
 
 **Sources** (`Class_Project/Literature/Burn_Models/`, outside the
 repository): D. E. Kittell et al., "A Short Survey of Current Reactive Burn
-Model Capabilities as of Mid-Year 2025", SAND2025-09228 (2025),
-doi:10.2172/2585504; L. G. Hill, B. Zimmermann and A. L. Nichols III, "On
+Model Capabilities as of Mid-Year 2025", Sandia National Laboratories,
+SAND2025-09228 (July 2025), doi:10.2172/2585504; L. G. Hill, B. Zimmermann
+and A. L. Nichols III, "On
 the burn topology of hot-spot-initiated reactions", AIP Conf. Proc. 1195,
 432 (2009), doi:10.1063/1.3295166; J. Farjas and P. Roura, Acta Mater. 54,
 5573 (2006), doi:10.1016/j.actamat.2006.07.037; R. Menikoff and M. S. Shaw,
@@ -627,6 +628,14 @@ burn, the default eos).
   0.5 to 0.7 % above D_CJ there: this deck's drive, as `av_study.md` found
   for HVRB. AV at 25 zones/mm is 2.7 % fast, HVRB's weak detonation again.
   Run distance 3.0 to 3.3 mm over the meshes (HVRB: 3.25 to 3.4).
+
+**The equation sheets** (Nov 7, frozen in `doc/` with 1.4.0, their sources in
+the course's `Equation_Sheets/`): `ThermalCascade_Eqns_v2` (the rate law as
+proposed and as repaired, the gate) and `LeadShock_Eqns_v1` (the Hugoniot
+function, 𝓗 = ½ q (V_0 - V) in a smeared shock), shared by the later P_S
+models. Student-facing, not class-project sheets (DK); the remaining boxes
+(the cascade at constant volume, one cycle, the rules on a mesh, what to
+expect) are for later versions.
 
 **The example deck** (`input/me697_tcas_2p00.deck`; HT = 3e-5, TC = 600 K,
 GT = 1.5, NS = 2, PR = 7 GPa): an example, not a calibration, chosen so

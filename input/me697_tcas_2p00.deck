@@ -53,11 +53,12 @@ Begin bitwhiz
  End Output
 
  Begin Solver
-  method = AV
-  BL     = 0.1                  # linear viscosity coefficient
-  BQ     = 2.0                  # quadratic viscosity coefficient
-                                # (the equation sheet's defaults; leave
-                                # them alone unless you are studying q)
+  method = RS                   # the Riemann solver: a shock 1-2 cells
+  order  = 2                    # sharp, and a smooth burn behind it
+                                # (second order, MUSCL-Hancock)
+  BL     = 0.1                  # method = AV's linear and quadratic
+  BQ     = 2.0                  # viscosity coefficients (the equation
+                                # sheet's defaults); RS ignores them
   CFL    = 0.6
  End Solver
 
@@ -148,12 +149,14 @@ End bitwhiz
 Notes (ignored by the parser):
 - Velocity sweep: change "define u_fly" only. This model's threshold is
   in T, so it is sharper than HVRB's (measured at this deck's 35
-  zones/mm, AV): 2.00 km/s detonates about 3.5 mm in, 1.75 about 6 mm;
-  at 1.50 the first cell reacts only at 1.27 us, and nothing detonates
-  within 10 mm; at 1.25 and below the shocked solid stays at or under
-  TC and nothing burns at all. (HVRB: 3.5, 5.5 and 7.5 mm at 2.00, 1.75
-  and 1.50.) Calibration (step 10) will choose HT, TC, GT and NS to
-  follow HVRB's Pop plot.
+  zones/mm, RS order 2): 2.00 km/s detonates about 3.5 mm in, 1.75 about
+  5.5 mm; at 1.50 the shocked solid is just over TC (about 710 K at 5
+  mm), and a slow burn behind the shock (lam about 0.03 at 5 mm by 3 us)
+  never detonates within 10 mm; at 1.25 only the cell at the impact face
+  burns (the impact's start-up heats it far over TC), and at 1.00 nothing
+  burns. (HVRB, this deck's twin: 3.5, 5.0 and 7.5 mm at 2.00, 1.75 and
+  1.50.) Calibration (step 10) will choose HT, TC, GT and NS to follow
+  HVRB's Pop plot.
 - Each tracer's XRN column (the tracer file) is its cell's extent of
   reaction, lam, 0 to 1; TK its temperature (in Material X). TK rises as
   lam does: that is the cascade.
@@ -161,8 +164,11 @@ Notes (ignored by the parser):
   detector, Menikoff and Shaw 2010; doc/design/burn_models.md, step 4).
   A smooth ramp is marked too, at its foot, with P_s near 0: then the
   rate is HT (T - TC)^GT, and only T decides (the design note, step 5).
-- Try method = RS (order 2, in the Solver block), or GT = 0: above TC the
-  rate is then HT (1 + P_s/PR)^NS, a clock (input/README.md).
+- Method RS at order 2 (the Solver block), as of 1.4.0: a sharp shock
+  and a smooth burn behind it. Try method = AV to compare: its shock is
+  smeared over a few cells, and at 1.50 km/s its shocked solid stays
+  nearer TC (about 590 K at 5 mm), so almost nothing burns. Or GT = 0:
+  above TC the rate is then HT (1 + P_s/PR)^NS, a clock (input/README.md).
 - "Cells burnt out" on the screen counts lam = 1 exactly, which this
   model's exact step reaches only when 1 - lam rounds away: a detonated
   cell is at lam = 1 to round-off whether or not it is counted.

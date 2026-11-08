@@ -50,8 +50,9 @@ module thermalcascade
 !
 !  References:
 !    D. E. Kittell et al., "A Short Survey of Current Reactive Burn
-!    Model Capabilities as of Mid-Year 2025", SAND2025-09228, Sandia
-!    National Laboratories (2025), doi:10.2172/2585504, §5.2.3.
+!    Model Capabilities as of Mid-Year 2025", Sandia National
+!    Laboratories, SAND2025-09228 (July 2025), doi:10.2172/2585504,
+!    §5.2.3.
 !    R. Menikoff and M. S. Shaw, EPJ Web Conf. 10, 00003 (2010), §4.
 !    doc/design/burn_models.md (approved 11/06/26), "ThermalCascade",
 !    and "As built: step 5"; checked against 50-digit values (tests/

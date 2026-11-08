@@ -71,8 +71,9 @@ DECK_RL = os.path.join(ROOT, 'input', 'ramp_linear.deck')
 DECK_FS = os.path.join(HERE, 'av_study', 'fs_square.deck')
 DECK_BR = os.path.join(HERE, 'av_study', 'burn_release.deck')
 P_CJ, P_VN, D_CJ = 24.99994, 35.692, 7.4999904   # Material X (the sheet)
-METHODS = {'AV': [], 'RS2': [('method', 'RS', 'Solver'),
-                             ('order', '2', 'Solver')]}
+METHODS = {'AV': [('method', 'AV', 'Solver')],      # set, not assumed: the
+           'RS2': [('method', 'RS', 'Solver'),       # example decks run RS
+                   ('order', '2', 'Solver')]}       # order 2 from 1.4.0
 
 #*** Tolerances (regression guards, set Nov 5 from these runs).
 D_RS2   = 5.0e-4        # RS2's D within 0.05 % of D_CJ, every mesh

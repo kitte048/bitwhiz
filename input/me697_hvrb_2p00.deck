@@ -47,11 +47,12 @@ Begin bitwhiz
  End Output
 
  Begin Solver
-  method = AV
-  BL     = 0.1                  # linear viscosity coefficient
-  BQ     = 2.0                  # quadratic viscosity coefficient
-                                # (the equation sheet's defaults; leave
-                                # them alone unless you are studying q)
+  method = RS                   # the Riemann solver: a shock 1-2 cells
+  order  = 2                    # sharp, and a smooth burn behind it
+                                # (second order, MUSCL-Hancock)
+  BL     = 0.1                  # method = AV's linear and quadratic
+  BQ     = 2.0                  # viscosity coefficients (the equation
+                                # sheet's defaults); RS ignores them
   CFL    = 0.6
  End Solver
 
@@ -145,13 +146,16 @@ Notes (ignored by the parser):
   "detonated or not" from the shock's path, not the PDV's amplitude.
 - Each tracer's XRN column (the tracer file) is its cell's extent of
   reaction, lam, 0 to 1; TK its temperature (in Material X).
-- Try method = RS (order 2, in the Solver block): the reaction is then
-  also a source in the predictor's pressure. Or ZR = 0, MR = 1, XR = 1.5:
-  a burn on a clock, the D^2 law (input/README.md).
+- Method RS at order 2 (the Solver block), as of 1.4.0: the shock is 1-2
+  cells sharp and the burn behind it smooth, and the reaction is also a
+  source in the predictor's pressure. Try method = AV to compare (below).
+  Or ZR = 0, MR = 1, XR = 1.5: a burn on a clock, the D^2 law
+  (input/README.md).
 - Checked against the gold-standard reactive data (G2-G5) by
   tests/verification/compare_hvrb.py, at 100 zones/mm; this deck's 35
   zones/mm puts about 5 cells across the reaction zone (the sheet).
-- With AV that is coarse: from about 0.85 us the front runs ahead of RS's,
+- With method = AV, 35 zones/mm is coarse: from about 0.85 us the front
+  runs ahead of RS's,
   and a plateau below P_CJ opens behind the spike, a weak detonation that
   goes away by 200 zones/mm (doc/design/av_study.md). Compare the two
   methods' pressure movies.
