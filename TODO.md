@@ -58,8 +58,11 @@ Medium term, the reactive physics:
    `study_leadshock.py`) done Nov 6, HVRB bit for bit; step 5,
    ThermalCascade (`burn = thermalcascade`, `study_tcas.py`; a smooth
    ramp's foot opens the gate, P_s -> 0: DK's option (a)), Nov 7: 1.4.0.
-   Next, step 6, FlashFire. Then JWL products, the 25 zones/mm
-   difference (section 3).
+   Next (DK, Nov 8): 1.5.0 is the manual (`doc/design/manual.md`), with
+   the equations of all six burn models, the four not yet built marked
+   under development; then step 6, FlashFire, in 1.6.0. Then JWL
+   products, the 25 zones/mm difference (section 3). The v1.4.0 review's
+   open findings are in section 8 (`audits/README.md` tracks them).
 10. With it or after: a broken cell's temperature (section 5; a burning
     cell's done in 1.3.3); strength, the spall "knocking" (section 6).
 
@@ -253,7 +256,8 @@ bitwhiz against G1 (Nov 2, 2026): `inert_gauges/g1_inert.deck`, run and
 checked by `tests/verification/compare_g1.py` at the five velocities, AV, 100
 zones/mm: 25 checks, all pass. The first shock at 1 mm (P, u, rho) within
 0.001 % of the exact impedance match; arrivals within 5 ns; energy drift
-0.0011-0.0017 %, half the reference's. Results in `inert_gauges/README.md`.
+0.0011-0.0017 %, half the reference's (0.00000 % since 1.3.2: AV's
+free-surface fix, section 8). Results in `inert_gauges/README.md`.
 
 - [ ] **The arrival offset:** bitwhiz's arrivals are 0 to 4.4 ns later than
       the reference's at every gauge and velocity, never earlier (within
@@ -617,6 +621,42 @@ After phase 4, the burn models (DK, Nov 6).
       traps; the NaN constants are now bit patterns in `bit_mod`. Release
       builds were never affected; gfortran 8.4 and 13 give the same bits
       on every deck.
+
+**From the v1.4.0 review** (Claude Fable 5.1, Nov 7-8, 2026;
+`audits/v1.4.0_fable-5.1/`, with the finding tracker in
+`audits/README.md`). Its documentation findings F-01, F-03 and F-08 were
+answered in 1.4.1's docs; F-02 goes to the manual. The rest, for 1.5.0 or
+later:
+- [ ] **F-04, ThermalCascade's run distance against mesh:** 3.30, 3.10,
+      3.05, 3.00 mm (AV) at 25 to 200 zones/mm, still moving; run
+      `study_tcas.py`'s E2 to 400 zones/mm and report the converged value.
+      The rate is held at the step's start (T^n, P_s), first order in dt:
+      say so in the manual; a predictor (midpoint) temperature, maybe,
+      later.
+- [ ] **F-05, lam never 1 in ThermalCascade:** its exact step only
+      approaches 1, so the run log's "Cells burnt out" (`maincode.f95`,
+      `count(lam >= one)`) reads about 0 (1 of 350 in the example, by
+      rounding). Count burn-out the same way for every model (lam >= 1 -
+      1e-12, or report the cells above 0.999); the screen changes, the
+      results do not. And (b): with lam < 1 the solid's EOS is always
+      evaluated, so a reactant with S2 >= 0 compressed past its Hugoniot's
+      reach would stop the run where HVRB would not; a cutoff in 1 - lam,
+      made on evidence, when such a reactant burns (`materials.md`).
+- [ ] **F-06, implicit interfaces:** 23 calls to external procedures
+      (`bmpmaker`, `cmap_*`, `apply_colormap`, `r8_uniform_01`) that the
+      compiler can not check, the warning silenced in the `Makefile`; give
+      them explicit interfaces (a module, or interface blocks).
+- [ ] **F-07, history for reviewers and golden hashes:** give a future
+      review the full history (the v1.4.0 review had a one-commit copy, so
+      "bit for bit against the commit before" could not be rechecked from
+      it), and add golden-output hashes for a few HVRB and ThermalCascade
+      decks to `make test`, so bit for bit is checked, not only claimed.
+- [ ] **F-09, a shadowed name:** `heartbeat_line` and `finish_tracers`
+      (`maincode.f95`) declare a local `tk` (clock ticks) that hides the
+      temperature array `tk`; rename it (`ticks`). No effect on results.
+- [ ] **F-10 with F-03, deck checks:** `G0` and `S1` take any real; check
+      S1 > 0 (or warn), and stop or warn on `XR` above 25, where
+      `hvrb_lambda`'s series loses digits (`input/README.md`).
 
 ## 9. Publication: JOSS and SCCM 2027
 - [x] **Public on GitHub, Nov 5, 2026.** JOSS's six months of public

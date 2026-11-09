@@ -1,7 +1,7 @@
-# The bitwhiz manual (proposed Nov 8, 2026)
+# The bitwhiz manual (approved Nov 8, 2026)
 
-Status: **proposed.** Decisions marked **DK** are David's (Nov 8, 2026);
-the rest are proposals for his approval.
+Status: **approved** (DK, Nov 8, 2026). Decisions marked **DK** are
+David's; the rest were proposals, approved with the note.
 
 ## The decision (DK)
 
@@ -14,6 +14,11 @@ the rest are proposals for his approval.
 - The course's equation sheets go back to the course folders. The repository
   stops carrying frozen copies of them in `doc/` (when: see "The equation
   sheets leave `doc/`" below).
+- Release 1.5.0 is the manual's. It writes up the equations of all six burn
+  models in `burn_models.md`: HVRB and ThermalCascade (with the lead shock)
+  as built, and FlashFire, StochasticIgnite, HALO and CLAUDE from the design
+  note, each marked **under development**. FlashFire, the next model built,
+  moves to 1.6.0.
 
 ## Why
 
@@ -95,8 +100,9 @@ Two rules follow:
 6. The burning cell: the mixture closure, the solid held where it pulls,
    how a burn model plugs in (the burn table)
 7. Burn models, a section each: HVRB (absorbs the HVRB sheet), the lead
-   shock, ThermalCascade (absorbs both sheets; closes F-02), then one per
-   new model
+   shock, ThermalCascade (absorbs both sheets; closes F-02); then FlashFire,
+   StochasticIgnite, HALO and CLAUDE, under development (DK), each section
+   completed as its model is built
 8. Verification: the standard (bit for bit, 50 digits, convergence), what
    each test and study shows, pointing to `tests/` and the studies for the
    numbers
@@ -109,7 +115,7 @@ keys, references, version history.
 | | What | With |
 |---|---|---|
 | M0 | this note approved | now |
-| M1 | the skeleton builds (`make manual`, `manual_check.py`); chapters 6 and 7 complete (the burn models, the newest and least documented) | 1.5.0 |
+| M1 | the skeleton builds (`make manual`, `manual_check.py`); chapters 6 and 7 complete, chapter 7 with all six burn models (four under development) | 1.5.0 (DK) |
 | M2 | chapters 2 to 5 complete; the frozen sheets leave `doc/` (below) | a release after 1.5.0 |
 | M3 | chapters 1 and 8 and the appendices: manual 1.0 | before the JOSS submission |
 

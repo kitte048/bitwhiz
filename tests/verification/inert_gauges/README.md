@@ -55,8 +55,9 @@ TK.n (K), KMPS.n (km/s), GPA.n (GPa).
   velocities (AV, 25 checks, all pass): the first shock at 1 mm (P, u, rho)
   within 0.001 % of the exact impedance match; arrivals 1-9 mm and at the PDV
   node 0 to 4.4 ns after the reference's; energy drift 0.0011-0.0017 %
-  (the reference: 0.0021-0.0033 %); the Ta reshock at 1 mm within 2.2 ns and
-  the PDV's first plateau the same to 4 digits.
+  (the reference: 0.0021-0.0033 %; bitwhiz 0.00000 % since 1.3.2, when
+  method AV stopped leaking energy at a free surface); the Ta reshock at
+  1 mm within 2.2 ns and the PDV's first plateau the same to 4 digits.
 - **Temperatures** (Nov 3, 2026, with `eos = mie_gruneisen_t` in
   `g1_inert.deck`): bitwhiz is checked against its own standard (exact
   values from `../gold.py`; `doc/design/materials.md`, "Temperature

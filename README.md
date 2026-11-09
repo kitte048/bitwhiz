@@ -31,7 +31,8 @@ make test                                          # every test, about 4 minutes
 |---|---|
 | `input/README.md` | the input deck: its syntax, every block and key, and the files a run writes |
 | `doc/` | the equation sheets the code follows (frozen copies) |
-| `doc/design/` | design notes and studies: velocity profiles, materials and the burn, five more burn models (ThermalCascade built, four to come), the lead shock, method AV |
+| `doc/design/` | design notes and studies: velocity profiles, materials and the burn, five more burn models (ThermalCascade built, four to come), the lead shock, method AV, the manual to come (1.5.0) |
+| `audits/` | independent reviews of releases, archived as delivered, and what became of each finding |
 | `tests/verification/README.md` | the reference data, and the scripts that compare bitwhiz with it |
 | `CONTRIBUTING.md`, `RELEASING.md` | reporting issues and contributing; how a version is released |
 
@@ -252,6 +253,7 @@ the export, nanoHUB's gfortran 8.3) is in `RELEASING.md`.
 | `bin` | the executables: `bitwhiz` (debug), `bitwhiz_release` (optimized) |
 | `build/release` | the release build's objects and module files (made by `make release`, not in git) |
 | `doc` | the equation sheets the code is checked against, frozen copies (`doc/README.md`) |
+| `audits` | independent reviews of releases and their artifacts (`audits/README.md`) |
 
 ## Citing
 If you use bitwhiz, cite the version you used: `CITATION.cff` has the

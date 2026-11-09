@@ -376,6 +376,27 @@ across a shock against the exact entropy jump on the Hugoniot. Risk to
 measure: round-off accumulating into w in smooth flow (max(·, 0) keeps
 every bit of noise).
 
+**Open, for CLAUDE's write-up (the v1.4.0 review, F-12, Nov 8).** The
+review read this section and left three questions; none is decided here,
+and the manual's CLAUDE section (1.5.0, under development) must settle
+them or say they are open:
+1. **What w is.** w += max(Δe + P Δv, 0) sums T ds, dissipated energy
+   (kJ/g, W0's unit), not entropy; "the cell's entropy production" above
+   names the wrong one. Either serves as the activation measure, and both
+   desensitize a double shock: pick one and say it.
+2. **Does w converge under RS?** With AV the sum converges to the exact
+   integral along the shock path. RS captures a shock in one or two cells
+   and a few steps whatever the mesh, so a left-point sum (P^n Δv) is off
+   by a fixed fraction and does not converge with refinement. A
+   trapezoidal P, and the planned test (w across a shock against the
+   exact jump) run with both methods on several meshes, before "w
+   converges with the mesh" is claimed.
+3. **Per initial or per current volume.** NMAX and the moments M_j: per
+   unit initial volume (the Lagrangian cell's mass) or current volume?
+   A cell compressed 1.4 to 2 times needs the factor rho/rho_0 one way or
+   the other. Also: centers added at the end of a step make nucleation's
+   timing first order in Δt (growth's update is exact); say so.
+
 ## Verification, without reference data (DK)
 
 None of the five new models has independent reference data (HVRB had G2-G5).

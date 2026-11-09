@@ -217,15 +217,19 @@ ideal_gas`; HVRB is usually paired with a JWL or tabular products EOS, and
 the ideal gas is the first one here: the deck says which, as `products` has
 no default). `ZR = 0` is a burn on a clock: above PI, `Phi = 1/TAU0` and PR
 has no effect; with `MR = 1` it is a d^n law, lam = 1 - (1 - t/t_b)^(3/n) with
-`XR = 3/n` and burn-out at `t_b = XR TAU0` (the D^2 law: `XR = 1.5`). A cell
-that has started to burn holds no tension (P >= 0: the gas fills the cracks of
-a reacting solid) and never spalls; a cell at lam = 0 is the inert material,
-bit for bit. Burning changes lam at fixed rho and e, so energy is conserved
-(the heartbeat's energy error is the check). The tracer file gets `XRN`
-(lam) per tracer, the history file an `XRN` variable, and the run log the
-first cell to react and the cells burnt out. Both methods: with RS at order
-2 the reaction is also a source in the predictor's pressure (`doc/design/
-materials.md`, phase 3).
+`XR = 3/n` and burn-out at `t_b = XR TAU0` (the D^2 law: `XR = 1.5`). `XR` is
+a few in practice; lam is right to round-off (7e-16 relative or better,
+against 50 digits) for `XR` up to 25, and above that the series it uses for
+small phi loses digits: 1e-14 at `XR = 30`, 7e-12 at 40, 7e-6 at 80 (the
+v1.4.0 review's F-03). The deck does not stop a large `XR` yet (`TODO.md`). A
+cell that has started to burn holds no tension (P >= 0: the gas fills the
+cracks of a reacting solid) and never spalls; a cell at lam = 0 is the inert
+material, bit for bit. Burning changes lam at fixed rho and e, so energy is
+conserved (the heartbeat's energy error is the check). The tracer file gets
+`XRN` (lam) per tracer, the history file an `XRN` variable, and the run log
+the first cell to react and the cells burnt out. Both methods: with RS at
+order 2 the reaction is also a source in the predictor's pressure
+(`doc/design/materials.md`, phase 3).
 
 **Burning (`burn = thermalcascade`).** ThermalCascade, proposed by ChatGPT
 4o-mini in SAND2025-09228 (§5.2.3) and repaired where it can not run as

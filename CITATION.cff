@@ -6,9 +6,9 @@ authors:
   - family-names: Kittell
     given-names: David E.
     orcid: "https://orcid.org/0000-0002-7065-6780"
-version: 1.4.0
+version: 1.4.1
 doi: 10.5281/zenodo.23999297
-date-released: 2026-11-07
+date-released: 2026-11-09
 license: Apache-2.0
 repository-code: "https://github.com/kitte048/bitwhiz"
 url: "https://nanohub.org/tools/bitwhiz"

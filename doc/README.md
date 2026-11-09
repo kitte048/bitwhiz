@@ -11,7 +11,7 @@ file with a higher version number.
 
 | Sheet | Method | Status | Checked against |
 |---|---|---|---|
-| `Hydrocode_Eqns_v4` (`.pdf`, `.tex`) | AV, artificial viscosity (`method = AV`) | frozen, Oct 19, 2026 | bitwhiz `311bf6d` (solver source unchanged through `12e5d9f`) |
+| `Hydrocode_Eqns_v4` (`.pdf`, `.tex`) | AV, artificial viscosity (`method = AV`) | frozen, Oct 19, 2026 | bitwhiz `311bf6d` (solver source unchanged through `12e5d9f`); since 1.3.2 (`66f910a`) the code departs from the sheet at a free surface (below, "Where the code has moved past a sheet") |
 | `Hydrocode_RS_Eqns_v4` (`.pdf`, `.tex`) | RS, Riemann solver (`method = RS`, `order = 1` or `2`) | frozen, Oct 20, 2026 | bitwhiz `f16485c` |
 | `HVRB_Eqns_v8` (`.pdf`, `.tex`) | HVRB reactive burn: rate law, Mie-Grüneisen reactant, ideal-gas products, density-temperature closure (`burn = hvrb`) | frozen, Nov 4, 2026, ahead of the code | bitwhiz `eeb3cf7` (1.3.0), and the gold-standard reactive data G2-G5 (`tests/verification/compare_hvrb.py`); the solid held where it first pulls (1.3.3) goes beyond the sheet (`design/materials.md`) |
 | `ThermalCascade_Eqns_v2` (`.pdf`, `.tex`) | ThermalCascade reactive burn: the rate law as proposed and as repaired, gated by the lead shock (`burn = thermalcascade`); its products and closure are HVRB's | frozen, Nov 7, 2026 | bitwhiz `58a5392` (1.4.0's code): the rate and its repairs in `src/modules/tcas_mod.f95`, the gate in `burn_mod.f95` (`cell_burn`) |
@@ -61,3 +61,22 @@ titled **bitwhiz:** say what the code does beyond them; the sheets headed
 **bitwhiz:** are the code's own throughout. The last box, "Where This Lives in
 the Code", maps each step to its routine and each symbol to its database slot.
 The code's comments cite the sheet by step ("equation sheet, Step 1").
+
+## Where the code has moved past a sheet
+A frozen sheet is not edited, so when the code changes what a sheet says it
+does, the change is recorded here.
+
+- **`Hydrocode_Eqns_v4` (AV), the free surface.** The Boundary Conditions box
+  says that in the energy update the end face's stress is half the end
+  cell's q, "and what bitwhiz does". Since 1.3.2 (`66f910a`, Nov 5, 2026) it
+  is not: `cell_step` (`src/modules/av_mod.f95`) gives an end face no q in
+  the energy update, since the void beyond a free surface does no work.
+  With half the end cell's q there, AV lost total energy each time a shock
+  reached a free surface (-6.8e-4 on `ramp_linear` at 25 zones/mm, up to
+  -9.6e-3 with a burn at the surface); without it, AV conserves total energy
+  to round-off, as RS does (`TODO.md`, section 8). The momentum update
+  (Step 1) is the sheet's, unchanged: the end node still takes the end
+  cell's full P + q. Found by the v1.4.0 review (`audits/`, F-01).
+- **`HVRB_Eqns_v8`, the burning solid in tension.** A partly burnt cell's
+  solid is held where it first pulls (1.3.3): beyond the sheet, as its row
+  above says (`design/materials.md`).

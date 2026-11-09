@@ -708,7 +708,9 @@ arrivals x1 to x9 and the PDV arrival within 5 ns of the gold standard for
 AV, RS order 2 and RS order 1 at 2.00 km/s, and for AV and RS order 2 at
 1.50 km/s (within 3.9 ns); peak pressures within a few percent; every
 Material X cell burns out. Energy: RS conserves it to round-off (2e-15), AV
-to 5e-5 or better at 100 zones/mm.
+to 5e-5 or better at 100 zones/mm. (Later: since 1.3.2, AV conserves it to
+round-off too, the end face's q gone from the energy update: `doc/README.md`,
+"Where the code has moved past a sheet"; the v1.4.0 review's F-08.)
 
 **Tests:** `ok_hvrb_rs` (RS order 2; also an OpenMP and a release test
 deck) and `ok_hvrb_inert_rs` (the inert limit with RS: ok_temperature_rs's
@@ -729,7 +731,7 @@ README suggests; 36 checks, all pass:
 |---|---|---|---|
 | G2 | run distance, 1.00 / 1.25 / 1.50 / 1.75 / 2.00 km/s | none / none / 7.5 / 5.5 / 3.5 mm | the same |
 | G2 | arrivals 1-9 mm and PDV, every velocity | within -0.1 to +4.8 ns | |
-| G2 | energy drift | 0.0006-0.0017 % | 0.0028-0.0055 % |
+| G2 | energy drift | 0.0006-0.0017 % (0.00000 % since 1.3.2: below the table) | 0.0028-0.0055 % |
 | G2 | lam at 9 mm, 3.0 us, 1.00 km/s (no detonation) | 0.035 | 0.034 |
 | G3 | run distance, 1.25 / 1.50 / 1.75 / 2.00 / 2.25 km/s | 12.5 / 7.5 / 4.75 / 3.25 / 2.38 mm | 12.5 / 7.5 / 4.75 / 3.75 / 2.38 |
 | G3 | arrivals on the reference's tracers | within -0.2 to +4.8 ns | |
@@ -737,6 +739,11 @@ README suggests; 36 checks, all pass:
 | G4 | D over 10-20 / 10-15 / 15-20 mm (D_CJ 7.5000) | 7.5150 / 7.5230 / 7.5118 km/s | 7.505 / 7.505 / 7.506 |
 | G5 | PDV arrival, 25 / 50 / 100 / 200 / 400 zones/mm | 1.5061 / 1.5209 / 1.5202 / 1.5202 / 1.5201 us | 1.5194 / 1.5201 / 1.5203 / 1.5201 / 1.5201 |
 
+- **Energy drift, later:** the 0.0006-0.0017 % above is AV's leak at a free
+  surface, fixed in 1.3.2 (`doc/README.md`, "Where the code has moved past
+  a sheet"). Since then the same script gives 0.00000 % at every velocity
+  (1.4.0, `audits/v1.4.0_fable-5.1/`, `compare_hvrb_av.log`; the v1.4.0
+  review's F-08).
 - **Run distance** is a first crossing on tracer intervals, so it moves in
   steps of the spacing: G3 at 2.00 km/s is one step (0.5 mm) early, within
   the data's tolerance, and that one point moves the Pop plot's fit.
