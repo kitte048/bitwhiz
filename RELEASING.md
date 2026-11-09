@@ -54,6 +54,21 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   tool fresh and test it: Run, Redraw pictures only, the movie (it plays,
   and Files lists the .mp4, not its frames), an error on purpose, the
   history plot. Approve it on the status page when it works.
+- **GitHub release and Zenodo.** A pushed tag is not a release: on GitHub,
+  Releases, "Draft a new release" (or Tags, the tag's menu, "Create release"),
+  choose the tag, title it "bitwhiz X.Y.Z: a few words" (e.g. "bitwhiz 1.4.1:
+  documentation and audit"), paste the release notes, and publish. Zenodo
+  archives each published release (not a bare tag) within minutes, with its
+  metadata from `CITATION.cff`, so bump `version` and `date-released` there
+  before tagging. Check the new version on Zenodo (title, authors, version,
+  license) and add its DOI below. doi:10.5281/zenodo.23999297 stands for all
+  versions and resolves to the newest; the archive starts at 1.3.4:
+
+  | Version | Zenodo DOI | Archived |
+  |---|---|---|
+  | 1.3.4 | 10.5281/zenodo.23999298 | Nov 6, 2026 |
+  | 1.4.0 | 10.5281/zenodo.24048196 | Nov 8, 2026 |
+  | 1.4.1 | 10.5281/zenodo.24092238 | Nov 9, 2026 |
 
 **nanoHUB's compiler is gfortran 8.3** (Debian 10). Keep the code to what
 gfortran 8 accepts; Fortran 2018 features it lacks, and their replacements
