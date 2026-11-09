@@ -1,0 +1,71 @@
+study_av.py: /home/claude/audit/repo/bitwhiz/bin/bitwhiz_release
+  52 runs in /tmp/study_av_x0cv9q_1, 2 at a time
+A: G4, 3.00 km/s; D over 10-20 mm, the structure at 18 mm against RS2 at 400 zones/mm
+         meth  z/mm    D km/s  D-D_CJ %   deficit GPa  width mm  spike GPa
+         AV      25    7.7268     3.024          5.00     1.397      39.03
+         AV      50    7.5281     0.375          2.23     0.333      38.11
+         AV     100    7.5156     0.208          1.85     0.204      37.76
+         AV     200    7.5020     0.027          0.75     0.008      37.16
+         AV     400    7.5015     0.020          0.35     0.000      36.95
+         RS2     25    7.5000    -0.000          0.06     0.000      38.53
+         RS2     50    7.5012     0.017          0.01     0.000      38.01
+         RS2    100    7.5015     0.020          0.01     0.000      38.60
+         RS2    200    7.5010     0.014          0.02     0.000      37.87
+         RS2    400    7.5016     0.021          0.00     0.000      36.86
+   pass  G4: RS2's D within 0.05 % of D_CJ at every mesh
+   pass  G4: AV's D falls toward D_CJ as the mesh refines, within 0.05 % from 200 zones/mm up
+   pass  G4: AV's plateau below RS2 narrows as the mesh refines, at 200 zones/mm 0.008 mm, 0.5 % of its width at 25
+A: the class deck; D over 5-9.6 mm, the structure at 9 mm against RS2 at 400 zones/mm
+         meth  z/mm    D km/s  D-D_CJ %   deficit GPa  width mm  spike GPa
+         AV      25    7.7267     3.022          6.59     0.287      40.08
+         AV      50    7.5599     0.799          2.05     0.048      38.93
+         AV     100    7.5535     0.713          1.24     0.024      37.91
+         AV     200    7.5525     0.701          0.57     0.008      37.40
+         AV     400    7.5521     0.695          0.22     0.000      37.35
+         RS2     25    7.5517     0.689          0.00     0.000      38.74
+         RS2     50    7.5531     0.708         -0.00     0.000      37.80
+         RS2    100    7.5516     0.688          0.00     0.000      37.65
+         RS2    200    7.5526     0.702          0.01     0.000      37.63
+         RS2    400    7.5522     0.697          0.00     0.000      37.58
+B: the square shock, Al on Al, u_p = 1.00 km/s: exact u_fs = 2.0062468 km/s
+         meth  z/mm      peak  peak err %  plateau err %  ns above +1 %  integral mm
+         AV      25    2.1268        6.01        -0.0053          15.66     1.39e-03
+         AV      50    2.1304        6.19        -0.0031           7.83     6.92e-04
+         AV     100    2.1328        6.31        -0.0009           4.57     3.51e-04
+         AV     200    2.1251        5.92        -0.0003           1.96     1.74e-04
+         AV     400    2.1246        5.90        -0.0001           0.98     8.68e-05
+         AV     800    2.1250        5.92        -0.0000           0.49     4.34e-05
+         AV    1600    2.1269        6.02        -0.0000           0.24     2.17e-05
+   pass  AV: the plateau within 0.01 % of exact from 100 zones/mm up
+   pass  AV: the overshoot's integral halves with each refinement (ratios 0.49 to 0.51)
+         RS2     25    2.0140        0.39         0.0089           0.00     2.63e-04
+         RS2     50    2.0138        0.38         0.0026           0.00     1.27e-04
+         RS2    100    2.0136        0.37         0.0008           0.00     6.27e-05
+         RS2    200    2.0135        0.36         0.0002           0.00     3.13e-05
+         RS2    400    2.0137        0.37         0.0001           0.00     1.57e-05
+         RS2    800    2.0135        0.36         0.0000           0.00     7.90e-06
+         RS2   1600    2.0136        0.37         0.0000           0.00     3.99e-06
+   pass  RS2: the plateau within 0.01 % of exact from 100 zones/mm up
+   pass  RS2: the overshoot's integral halves with each refinement (ratios 0.48 to 0.51)
+B: input/ramp_linear.deck, the free surface's peak (km/s; every cycle), reported
+         AV   25: 2.2825, 100: 2.2946, 400: 2.2962, 1600: 2.2985
+         RS2  25: 2.0889, 100: 2.1126, 400: 2.1187, 1600: 2.1202
+C: Material X at 1.00 km/s, released at a free surface
+         meth  z/mm   T min K  guard steps  the coldest cell
+         AV      25   -1464.5         1273  the end cell, t = 8.00 us, lam 2.6e-03
+         AV      50    -967.5         2575  the end cell, t = 8.00 us, lam 8.8e-04
+         AV     100    -953.0         5189  the end cell, t = 8.00 us, lam 3.2e-04
+         AV     200   -1092.3        10426  the end cell, t = 8.00 us, lam 1.4e-04
+         AV     400   -1186.4        20913  the end cell, t = 8.00 us, lam 5.8e-05
+         RS2     25       9.4            0  cell 247 of 250, t = 8.00 us, lam 1.0e+00
+         RS2     50       8.6            0  cell 495 of 500, t = 8.00 us, lam 9.7e-01
+         RS2    100       8.8            0  cell 989 of 1000, t = 8.00 us, lam 9.8e-01
+         RS2    200       8.8            0  cell 1978 of 2000, t = 8.00 us, lam 9.7e-01
+         RS2    400       8.6            0  cell 3957 of 4000, t = 8.00 us, lam 9.7e-01
+   pass  RS2: above 0 K with no guard, every mesh
+   pass  AV: the coldest cell is the free-surface end cell, every mesh (its T reported)
+study_av.py: 9 passed, 0 failed
+
+real	12m49.189s
+user	24m55.464s
+sys	0m9.845s

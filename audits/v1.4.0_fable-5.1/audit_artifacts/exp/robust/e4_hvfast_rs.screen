@@ -1,0 +1,137 @@
+ ========================================================
+        ---==>>    __    _ __           __    _
+         --==>>   / /_  (_) /__      __/ /_  (_)___
+          -==>>  / __ \/ / __/ | /| / / __ \/ /_  /
+         --==>> / /_/ / / /_ | |/ |/ / / / / / / /_
+        ---==>>/_.___/_/\__/ |__/|__/_/ /_/_/ /___/
+ --------------------------------------------------------
+         a one-dimensional Lagrangian hydrocode
+ --------------------------------------------------------
+    u |                         _______________________
+      |                ________/    second shock
+      |               /
+      |   ___________/   first shock
+      |__/____________________________________________ t
+ --------------------------------------------------------
+   version    : v1.4.0
+   built      : 2026-11-07 22:35:31 -0700
+   compiler   : GCC version 13.3.0
+   build      : debug (-O0, -fcheck), OpenMP
+   run start  : 2026-11-07 23:12:34 -0700
+ ========================================================
+  2. Input deck: e4_hvfast_rs.deck
+ --------------------------------------------------------
+   Title                               : e4_hvfast_rs
+   Resolved deck                       : e4_hvfast_rs.resolved (every default filled in)
+ ========================================================
+  3. OpenMP settings
+ --------------------------------------------------------
+   OpenMP compiled in                  : yes
+   Threads requested (deck)            :        1
+   Processors available                :        2
+   Threads in the team                 :        1
+   Team size seen inside region        :        1
+   Threads that reported in            :        1
+   SINGLE block ran on thread          :        0
+ ========================================================
+  4. Output files
+ --------------------------------------------------------
+   Heartbeat file                      : e4_hvfast_rs.heartbeat
+   Tracer file                         : e4_hvfast_rs.tracers.csv
+   History file                        : e4_hvfast_rs.hist
+ ========================================================
+  5. Data arrays
+ --------------------------------------------------------
+   Real cells (kmax)                   :      240
+   Database places (imax)              :      483
+   Database slots (nvar)               :       27  (0.1 MB)
+   Cells carrying T                    :      200  (eos = mie_gruneisen_t)
+ --------------------------------------------------------
+   layer         zones    dx (mm)  x left (mm)  u (km/s)
+   Al               40 1.0000E-01     0.000000    2.0000
+   MatX            100 1.0000E-01     4.000000    0.0000
+   PMMA            100 1.0000E-01    14.000000    0.0000
+ --------------------------------------------------------
+   Impact face Al:MatX at x =  4.000000 mm
+     u =  1.2694 km/s, weighted from  2.0000 |  0.0000
+ ========================================================
+  6. Initialization
+ --------------------------------------------------------
+   Time (us)                           :        0.000000
+   Cycle                               :        0
+   Total mass (g/cm^3*mm)              :  3.89900000E+01
+   x-momentum (g/cm^3*mm*km/s)         :  2.22400000E+01
+   Total energy (GPa*mm)               :  2.22400000E+01
+   First time step (us)                :  1.13207547E-02
+   ... set by cell                     :       23
+   Setup checks                        : all passed
+ ========================================================
+  7. Simulation
+ --------------------------------------------------------
+   Method                              : RS, order 2 (MUSCL-Hancock, Van Leer)
+   Threads in the time loop            :        1
+ --------------------------------------------------------
+         cycle      t (us)     dt (us)    max P (GPa)
+           38    0.305820  7.9152E-03      22.976822
+           76    0.604057  7.5976E-03      24.865667
+          115    0.906167  7.7684E-03      27.375440
+          154    1.204757  7.8422E-03      25.969034
+          203    1.504767  4.8834E-03      19.735575
+          260    1.801354  5.4585E-03      16.164937
+          314    2.105800  5.8344E-03      15.306969
+          364    2.404306  6.1482E-03      13.202446
+          412    2.704812  6.3363E-03      12.331849
+          458    3.000000  2.9148E-03      11.676356
+ --------------------------------------------------------
+   Cycles                              :      458
+   Final time (us)                     :        3.000000
+   Mass error (relative)               :  0.00000000E+00
+   Energy error (relative)             : -7.98721600E-16
+   x-momentum change                   :  3.55271368E-15
+   First tensile cell                  : 2 (Al), t =   0.7365 us
+   Most tension held, intact (GPa)     : -9.50356220E-03
+   First cell to break (spall)         : 2 (Al), t =   0.7365 us
+   Cells broken by the end             :       23
+   Deepest tension at a break (GPa)    : -2.70476103E-02
+   T range, intact cells (K)           : 298.000 to 6440.173
+   Hottest intact cell                 : 138 (MatX), t =   1.3498 us, x =  13.8091 mm
+   First cell to react                 : 41 (MatX), t =   0.0213 us, x =   4.0690 mm
+   Cells burnt out, MatX               :      100  of 100
+   Largest lam                         :        1.000000
+   Wall time per cycle (us)            :           151.6
+ ========================================================
+  8. Output files, closed
+ --------------------------------------------------------
+   Resolved deck                       : e4_hvfast_rs.resolved  (4 KB)
+   Heartbeat file                      : e4_hvfast_rs.heartbeat  (48 KB)
+   Tracer file                         : e4_hvfast_rs.tracers.csv  (55 KB)
+   History file                        : e4_hvfast_rs.hist  (67 KB, 13 frames)
+ ========================================================
+  9. Pictures
+ --------------------------------------------------------
+   Colormap                            : viridis
+   History file                        : e4_hvfast_rs.hist
+   Frames                              : 13, t = 0.0 to 3.0 us
+   Written with                        : plot_dt = 0.25 us, plot_every = 0
+   x across (mm)                       : 0.0 to 24.0
+   t up (us)                           : 0.0 to 3.0
+   Color ranges                        : robust: min to the top held for 50 cycles
+   u in the run (km/s)                 : -0.81275 to 2.518
+   u above the range (km/s)            : up to 2.518 at t = 1.5048 us, x = 14.745 mm; above for about 46 cycles; drawn in the top color
+   u colors (km/s)                     : -0.81275 to 2.3822  (window 0.0 to 1.0)
+   P in the run (GPa)                  : -0.0045092 to 25.912
+   P colors (GPa)                      : -0.0045092 to 25.912  (window 0.0 to 1.0)
+   White                               : outside the material, open spall (D = 1, P = 0);
+                                       : in P also material no wave has reached
+   Drawing t-x diagrams                : e4_hvfast_rs.tx_u.bmp, e4_hvfast_rs.tx_p.bmp
+   Tracer file                         : e4_hvfast_rs.tracers.csv
+   Rows                                : 61, t = 0.0 to 3.0 us
+   Drawing tracer plots                : 3, e4_hvfast_rs.tr_<tracer>.bmp
+   Tracer mid u (km/s)                 : 0.0 to 1.9118, y axis -0.1 to 2.1
+   Tracer pdv u (km/s)                 : 0.0 to 2.5187, y axis -0.2 to 2.7
+   Tracer flyer u (km/s)               : -0.70408 to 2.0, y axis -0.9 to 2.2
+ ========================================================
+   run end    : 2026-11-07 23:12:36 -0700
+   wall clock :      1.648 s
+   CPU time   :      1.638 s (all threads)
+ ========================================================

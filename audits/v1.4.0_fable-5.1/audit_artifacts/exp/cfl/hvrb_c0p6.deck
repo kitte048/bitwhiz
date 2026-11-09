@@ -1,0 +1,161 @@
+#**********************************************************************#
+#  ME 697 class project with a reactive Material X: HVRB, a detonation #
+#                                                                      #
+#  The class problem (me697_double_shock_2p00.deck), with Material X   #
+#  burning by the History Variable Reactive Burn of the project's HVRB #
+#  equation sheet (doc/HVRB_Eqns_v8, the extra credit), the sheet's    #
+#  Material X constants:                                               #
+#                                                                      #
+#      | Ta 3.0 | Al 4.0 |=> Material X 10.0 | PMMA 10.0 |  PDV ->     #
+#     x=-7.0           x=0 (impact plane)    x=10.0      x=20.0        #
+#                                                                      #
+#  At 2.00 km/s the shock grows to a detonation about 3.5 mm into      #
+#  Material X (the sheet: 2.00, 1.75 and 1.50 km/s detonate, near 3.5, #
+#  5.5 and 7.5 mm; 1.25 and 1.00 do not within 10 mm). Watch it in the #
+#  P t-x diagram and the pressure movie: the front steepens and speeds #
+#  up to D_CJ = 7.5 km/s, with the products' pressure behind it. The   #
+#  products are an ideal gas here (gamma = 2.6), as the sheet has      #
+#  them; HVRB is usually paired with a JWL or tabular products EOS.    #
+#  The burn's keys, and what each does: input/README.md, Material      #
+#  block; every other key is the class deck's (its key reference, at   #
+#  its end). Units: mm, us, g/cc, km/s, GPa.                           #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00            # km/s, flyer velocity
+
+ Begin Run
+  plots_only = no    # yes or no
+  title = hvrb_c0p6
+  t_end       = 3.0             # us: the detonation reaches the PDV
+                                # interface near 1.5 us at 2.00 km/s
+  num_threads = 1
+ End Run
+
+ Begin Output                   # nothing listed here = nothing written
+  
+                                # pixel row of the t-x diagrams
+  
+  tracer_dt = 0.0           # us between tracer rows (the
+                                # reference's spacing); 0 = every cycle
+  colormap    = viridis         # for bitmap pictures
+
+  tracer = pdv     MatX:PMMA    # the PDV signal
+  tracer = impact  Al:MatX      # impact plane
+  tracer = ta_al   Ta:Al        # where the second shock is born
+  tracer = mid_x   MatX@0.5     # mid-sample, past the run distance
+ End Output
+
+ Begin Solver
+  method = RS                   # the Riemann solver: a shock 1-2 cells
+  order  = 2                    # sharp, and a smooth burn behind it
+                                # (second order, MUSCL-Hancock)
+  BL     = 0.1                  # method = AV's linear and quadratic
+  BQ     = 2.0                  # viscosity coefficients (the equation
+                                # sheet's defaults); RS ignores them
+  CFL = 0.6
+ End Solver
+
+ # Mie-Gruneisen on the principal Hugoniot (rev-0, Eqs. 4 and 6):
+ #   Us = C0 + S1*up + (S2/C0)*up^2,   rho*Gamma = R0*G0
+ Begin Material Ta              # tantalum, backing plate
+  R0 = 16.65                    # g/cm^3, initial density
+  C0 = 3.40                     # km/s, Hugoniot intercept
+  S1 = 1.20                     # -,    Us-up slope
+  S2 = 0.0                      # -,    Us-up curvature (default 0)
+  G0 = 1.60                     # -,    Gruneisen coefficient
+  spall_strength = 5.0          # GPa, dynamic. Tantalum is strong in
+                                # tension (spall strengths of several
+                                # GPa are reported); at 5.0 the Ta here
+                                # holds its ~2 GPa tension, as in the
+                                # reference data. Other materials take
+                                # the default, 0.01 GPa (input/README.md)
+ End Material
+
+ Begin Material Al              # aluminum, flyer face
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  S2 = 0.0
+  G0 = 2.00
+ End Material
+
+ Begin Material MatX            # notional HE surrogate, reactive
+  eos  = mie_gruneisen_t        # the unreacted solid, plus T: the burn's
+  R0   = 1.60                   # closure mixes it with the products at
+  C0   = 2.50                   # one density and one temperature
+  S1   = 1.80
+  S2   = -0.10
+  G0   = 1.20
+  CV   = 1.1633418              # J/(g K), both phases
+  T0   = 298.0                  # K
+
+  burn = hvrb                   # History Variable Reactive Burn
+  PR   = 7.0                    # GPa, reference pressure
+  ZR   = 3.0                    # pressure exponent (0: a burn on a clock)
+  MR   = 1.5                    # delay exponent
+  XR   = 2.5                    # completion exponent
+  PI   = 1.0                    # GPa, threshold: no burn at or below it
+  TAU0 = 1.0                    # us, time constant
+
+  products = ideal_gas          # P = (GAMMA - 1) rho CV T
+  GAMMA    = 2.60
+  Q        = 4.8828             # kJ/g (= MJ/kg), heat of reaction
+ End Material
+
+ Begin Material PMMA            # window; Lacina et al. (2018) linear fit
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  S2 = 0.0
+  G0 = 0.90                     # estimated from Plexiglass (rev-0 Table 1)
+ End Material
+
+ Begin Stack
+  resolution = 35               # zones/mm: 105 + 140 + 350 + 350 = 945
+  origin     = Al:MatX          # x = 0 at the impact plane
+
+  Begin Layer
+   material = Ta
+   width    = 3.0               # mm
+   xvel     = u_fly             # km/s, + is to the right
+  End Layer
+
+  Begin Layer
+   material = Al
+   width    = 4.0
+   xvel     = u_fly
+  End Layer
+
+  Begin Layer
+   material = MatX
+   width    = 10.0
+  End Layer
+
+  Begin Layer
+   material = PMMA
+   width    = 10.0
+  End Layer
+ End Stack
+End bitwhiz
+
+Notes (ignored by the parser):
+- Velocity sweep: change "define u_fly" only. Run distance grows as the
+  input pressure falls (the Pop plot); at 1.25 and 1.00 km/s the burn
+  behind an unreacted front still reaches the window, late: decide
+  "detonated or not" from the shock's path, not the PDV's amplitude.
+- Each tracer's XRN column (the tracer file) is its cell's extent of
+  reaction, lam, 0 to 1; TK its temperature (in Material X).
+- Method RS at order 2 (the Solver block), as of 1.4.0: the shock is 1-2
+  cells sharp and the burn behind it smooth, and the reaction is also a
+  source in the predictor's pressure. Try method = AV to compare (below).
+  Or ZR = 0, MR = 1, XR = 1.5: a burn on a clock, the D^2 law
+  (input/README.md).
+- Checked against the gold-standard reactive data (G2-G5) by
+  tests/verification/compare_hvrb.py, at 100 zones/mm; this deck's 35
+  zones/mm puts about 5 cells across the reaction zone (the sheet).
+- With method = AV, 35 zones/mm is coarse: from about 0.85 us the front
+  runs ahead of RS's,
+  and a plateau below P_CJ opens behind the spike, a weak detonation that
+  goes away by 200 zones/mm (doc/design/av_study.md). Compare the two
+  methods' pressure movies.

@@ -1,0 +1,474 @@
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising -Waliasing -Wampersand -Wconversion -Wcharacter-truncation -Wline-truncation -fcheck=all -fbacktrace -g -O0 -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-999999 -fconvert=little-endian -fimplicit-none -ffp-contract=off -fopenmp src/modules/build_mod.f95 -o src/modules/build_mod.o
+gfortran -fopenmp -I./src/modules -J./src/modules -o ./bin/bitwhiz src/main/maincode.o src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o \
+	src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o src/modules/build_mod.o
+gfortran -I./src/modules -J./src/modules -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising -Waliasing -Wampersand -Wconversion -Wcharacter-truncation -Wline-truncation -fcheck=all -fbacktrace -g -O0 -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-999999 -fconvert=little-endian -fimplicit-none -ffp-contract=off -fopenmp -o bin/test_eos tests/test_eos.f95 src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o
+gfortran -I./src/modules -J./src/modules -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising -Waliasing -Wampersand -Wconversion -Wcharacter-truncation -Wline-truncation -fcheck=all -fbacktrace -g -O0 -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-999999 -fconvert=little-endian -fimplicit-none -ffp-contract=off -fopenmp -o bin/test_hist tests/test_hist.f95 src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o
+gfortran -I./src/modules -J./src/modules -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising -Waliasing -Wampersand -Wconversion -Wcharacter-truncation -Wline-truncation -fcheck=all -fbacktrace -g -O0 -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-999999 -fconvert=little-endian -fimplicit-none -ffp-contract=off -fopenmp -o bin/test_dist tests/test_dist.f95 src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o
+gfortran -I./src/modules -J./src/modules -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising -Waliasing -Wampersand -Wconversion -Wcharacter-truncation -Wline-truncation -fcheck=all -fbacktrace -g -O0 -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-999999 -fconvert=little-endian -fimplicit-none -ffp-contract=off -fopenmp -o bin/test_temp tests/test_temp.f95 src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o
+gfortran -I./src/modules -J./src/modules -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising -Waliasing -Wampersand -Wconversion -Wcharacter-truncation -Wline-truncation -fcheck=all -fbacktrace -g -O0 -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-999999 -fconvert=little-endian -fimplicit-none -ffp-contract=off -fopenmp -o bin/test_hvrb tests/test_hvrb.f95 src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o
+gfortran -I./src/modules -J./src/modules -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising -Waliasing -Wampersand -Wconversion -Wcharacter-truncation -Wline-truncation -fcheck=all -fbacktrace -g -O0 -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-999999 -fconvert=little-endian -fimplicit-none -ffp-contract=off -fopenmp -o bin/test_btab tests/test_btab.f95 src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o
+gfortran -I./src/modules -J./src/modules -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising -Waliasing -Wampersand -Wconversion -Wcharacter-truncation -Wline-truncation -fcheck=all -fbacktrace -g -O0 -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-999999 -fconvert=little-endian -fimplicit-none -ffp-contract=off -fopenmp -o bin/test_lshk tests/test_lshk.f95 src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o
+gfortran -I./src/modules -J./src/modules -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising -Waliasing -Wampersand -Wconversion -Wcharacter-truncation -Wline-truncation -fcheck=all -fbacktrace -g -O0 -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-999999 -fconvert=little-endian -fimplicit-none -ffp-contract=off -fopenmp -o bin/test_tcas tests/test_tcas.f95 src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o
+./bin/test_eos
+ test_eos: Mie-Gruneisen pressure and sound speed
+   pass  reference state, Ta: P = 0, c = C0
+   pass  reference state, Al: P = 0, c = C0
+   pass  reference state, MatX: P = 0, c = C0
+   pass  reference state, PMMA: P = 0, c = C0
+   pass  reference state, R0 with R0*(1/R0) /= 1: P = 0 exactly
+   pass  53 reference states, P and c to 1e-12
+         worst relative error: P  2.2E-14, c  6.9E-16
+   pass  array (elemental) call == one call per state
+   pass  12 broken-cell states (c at P = 0, down to 0.02*R0) to 1e-12
+   pass  smooth through V0, Ta: P, c, dc and d2c continuous
+   pass  smooth through V0, Al: P, c, dc and d2c continuous
+   pass  smooth through V0, MatX: P, c, dc and d2c continuous
+   pass  smooth through V0, PMMA: P, c, dc and d2c continuous
+   pass  Al at 0.98 of the limit: still ok
+   pass  Al at 0.995 of the limit: too compressed
+   pass  Al exactly at eta = 1/S1: too compressed, no trap
+   pass  Al past the limit: too compressed, no trap
+   pass  MatX at eta = 0.9 (S2 < 0, no limit): ok
+   pass  rho = 0: bad density
+   pass  rho < 0: bad density
+   pass  Ta cold at rho = 0.1*R0 (P = -44 GPa): c**2 <= 0
+   pass  made-up material past its cubic's c = 0 point: c**2 <= 0
+   pass  ... and before it (rho = 0.7*R0): ok
+   pass  S2 > 0, negative square root: too compressed
+ test_eos: all 23 checks passed
+./bin/test_dist
+   pass  uniform at x = -0.10000: f, F and S match the 50-digit values
+   pass  uniform at x = 0.30000: f, F and S match the 50-digit values
+   pass  uniform at x = 1.5000: f, F and S match the 50-digit values
+   pass  linear at x = 0.25000: f, F and S match the 50-digit values
+   pass  linear at x = 0.90000: f, F and S match the 50-digit values
+   pass  linear at x = 0.20000: f, F and S match the 50-digit values
+   pass  linear at x = 0.99900: f, F and S match the 50-digit values
+   pass  beta at x = 0.10000: f, F and S match the 50-digit values
+   pass  beta at x = 0.30000: f, F and S match the 50-digit values
+   pass  beta at x = 0.80000: f, F and S match the 50-digit values
+   pass  beta at x = 0.10000E-01: f, F and S match the 50-digit values
+   pass  beta at x = 0.50000: f, F and S match the 50-digit values
+   pass  beta at x = 0.99900: f, F and S match the 50-digit values
+   pass  beta at x = 0.10000E-05: f, F and S match the 50-digit values
+   pass  beta at x = 0.40000: f, F and S match the 50-digit values
+   pass  beta at x = 0.30000: f, F and S match the 50-digit values
+   pass  beta at x = 0.45000: f, F and S match the 50-digit values
+   pass  beta at x = 0.60000: f, F and S match the 50-digit values
+   pass  beta at x = 0.99000: f, F and S match the 50-digit values
+   pass  beta at x = 0.60000: f, F and S match the 50-digit values
+   pass  normal at x = 0.50000: f, F and S match the 50-digit values
+   pass  normal at x = 0.60000: f, F and S match the 50-digit values
+   pass  normal at x = 0.10000: f, F and S match the 50-digit values
+   pass  normal at x = 1.5000: f, F and S match the 50-digit values
+   pass  normal at x = 0.0000: f, F and S match the 50-digit values
+   pass  normal at x = 1.0000: f, F and S match the 50-digit values
+   pass  split_normal at x = 0.10000: f, F and S match the 50-digit values
+   pass  split_normal at x = 0.30000: f, F and S match the 50-digit values
+   pass  split_normal at x = 0.50000: f, F and S match the 50-digit values
+   pass  split_normal at x = 1.0000: f, F and S match the 50-digit values
+   pass  sinh_arcsinh at x = 0.0000: f, F and S match the 50-digit values
+   pass  sinh_arcsinh at x = 0.30000: f, F and S match the 50-digit values
+   pass  sinh_arcsinh at x = 0.50000: f, F and S match the 50-digit values
+   pass  sinh_arcsinh at x = 0.90000: f, F and S match the 50-digit values
+   pass  sinh_arcsinh at x = 1.0000: f, F and S match the 50-digit values
+   pass  sinh_arcsinh at x = 0.90000: f, F and S match the 50-digit values
+   pass  sinh_arcsinh at x = 0.20000: f, F and S match the 50-digit values
+   pass  sinh_arcsinh at x = 0.70000: f, F and S match the 50-digit values
+   pass  cauchy at x = 0.60000: f, F and S match the 50-digit values
+   pass  cauchy at x = -100.00: f, F and S match the 50-digit values
+   pass  cauchy at x = 0.20000: f, F and S match the 50-digit values
+   pass  cauchy at x = 1.0000: f, F and S match the 50-digit values
+   pass  normal: mean of f on [0, 1] = 0.62198E-15 (from the accurate tail)
+   pass  normal: mean of f on [0, 1] = 0.62198E-15 (from the accurate tail)
+   pass  cauchy: mean of f on [0, 1] = 0.12992E-04 (from the accurate tail)
+   pass  sinh_arcsinh: mean of f on [0, 1] = 0.22558E-24 (from the accurate tail)
+   pass  beta: mean of f on [0, 1] = 1.0000 (from the accurate tail)
+   pass  uniform: F + S = 1 to round-off (worst 0.0000)
+   pass  uniform: F never decreases
+   pass  uniform: F(0.7) - F(0.2) equals the integral of f
+   pass  linear: F + S = 1 to round-off (worst 0.22204E-15)
+   pass  linear: F never decreases
+   pass  linear: F(0.7) - F(0.2) equals the integral of f
+   pass  beta: F + S = 1 to round-off (worst 0.0000)
+   pass  beta: F never decreases
+   pass  beta: F(0.7) - F(0.2) equals the integral of f
+   pass  beta: F + S = 1 to round-off (worst 0.0000)
+   pass  beta: F never decreases
+   pass  beta: F(0.7) - F(0.2) equals the integral of f
+   pass  normal: F + S = 1 to round-off (worst 0.11102E-15)
+   pass  normal: F never decreases
+   pass  normal: F(0.7) - F(0.2) equals the integral of f
+   pass  split_normal: F + S = 1 to round-off (worst 0.0000)
+   pass  split_normal: F never decreases
+   pass  split_normal: F(0.7) - F(0.2) equals the integral of f
+   pass  sinh_arcsinh: F + S = 1 to round-off (worst 0.11102E-15)
+   pass  sinh_arcsinh: F never decreases
+   pass  sinh_arcsinh: F(0.7) - F(0.2) equals the integral of f
+   pass  sinh_arcsinh: F + S = 1 to round-off (worst 0.11102E-15)
+   pass  sinh_arcsinh: F never decreases
+   pass  sinh_arcsinh: F(0.7) - F(0.2) equals the integral of f
+   pass  cauchy: F + S = 1 to round-off (worst 0.22204E-15)
+   pass  cauchy: F never decreases
+   pass  cauchy: F(0.7) - F(0.2) equals the integral of f
+   pass  beta(1, 1) is uniform
+   pass  beta(2, 1): F = x^2
+   pass  I_(1/2)(a, a) = 1/2 for a = 0.3, 2.5, 80, 3000
+   pass  split_normal with equal spreads is normal
+   pass  split_normal: F(m) = sigma_left/(sigma_left + sigma_right)
+   pass  sinh_arcsinh with eps = 0, delta = 1 is normal
+   pass  sinh_arcsinh mirrors: F(loc + y; eps) = 1 - F(loc - y; -eps)
+   pass  sinh_arcsinh with eps = 0: F(loc) = 1/2 for any delta
+   pass  cauchy: F(x0) = 1/2, F(x0 + gamma) = 3/4
+   pass  linear: f(1/2) = 1
+   pass  normal: F(mu + sigma) = Phi(1) = 0.8413447460685429
+   pass  linear: integral of f^2 = 1 + s^2/3
+   pass  beta(2, 5): integral of f^2 = B(3, 9)/B(2, 5)^2
+   pass  beta(0.5, 2): f(0) is infinite (huge)
+   pass  beta(2, 0.5): f(1) is infinite (huge)
+   pass  beta(1, 3): f(0) = 1/B(1,3) = 3
+   pass  beta(3, 2): f = 0 at both ends
+   pass  names are case-blind ("Beta")
+   pass  beta lives on [0, 1]
+   pass  normal lives on the whole line
+   pass  dist_nparam: 0, 1, 2, 2, 3, 4, 2, and -1 for no such name
+   pass  refused: "gauss" is not a distribution (one of: uniform, linear, beta, normal, split_normal, sinh_arcsinh, cauchy)
+   pass  refused: beta takes 2 parameters (a b), not 1
+   pass  refused: uniform takes 0 parameters (none), not 1
+   pass  refused: sinh_arcsinh takes 4 parameters (loc scale eps delta), not 3
+   pass  refused: linear: s must be from -1 to 1 (so f is never negative)
+   pass  refused: beta: a must be from 1e-6 to 1e6
+   pass  refused: beta: b must be from 1e-6 to 1e6
+   pass  refused: normal: sigma must be from 1e-6 to 1e6
+   pass  refused: normal: mu must be from -1e6 to 1e6
+   pass  refused: split_normal: sigma_right must be from 1e-6 to 1e6
+   pass  refused: sinh_arcsinh: delta must be from 1e-6 to 1e6
+   pass  refused: cauchy: gamma must be from 1e-6 to 1e6
+ test_dist: all 107 checks passed
+./bin/test_temp
+ test_temp: the cold curve and the temperature
+   pass  reference state: e_c = 0 and T = T0 exactly
+   pass  zero-length steps leave e_c bit for bit
+   pass  24 cold energies, one step from V0, to 1e-12
+         worst relative error:  1.0E-14
+   pass  24 cold energies, 997 steps from V0, to 1e-12
+         worst relative error:  2.7E-14
+   pass  array (elemental) call == one call per state
+   pass  hard path (shock, 2,000 steps of ringing, release into tension, back): e_c on the curve to 1e-12
+         worst relative error:  5.8E-14
+   pass  deep tension (out to 21 V0 and back): e_c on the curve to 1e-12
+         worst relative error:  9.8E-14
+   pass  12 Hugoniot temperatures to 1e-12
+         worst relative error:  5.4E-15
+   pass  units: the deck reads, and its models are Al mie_gruneisen, MatX and PMMA mie_gruneisen_t
+   pass  units: CV = 1.1633418 J/(g K) is 1.1633418e-3 kJ/(g K) inside, and 0.11633418 kJ/g at V0 is T0 + 100 K
+ test_temp: all 10 checks passed
+./bin/test_hvrb
+ test_hvrb: the rate law, the topology and the closure
+   pass  18 values of lam(phi) to within 9.0E-16 (relative)
+   pass  lam(0) = 0, lam = 1 exactly from phi_end on; a step stops at phi_end, lam = 1
+   pass  rate: 0 at or below PI for ZR = 0 to 3 (at rest, in tension); ZR = 0 is 1/TAU0; ZR = 3 by hand
+   pass  ZR = 0, MR = 1, XR = 1.5: the D^2 law, 650 steps, to within 6.7E-15; burnt out
+   pass  64 closure states (P, c, vartheta, dP/dlam) to within 3.9E-15, all by the exact sound speed
+   pass  lam = 0: P and c are mg_eos's, bit for bit
+   pass  constant-volume burn ends at 12.499968 GPa, vartheta = Q
+   pass  past the reach: lam = 0.5 stops the run; lam = 1 never evaluates the solid
+   pass  guards: vartheta = 0 burnt out has no sound speed; vartheta < 0 half burnt falls back to the mass-weighted c
+   pass  ideal gas by hand; no pressure at vartheta <= 0
+   pass  array (elemental) call == one call per state
+   pass  held: not at rho = rhold, nor at lam = 0 (the same bits as no hold)
+   pass  held, dropped and pushing: c**2 and dP/dlam = differences of P, to 4.4E-11
+   pass  held and dropped, stretched to rho/100: vartheta > 0 throughout, ends 6.6E-09 from th0 (rho/rho0)**(lam(gamma-1))
+ test_hvrb: all 14 checks passed
+./bin/test_btab
+ test_btab: the burn models' table (module burn_table)
+   pass  1. every burn key's name is unique
+   pass  1. every model's name is unique (burn_none = 0)
+   pass  2. no burn key is another Material key (rule 3)
+   pass  3. each row: keys in slots 1 to npar <= npar_max, none twice, nst <= nst_max
+   pass  4. every key is some model's, with a check and a note
+   pass  5. bkey_index (either case) and burn_takes
+   pass  6. HVRB: PR ZR MR XR PI TAU0 in slots 1-6, phi in bst(1), its checks
+   pass  7. a model using the lead shock has its ls_nst slots first; HVRB does not use it
+   pass  8. ThermalCascade: HT TC GT NS PR in slots 1-5 (PR HVRB's), the detector its history, its checks
+ test_btab: all 9 checks passed
+./bin/test_lshk
+ test_lshk: the lead-shock detector (module leadshock)
+   pass  1. h = (1/2) q (V0 - V) on the Rayleigh line (rel. 1.2E-16)
+   pass  1. h = 0 at the Hugoniot state (P = R0 Us up)
+   pass  2. quiet at rest, below the floor, and in expansion; armed just above the floor
+   pass  3. a zero crossing: P_s at the step, t_s between
+   pass  4. a local minimum, however shallow (no hysteresis)
+   pass  5. a rise past the peak: rising again, the peak moves
+   pass  6. the first fall crossing zero at once
+   pass  7. h <= 0 throughout: never armed, never marked
+   pass  8. frozen once marked: a reshock changes nothing
+   pass  9. rising, then falling: not marked yet
+   pass  10. a stalled fall (below ls_knee of the largest): marked; just above: not
+ test_lshk: all 11 checks passed
+./bin/test_tcas
+ test_tcas: ThermalCascade (module thermalcascade)
+   pass  1. the rate (11 states: T at, below, above TC; GT = 0; P_s < 0) to 3.3E-16
+   pass  2. 1 - exp(-x), x from 1e-16 to 50 (the series below 0.5), to 1.7E-16
+   pass  3. the step, 1 - lam2 = (1 - lam1) exp(-r dt), to 2.1E-22
+   pass  4. 1000 steps = one step (exact at a fixed rate), to 4.4E-16
+         GT =  1.0: t(0.99) error at dt, dt/2, dt/4: 7.39E-05 3.70E-05 1.85E-05
+         GT =  1.5: t(0.99) error at dt, dt/2, dt/4: 1.70E-04 8.51E-05 4.26E-05
+   pass  5. the cascade at constant volume: first order in dt, to 2e-4 at the finest
+ test_tcas: all 5 checks passed
+BIN=./bin/bitwhiz ./tests/run_deck_tests.sh
+deck tests: 199 to run
+[  1/199] pass  tests/decks/bad_begin_extra.deck                    0.0 s
+[  2/199] pass  tests/decks/bad_bitwhiz2.deck                       0.0 s
+[  3/199] pass  tests/decks/bad_burn_eos.deck                       0.0 s
+[  4/199] pass  tests/decks/bad_burn_gamma_one.deck                 0.0 s
+[  5/199] pass  tests/decks/bad_burn_in_layer.deck                  0.0 s
+[  6/199] pass  tests/decks/bad_burn_missing_gamma.deck             0.0 s
+[  7/199] pass  tests/decks/bad_burn_missing_pr.deck                0.0 s
+[  8/199] pass  tests/decks/bad_burn_name.deck                      0.0 s
+[  9/199] pass  tests/decks/bad_burn_no_products.deck               0.0 s
+[ 10/199] pass  tests/decks/bad_burn_tau0_zero.deck                 0.0 s
+[ 11/199] pass  tests/decks/bad_burn_zr_neg.deck                    0.0 s
+[ 12/199] pass  tests/decks/bad_cfl.deck                            0.0 s
+[ 13/199] pass  tests/decks/bad_colormap.deck                       0.0 s
+[ 14/199] pass  tests/decks/bad_cv_in_layer.deck                    0.0 s
+[ 15/199] pass  tests/decks/bad_cv_missing.deck                     0.0 s
+[ 16/199] pass  tests/decks/bad_cv_without_t.deck                   0.0 s
+[ 17/199] pass  tests/decks/bad_cv_zero.deck                        0.0 s
+[ 18/199] pass  tests/decks/bad_def_after.deck                      0.0 s
+[ 19/199] pass  tests/decks/bad_def_bad.deck                        0.0 s
+[ 20/199] pass  tests/decks/bad_def_inblock.deck                    0.0 s
+[ 21/199] pass  tests/decks/bad_def_redef.deck                      0.0 s
+[ 22/199] pass  tests/decks/bad_def_undef.deck                      0.0 s
+[ 23/199] pass  tests/decks/bad_dup_key.deck                        0.0 s
+[ 24/199] pass  tests/decks/bad_dup_material_key_case.deck          0.0 s
+[ 25/199] pass  tests/decks/bad_empty.deck                          0.0 s
+[ 26/199] pass  tests/decks/bad_end_mismatch.deck                   0.0 s
+[ 27/199] pass  tests/decks/bad_end_other_name.deck                 0.0 s
+[ 28/199] pass  tests/decks/bad_eos_name.deck                       0.0 s
+[ 29/199] pass  tests/decks/bad_huge.deck                           0.0 s
+[ 30/199] pass  tests/decks/bad_hvrb_tcas_key.deck                  0.0 s
+[ 31/199] pass  tests/decks/bad_layer_badmat.deck                   0.0 s
+[ 32/199] pass  tests/decks/bad_layer_dupname.deck                  0.0 s
+[ 33/199] pass  tests/decks/bad_layer_missing.deck                  0.0 s
+[ 34/199] pass  tests/decks/bad_layer_outside.deck                  0.0 s
+[ 35/199] pass  tests/decks/bad_loc_abc.deck                        0.0 s
+[ 36/199] pass  tests/decks/bad_loc_both.deck                       0.0 s
+[ 37/199] pass  tests/decks/bad_loc_frac.deck                       0.0 s
+[ 38/199] pass  tests/decks/bad_loc_fracbad.deck                    0.0 s
+[ 39/199] pass  tests/decks/bad_loc_fracnoname.deck                 0.0 s
+[ 40/199] pass  tests/decks/bad_loc_junk.deck                       0.0 s
+[ 41/199] pass  tests/decks/bad_loc_nolayer.deck                    0.0 s
+[ 42/199] pass  tests/decks/bad_loc_notnb.deck                      0.0 s
+[ 43/199] pass  tests/decks/bad_loc_x_out.deck                      0.0 s
+[ 44/199] pass  tests/decks/bad_longcomment.deck                    0.0 s
+[ 45/199] pass  tests/decks/bad_longline.deck                       0.0 s
+[ 46/199] pass  tests/decks/bad_longname.deck                       0.0 s
+[ 47/199] pass  tests/decks/bad_many_errors.deck                    0.0 s
+[ 48/199] pass  tests/decks/bad_mat_dup_case.deck                   0.0 s
+[ 49/199] pass  tests/decks/bad_mat_noname.deck                     0.0 s
+[ 50/199] pass  tests/decks/bad_mat_twice.deck                      0.0 s
+[ 51/199] pass  tests/decks/bad_method.deck                         0.0 s
+[ 52/199] pass  tests/decks/bad_movie_frames_in_run.deck            0.0 s
+[ 53/199] pass  tests/decks/bad_movie_frames_neg.deck               0.0 s
+[ 54/199] pass  tests/decks/bad_movie_frames_no_snapshots.deck      0.0 s
+[ 55/199] pass  tests/decks/bad_movie_frames_one.deck               0.0 s
+[ 56/199] pass  tests/decks/bad_movie_frames_too_many.deck          0.0 s
+[ 57/199] pass  tests/decks/bad_no_begin.deck                       0.0 s
+[ 58/199] pass  tests/decks/bad_no_end.deck                         0.0 s
+[ 59/199] pass  tests/decks/bad_nokey.deck                          0.0 s
+[ 60/199] pass  tests/decks/bad_nonascii.deck                       0.0 s
+[ 61/199] pass  tests/decks/bad_nores.deck                          0.0 s
+[ 62/199] pass  tests/decks/bad_novalue.deck                        0.0 s
+[ 63/199] pass  tests/decks/bad_num_1e.deck                         0.0 s
+[ 64/199] pass  tests/decks/bad_num_3.deck                          0.0 s
+[ 65/199] pass  tests/decks/bad_num_big.deck                        0.0 s
+[ 66/199] pass  tests/decks/bad_num_big2.deck                       0.0 s
+[ 67/199] pass  tests/decks/bad_num_cat.deck                        0.0 s
+[ 68/199] pass  tests/decks/bad_num_comma.deck                      0.0 s
+[ 69/199] pass  tests/decks/bad_num_cv.deck                         0.0 s
+[ 70/199] pass  tests/decks/bad_num_d.deck                          0.0 s
+[ 71/199] pass  tests/decks/bad_num_dd.deck                         0.0 s
+[ 72/199] pass  tests/decks/bad_num_dot.deck                        0.0 s
+[ 73/199] pass  tests/decks/bad_num_e5.deck                         0.0 s
+[ 74/199] pass  tests/decks/bad_num_ee.deck                         0.0 s
+[ 75/199] pass  tests/decks/bad_num_epm.deck                        0.0 s
+[ 76/199] pass  tests/decks/bad_num_hugeexp.deck                    0.0 s
+[ 77/199] pass  tests/decks/bad_num_minus.deck                      0.0 s
+[ 78/199] pass  tests/decks/bad_num_pm.deck                         0.0 s
+[ 79/199] pass  tests/decks/bad_num_slash.deck                      0.0 s
+[ 80/199] pass  tests/decks/bad_num_small.deck                      0.0 s
+[ 81/199] pass  tests/decks/bad_num_space.deck                      0.0 s
+[ 82/199] pass  tests/decks/bad_num_tinylead.deck                   0.0 s
+[ 83/199] pass  tests/decks/bad_order_in_run.deck                   0.0 s
+[ 84/199] pass  tests/decks/bad_order_neg.deck                      0.0 s
+[ 85/199] pass  tests/decks/bad_order_real.deck                     0.0 s
+[ 86/199] pass  tests/decks/bad_order_word.deck                     0.0 s
+[ 87/199] pass  tests/decks/bad_origin_num.deck                     0.0 s
+[ 88/199] pass  tests/decks/bad_origin_unk.deck                     0.0 s
+[ 89/199] pass  tests/decks/bad_origin_xleft.deck                   0.0 s
+[ 90/199] pass  tests/decks/bad_output_twice.deck                   0.0 s
+[ 91/199] pass  tests/decks/bad_plot_p_window.deck                  0.0 s
+[ 92/199] pass  tests/decks/bad_plot_range.deck                     0.0 s
+[ 93/199] pass  tests/decks/bad_plot_u_lo_in_run.deck               0.0 s
+[ 94/199] pass  tests/decks/bad_plot_u_lo_range.deck                0.0 s
+[ 95/199] pass  tests/decks/bad_plotdt_neg.deck                     0.0 s
+[ 96/199] pass  tests/decks/bad_plots_only_in_output.deck           0.0 s
+[ 97/199] pass  tests/decks/bad_plots_only_word.deck                0.0 s
+[ 98/199] pass  tests/decks/bad_pr_without_burn.deck                0.0 s
+[ 99/199] pass  tests/decks/bad_products_name.deck                  0.0 s
+[100/199] pass  tests/decks/bad_products_without_burn.deck          0.0 s
+[101/199] pass  tests/decks/bad_prof_amp_number.deck                0.0 s
+[102/199] pass  tests/decks/bad_prof_amp_only.deck                  0.0 s
+[103/199] pass  tests/decks/bad_prof_amp_uniform.deck               0.0 s
+[104/199] pass  tests/decks/bad_prof_count.deck                     0.0 s
+[105/199] pass  tests/decks/bad_prof_count0.deck                    0.0 s
+[106/199] pass  tests/decks/bad_prof_define.deck                    0.0 s
+[107/199] pass  tests/decks/bad_prof_dup.deck                       0.0 s
+[108/199] pass  tests/decks/bad_prof_mass.deck                      0.0 s
+[109/199] pass  tests/decks/bad_prof_name.deck                      0.0 s
+[110/199] pass  tests/decks/bad_prof_number.deck                    0.0 s
+[111/199] pass  tests/decks/bad_prof_shape.deck                     0.0 s
+[112/199] pass  tests/decks/bad_prof_slope.deck                     0.0 s
+[113/199] pass  tests/decks/bad_prof_spread.deck                    0.0 s
+[114/199] pass  tests/decks/bad_prof_toomany.deck                   0.0 s
+[115/199] pass  tests/decks/bad_prof_toomany6.deck                  0.0 s
+[116/199] pass  tests/decks/bad_prof_wrong_block.deck               0.0 s
+[117/199] pass  tests/decks/bad_run2.deck                           0.0 s
+[118/199] pass  tests/decks/bad_spall_in_run.deck                   0.0 s
+[119/199] pass  tests/decks/bad_spall_negative.deck                 0.0 s
+[120/199] pass  tests/decks/bad_stack_twice_layer_missingall.deck    0.0 s
+[121/199] pass  tests/decks/bad_t0_missing.deck                     0.0 s
+[122/199] pass  tests/decks/bad_t0_neg.deck                         0.0 s
+[123/199] pass  tests/decks/bad_t0_without_t.deck                   0.0 s
+[124/199] pass  tests/decks/bad_tc_without_burn.deck                0.0 s
+[125/199] pass  tests/decks/bad_tcas_eos.deck                       0.0 s
+[126/199] pass  tests/decks/bad_tcas_gt_neg.deck                    0.0 s
+[127/199] pass  tests/decks/bad_tcas_hvrb_key.deck                  0.0 s
+[128/199] pass  tests/decks/bad_tcas_missing_ht.deck                0.0 s
+[129/199] pass  tests/decks/bad_tend_in_output.deck                 0.0 s
+[130/199] pass  tests/decks/bad_tend_missing.deck                   0.0 s
+[131/199] pass  tests/decks/bad_tend_neg.deck                       0.0 s
+[132/199] pass  tests/decks/bad_text_before.deck                    0.0 s
+[133/199] pass  tests/decks/bad_tracer_in_run.deck                  0.0 s
+[134/199] pass  tests/decks/bad_tracerdt_in_run.deck                0.0 s
+[135/199] pass  tests/decks/bad_tracerdt_neg.deck                   0.0 s
+[136/199] pass  tests/decks/bad_trc_3words.deck                     0.0 s
+[137/199] pass  tests/decks/bad_trc_badname.deck                    0.0 s
+[138/199] pass  tests/decks/bad_trc_dup.deck                        0.0 s
+[139/199] pass  tests/decks/bad_trc_noloc.deck                      0.0 s
+[140/199] pass  tests/decks/bad_twoeq.deck                          0.0 s
+[141/199] pass  tests/decks/bad_unclosed_layer.deck                 0.0 s
+[142/199] pass  tests/decks/bad_unknown_block.deck                  0.0 s
+[143/199] pass  tests/decks/bad_unknown_key.deck                    0.0 s
+[144/199] pass  tests/decks/bad_ver2.deck                           0.0 s
+[145/199] pass  tests/decks/bad_ver_missing.deck                    0.0 s
+[146/199] pass  tests/decks/bad_zones0.deck                         0.0 s
+[147/199] pass  tests/decks/bad_zones_frac.deck                     0.0 s
+[148/199] pass  tests/decks/ok_base.deck                            0.3 s
+[149/199] pass  tests/decks/ok_case_mix.deck                        0.4 s
+[150/199] pass  tests/decks/ok_colormap_case.deck                   3.2 s
+[151/199] pass  tests/decks/ok_good_nums.deck                       2.8 s
+[152/199] pass  tests/decks/ok_hvrb.deck                            3.3 s
+[153/199] pass  tests/decks/ok_hvrb_clock.deck                      3.5 s
+[154/199] pass  tests/decks/ok_hvrb_inert.deck                      3.3 s
+[155/199] pass  tests/decks/ok_hvrb_inert_rs.deck                   3.2 s
+[156/199] pass  tests/decks/ok_hvrb_rs.deck                         3.3 s
+[157/199] pass  tests/decks/ok_method_rs.deck                       2.8 s
+[158/199] pass  tests/decks/ok_method_rs_order1.deck                3.0 s
+[159/199] pass  tests/decks/ok_movie_frames.deck                    3.3 s
+[160/199] pass  tests/decks/ok_negzero.deck                         0.3 s
+[161/199] pass  tests/decks/ok_no_newline.deck                      0.3 s
+[162/199] pass  tests/decks/ok_no_output.deck                       0.2 s
+[163/199] pass  tests/decks/ok_nonascii_comment.deck                0.5 s
+[164/199] pass  tests/decks/ok_nonwhole.deck                        0.6 s
+[165/199] pass  tests/decks/ok_origin_frac.deck                     0.4 s
+[166/199] pass  tests/decks/ok_plate_spall.deck                     2.8 s
+[167/199] pass  tests/decks/ok_plot_range.deck                      2.6 s
+[168/199] pass  tests/decks/ok_plot_window.deck                     2.9 s
+[169/199] pass  tests/decks/ok_profile_hist.deck                    2.5 s
+[170/199] pass  tests/decks/ok_profiles.deck                        0.1 s
+[171/199] pass  tests/decks/ok_r0_roundoff.deck                     0.0 s
+[172/199] pass  tests/decks/ok_setup_counter.deck                   0.0 s
+[173/199] pass  tests/decks/ok_setup_one_layer.deck                 0.0 s
+[174/199] pass  tests/decks/ok_spall_strength.deck                  0.4 s
+[175/199] pass  tests/decks/ok_tabs_crlf.deck                       0.4 s
+[176/199] pass  tests/decks/ok_tcas.deck                            3.4 s
+[177/199] pass  tests/decks/ok_tcas_inert.deck                      3.4 s
+[178/199] pass  tests/decks/ok_tcas_inert_rs.deck                   3.4 s
+[179/199] pass  tests/decks/ok_tcas_rs.deck                         3.4 s
+[180/199] pass  tests/decks/ok_temperature.deck                     3.4 s
+[181/199] pass  tests/decks/ok_temperature_rs.deck                  3.5 s
+[182/199] pass  tests/decks/ok_trc_fracs.deck                       1.8 s
+[183/199] pass  tests/decks/ok_xleft_only.deck                      0.4 s
+[184/199] pass  input/me697_double_shock_2p00.deck                 11.3 s
+[185/199] pass  input/me697_hvrb_2p00.deck                         11.4 s
+[186/199] pass  input/me697_tcas_2p00.deck                         11.8 s
+[187/199] pass  input/pulse_split_normal.deck                       9.4 s
+[188/199] pass  input/ramp_beta.deck                                3.8 s
+[189/199] pass  input/ramp_linear.deck                              3.9 s
+[190/199] pass  input/ramp_sinh_arcsinh.deck                        4.1 s
+[191/199] pass  input/steepening_hump.deck                         10.3 s
+[192/199] pass  input/u6_boundary_boundary.deck                     3.3 s
+[193/199] pass  input/u6_wave_boundary_cu.deck                      4.6 s
+[194/199] pass  input/u6_wave_boundary_pmma.deck                    4.5 s
+[195/199] pass  input/u6_wave_wave.deck                             5.7 s
+[196/199] pass  bitwhiz ''                                          0.0 s
+[197/199] pass  bitwhiz 'no_such_file.deck'                         0.0 s
+[198/199] pass  bitwhiz 'tests'                                     0.0 s
+[199/199] pass  bitwhiz '/tmp/tmp.3WVLjx5TDo/empty.deck'            0.0 s
+deck tests: 199 passed, 0 failed (157 s)
+BIN=./bin/bitwhiz ./tests/run_omp_tests.sh
+omp tests: 12 to run
+[ 1/12] pass  input/me697_double_shock_2p00.deck, 2 threads      11.7 s
+[ 2/12] pass  tests/decks/ok_setup_counter.deck, 2 threads        0.1 s
+[ 3/12] pass  tests/decks/ok_plate_spall.deck, 2 threads          3.2 s
+[ 4/12] pass  tests/decks/ok_method_rs.deck, 2 threads            3.0 s
+[ 5/12] pass  tests/decks/ok_method_rs_order1.deck, 2 threads     3.1 s
+[ 6/12] pass  tests/decks/ok_profile_hist.deck, 2 threads         2.6 s
+[ 7/12] pass  tests/decks/ok_temperature.deck, 2 threads          3.4 s
+[ 8/12] pass  tests/decks/ok_temperature_rs.deck, 2 threads       3.1 s
+[ 9/12] pass  tests/decks/ok_hvrb.deck, 2 threads                 3.6 s
+[10/12] pass  tests/decks/ok_hvrb_rs.deck, 2 threads              3.4 s
+[11/12] pass  tests/decks/ok_tcas.deck, 2 threads                 3.7 s
+[12/12] pass  tests/decks/ok_tcas_rs.deck, 2 threads              3.5 s
+omp tests: 12 passed, 0 failed (44 s); threads: 2; 2 processors
+BIN=./bin/bitwhiz ./tests/run_hist_tests.sh
+history tests: 32 to run
+[ 1/32] pass  class_av                                            6.2 s
+[ 2/32] pass  tx_p_class                                          0.0 s
+[ 3/32] pass  tx_u_class                                          0.0 s
+[ 4/32] pass  tx_frame                                            0.0 s
+[ 5/32] pass  tr_frame                                            0.0 s
+[ 6/32] pass  tr_curve                                            0.0 s
+[ 7/32] pass  tr_title                                            0.0 s
+[ 8/32] pass  tr_numbers                                          0.1 s
+[ 9/32] pass  tx_numbers                                          0.2 s
+[10/32] pass  rs_order2                                           1.5 s
+[11/32] pass  rs_order1                                           1.6 s
+[12/32] pass  temperature                                         1.9 s
+[13/32] pass  temperature_tk                                      0.0 s
+[14/32] pass  hvrb                                                1.9 s
+[15/32] pass  hvrb_xrn                                            0.0 s
+[16/32] pass  hvrb_inert                                          3.6 s
+[17/32] pass  hvrb_inert_rs                                       3.7 s
+[18/32] pass  tcas_inert                                          3.4 s
+[19/32] pass  tcas_inert_rs                                       3.4 s
+[20/32] pass  hvrb_rs                                             1.7 s
+[21/32] pass  tcas                                                1.8 s
+[22/32] pass  tcas_rs                                             1.8 s
+[23/32] pass  profile_frame1                                      1.4 s
+[24/32] pass  plot_every                                          1.4 s
+[25/32] pass  cycle_max                                           4.7 s
+[26/32] pass  no_snapshots                                        0.0 s
+[27/32] pass  tracers_only                                        0.3 s
+[28/32] pass  plots_only                                          5.6 s
+[29/32] pass  plots_only_other_mesh                               0.4 s
+[30/32] pass  plots_only_no_files                                 0.0 s
+[31/32] pass  plot_range                                          3.4 s
+[32/32] pass  movie                                               3.5 s
+history tests: 32 passed, 0 failed (54 s)
+
+real	4m16.182s
+user	4m10.722s
+sys	0m6.467s

@@ -1,0 +1,107 @@
+ME697_1p00_kmps.dat: 5 tracers, 1301 rows, variables GPA, KMPS, XPOS
+   pass  five tracers, x, u, P
+ME697_1p25_kmps.dat: 5 tracers, 1301 rows, variables GPA, KMPS, XPOS
+   pass  five tracers, x, u, P
+ME697_1p50_kmps.dat: 5 tracers, 1301 rows, variables GPA, KMPS, XPOS
+   pass  five tracers, x, u, P
+ME697_1p75_kmps.dat: 5 tracers, 1301 rows, variables GPA, KMPS, XPOS
+   pass  five tracers, x, u, P
+ME697_2p00_kmps.dat: 5 tracers, 1301 rows, variables GPA, KMPS, XPOS
+   pass  five tracers, x, u, P
+G1_inert_1p00_kmps.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS
+   pass  mass constant to 6.50 us (README 6.5)
+   pass  exact P1 4.371 GPa, U_S 3.780 km/s
+   pass  P at 1 mm 4.3712 (README 4.371, exact 4.3713)
+   pass  U_S fit 1-9 mm 3.7780 (README 3.778)
+   pass  PDV arrival 2.6403 us (README 2.64)
+   pass  energy drift 0.0021 % (README <= 0.006 %)
+G1_inert_1p25_kmps.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS
+   pass  mass constant to 6.50 us (README 6.5)
+   pass  exact P1 5.793 GPa, U_S 4.070 km/s
+   pass  P at 1 mm 5.7929 (README 5.793, exact 5.7930)
+   pass  U_S fit 1-9 mm 4.0691 (README 4.069)
+   pass  PDV arrival 2.4512 us (README 2.451)
+   pass  energy drift 0.0025 % (README <= 0.006 %)
+G1_inert_1p50_kmps.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS
+   pass  exact P1 7.331 GPa, U_S 4.351 km/s
+   pass  P at 1 mm 7.3302 (README 7.33, exact 7.3306)
+   pass  U_S fit 1-9 mm 4.3563 (README 4.356)
+   pass  PDV arrival 2.2915 us (README 2.292)
+   pass  energy drift 0.0029 % (README <= 0.006 %)
+G1_inert_1p75_kmps.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS
+   pass  exact P1 8.979 GPa, U_S 4.625 km/s
+   pass  P at 1 mm 8.9791 (README 8.978, exact 8.9793)
+   pass  U_S fit 1-9 mm 4.6235 (README 4.624)
+   pass  PDV arrival 2.1557 us (README 2.156)
+   pass  energy drift 0.0031 % (README <= 0.006 %)
+G1_inert_2p00_kmps.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS
+   pass  mass constant to 5.16 us (README 5.2)
+   pass  exact P1 10.736 GPa, U_S 4.893 km/s
+   pass  P at 1 mm 10.7359 (README 10.736, exact 10.7358)
+   pass  U_S fit 1-9 mm 4.8891 (README 4.889)
+   pass  PDV arrival 2.0369 us (README 2.037)
+   pass  energy drift 0.0033 % (README <= 0.006 %)
+G2_react_1p00_kmps.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  mass constant to 5.95 us (README 6.0)
+   pass  run distance None mm (README None)
+   pass  PDV arrival 2.6260 us (README 2.626)
+G2_react_1p25_kmps.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  run distance None mm (README None)
+   pass  PDV arrival 2.4056 us (README 2.406)
+G2_react_1p50_kmps.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  run distance 7.5 mm (README 7.5)
+   pass  PDV arrival 1.9503 us (README 1.95)
+G2_react_1p75_kmps.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  run distance 5.5 mm (README 5.5)
+   pass  PDV arrival 1.6607 us (README 1.661)
+G2_react_2p00_kmps.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  mass constant to 4.56 us (README 4.6)
+   pass  run distance 3.5 mm (README 3.5)
+   pass  PDV arrival 1.5203 us (README 1.52)
+   pass  100 zones/mm: arrivals at 3 and 4 mm 0.5909, 0.7290 us
+   pass  100 zones/mm: energy drift 0.00346 % (README 0.0035)
+G3_poplt_1p25_kmps.dat: 20 tracers, 801 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  mass constant to 4.00 us (README 4.0)
+   pass  run distance 12.5 mm (README 12.5)
+G3_poplt_1p50_kmps.dat: 20 tracers, 801 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  mass constant to 4.00 us (README 4.0)
+   pass  run distance 7.5 mm (README 7.5)
+G3_poplt_1p75_kmps.dat: 21 tracers, 801 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  run distance 4.75 mm (README 4.75)
+G3_poplt_2p00_kmps.dat: 21 tracers, 801 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  run distance 3.75 mm (README 3.75)
+G3_poplt_2p25_kmps.dat: 21 tracers, 801 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  mass constant to 3.60 us (README 3.6)
+   pass  run distance 2.375 mm (README 2.375)
+G4_wavsp_3p00_kmps.dat: 41 tracers, 4501 rows, variables XPOS
+   pass  mass constant to 3.52 us (README 3.5)
+   pass  D over 10-20 mm 7.5048 km/s (README 7.505; D_CJ 7.5000)
+   pass  D over 10-15 mm 7.5046 km/s (README 7.505; D_CJ 7.5000)
+   pass  D over 15-20 mm 7.5063 km/s (README 7.506; D_CJ 7.5000)
+G5_react_2p00_kmps_200_zpmm.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  200 zones/mm: PDV arrival 1.5201 us
+   pass  200 zones/mm: arrivals at 3 and 4 mm 0.5922, 0.7302 us
+   pass  200 zones/mm: energy drift 0.00177 % (README 0.002)
+   pass  200 zones/mm: run distance 3.5 mm
+G5_react_2p00_kmps_25_zpmm.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  25 zones/mm: PDV arrival 1.5194 us
+   pass  25 zones/mm: arrivals at 3 and 4 mm 0.5830, 0.7307 us
+   pass  25 zones/mm: energy drift 0.01530 % (README 0.015)
+   pass  25 zones/mm: run distance 3.5 mm
+G5_react_2p00_kmps_400_zpmm.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  400 zones/mm: PDV arrival 1.5201 us
+   pass  400 zones/mm: arrivals at 3 and 4 mm 0.5951, 0.7301 us
+   pass  400 zones/mm: energy drift 0.00080 % (README 0.001)
+   pass  400 zones/mm: run distance 3.5 mm
+G5_react_2p00_kmps_50_zpmm.dat: 13 tracers, 1301 rows, variables DENS, GPA, KMPS, MJKG, TK, XPOS, XRN3
+   pass  50 zones/mm: PDV arrival 1.5201 us
+   pass  50 zones/mm: arrivals at 3 and 4 mm 0.5888, 0.7287 us
+   pass  50 zones/mm: energy drift 0.00652 % (README 0.007)
+   pass  50 zones/mm: run distance 3.5 mm
+   pass  Pop plot: ln x_run = 6.158 -2.074 ln P1 (README 6.158 -2.074)
+   pass  temperature model: e_c and T_H against 50 digits, four materials, within 4.4e-16 (1e-12)
+gold.py: 77 passed, 0 failed (25 files)
+
+real	0m0.420s
+user	0m0.286s
+sys	0m0.065s

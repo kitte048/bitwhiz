@@ -1,0 +1,322 @@
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/bit_mod.f95 -o build/release/src/modules/bit_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/plas_mod.f95 -o build/release/src/modules/plas_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/viri_mod.f95 -o build/release/src/modules/viri_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/infr_mod.f95 -o build/release/src/modules/infr_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/bbdy_mod.f95 -o build/release/src/modules/bbdy_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/kndl_mod.f95 -o build/release/src/modules/kndl_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/ekdl_mod.f95 -o build/release/src/modules/ekdl_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/smcw_mod.f95 -o build/release/src/modules/smcw_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/btcw_mod.f95 -o build/release/src/modules/btcw_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/rand_mod.f95 -o build/release/src/modules/rand_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/btab_mod.f95 -o build/release/src/modules/btab_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/shock_mod.f95 -o build/release/src/modules/shock_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/dist_mod.f95 -o build/release/src/modules/dist_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/eos_mod.f95 -o build/release/src/modules/eos_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/temp_mod.f95 -o build/release/src/modules/temp_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/prod_mod.f95 -o build/release/src/modules/prod_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/mix_mod.f95 -o build/release/src/modules/mix_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/lshk_mod.f95 -o build/release/src/modules/lshk_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/hvrb_mod.f95 -o build/release/src/modules/hvrb_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/tcas_mod.f95 -o build/release/src/modules/tcas_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/burn_mod.f95 -o build/release/src/modules/burn_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/av_mod.f95 -o build/release/src/modules/av_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/rs_mod.f95 -o build/release/src/modules/rs_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/deck_mod.f95 -o build/release/src/modules/deck_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/trace_mod.f95 -o build/release/src/modules/trace_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/hist_mod.f95 -o build/release/src/modules/hist_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/strk_mod.f95 -o build/release/src/modules/strk_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/pics_mod.f95 -o build/release/src/modules/pics_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/colormaps/cmap_grayscale.f95 -o build/release/src/colormaps/cmap_grayscale.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/colormaps/cmap_plasma.f95 -o build/release/src/colormaps/cmap_plasma.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/colormaps/cmap_viridis.f95 -o build/release/src/colormaps/cmap_viridis.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/colormaps/cmap_inferno.f95 -o build/release/src/colormaps/cmap_inferno.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/colormaps/cmap_blackbody.f95 -o build/release/src/colormaps/cmap_blackbody.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/colormaps/cmap_kindlmann.f95 -o build/release/src/colormaps/cmap_kindlmann.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/colormaps/cmap_extendedkindlmann.f95 -o build/release/src/colormaps/cmap_extendedkindlmann.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/colormaps/cmap_smoothcoolwarm.f95 -o build/release/src/colormaps/cmap_smoothcoolwarm.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/colormaps/cmap_bentcoolwarm.f95 -o build/release/src/colormaps/cmap_bentcoolwarm.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/drawings/draw_colormaps.f95 -o build/release/src/drawings/draw_colormaps.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/drawings/draw_tx.f95 -o build/release/src/drawings/draw_tx.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/drawings/draw_trace.f95 -o build/release/src/drawings/draw_trace.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/drawings/draw_profile.f95 -o build/release/src/drawings/draw_profile.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/main/bmpmaker.f95 -o build/release/src/main/bmpmaker.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/utils/random.f95 -o build/release/src/utils/random.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/utils/timestamp.f95 -o build/release/src/utils/timestamp.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/modules/build_mod.f95 -o build/release/src/modules/build_mod.o
+gfortran -Ibuild/release/mod -Jbuild/release/mod -c -std=f2018 -O2 -fimplicit-none -fconvert=little-endian -ffp-contract=off -fopenmp src/main/maincode.f95 -o build/release/src/main/maincode.o
+gfortran -fopenmp -o ./bin/bitwhiz_release build/release/src/main/maincode.o build/release/src/modules/bit_mod.o build/release/src/modules/plas_mod.o build/release/src/modules/viri_mod.o build/release/src/modules/infr_mod.o build/release/src/modules/bbdy_mod.o build/release/src/modules/kndl_mod.o build/release/src/modules/ekdl_mod.o build/release/src/modules/smcw_mod.o build/release/src/modules/btcw_mod.o build/release/src/modules/rand_mod.o build/release/src/modules/btab_mod.o build/release/src/modules/shock_mod.o build/release/src/modules/dist_mod.o build/release/src/modules/eos_mod.o build/release/src/modules/temp_mod.o build/release/src/modules/prod_mod.o build/release/src/modules/mix_mod.o build/release/src/modules/lshk_mod.o build/release/src/modules/hvrb_mod.o build/release/src/modules/tcas_mod.o build/release/src/modules/burn_mod.o build/release/src/modules/av_mod.o build/release/src/modules/rs_mod.o build/release/src/modules/deck_mod.o build/release/src/modules/trace_mod.o build/release/src/modules/hist_mod.o build/release/src/modules/strk_mod.o build/release/src/modules/pics_mod.o build/release/src/colormaps/cmap_grayscale.o build/release/src/colormaps/cmap_plasma.o build/release/src/colormaps/cmap_viridis.o build/release/src/colormaps/cmap_inferno.o build/release/src/colormaps/cmap_blackbody.o build/release/src/colormaps/cmap_kindlmann.o build/release/src/colormaps/cmap_extendedkindlmann.o build/release/src/colormaps/cmap_smoothcoolwarm.o build/release/src/colormaps/cmap_bentcoolwarm.o build/release/src/drawings/draw_colormaps.o build/release/src/drawings/draw_tx.o build/release/src/drawings/draw_trace.o build/release/src/drawings/draw_profile.o build/release/src/main/bmpmaker.o build/release/src/utils/random.o build/release/src/utils/timestamp.o \
+	build/release/src/modules/build_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wno-implicit-interface -Wsurprising -Waliasing -Wampersand -Wconversion -Wcharacter-truncation -Wline-truncation -fcheck=all -fbacktrace -g -O0 -ffpe-trap=invalid,zero,overflow -finit-real=snan -finit-integer=-999999 -fconvert=little-endian -fimplicit-none -ffp-contract=off -fopenmp src/modules/build_mod.f95 -o src/modules/build_mod.o
+gfortran -fopenmp -I./src/modules -J./src/modules -o ./bin/bitwhiz src/main/maincode.o src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o \
+	src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o src/modules/build_mod.o
+BIN=./bin/bitwhiz_release ./tests/run_deck_tests.sh
+deck tests: 199 to run
+[  1/199] pass  tests/decks/bad_begin_extra.deck                    0.0 s
+[  2/199] pass  tests/decks/bad_bitwhiz2.deck                       0.0 s
+[  3/199] pass  tests/decks/bad_burn_eos.deck                       0.0 s
+[  4/199] pass  tests/decks/bad_burn_gamma_one.deck                 0.0 s
+[  5/199] pass  tests/decks/bad_burn_in_layer.deck                  0.0 s
+[  6/199] pass  tests/decks/bad_burn_missing_gamma.deck             0.0 s
+[  7/199] pass  tests/decks/bad_burn_missing_pr.deck                0.0 s
+[  8/199] pass  tests/decks/bad_burn_name.deck                      0.0 s
+[  9/199] pass  tests/decks/bad_burn_no_products.deck               0.0 s
+[ 10/199] pass  tests/decks/bad_burn_tau0_zero.deck                 0.0 s
+[ 11/199] pass  tests/decks/bad_burn_zr_neg.deck                    0.0 s
+[ 12/199] pass  tests/decks/bad_cfl.deck                            0.0 s
+[ 13/199] pass  tests/decks/bad_colormap.deck                       0.0 s
+[ 14/199] pass  tests/decks/bad_cv_in_layer.deck                    0.0 s
+[ 15/199] pass  tests/decks/bad_cv_missing.deck                     0.0 s
+[ 16/199] pass  tests/decks/bad_cv_without_t.deck                   0.0 s
+[ 17/199] pass  tests/decks/bad_cv_zero.deck                        0.0 s
+[ 18/199] pass  tests/decks/bad_def_after.deck                      0.0 s
+[ 19/199] pass  tests/decks/bad_def_bad.deck                        0.0 s
+[ 20/199] pass  tests/decks/bad_def_inblock.deck                    0.0 s
+[ 21/199] pass  tests/decks/bad_def_redef.deck                      0.0 s
+[ 22/199] pass  tests/decks/bad_def_undef.deck                      0.0 s
+[ 23/199] pass  tests/decks/bad_dup_key.deck                        0.0 s
+[ 24/199] pass  tests/decks/bad_dup_material_key_case.deck          0.0 s
+[ 25/199] pass  tests/decks/bad_empty.deck                          0.0 s
+[ 26/199] pass  tests/decks/bad_end_mismatch.deck                   0.0 s
+[ 27/199] pass  tests/decks/bad_end_other_name.deck                 0.0 s
+[ 28/199] pass  tests/decks/bad_eos_name.deck                       0.0 s
+[ 29/199] pass  tests/decks/bad_huge.deck                           0.0 s
+[ 30/199] pass  tests/decks/bad_hvrb_tcas_key.deck                  0.0 s
+[ 31/199] pass  tests/decks/bad_layer_badmat.deck                   0.0 s
+[ 32/199] pass  tests/decks/bad_layer_dupname.deck                  0.0 s
+[ 33/199] pass  tests/decks/bad_layer_missing.deck                  0.0 s
+[ 34/199] pass  tests/decks/bad_layer_outside.deck                  0.0 s
+[ 35/199] pass  tests/decks/bad_loc_abc.deck                        0.0 s
+[ 36/199] pass  tests/decks/bad_loc_both.deck                       0.0 s
+[ 37/199] pass  tests/decks/bad_loc_frac.deck                       0.0 s
+[ 38/199] pass  tests/decks/bad_loc_fracbad.deck                    0.0 s
+[ 39/199] pass  tests/decks/bad_loc_fracnoname.deck                 0.0 s
+[ 40/199] pass  tests/decks/bad_loc_junk.deck                       0.0 s
+[ 41/199] pass  tests/decks/bad_loc_nolayer.deck                    0.0 s
+[ 42/199] pass  tests/decks/bad_loc_notnb.deck                      0.0 s
+[ 43/199] pass  tests/decks/bad_loc_x_out.deck                      0.0 s
+[ 44/199] pass  tests/decks/bad_longcomment.deck                    0.0 s
+[ 45/199] pass  tests/decks/bad_longline.deck                       0.0 s
+[ 46/199] pass  tests/decks/bad_longname.deck                       0.0 s
+[ 47/199] pass  tests/decks/bad_many_errors.deck                    0.0 s
+[ 48/199] pass  tests/decks/bad_mat_dup_case.deck                   0.0 s
+[ 49/199] pass  tests/decks/bad_mat_noname.deck                     0.0 s
+[ 50/199] pass  tests/decks/bad_mat_twice.deck                      0.0 s
+[ 51/199] pass  tests/decks/bad_method.deck                         0.0 s
+[ 52/199] pass  tests/decks/bad_movie_frames_in_run.deck            0.0 s
+[ 53/199] pass  tests/decks/bad_movie_frames_neg.deck               0.0 s
+[ 54/199] pass  tests/decks/bad_movie_frames_no_snapshots.deck      0.0 s
+[ 55/199] pass  tests/decks/bad_movie_frames_one.deck               0.0 s
+[ 56/199] pass  tests/decks/bad_movie_frames_too_many.deck          0.0 s
+[ 57/199] pass  tests/decks/bad_no_begin.deck                       0.0 s
+[ 58/199] pass  tests/decks/bad_no_end.deck                         0.0 s
+[ 59/199] pass  tests/decks/bad_nokey.deck                          0.0 s
+[ 60/199] pass  tests/decks/bad_nonascii.deck                       0.0 s
+[ 61/199] pass  tests/decks/bad_nores.deck                          0.0 s
+[ 62/199] pass  tests/decks/bad_novalue.deck                        0.0 s
+[ 63/199] pass  tests/decks/bad_num_1e.deck                         0.0 s
+[ 64/199] pass  tests/decks/bad_num_3.deck                          0.0 s
+[ 65/199] pass  tests/decks/bad_num_big.deck                        0.0 s
+[ 66/199] pass  tests/decks/bad_num_big2.deck                       0.0 s
+[ 67/199] pass  tests/decks/bad_num_cat.deck                        0.0 s
+[ 68/199] pass  tests/decks/bad_num_comma.deck                      0.0 s
+[ 69/199] pass  tests/decks/bad_num_cv.deck                         0.0 s
+[ 70/199] pass  tests/decks/bad_num_d.deck                          0.0 s
+[ 71/199] pass  tests/decks/bad_num_dd.deck                         0.0 s
+[ 72/199] pass  tests/decks/bad_num_dot.deck                        0.0 s
+[ 73/199] pass  tests/decks/bad_num_e5.deck                         0.0 s
+[ 74/199] pass  tests/decks/bad_num_ee.deck                         0.0 s
+[ 75/199] pass  tests/decks/bad_num_epm.deck                        0.0 s
+[ 76/199] pass  tests/decks/bad_num_hugeexp.deck                    0.0 s
+[ 77/199] pass  tests/decks/bad_num_minus.deck                      0.0 s
+[ 78/199] pass  tests/decks/bad_num_pm.deck                         0.0 s
+[ 79/199] pass  tests/decks/bad_num_slash.deck                      0.0 s
+[ 80/199] pass  tests/decks/bad_num_small.deck                      0.0 s
+[ 81/199] pass  tests/decks/bad_num_space.deck                      0.0 s
+[ 82/199] pass  tests/decks/bad_num_tinylead.deck                   0.0 s
+[ 83/199] pass  tests/decks/bad_order_in_run.deck                   0.0 s
+[ 84/199] pass  tests/decks/bad_order_neg.deck                      0.0 s
+[ 85/199] pass  tests/decks/bad_order_real.deck                     0.0 s
+[ 86/199] pass  tests/decks/bad_order_word.deck                     0.0 s
+[ 87/199] pass  tests/decks/bad_origin_num.deck                     0.0 s
+[ 88/199] pass  tests/decks/bad_origin_unk.deck                     0.0 s
+[ 89/199] pass  tests/decks/bad_origin_xleft.deck                   0.0 s
+[ 90/199] pass  tests/decks/bad_output_twice.deck                   0.0 s
+[ 91/199] pass  tests/decks/bad_plot_p_window.deck                  0.0 s
+[ 92/199] pass  tests/decks/bad_plot_range.deck                     0.0 s
+[ 93/199] pass  tests/decks/bad_plot_u_lo_in_run.deck               0.0 s
+[ 94/199] pass  tests/decks/bad_plot_u_lo_range.deck                0.0 s
+[ 95/199] pass  tests/decks/bad_plotdt_neg.deck                     0.0 s
+[ 96/199] pass  tests/decks/bad_plots_only_in_output.deck           0.0 s
+[ 97/199] pass  tests/decks/bad_plots_only_word.deck                0.0 s
+[ 98/199] pass  tests/decks/bad_pr_without_burn.deck                0.0 s
+[ 99/199] pass  tests/decks/bad_products_name.deck                  0.0 s
+[100/199] pass  tests/decks/bad_products_without_burn.deck          0.0 s
+[101/199] pass  tests/decks/bad_prof_amp_number.deck                0.0 s
+[102/199] pass  tests/decks/bad_prof_amp_only.deck                  0.0 s
+[103/199] pass  tests/decks/bad_prof_amp_uniform.deck               0.0 s
+[104/199] pass  tests/decks/bad_prof_count.deck                     0.0 s
+[105/199] pass  tests/decks/bad_prof_count0.deck                    0.0 s
+[106/199] pass  tests/decks/bad_prof_define.deck                    0.0 s
+[107/199] pass  tests/decks/bad_prof_dup.deck                       0.0 s
+[108/199] pass  tests/decks/bad_prof_mass.deck                      0.0 s
+[109/199] pass  tests/decks/bad_prof_name.deck                      0.0 s
+[110/199] pass  tests/decks/bad_prof_number.deck                    0.0 s
+[111/199] pass  tests/decks/bad_prof_shape.deck                     0.0 s
+[112/199] pass  tests/decks/bad_prof_slope.deck                     0.0 s
+[113/199] pass  tests/decks/bad_prof_spread.deck                    0.0 s
+[114/199] pass  tests/decks/bad_prof_toomany.deck                   0.0 s
+[115/199] pass  tests/decks/bad_prof_toomany6.deck                  0.0 s
+[116/199] pass  tests/decks/bad_prof_wrong_block.deck               0.0 s
+[117/199] pass  tests/decks/bad_run2.deck                           0.0 s
+[118/199] pass  tests/decks/bad_spall_in_run.deck                   0.0 s
+[119/199] pass  tests/decks/bad_spall_negative.deck                 0.0 s
+[120/199] pass  tests/decks/bad_stack_twice_layer_missingall.deck    0.0 s
+[121/199] pass  tests/decks/bad_t0_missing.deck                     0.0 s
+[122/199] pass  tests/decks/bad_t0_neg.deck                         0.0 s
+[123/199] pass  tests/decks/bad_t0_without_t.deck                   0.0 s
+[124/199] pass  tests/decks/bad_tc_without_burn.deck                0.0 s
+[125/199] pass  tests/decks/bad_tcas_eos.deck                       0.0 s
+[126/199] pass  tests/decks/bad_tcas_gt_neg.deck                    0.0 s
+[127/199] pass  tests/decks/bad_tcas_hvrb_key.deck                  0.0 s
+[128/199] pass  tests/decks/bad_tcas_missing_ht.deck                0.0 s
+[129/199] pass  tests/decks/bad_tend_in_output.deck                 0.0 s
+[130/199] pass  tests/decks/bad_tend_missing.deck                   0.0 s
+[131/199] pass  tests/decks/bad_tend_neg.deck                       0.0 s
+[132/199] pass  tests/decks/bad_text_before.deck                    0.0 s
+[133/199] pass  tests/decks/bad_tracer_in_run.deck                  0.0 s
+[134/199] pass  tests/decks/bad_tracerdt_in_run.deck                0.0 s
+[135/199] pass  tests/decks/bad_tracerdt_neg.deck                   0.0 s
+[136/199] pass  tests/decks/bad_trc_3words.deck                     0.0 s
+[137/199] pass  tests/decks/bad_trc_badname.deck                    0.0 s
+[138/199] pass  tests/decks/bad_trc_dup.deck                        0.0 s
+[139/199] pass  tests/decks/bad_trc_noloc.deck                      0.0 s
+[140/199] pass  tests/decks/bad_twoeq.deck                          0.0 s
+[141/199] pass  tests/decks/bad_unclosed_layer.deck                 0.0 s
+[142/199] pass  tests/decks/bad_unknown_block.deck                  0.0 s
+[143/199] pass  tests/decks/bad_unknown_key.deck                    0.0 s
+[144/199] pass  tests/decks/bad_ver2.deck                           0.0 s
+[145/199] pass  tests/decks/bad_ver_missing.deck                    0.0 s
+[146/199] pass  tests/decks/bad_zones0.deck                         0.0 s
+[147/199] pass  tests/decks/bad_zones_frac.deck                     0.0 s
+[148/199] pass  tests/decks/ok_base.deck                            0.2 s
+[149/199] pass  tests/decks/ok_case_mix.deck                        0.2 s
+[150/199] pass  tests/decks/ok_colormap_case.deck                   1.2 s
+[151/199] pass  tests/decks/ok_good_nums.deck                       1.0 s
+[152/199] pass  tests/decks/ok_hvrb.deck                            1.3 s
+[153/199] pass  tests/decks/ok_hvrb_clock.deck                      1.3 s
+[154/199] pass  tests/decks/ok_hvrb_inert.deck                      1.2 s
+[155/199] pass  tests/decks/ok_hvrb_inert_rs.deck                   1.2 s
+[156/199] pass  tests/decks/ok_hvrb_rs.deck                         1.3 s
+[157/199] pass  tests/decks/ok_method_rs.deck                       1.1 s
+[158/199] pass  tests/decks/ok_method_rs_order1.deck                1.1 s
+[159/199] pass  tests/decks/ok_movie_frames.deck                    1.3 s
+[160/199] pass  tests/decks/ok_negzero.deck                         0.2 s
+[161/199] pass  tests/decks/ok_no_newline.deck                      0.2 s
+[162/199] pass  tests/decks/ok_no_output.deck                       0.1 s
+[163/199] pass  tests/decks/ok_nonascii_comment.deck                0.2 s
+[164/199] pass  tests/decks/ok_nonwhole.deck                        0.3 s
+[165/199] pass  tests/decks/ok_origin_frac.deck                     0.2 s
+[166/199] pass  tests/decks/ok_plate_spall.deck                     1.1 s
+[167/199] pass  tests/decks/ok_plot_range.deck                      1.1 s
+[168/199] pass  tests/decks/ok_plot_window.deck                     1.1 s
+[169/199] pass  tests/decks/ok_profile_hist.deck                    1.1 s
+[170/199] pass  tests/decks/ok_profiles.deck                        0.0 s
+[171/199] pass  tests/decks/ok_r0_roundoff.deck                     0.0 s
+[172/199] pass  tests/decks/ok_setup_counter.deck                   0.0 s
+[173/199] pass  tests/decks/ok_setup_one_layer.deck                 0.0 s
+[174/199] pass  tests/decks/ok_spall_strength.deck                  0.2 s
+[175/199] pass  tests/decks/ok_tabs_crlf.deck                       0.2 s
+[176/199] pass  tests/decks/ok_tcas.deck                            1.4 s
+[177/199] pass  tests/decks/ok_tcas_inert.deck                      1.4 s
+[178/199] pass  tests/decks/ok_tcas_inert_rs.deck                   1.2 s
+[179/199] pass  tests/decks/ok_tcas_rs.deck                         1.3 s
+[180/199] pass  tests/decks/ok_temperature.deck                     1.2 s
+[181/199] pass  tests/decks/ok_temperature_rs.deck                  1.2 s
+[182/199] pass  tests/decks/ok_trc_fracs.deck                       0.7 s
+[183/199] pass  tests/decks/ok_xleft_only.deck                      0.2 s
+[184/199] pass  input/me697_double_shock_2p00.deck                  3.3 s
+[185/199] pass  input/me697_hvrb_2p00.deck                          3.6 s
+[186/199] pass  input/me697_tcas_2p00.deck                          3.6 s
+[187/199] pass  input/pulse_split_normal.deck                       2.9 s
+[188/199] pass  input/ramp_beta.deck                                1.5 s
+[189/199] pass  input/ramp_linear.deck                              1.5 s
+[190/199] pass  input/ramp_sinh_arcsinh.deck                        1.4 s
+[191/199] pass  input/steepening_hump.deck                          3.1 s
+[192/199] pass  input/u6_boundary_boundary.deck                     1.3 s
+[193/199] pass  input/u6_wave_boundary_cu.deck                      1.7 s
+[194/199] pass  input/u6_wave_boundary_pmma.deck                    1.7 s
+[195/199] pass  input/u6_wave_wave.deck                             2.1 s
+[196/199] pass  bitwhiz ''                                          0.0 s
+[197/199] pass  bitwhiz 'no_such_file.deck'                         0.0 s
+[198/199] pass  bitwhiz 'tests'                                     0.0 s
+[199/199] pass  bitwhiz '/tmp/tmp.gK9ENaEw1Z/empty.deck'            0.0 s
+deck tests: 199 passed, 0 failed (57 s)
+BIN=./bin/bitwhiz_release ./tests/run_omp_tests.sh
+omp tests: 12 to run
+[ 1/12] pass  input/me697_double_shock_2p00.deck, 2 threads       3.4 s
+[ 2/12] pass  tests/decks/ok_setup_counter.deck, 2 threads        0.0 s
+[ 3/12] pass  tests/decks/ok_plate_spall.deck, 2 threads          1.2 s
+[ 4/12] pass  tests/decks/ok_method_rs.deck, 2 threads            1.1 s
+[ 5/12] pass  tests/decks/ok_method_rs_order1.deck, 2 threads     1.2 s
+[ 6/12] pass  tests/decks/ok_profile_hist.deck, 2 threads         1.0 s
+[ 7/12] pass  tests/decks/ok_temperature.deck, 2 threads          1.3 s
+[ 8/12] pass  tests/decks/ok_temperature_rs.deck, 2 threads       1.3 s
+[ 9/12] pass  tests/decks/ok_hvrb.deck, 2 threads                 1.4 s
+[10/12] pass  tests/decks/ok_hvrb_rs.deck, 2 threads              1.3 s
+[11/12] pass  tests/decks/ok_tcas.deck, 2 threads                 1.4 s
+[12/12] pass  tests/decks/ok_tcas_rs.deck, 2 threads              1.3 s
+omp tests: 12 passed, 0 failed (16 s); threads: 2; 2 processors
+BIN=./bin/bitwhiz_release ./tests/run_hist_tests.sh
+history tests: 32 to run
+[ 1/32] pass  class_av                                            2.0 s
+[ 2/32] pass  tx_p_class                                          0.0 s
+[ 3/32] pass  tx_u_class                                          0.0 s
+[ 4/32] pass  tx_frame                                            0.0 s
+[ 5/32] pass  tr_frame                                            0.0 s
+[ 6/32] pass  tr_curve                                            0.0 s
+[ 7/32] pass  tr_title                                            0.0 s
+[ 8/32] pass  tr_numbers                                          0.1 s
+[ 9/32] pass  tx_numbers                                          0.1 s
+[10/32] pass  rs_order2                                           0.7 s
+[11/32] pass  rs_order1                                           0.6 s
+[12/32] pass  temperature                                         0.7 s
+[13/32] pass  temperature_tk                                      0.0 s
+[14/32] pass  hvrb                                                0.7 s
+[15/32] pass  hvrb_xrn                                            0.0 s
+[16/32] pass  hvrb_inert                                          1.6 s
+[17/32] pass  hvrb_inert_rs                                       1.5 s
+[18/32] pass  tcas_inert                                          1.5 s
+[19/32] pass  tcas_inert_rs                                       1.6 s
+[20/32] pass  hvrb_rs                                             0.7 s
+[21/32] pass  tcas                                                0.8 s
+[22/32] pass  tcas_rs                                             0.7 s
+[23/32] pass  profile_frame1                                      0.5 s
+[24/32] pass  plot_every                                          0.7 s
+[25/32] pass  cycle_max                                           1.3 s
+[26/32] pass  no_snapshots                                        0.0 s
+[27/32] pass  tracers_only                                        0.1 s
+[28/32] pass  plots_only                                          1.7 s
+[29/32] pass  plots_only_other_mesh                               0.1 s
+[30/32] pass  plots_only_no_files                                 0.0 s
+[31/32] pass  plot_range                                          1.2 s
+[32/32] pass  movie                                               1.4 s
+history tests: 32 passed, 0 failed (21 s)
+DEBUG=./bin/bitwhiz RELEASE=./bin/bitwhiz_release ./tests/run_release_tests.sh
+release tests: 12 to run
+[ 1/12] pass  input/me697_double_shock_2p00.deck                  7.3 s
+[ 2/12] pass  tests/decks/ok_setup_counter.deck                   0.1 s
+[ 3/12] pass  tests/decks/ok_plate_spall.deck                     2.0 s
+[ 4/12] pass  tests/decks/ok_method_rs.deck                       2.1 s
+[ 5/12] pass  tests/decks/ok_method_rs_order1.deck                2.0 s
+[ 6/12] pass  tests/decks/ok_profile_hist.deck                    1.9 s
+[ 7/12] pass  tests/decks/ok_temperature.deck                     2.5 s
+[ 8/12] pass  tests/decks/ok_temperature_rs.deck                  2.8 s
+[ 9/12] pass  tests/decks/ok_hvrb.deck                            2.6 s
+[10/12] pass  tests/decks/ok_hvrb_rs.deck                         2.6 s
+[11/12] pass  tests/decks/ok_tcas.deck                            2.4 s
+[12/12] pass  tests/decks/ok_tcas_rs.deck                         2.3 s
+release tests: 12 passed, 0 failed (31 s); debug and release, bit for bit
+
+real	2m13.375s
+user	2m8.124s
+sys	0m7.539s

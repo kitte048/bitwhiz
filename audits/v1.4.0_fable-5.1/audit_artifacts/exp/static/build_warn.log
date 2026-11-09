@@ -1,0 +1,1699 @@
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/bit_mod.f95 -o src/modules/bit_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/plas_mod.f95 -o src/modules/plas_mod.o
+src/modules/bit_mod.f95:74:71:
+
+   74 |  3.14159265358979323846264338327950288419716939937510582097494459230_qp
+      |                                                                       1
+Warning: Non-significant digits in 'REAL(16)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/viri_mod.f95 -o src/modules/viri_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/infr_mod.f95 -o src/modules/infr_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/bbdy_mod.f95 -o src/modules/bbdy_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/kndl_mod.f95 -o src/modules/kndl_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/ekdl_mod.f95 -o src/modules/ekdl_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/smcw_mod.f95 -o src/modules/smcw_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/btcw_mod.f95 -o src/modules/btcw_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/rand_mod.f95 -o src/modules/rand_mod.o
+src/modules/rand_mod.f95:292:51:
+
+  292 | 0.25196150204945973596_z, 0.60386935480565060460_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/btab_mod.f95 -o src/modules/btab_mod.o
+src/modules/rand_mod.f95:550:51:
+
+  550 | 0.81767532248681647378_z, 0.52996892410757742445_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:808:51:
+
+  808 | 0.75843434746840853893_z, 0.24754458773368327936_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:1066:51:
+
+ 1066 | 0.24125692959691204074_z, 0.16392567742445456572_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/dist_mod.f95 -o src/modules/dist_mod.o
+src/modules/dist_mod.f95:100:56:
+
+  100 | real(kind=wp), parameter :: pi = 3.141592653589793238_wp
+      |                                                        1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/dist_mod.f95:101:62:
+
+  101 | real(kind=wp), parameter :: rsqrt2 = 0.7071067811865475244_wp  ! 1/sqrt(2)
+      |                                                              1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/dist_mod.f95:102:64:
+
+  102 | real(kind=wp), parameter :: rsqrt2pi = 0.3989422804014326779_wp ! 1/sqrt(2pi)
+      |                                                                1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/dist_mod.f95:572:32:
+
+  572 |    case ( 'uniform' );      s = 'none'
+      |                                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/dist_mod.f95:573:32:
+
+  573 |    case ( 'linear' );       s = 's'
+      |                                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/dist_mod.f95:574:32:
+
+  574 |    case ( 'beta' );         s = 'a b'
+      |                                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/dist_mod.f95:575:32:
+
+  575 |    case ( 'normal' );       s = 'mu sigma'
+      |                                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/dist_mod.f95:576:32:
+
+  576 |    case ( 'split_normal' ); s = 'm sigma_left sigma_right'
+      |                                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/dist_mod.f95:577:32:
+
+  577 |    case ( 'sinh_arcsinh' ); s = 'loc scale eps delta'
+      |                                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/dist_mod.f95:578:32:
+
+  578 |    case ( 'cauchy' );       s = 'x0 gamma'
+      |                                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/dist_mod.f95:579:32:
+
+  579 |    case default;            s = ''
+      |                                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/dist_mod.f95:563:7:
+
+  563 |    s = 's'
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/dist_mod.f95:564:21:
+
+  564 |    if ( n == 1 ) s = ''
+      |                     1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/dist_mod.f95:557:13:
+
+  557 |    s = trim( buf )
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/rand_mod.f95:1324:51:
+
+ 1324 | 0.50237172413913968200_z, 0.53662135213858155112_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:1582:51:
+
+ 1582 | 0.14183207419567568679_z, 0.47142181213940333047_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:1840:51:
+
+ 1840 | 0.82321390930632262001_z, 0.79105723468030686007_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:2098:51:
+
+ 2098 | 0.77906207092360440020_z, 0.63625584960994579298_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:2356:51:
+
+ 2356 | 0.23453762094349701951_z, 0.90021568975082206025_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:2614:51:
+
+ 2614 | 0.97792425627276971655_z, 0.79047803682353681358_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:2872:51:
+
+ 2872 | 0.34890668388488812374_z, 0.80518303106064355879_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:3130:51:
+
+ 3130 | 0.88157862374667319689_z, 0.26428666826530561934_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:3388:51:
+
+ 3388 | 0.45617060424855983154_z, 0.25764064320997336318_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:3646:51:
+
+ 3646 | 0.46170505986480036284_z, 0.07240806965943849907_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:3904:51:
+
+ 3904 | 0.05901686219939685610_z, 0.00601652934600904988_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:4162:51:
+
+ 4162 | 0.16468849916187182274_z, 0.76437034471760843232_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:4420:51:
+
+ 4420 | 0.60083967617952523422_z, 0.71479898869125121794_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:4678:51:
+
+ 4678 | 0.98356258933379890124_z, 0.33946214070712126354_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:4936:51:
+
+ 4936 | 0.04783178955281950782_z, 0.48376176150855274483_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/eos_mod.f95 -o src/modules/eos_mod.o
+src/modules/rand_mod.f95:5194:51:
+
+ 5194 | 0.28425006139484516816_z, 0.82823691851561093075_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/eos_mod.f95:395:12:
+
+  395 |       msg = 'ok'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/eos_mod.f95:397:12:
+
+  397 |       msg = 'density is zero or negative (a tangled mesh?)'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/eos_mod.f95:399:12:
+
+  399 |       msg = 'compressed past the reach of the Hugoniot (Us > 100*C0)'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/eos_mod.f95:401:12:
+
+  401 |       msg = 'sound speed squared is zero or negative (stretched past '// &
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/eos_mod.f95:404:12:
+
+  404 |       msg = 'unknown EOS status'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/rand_mod.f95:5452:51:
+
+ 5452 | 0.62457414672473127189_z, 0.93384660669550322230_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:5710:51:
+
+ 5710 | 0.16066457566833723584_z, 0.91121039557077898974_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:5968:51:
+
+ 5968 | 0.27987436800811794654_z, 0.08169168464957087159_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/prod_mod.f95 -o src/modules/prod_mod.o
+src/modules/rand_mod.f95:6226:51:
+
+ 6226 | 0.65154205117844048307_z, 0.36779025780418116906_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/lshk_mod.f95 -o src/modules/lshk_mod.o
+src/modules/rand_mod.f95:6484:51:
+
+ 6484 | 0.85662637662007959489_z, 0.07431605230310698714_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:6742:51:
+
+ 6742 | 0.23519274534048084604_z, 0.92176146913902918487_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:7000:51:
+
+ 7000 | 0.91196709608776508591_z, 0.79021450312593461314_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/hvrb_mod.f95 -o src/modules/hvrb_mod.o
+src/modules/rand_mod.f95:7258:51:
+
+ 7258 | 0.70675976885041524782_z, 0.48523709774254450811_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:7516:51:
+
+ 7516 | 0.47283393136239719371_z, 0.27175788721176940200_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:7774:51:
+
+ 7774 | 0.45334704886751677825_z, 0.80373153108886118559_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/tcas_mod.f95 -o src/modules/tcas_mod.o
+src/modules/rand_mod.f95:8032:51:
+
+ 8032 | 0.74623239882921241637_z, 0.22680432726438407215_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:8290:51:
+
+ 8290 | 0.65103327887500537712_z, 0.65848103553064447391_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/strk_mod.f95 -o src/modules/strk_mod.o
+src/modules/rand_mod.f95:8548:51:
+
+ 8548 | 0.66038305443744565648_z, 0.17077518196393712401_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:8806:51:
+
+ 8806 | 0.07235792674317696758_z, 0.39490767702185143531_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/strk_mod.f95:181:65:
+
+  181 |    i1 = max( 1,              floor( ( min( x1, x2 ) - half*w )*ns ) )
+      |                                                                 1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/modules/strk_mod.f95:182:68:
+
+  182 |    i2 = min( size( mask, 1 ), ceiling( ( max( x1, x2 ) + half*w )*ns ) )
+      |                                                                    1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/modules/strk_mod.f95:183:65:
+
+  183 |    j1 = max( 1,              floor( ( min( y1, y2 ) - half*w )*ns ) )
+      |                                                                 1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/modules/strk_mod.f95:184:68:
+
+  184 |    j2 = min( size( mask, 2 ), ceiling( ( max( y1, y2 ) + half*w )*ns ) )
+      |                                                                    1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/modules/strk_mod.f95:468:13:
+
+  468 |          s = '0'
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/strk_mod.f95:475:10:
+
+  475 |       s = trim( adjustl( b ) )
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/strk_mod.f95:482:13:
+
+  482 |          s = s(1:k)
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/strk_mod.f95:482:13:
+
+  482 |          s = s(1:k)
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/strk_mod.f95:484:27:
+
+  484 |       if ( s == '-0' ) s = '0'
+      |                           1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/strk_mod.f95:493:10:
+
+  493 |       s = trim( adjustl( b ) )
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/strk_mod.f95:500:10:
+
+  500 |       s = s(1:k)//'E'//trim( b )
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/strk_mod.f95:500:10:
+
+  500 |       s = s(1:k)//'E'//trim( b )
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/strk_mod.f95:502:10:
+
+  502 |       s = '0'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/rand_mod.f95:9064:51:
+
+ 9064 | 0.81214442593892511374_z, 0.53149545604847073867_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:9322:51:
+
+ 9322 | 0.77472314462914017111_z, 0.14697709804454303282_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:9580:25:
+
+ 9580 | 0.60232864619194562685_z, 0.40329094880472662888_z  &
+      |                         1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:9838:51:
+
+ 9838 | 0.28965424486641582951_z, 0.02666246631018978101_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:10096:51:
+
+10096 | 0.87238178314519422995_z, 0.08928603837874800110_z  &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+src/modules/rand_mod.f95:10194:51:
+
+10194 | 0.85292477141771370610_z, 0.70096308662061423124_z &
+      |                                                   1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/shock_mod.f95 -o src/modules/shock_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/mix_mod.f95 -o src/modules/mix_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/build_mod.f95 -o src/modules/build_mod.o
+src/modules/build_mod.f95:25:7:
+
+   25 |    s = 'unknown'
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/build_mod.f95:20:7:
+
+   20 |    s = '2026-11-07 22:45:48 -0700'
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/temp_mod.f95 -o src/modules/temp_mod.o
+src/modules/temp_mod.f95:145:65:
+
+  145 |    -0.77459666924148337704_dp, 0.0_dp, 0.77459666924148337704_dp /)
+      |                                                                 1
+Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/av_mod.f95 -o src/modules/av_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/deck_mod.f95 -o src/modules/deck_mod.o
+src/modules/deck_mod.f95:125:5:
+
+  125 | use shock
+      |     1
+Warning: USE statement at (1) has no ONLY qualifier [-Wuse-without-only]
+src/modules/deck_mod.f95:2475:38:
+
+ 2475 |          str = dig(1:nd)//repeat('0', e+1-nd)//'.0'
+      |                                      1
+Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2475:38: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2475:38: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2480:30:
+
+ 2480 |       str = '0.'//repeat('0', -e-1)//dig(1:nd)
+      |                              1
+Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2480:30: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2480:30: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2208:19:
+
+ 2208 |    s = repeat(' ', indent)//key
+      |                   1
+Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2208:19: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2209:22:
+
+ 2209 |    s = s//repeat(' ', max(1, indent+12-len(s)))//'= '//val
+      |                      1
+Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2209:22: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2209:22: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2209:22: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2212:28:
+
+ 2212 |          s = s//repeat(' ', max(2, indent+40-len(s)))//'# '//trim(note)
+      |                            1
+Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2212:28: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2212:28: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2212:28: Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+src/modules/deck_mod.f95:2722:10:
+
+ 2722 |       s = trim(deck_file)//':'//itoa(ln)//': '
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2724:10:
+
+ 2724 |       s = trim(deck_file)//': '
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2678:7:
+
+ 2678 |    s = ''
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2680:21:
+
+ 2680 |       if (i > 1) s = s//', '
+      |                     1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2680:21:
+
+ 2680 |       if (i > 1) s = s//', '
+      |                     1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2681:10:
+
+ 2681 |       s = s//trim(layer(i)%name)
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2681:10:
+
+ 2681 |       s = s//trim(layer(i)%name)
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2667:7:
+
+ 2667 |    s = ''
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2669:21:
+
+ 2669 |       if (i > 1) s = s//', '
+      |                     1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2669:21:
+
+ 2669 |       if (i > 1) s = s//', '
+      |                     1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2670:10:
+
+ 2670 |       s = s//trim(material(i)%name)
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2670:10:
+
+ 2670 |       s = s//trim(material(i)%name)
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2647:12:
+
+ 2647 |    b = trim(path)
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2649:18:
+
+ 2649 |    if (k > 0) b = b(k+1:)
+      |                  1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2649:18:
+
+ 2649 |    if (k > 0) b = b(k+1:)
+      |                  1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2651:18:
+
+ 2651 |    if (k > 1) b = b(1:k-1)
+      |                  1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2651:18:
+
+ 2651 |    if (k > 1) b = b(1:k-1)
+      |                  1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2656:10:
+
+ 2656 |       b = 'run'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2658:10:
+
+ 2658 |       b = 'run_'//b
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2658:10:
+
+ 2658 |       b = 'run_'//b
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2594:12:
+
+ 2594 |    s = trim(buf)
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2447:12:
+
+ 2447 |       str = '0.0'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2475:15:
+
+ 2475 |          str = dig(1:nd)//repeat('0', e+1-nd)//'.0'
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2477:15:
+
+ 2477 |          str = dig(1:e+1)//'.'//dig(e+2:nd)
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2480:12:
+
+ 2480 |       str = '0.'//repeat('0', -e-1)//dig(1:nd)
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2483:15:
+
+ 2483 |          str = dig(1:1)//'.'//dig(2:nd)//'e'//itoa(e)
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2485:15:
+
+ 2485 |          str = dig(1:1)//'e'//itoa(e)
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2488:18:
+
+ 2488 |    if (neg) str = '-'//str
+      |                  1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2488:18:
+
+ 2488 |    if (neg) str = '-'//str
+      |                  1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2330:9:
+
+ 2330 |    msg = 'is not a number'
+      |         1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2331:9:
+
+ 2331 |    s   = trim(adjustl(text))
+      |         1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2334:12:
+
+ 2334 |       msg = 'is empty; a number is needed'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2395:18:
+
+ 2395 |             msg = 'has an exponent with no digits'
+      |                  1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2400:15:
+
+ 2400 |          msg = 'uses a Fortran "d" exponent; write e or E instead'
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2414:15:
+
+ 2414 |          msg = 'is out of range (|x| must be between 1e-300 and 1e300)'
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2423:9:
+
+ 2423 |    msg = ''
+      |         1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2208:7:
+
+ 2208 |    s = repeat(' ', indent)//key
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2209:7:
+
+ 2209 |    s = s//repeat(' ', max(1, indent+12-len(s)))//'= '//val
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2209:7:
+
+ 2209 |    s = s//repeat(' ', max(1, indent+12-len(s)))//'= '//val
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2212:13:
+
+ 2212 |          s = s//repeat(' ', max(2, indent+40-len(s)))//'# '//trim(note)
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2212:13:
+
+ 2212 |          s = s//repeat(' ', max(2, indent+40-len(s)))//'# '//trim(note)
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2084:17:
+
+ 2084 |          where = 'x0 = '//fmt_real(t%x0)//' mm, '
+      |                 1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2086:20:
+
+ 2086 |             where = where//'between faces '//itoa(t%kface)//' and '// &
+      |                    1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2086:20:
+
+ 2086 |             where = where//'between faces '//itoa(t%kface)//' and '// &
+      |                    1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2090:20:
+
+ 2090 |             where = where//'face '//itoa(t%kface)//' (i = '// &
+      |                    1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2090:20:
+
+ 2090 |             where = where//'face '//itoa(t%kface)//' (i = '// &
+      |                    1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2178:24:
+
+ 2178 |             prof = trim(y%prof_name)
+      |                        1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2180:22:
+
+ 2180 |                prof = prof//' '//fmt_real(y%prof_par(j))
+      |                      1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:2180:22:
+
+ 2180 |                prof = prof//' '//fmt_real(y%prof_par(j))
+      |                      1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1875:10:
+
+ 1875 |    msg  = ''
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1883:12:
+
+ 1883 |       msg = 'use either A:B or A@f, not both'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1893:15:
+
+ 1893 |          msg = 'only one ":" is allowed'
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1897:15:
+
+ 1897 |          msg = 'an interface needs a layer name on each side of ":"'
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1903:15:
+
+ 1903 |          msg = 'no layer named '//trim(merge(a, b, la == 0))// &
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1908:15:
+
+ 1908 |          msg = trim(layer(la)%name)//' and '//trim(layer(lb)%name)// &
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1921:15:
+
+ 1921 |          msg = 'a layer name is needed before "@"'
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1926:15:
+
+ 1926 |          msg = 'no layer named '//trim(a)//' (layers: '//layer_list()//')'
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1931:15:
+
+ 1931 |          msg = 'the fraction "'//trim(b)//'" '//msg
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1931:15:
+
+ 1931 |          msg = 'the fraction "'//trim(b)//'" '//msg
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1935:15:
+
+ 1935 |          msg = 'the fraction must be between 0 and 1'
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1943:15:
+
+ 1943 |          msg = 'origin must name a location (A:B or A@f); for a number, '// &
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1949:15:
+
+ 1949 |          msg = '"'//trim(text)//'" '//msg//' (locations are A:B, A@f '// &
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1949:15:
+
+ 1949 |          msg = '"'//trim(text)//'" '//msg//' (locations are A:B, A@f '// &
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1962:15:
+
+ 1962 |          msg = 'x = '//fmt_real(x)//' is outside the stack ['// &
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1637:10:
+
+ 1637 |       b = 'the top level'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1640:10:
+
+ 1640 |       b = 'the Run block'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1644:10:
+
+ 1644 |       b = 'the Output block'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1646:10:
+
+ 1646 |       b = 'the Solver block'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1649:10:
+
+ 1649 |       b = 'a Material block'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1651:10:
+
+ 1651 |       b = 'the Stack block'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1654:10:
+
+ 1654 |       b = 'a Layer block'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1656:10:
+
+ 1656 |       b = ''
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1657:33:
+
+ 1657 |       if (bkey_index(k) > 0) b = 'a Material block'   ! a burn key
+      |                                 1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:1620:10:
+
+ 1620 |    home = home_block(lower(key))
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:928:7:
+
+  928 |    s = trim(bkey_name(1))
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:930:10:
+
+  930 |       s = s//', '//trim(bkey_name(j))
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:930:10:
+
+  930 |       s = s//', '//trim(bkey_name(j))
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:916:7:
+
+  916 |    s = ''
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:918:22:
+
+  918 |       if (ib > 1) s = s//', '
+      |                      1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:918:22:
+
+  918 |       if (ib > 1) s = s//', '
+      |                      1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:919:10:
+
+  919 |       s = s//trim(burn_names(ib))//' ('//trim(burn_long(ib))//')'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:919:10:
+
+  919 |       s = s//trim(burn_names(ib))//' ('//trim(burn_long(ib))//')'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:899:7:
+
+  899 |    s = 'burn = '
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:904:34:
+
+  904 |       if (n > 1 .and. n < nt) s = s//', '
+      |                                  1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:904:34:
+
+  904 |       if (n > 1 .and. n < nt) s = s//', '
+      |                                  1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:905:35:
+
+  905 |       if (n > 1 .and. n == nt) s = s//' or '
+      |                                   1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:905:35:
+
+  905 |       if (n > 1 .and. n == nt) s = s//' or '
+      |                                   1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:906:10:
+
+  906 |       s = s//trim(burn_names(ib))
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:906:10:
+
+  906 |       s = s//trim(burn_names(ib))
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:843:17:
+
+  843 |          bname = 'burn = '//trim(burn_names(ib))
+      |                 1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:410:10:
+
+  410 |    line = ''
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:419:13:
+
+  419 |       line = line // piece(1:nread)
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/deck_mod.f95:419:13:
+
+  419 |       line = line // piece(1:nread)
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/burn_mod.f95 -o src/modules/burn_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/rs_mod.f95 -o src/modules/rs_mod.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/trace_mod.f95 -o src/modules/trace_mod.o
+src/modules/trace_mod.f95:379:12:
+
+  379 |    s = trim(buf)
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:370:7:
+
+  370 |    s = trim(adjustl(buf))
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:343:16:
+
+  343 |          line = '# tracer '//trim(buf)//' '//trim(t%name)//' : '// &
+      |                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:346:19:
+
+  346 |             line = line//'between faces '//inum(t%kface)//' and '// &
+      |                   1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:346:19:
+
+  346 |             line = line//'between faces '//inum(t%kface)//' and '// &
+      |                   1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:350:19:
+
+  350 |             line = line//'on face '//inum(t%kface)// &
+      |                   1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:350:19:
+
+  350 |             line = line//'on face '//inum(t%kface)// &
+      |                   1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:353:16:
+
+  353 |          line = line//' ('//trim(layer(ilay(icell(t%kval)))%name)//')'
+      |                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:353:16:
+
+  353 |          line = line//' ('//trim(layer(ilay(icell(t%kval)))%name)//')'
+      |                1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:302:7:
+
+  302 |    s = trim( adjustl( b ) )
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:286:10:
+
+  286 |    line = num17( row(1) )
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:288:10:
+
+  288 |    line = line//', '//trim( buf )
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:288:10:
+
+  288 |    line = line//', '//trim( buf )
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:290:13:
+
+  290 |       line = line//', '//num17( row(j) )
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/trace_mod.f95:290:13:
+
+  290 |       line = line//', '//num17( row(j) )
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/hist_mod.f95 -o src/modules/hist_mod.o
+src/modules/hist_mod.f95:488:12:
+
+  488 |    s = trim(b)
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:348:9:
+
+  348 |    msg = ''
+      |         1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:353:12:
+
+  353 |       msg = 'cannot open '//fname
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:362:12:
+
+  362 |       msg = fname//' is not a bitwhiz history file'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:366:12:
+
+  366 |       msg = fname//' is format version '//itoa(ver)// &
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:372:12:
+
+  372 |       msg = fname//' has a damaged header'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:384:15:
+
+  384 |          msg = fname//': variable '//trim(vname(j))//' has an unknown '// &
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:392:12:
+
+  392 |       msg = fname//' has a damaged header (frame size)'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:406:12:
+
+  406 |       msg = fname//' does not have XPOS and KMPS (faces) and GPA (cells)'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:423:12:
+
+  423 |       msg = fname//' holds '//itoa(nfr)//' frames, but its header says '// &
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:428:12:
+
+  428 |       msg = fname//' has no frames'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/hist_mod.f95:458:12:
+
+  458 |       msg = 'cannot read frame '//itoa(jf)//' of '//fname
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/modules/pics_mod.f95 -o src/modules/pics_mod.o
+src/modules/pics_mod.f95:800:12:
+
+  800 |    s = trim(b)
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:786:10:
+
+  786 |       s = fmt_real( zero )
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:791:7:
+
+  791 |    s = fmt_real( anint( y*scale )/scale )
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:718:7:
+
+  718 |    v = '?'
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:724:7:
+
+  724 |    v = trim(adjustl( hr_text(j+1:j+k-1) ))
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:550:11:
+
+  550 |    fname = trim(title)//'.tracers.csv'
+      |           1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:424:6:
+
+  424 |       xc = 0.5_dp*( real( hr_x(1:kmax,j), dp ) + real( hr_x(2:kmax+1,j), dp ) )
+      |      1
+Warning: Code for reallocating the allocatable array at (1) will be added [-Wrealloc-lhs]
+src/modules/pics_mod.f95:425:6:
+
+  425 |       v = real( hr_p(:,j), dp )
+      |      1
+Warning: Code for reallocating the allocatable array at (1) will be added [-Wrealloc-lhs]
+src/modules/pics_mod.f95:426:13:
+
+  426 |       base = trim(title)//'.mv_p_'//cyc
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:226:11:
+
+  226 |    fname = trim(title)//'.hist'
+      |           1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:236:10:
+
+  236 |    what = ''
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:238:13:
+
+  238 |       what = 'method '//trim(hr_method)//', not '//trim(method)
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:240:13:
+
+  240 |       what = 'order '//itoa(hr_order)//', not '//itoa(ord)
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:242:13:
+
+  242 |       what = itoa(hr_kmax)//' cells, not '//itoa(layer(nlay)%klast)
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:244:13:
+
+  244 |       what = itoa(hr_nlay)//' layers, not '//itoa(nlay)
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/modules/pics_mod.f95:251:19:
+
+  251 |             what = 'layer '//itoa(l)//' is '//trim(hr_lname(l))//' ('// &
+      |                   1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/colormaps/cmap_grayscale.f95 -o src/colormaps/cmap_grayscale.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/colormaps/cmap_plasma.f95 -o src/colormaps/cmap_plasma.o
+src/colormaps/cmap_plasma.f95:59:12:
+
+   59 | npr_if: if (npr .eq. 1) then
+      |            1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_plasma.f95:61:9:
+
+   61 | else if (npr .eq. 2) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_plasma.f95:63:9:
+
+   63 | else if (npr .eq. 3) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_plasma.f95:65:9:
+
+   65 | else if (npr .eq. 4) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_plasma.f95:67:9:
+
+   67 | else if (npr .eq. 5) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_plasma.f95:69:9:
+
+   69 | else if (npr .eq. 6) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/colormaps/cmap_viridis.f95 -o src/colormaps/cmap_viridis.o
+src/colormaps/cmap_viridis.f95:59:12:
+
+   59 | npr_if: if (npr .eq. 1) then
+      |            1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_viridis.f95:61:9:
+
+   61 | else if (npr .eq. 2) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_viridis.f95:63:9:
+
+   63 | else if (npr .eq. 3) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_viridis.f95:65:9:
+
+   65 | else if (npr .eq. 4) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_viridis.f95:67:9:
+
+   67 | else if (npr .eq. 5) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_viridis.f95:69:9:
+
+   69 | else if (npr .eq. 6) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/colormaps/cmap_inferno.f95 -o src/colormaps/cmap_inferno.o
+src/colormaps/cmap_inferno.f95:59:12:
+
+   59 | npr_if: if (npr .eq. 1) then
+      |            1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_inferno.f95:61:9:
+
+   61 | else if (npr .eq. 2) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_inferno.f95:63:9:
+
+   63 | else if (npr .eq. 3) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_inferno.f95:65:9:
+
+   65 | else if (npr .eq. 4) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_inferno.f95:67:9:
+
+   67 | else if (npr .eq. 5) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_inferno.f95:69:9:
+
+   69 | else if (npr .eq. 6) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/colormaps/cmap_blackbody.f95 -o src/colormaps/cmap_blackbody.o
+src/colormaps/cmap_blackbody.f95:59:12:
+
+   59 | npr_if: if (npr .eq. 1) then
+      |            1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_blackbody.f95:61:9:
+
+   61 | else if (npr .eq. 2) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_blackbody.f95:63:9:
+
+   63 | else if (npr .eq. 3) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_blackbody.f95:65:9:
+
+   65 | else if (npr .eq. 4) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_blackbody.f95:67:9:
+
+   67 | else if (npr .eq. 5) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_blackbody.f95:69:9:
+
+   69 | else if (npr .eq. 6) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/colormaps/cmap_kindlmann.f95 -o src/colormaps/cmap_kindlmann.o
+src/colormaps/cmap_kindlmann.f95:59:12:
+
+   59 | npr_if: if (npr .eq. 1) then
+      |            1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_kindlmann.f95:61:9:
+
+   61 | else if (npr .eq. 2) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_kindlmann.f95:63:9:
+
+   63 | else if (npr .eq. 3) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_kindlmann.f95:65:9:
+
+   65 | else if (npr .eq. 4) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_kindlmann.f95:67:9:
+
+   67 | else if (npr .eq. 5) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_kindlmann.f95:69:9:
+
+   69 | else if (npr .eq. 6) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/colormaps/cmap_extendedkindlmann.f95 -o src/colormaps/cmap_extendedkindlmann.o
+src/colormaps/cmap_extendedkindlmann.f95:59:12:
+
+   59 | npr_if: if (npr .eq. 1) then
+      |            1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_extendedkindlmann.f95:61:9:
+
+   61 | else if (npr .eq. 2) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_extendedkindlmann.f95:63:9:
+
+   63 | else if (npr .eq. 3) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_extendedkindlmann.f95:65:9:
+
+   65 | else if (npr .eq. 4) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_extendedkindlmann.f95:67:9:
+
+   67 | else if (npr .eq. 5) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_extendedkindlmann.f95:69:9:
+
+   69 | else if (npr .eq. 6) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/colormaps/cmap_smoothcoolwarm.f95 -o src/colormaps/cmap_smoothcoolwarm.o
+src/colormaps/cmap_smoothcoolwarm.f95:59:12:
+
+   59 | npr_if: if (npr .eq. 1) then
+      |            1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_smoothcoolwarm.f95:61:9:
+
+   61 | else if (npr .eq. 2) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_smoothcoolwarm.f95:63:9:
+
+   63 | else if (npr .eq. 3) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_smoothcoolwarm.f95:65:9:
+
+   65 | else if (npr .eq. 4) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_smoothcoolwarm.f95:67:9:
+
+   67 | else if (npr .eq. 5) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_smoothcoolwarm.f95:69:9:
+
+   69 | else if (npr .eq. 6) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/colormaps/cmap_bentcoolwarm.f95 -o src/colormaps/cmap_bentcoolwarm.o
+src/colormaps/cmap_bentcoolwarm.f95:59:12:
+
+   59 | npr_if: if (npr .eq. 1) then
+      |            1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_bentcoolwarm.f95:61:9:
+
+   61 | else if (npr .eq. 2) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_bentcoolwarm.f95:63:9:
+
+   63 | else if (npr .eq. 3) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_bentcoolwarm.f95:65:9:
+
+   65 | else if (npr .eq. 4) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_bentcoolwarm.f95:67:9:
+
+   67 | else if (npr .eq. 5) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/colormaps/cmap_bentcoolwarm.f95:69:9:
+
+   69 | else if (npr .eq. 6) then
+      |         1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/drawings/draw_colormaps.f95 -o src/drawings/draw_colormaps.o
+src/drawings/draw_colormaps.f95:91:11:
+
+   91 |       x = ( i - one ) / ( nx - one )
+      |           1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/drawings/draw_colormaps.f95:92:11:
+
+   92 |       y = ( ny - j ) / ( ny - one )
+      |           1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/drawings/draw_colormaps.f95:108:32:
+
+  108 |          call r8_uniform_01( r )
+      |                                1
+Warning: Procedure 'r8_uniform_01' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_colormaps.f95:120:45:
+
+  120 | call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
+      |                                             1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_colormaps.f95:127:48:
+
+  127 |    call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
+      |                                                1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_colormaps.f95:131:48:
+
+  131 |    call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
+      |                                                1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_colormaps.f95:135:48:
+
+  135 |    call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
+      |                                                1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_colormaps.f95:139:48:
+
+  139 |    call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
+      |                                                1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_colormaps.f95:143:48:
+
+  143 |    call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
+      |                                                1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_colormaps.f95:147:48:
+
+  147 |    call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
+      |                                                1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_colormaps.f95:151:48:
+
+  151 |    call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
+      |                                                1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_colormaps.f95:155:48:
+
+  155 |    call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
+      |                                                1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_colormaps.f95:76:0:
+
+   76 | seed = 20231125 + 7919*(/ ( i, i = 1, nseed ) /)
+      | 
+Warning: Code for reallocating the allocatable array at (1) will be added [-Wrealloc-lhs]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/drawings/draw_tx.f95 -o src/drawings/draw_tx.o
+src/drawings/draw_tx.f95:346:21:
+
+  346 |             blank = ( hr_d(k,jn) == 1 .and. .not. ( abs(p) > pzero ) )
+      |                     1
+Warning: Conversion from INTEGER(1) to INTEGER(4) at (1) [-Wconversion-extra]
+src/drawings/draw_tx.f95:283:44:
+
+  283 | call apply_colormap( nx, 1, fb, rgbb, cmap )
+      |                                            1
+Warning: Procedure 'apply_colormap' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_tx.f95:381:54:
+
+  381 |          call apply_colormap( nx, ns, f4, rgb4, cmap )
+      |                                                      1
+Warning: Procedure 'apply_colormap' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_tx.f95:444:45:
+
+  444 | call bmpmaker( nx, ny, fcn, RGB, bout, none )
+      |                                             1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+src/drawings/draw_tx.f95:318:12:
+
+  318 |             xf = f%xa + ( real( hr_x(:,1), dp ) - xmin )*sc
+      |            1
+Warning: Code for reallocating the allocatable array at (1) will be added [-Wrealloc-lhs]
+src/drawings/draw_tx.f95:323:12:
+
+  323 |             xf = f%xa + ( ( one - w )*real( hr_x(:,jf), dp ) + &
+      |            1
+Warning: Code for reallocating the allocatable array at (1) will be added [-Wrealloc-lhs]
+src/drawings/draw_tx.f95:332:12:
+
+  332 |             reached = reached .or. ( abs( real( hr_p(:,jt), dp ) ) > pzero )
+      |            1
+Warning: Code for reallocating the allocatable array at (1) will be added [-Wrealloc-lhs]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/drawings/draw_trace.f95 -o src/drawings/draw_trace.o
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/drawings/draw_profile.f95 -o src/drawings/draw_profile.o
+src/drawings/draw_profile.f95:257:45:
+
+  257 | call bmpmaker( nx, ny, fcn, RGB, bout, cmap )
+      |                                             1
+Warning: Procedure 'bmpmaker' called with an implicit interface at (1) [-Wimplicit-interface]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/main/bmpmaker.f95 -o src/main/bmpmaker.o
+src/main/bmpmaker.f95:70:18:
+
+   70 | RowSize1=ceiling((BitsPerPixel*nx)/(for*eig))*4
+      |                  1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/main/bmpmaker.f95:71:16:
+
+   71 | RowSize2=floor((BitsPerPixel*nx+thr*ten+one)/(for*eig))*4
+      |                1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/main/bmpmaker.f95:83:60:
+
+   83 |       if ( ((bout(i:i).eq.' ') .or. (bout(i:i).eq.'')) .and. &
+      |                                                            1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/main/bmpmaker.f95:83:60:
+
+   83 |       if ( ((bout(i:i).eq.' ') .or. (bout(i:i).eq.'')) .and. &
+      |                                                            1
+Warning: Conversion from INTEGER(2) to INTEGER(4) at (1) [-Wconversion-extra]
+src/main/bmpmaker.f95:179:45:
+
+  179 |       call cmap_grayscale( nx, ny, fcn, RGB )
+      |                                             1
+Warning: Procedure 'cmap_grayscale' called with an implicit interface at (1) [-Wimplicit-interface]
+src/main/bmpmaker.f95:190:55:
+
+  190 |       call cmap_smoothcoolwarm( nx, ny, fcn, RGB, npr )
+      |                                                       1
+Warning: Procedure 'cmap_smoothcoolwarm' called with an implicit interface at (1) [-Wimplicit-interface]
+src/main/bmpmaker.f95:201:53:
+
+  201 |       call cmap_bentcoolwarm( nx, ny, fcn, RGB, npr )
+      |                                                     1
+Warning: Procedure 'cmap_bentcoolwarm' called with an implicit interface at (1) [-Wimplicit-interface]
+src/main/bmpmaker.f95:212:48:
+
+  212 |       call cmap_viridis( nx, ny, fcn, RGB, npr )
+      |                                                1
+Warning: Procedure 'cmap_viridis' called with an implicit interface at (1) [-Wimplicit-interface]
+src/main/bmpmaker.f95:223:47:
+
+  223 |       call cmap_plasma( nx, ny, fcn, RGB, npr )
+      |                                               1
+Warning: Procedure 'cmap_plasma' called with an implicit interface at (1) [-Wimplicit-interface]
+src/main/bmpmaker.f95:234:50:
+
+  234 |       call cmap_blackbody( nx, ny, fcn, RGB, npr )
+      |                                                  1
+Warning: Procedure 'cmap_blackbody' called with an implicit interface at (1) [-Wimplicit-interface]
+src/main/bmpmaker.f95:245:48:
+
+  245 |       call cmap_inferno( nx, ny, fcn, RGB, npr )
+      |                                                1
+Warning: Procedure 'cmap_inferno' called with an implicit interface at (1) [-Wimplicit-interface]
+src/main/bmpmaker.f95:256:50:
+
+  256 |       call cmap_kindlmann( nx, ny, fcn, RGB, npr )
+      |                                                  1
+Warning: Procedure 'cmap_kindlmann' called with an implicit interface at (1) [-Wimplicit-interface]
+src/main/bmpmaker.f95:267:58:
+
+  267 |       call cmap_extendedkindlmann( nx, ny, fcn, RGB, npr )
+      |                                                          1
+Warning: Procedure 'cmap_extendedkindlmann' called with an implicit interface at (1) [-Wimplicit-interface]
+src/main/bmpmaker.f95:109:51:
+
+  109 |       call apply_colormap( nx, ny, fcn, RGB, cmap )
+      |                                                   1
+Warning: Procedure 'apply_colormap' called with an implicit interface at (1) [-Wimplicit-interface]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/utils/random.f95 -o src/utils/random.o
+src/utils/random.f95:32:13:
+
+   32 | rand_index = min(int(u * nbig) + 1, nbig)   ! Scale to 1:N
+      |             1
+Warning: Conversion from INTEGER(4) to INTEGER(8) at (1) [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/utils/timestamp.f95 -o src/utils/timestamp.o
+src/utils/timestamp.f95:52:7:
+
+   52 | cpu = h*(six*ten)**2 + n*(six*ten) + s + mm/(ten**3)
+      |       1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/utils/timestamp.f95:52:24:
+
+   52 | cpu = h*(six*ten)**2 + n*(six*ten) + s + mm/(ten**3)
+      |                        1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/utils/timestamp.f95:52:38:
+
+   52 | cpu = h*(six*ten)**2 + n*(six*ten) + s + mm/(ten**3)
+      |                                      1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+src/utils/timestamp.f95:52:43:
+
+   52 | cpu = h*(six*ten)**2 + n*(six*ten) + s + mm/(ten**3)
+      |                                           1
+Warning: Conversion from INTEGER(4) to REAL(8) at (1) [-Wconversion-extra]
+gfortran -I./src/modules -J./src/modules -c -std=f2018 -Wall -Wextra -Wimplicit-interface -Wimplicit-procedure -Wsurprising -Waliasing -Wampersand -Wconversion-extra -Wcharacter-truncation -Wline-truncation -Wunused-parameter -Wrealloc-lhs -Wrealloc-lhs-all -Wfunction-elimination -Wintrinsic-shadow -Wuse-without-only -fcheck=all -g -O2 -finit-real=snan -fimplicit-none -ffp-contract=off -ffpe-trap=invalid,zero,overflow -fopenmp src/main/maincode.f95 -o src/main/maincode.o
+src/main/maincode.f95:2009:13:
+
+ 2009 |          s = 'RS, order 2 (MUSCL-Hancock, Van Leer)'
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:2011:13:
+
+ 2011 |          s = 'RS, order 1 (first-order Godunov)'
+      |             1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:2014:10:
+
+ 2014 |       s = 'AV (artificial viscosity)'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1996:12:
+
+ 1996 |    s = trim(buf)
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1974:10:
+
+ 1974 |       s = '?'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1977:15:
+
+ 1977 |       s = trim(b)
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1980:15:
+
+ 1980 |       s = trim(b)
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1983:15:
+
+ 1983 |       s = trim(b)
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1986:15:
+
+ 1986 |       s = trim(b)
+      |               1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1624:10:
+
+ 1624 |    opts = ' '//compiler_options()//' '
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1627:12:
+
+ 1627 |    olevel = '-O0'
+      |            1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1629:25:
+
+ 1629 |    if ( k > 0 ) olevel = opts(k+1:k-1+index(opts(k+1:), ' '))
+      |                         1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1636:10:
+
+ 1636 |       s = 'debug ('//olevel
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1638:10:
+
+ 1638 |       s = 'optimized ('//olevel
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1640:21:
+
+ 1640 |    if ( checks ) s = s//', -fcheck'
+      |                     1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1640:21:
+
+ 1640 |    if ( checks ) s = s//', -fcheck'
+      |                     1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1641:7:
+
+ 1641 |    s = s//')'
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1641:7:
+
+ 1641 |    s = s//')'
+      |       1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1643:10:
+
+ 1643 |       s = s//', OpenMP'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1643:10:
+
+ 1643 |       s = s//', OpenMP'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1645:10:
+
+ 1645 |       s = s//', serial'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+src/main/maincode.f95:1645:10:
+
+ 1645 |       s = s//', serial'
+      |          1
+Warning: Code for reallocating the allocatable variable at (1) will be added [-Wrealloc-lhs-all]
+gfortran -fopenmp -I./src/modules -J./src/modules -o ./bin/bitwhiz src/main/maincode.o src/modules/bit_mod.o src/modules/plas_mod.o src/modules/viri_mod.o src/modules/infr_mod.o src/modules/bbdy_mod.o src/modules/kndl_mod.o src/modules/ekdl_mod.o src/modules/smcw_mod.o src/modules/btcw_mod.o src/modules/rand_mod.o src/modules/btab_mod.o src/modules/shock_mod.o src/modules/dist_mod.o src/modules/eos_mod.o src/modules/temp_mod.o src/modules/prod_mod.o src/modules/mix_mod.o src/modules/lshk_mod.o src/modules/hvrb_mod.o src/modules/tcas_mod.o src/modules/burn_mod.o src/modules/av_mod.o src/modules/rs_mod.o src/modules/deck_mod.o src/modules/trace_mod.o src/modules/hist_mod.o src/modules/strk_mod.o src/modules/pics_mod.o \
+	src/colormaps/cmap_grayscale.o src/colormaps/cmap_plasma.o src/colormaps/cmap_viridis.o src/colormaps/cmap_inferno.o src/colormaps/cmap_blackbody.o src/colormaps/cmap_kindlmann.o src/colormaps/cmap_extendedkindlmann.o src/colormaps/cmap_smoothcoolwarm.o src/colormaps/cmap_bentcoolwarm.o src/drawings/draw_colormaps.o src/drawings/draw_tx.o src/drawings/draw_trace.o src/drawings/draw_profile.o src/main/bmpmaker.o src/utils/random.o src/utils/timestamp.o src/modules/build_mod.o

@@ -1,0 +1,136 @@
+ ========================================================
+        ---==>>    __    _ __           __    _
+         --==>>   / /_  (_) /__      __/ /_  (_)___
+          -==>>  / __ \/ / __/ | /| / / __ \/ /_  /
+         --==>> / /_/ / / /_ | |/ |/ / / / / / / /_
+        ---==>>/_.___/_/\__/ |__/|__/_/ /_/_/ /___/
+ --------------------------------------------------------
+         a one-dimensional Lagrangian hydrocode
+ --------------------------------------------------------
+    u |                         _______________________
+      |                ________/    second shock
+      |               /
+      |   ___________/   first shock
+      |__/____________________________________________ t
+ --------------------------------------------------------
+   version    : v1.4.0
+   built      : 2026-11-07 22:35:31 -0700
+   compiler   : GCC version 13.3.0
+   build      : debug (-O0, -fcheck), OpenMP
+   run start  : 2026-11-07 23:12:31 -0700
+ ========================================================
+  2. Input deck: e2_stiff_rs.deck
+ --------------------------------------------------------
+   Title                               : e2_stiff_rs
+   Resolved deck                       : e2_stiff_rs.resolved (every default filled in)
+ ========================================================
+  3. OpenMP settings
+ --------------------------------------------------------
+   OpenMP compiled in                  : yes
+   Threads requested (deck)            :        1
+   Processors available                :        2
+   Threads in the team                 :        1
+   Team size seen inside region        :        1
+   Threads that reported in            :        1
+   SINGLE block ran on thread          :        0
+ ========================================================
+  4. Output files
+ --------------------------------------------------------
+   Heartbeat file                      : e2_stiff_rs.heartbeat
+   Tracer file                         : e2_stiff_rs.tracers.csv
+   History file                        : e2_stiff_rs.hist
+ ========================================================
+  5. Data arrays
+ --------------------------------------------------------
+   Real cells (kmax)                   :      240
+   Database places (imax)              :      483
+   Database slots (nvar)               :       27  (0.1 MB)
+   Cells carrying T                    :      200  (eos = mie_gruneisen_t)
+ --------------------------------------------------------
+   layer         zones    dx (mm)  x left (mm)  u (km/s)
+   Al               40 1.0000E-01     0.000000    2.0000
+   MatX            100 1.0000E-01     4.000000    0.0000
+   PMMA            100 1.0000E-01    14.000000    0.0000
+ --------------------------------------------------------
+   Impact face Al:MatX at x =  4.000000 mm
+     u =  1.2694 km/s, weighted from  2.0000 |  0.0000
+ ========================================================
+  6. Initialization
+ --------------------------------------------------------
+   Time (us)                           :        0.000000
+   Cycle                               :        0
+   Total mass (g/cm^3*mm)              :  3.89900000E+01
+   x-momentum (g/cm^3*mm*km/s)         :  2.22400000E+01
+   Total energy (GPa*mm)               :  2.22400000E+01
+   First time step (us)                :  1.13207547E-02
+   ... set by cell                     :       23
+   Setup checks                        : all passed
+ ========================================================
+  7. Simulation
+ --------------------------------------------------------
+   Method                              : RS, order 2 (MUSCL-Hancock, Van Leer)
+   Threads in the time loop            :        1
+ --------------------------------------------------------
+         cycle      t (us)     dt (us)    max P (GPa)
+           48    0.303163  5.0851E-03      27.279306
+          108    0.601543  4.5445E-03      32.044671
+          171    0.901691  4.7344E-03      39.446938
+          235    1.200116  4.5071E-03      40.562090
+          301    1.500706  4.3944E-03      23.262541
+          361    1.801131  5.2519E-03      16.851054
+          416    2.105132  5.7515E-03      15.272464
+          467    2.404760  6.0931E-03      13.924952
+          515    2.700912  6.2569E-03      12.498207
+          562    3.000000  3.6282E-03      11.693512
+ --------------------------------------------------------
+   Cycles                              :      562
+   Final time (us)                     :        3.000000
+   Mass error (relative)               :  0.00000000E+00
+   Energy error (relative)             : -6.38977280E-16
+   x-momentum change                   : -2.13162821E-14
+   First tensile cell                  : 2 (Al), t =   0.7406 us
+   Most tension held, intact (GPa)     : -9.79053482E-03
+   First cell to break (spall)         : 2 (Al), t =   0.7455 us
+   Cells broken by the end             :        8
+   Deepest tension at a break (GPa)    : -3.52011656E-02
+   T range, intact cells (K)           : 297.999 to 8126.155
+   Hottest intact cell                 : 128 (MatX), t =   1.2630 us, x =  12.8090 mm
+   First cell to react                 : 41 (MatX), t =   0.0692 us, x =   4.1328 mm
+   Cells burnt out, MatX               :      100  of 100
+   Largest lam                         :        1.000000
+   Wall time per cycle (us)            :           143.1
+ ========================================================
+  8. Output files, closed
+ --------------------------------------------------------
+   Resolved deck                       : e2_stiff_rs.resolved  (4 KB)
+   Heartbeat file                      : e2_stiff_rs.heartbeat  (59 KB)
+   Tracer file                         : e2_stiff_rs.tracers.csv  (55 KB)
+   History file                        : e2_stiff_rs.hist  (67 KB, 13 frames)
+ ========================================================
+  9. Pictures
+ --------------------------------------------------------
+   Colormap                            : viridis
+   History file                        : e2_stiff_rs.hist
+   Frames                              : 13, t = 0.0 to 3.0 us
+   Written with                        : plot_dt = 0.25 us, plot_every = 0
+   x across (mm)                       : 0.0 to 24.0
+   t up (us)                           : 0.0 to 3.0
+   Color ranges                        : robust: min to the top held for 50 cycles
+   u in the run (km/s)                 : -0.77552 to 3.1164
+   u colors (km/s)                     : -0.77552 to 3.1164  (window 0.0 to 1.0)
+   P in the run (GPa)                  : -0.0093087 to 39.454
+   P colors (GPa)                      : -0.0093087 to 39.454  (window 0.0 to 1.0)
+   White                               : outside the material, open spall (D = 1, P = 0);
+                                       : in P also material no wave has reached
+   Drawing t-x diagrams                : e2_stiff_rs.tx_u.bmp, e2_stiff_rs.tx_p.bmp
+   Tracer file                         : e2_stiff_rs.tracers.csv
+   Rows                                : 61, t = 0.0 to 3.0 us
+   Drawing tracer plots                : 3, e2_stiff_rs.tr_<tracer>.bmp
+   Tracer mid u (km/s)                 : 0.0 to 2.6711, y axis -0.2 to 2.9
+   Tracer pdv u (km/s)                 : -1.0851e-13 to 2.9705, y axis -0.2 to 3.2
+   Tracer flyer u (km/s)               : -0.66669 to 2.0, y axis -0.9 to 2.2
+ ========================================================
+   run end    : 2026-11-07 23:12:33 -0700
+   wall clock :      1.608 s
+   CPU time   :      1.581 s (all threads)
+ ========================================================

@@ -1,0 +1,77 @@
+compare_g1.py: /home/claude/audit/repo/bitwhiz/bin/bitwhiz_release
+  runs in /tmp/g1_0xahu9s6
+u_fly = 1.00 km/s: exact P1 4.3713 GPa, u1 0.7228 km/s, rho1 1.9782 g/cm^3, U_S 3.7801 km/s
+   pass  1 mm, GPA    4.3713 GPa    (+0.000 % of exact; reference 4.3712)
+   pass  1 mm, KMPS   0.7228 km/s   (+0.000 % of exact; reference 0.7227)
+   pass  1 mm, DENS   1.9782 g/cm^3 (-0.000 % of exact; reference 1.9782)
+   pass  arrivals 1-9 mm and PDV: bitwhiz - reference from +0.6 to +4.2 ns (largest at x4)
+   pass  energy drift 0.00000 % (reference 0.00205 %)
+         U_S fit 1-9 mm: bitwhiz 3.7828, reference 3.7780, exact 3.7801 km/s
+         Ta reshock at 1 mm: bitwhiz 1.5217, reference 1.5205 us (+1.2 ns)
+         PDV first plateau: bitwhiz 0.8115, reference 0.8115 km/s (-0.00 %)
+   pass  TK = the formula at bitwhiz's state, all 13 tracers, every row: within 2.8e-12 K (largest at pmma11)
+   pass  1-9 mm, TK at the first shock: exact 432.785 K, bitwhiz within +0.017 K (+0.013 % of the rise; largest at x3)
+   pass  11 mm (PMMA), TK 431.923 K on its Hugoniot at bitwhiz's density, 431.929 (-0.005 % of the rise)
+         reference TK at  5.0 mm (MatX): 433.663 K, bitwhiz 432.792 (-0.871 K)
+         reference TK at 11.0 mm (PMMA): 431.932 K, bitwhiz 431.923 (-0.009 K)
+u_fly = 1.25 km/s: exact P1 5.7930 GPa, u1 0.8897 km/s, rho1 2.0476 g/cm^3, U_S 4.0697 km/s
+   pass  1 mm, GPA    5.7930 GPa    (-0.001 % of exact; reference 5.7929)
+   pass  1 mm, KMPS   0.8897 km/s   (+0.001 % of exact; reference 0.8896)
+   pass  1 mm, DENS   2.0476 g/cm^3 (-0.000 % of exact; reference 2.0476)
+   pass  arrivals 1-9 mm and PDV: bitwhiz - reference from +0.7 to +3.9 ns (largest at x4)
+   pass  energy drift 0.00000 % (reference 0.00251 %)
+         U_S fit 1-9 mm: bitwhiz 4.0704, reference 4.0691, exact 4.0697 km/s
+         Ta reshock at 1 mm: bitwhiz 1.4585, reference 1.4571 us (+1.5 ns)
+         PDV first plateau: bitwhiz 0.9967, reference 0.9967 km/s (-0.00 %)
+   pass  TK = the formula at bitwhiz's state, all 13 tracers, every row: within 4.5e-12 K (largest at pmma11)
+   pass  1-9 mm, TK at the first shock: exact 489.167 K, bitwhiz within +0.050 K (+0.026 % of the rise; largest at x3)
+   pass  11 mm (PMMA), TK 495.471 K on its Hugoniot at bitwhiz's density, 495.469 (+0.001 % of the rise)
+         reference TK at  5.0 mm (MatX): 490.943 K, bitwhiz 489.165 (-1.778 K)
+         reference TK at 11.0 mm (PMMA): 495.466 K, bitwhiz 495.471 (+0.005 K)
+u_fly = 1.50 km/s: exact P1 7.3306 GPa, u1 1.0530 km/s, rho1 2.1108 g/cm^3, U_S 4.3510 km/s
+   pass  1 mm, GPA    7.3305 GPa    (-0.000 % of exact; reference 7.3302)
+   pass  1 mm, KMPS   1.0530 km/s   (+0.000 % of exact; reference 1.0530)
+   pass  1 mm, DENS   2.1108 g/cm^3 (+0.000 % of exact; reference 2.1108)
+   pass  arrivals 1-9 mm and PDV: bitwhiz - reference from +0.4 to +3.8 ns (largest at x8)
+   pass  energy drift 0.00000 % (reference 0.00286 %)
+         U_S fit 1-9 mm: bitwhiz 4.3479, reference 4.3563, exact 4.3510 km/s
+         Ta reshock at 1 mm: bitwhiz 1.4015, reference 1.4008 us (+0.7 ns)
+         PDV first plateau: bitwhiz 1.1773, reference 1.1773 km/s (-0.00 %)
+   pass  TK = the formula at bitwhiz's state, all 13 tracers, every row: within 6.4e-12 K (largest at x1)
+   pass  1-9 mm, TK at the first shock: exact 558.041 K, bitwhiz within -0.029 K (-0.011 % of the rise; largest at x1)
+   pass  11 mm (PMMA), TK 574.808 K on its Hugoniot at bitwhiz's density, 574.796 (+0.004 % of the rise)
+         reference TK at  5.0 mm (MatX): 560.843 K, bitwhiz 558.033 (-2.810 K)
+         reference TK at 11.0 mm (PMMA): 574.793 K, bitwhiz 574.808 (+0.016 K)
+u_fly = 1.75 km/s: exact P1 8.9793 GPa, u1 1.2134 km/s, rho1 2.1690 g/cm^3, U_S 4.6252 km/s
+   pass  1 mm, GPA    8.9793 GPa    (-0.000 % of exact; reference 8.9791)
+   pass  1 mm, KMPS   1.2134 km/s   (+0.000 % of exact; reference 1.2133)
+   pass  1 mm, DENS   2.1690 g/cm^3 (+0.000 % of exact; reference 2.1690)
+   pass  arrivals 1-9 mm and PDV: bitwhiz - reference from +0.2 to +3.2 ns (largest at x3)
+   pass  energy drift 0.00000 % (reference 0.00306 %)
+         U_S fit 1-9 mm: bitwhiz 4.6261, reference 4.6235, exact 4.6252 km/s
+         Ta reshock at 1 mm: bitwhiz 1.3506, reference 1.3484 us (+2.2 ns)
+         PDV first plateau: bitwhiz 1.3541, reference 1.3541 km/s (+0.00 %)
+   pass  TK = the formula at bitwhiz's state, all 13 tracers, every row: within 1.1e-11 K (largest at pmma11)
+   pass  1-9 mm, TK at the first shock: exact 640.056 K, bitwhiz within +0.044 K (+0.013 % of the rise; largest at x2)
+   pass  11 mm (PMMA), TK 670.648 K on its Hugoniot at bitwhiz's density, 670.632 (+0.004 % of the rise)
+         reference TK at  5.0 mm (MatX): 643.848 K, bitwhiz 640.046 (-3.802 K)
+         reference TK at 11.0 mm (PMMA): 670.636 K, bitwhiz 670.648 (+0.011 K)
+u_fly = 2.00 km/s: exact P1 10.7358 GPa, u1 1.3713 km/s, rho1 2.2230 g/cm^3, U_S 4.8931 km/s
+   pass  1 mm, GPA   10.7358 GPa    (-0.000 % of exact; reference 10.7359)
+   pass  1 mm, KMPS   1.3713 km/s   (+0.000 % of exact; reference 1.3713)
+   pass  1 mm, DENS   2.2230 g/cm^3 (-0.000 % of exact; reference 2.2230)
+   pass  arrivals 1-9 mm and PDV: bitwhiz - reference from -0.1 to +4.4 ns (largest at x4)
+   pass  energy drift 0.00000 % (reference 0.00327 %)
+         U_S fit 1-9 mm: bitwhiz 4.8973, reference 4.8891, exact 4.8931 km/s
+         Ta reshock at 1 mm: bitwhiz 1.3015, reference 1.3011 us (+0.4 ns)
+         PDV first plateau: bitwhiz 1.5278, reference 1.5278 km/s (+0.00 %)
+   pass  TK = the formula at bitwhiz's state, all 13 tracers, every row: within 1.9e-11 K (largest at pmma11)
+   pass  1-9 mm, TK at the first shock: exact 735.632 K, bitwhiz within +0.169 K (+0.039 % of the rise; largest at x6)
+   pass  11 mm (PMMA), TK 783.407 K on its Hugoniot at bitwhiz's density, 783.439 (-0.007 % of the rise)
+         reference TK at  5.0 mm (MatX): 740.206 K, bitwhiz 735.653 (-4.554 K)
+         reference TK at 11.0 mm (PMMA): 783.435 K, bitwhiz 783.407 (-0.028 K)
+compare_g1.py: 40 passed, 0 failed
+
+real	0m13.613s
+user	0m25.774s
+sys	0m0.272s

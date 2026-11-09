@@ -1,0 +1,59 @@
+compare_hvrb.py: /home/claude/audit/repo/bitwhiz/bin/bitwhiz_release, method AV
+  15 runs in /tmp/hvrb_vq22d79a, 2 at a time
+G2: class stack, 100 zones/mm
+   pass  1.00 km/s: run distance none (reference none)
+   pass  1.00 km/s: arrivals 1-9 mm and PDV, bitwhiz - reference from +0.5 to +4.1 ns (largest at pdv)
+   pass  1.00 km/s: energy drift 0.00000 % (reference 0.00284 %)
+         1.00 km/s: PDV arrival 2.6301 us (reference 2.6260); lam at 9 mm at 3.0 us 0.035 (reference 0.034)
+   pass  1.25 km/s: run distance none (reference none)
+   pass  1.25 km/s: arrivals 1-9 mm and PDV, bitwhiz - reference from +0.5 to +3.5 ns (largest at x9)
+   pass  1.25 km/s: energy drift 0.00000 % (reference 0.00291 %)
+         1.25 km/s: PDV arrival 2.4061 us (reference 2.4056); lam at 9 mm at 3.0 us 1.000 (reference 1.000)
+   pass  1.50 km/s: run distance 7.5 mm (reference 7.5 mm)
+   pass  1.50 km/s: arrivals 1-9 mm and PDV, bitwhiz - reference from -0.1 to +3.9 ns (largest at x2)
+   pass  1.50 km/s: energy drift 0.00000 % (reference 0.00546 %)
+         1.50 km/s: PDV arrival 1.9502 us (reference 1.9503); lam at 9 mm at 3.0 us 1.000 (reference 1.000)
+   pass  1.75 km/s: run distance 5.5 mm (reference 5.5 mm)
+   pass  1.75 km/s: arrivals 1-9 mm and PDV, bitwhiz - reference from +0.3 to +4.5 ns (largest at pdv)
+   pass  1.75 km/s: energy drift 0.00000 % (reference 0.00442 %)
+         1.75 km/s: PDV arrival 1.6652 us (reference 1.6607); lam at 9 mm at 3.0 us 1.000 (reference 1.000)
+   pass  2.00 km/s: run distance 3.5 mm (reference 3.5 mm)
+   pass  2.00 km/s: arrivals 1-9 mm and PDV, bitwhiz - reference from -0.1 to +4.8 ns (largest at x7)
+   pass  2.00 km/s: energy drift 0.00000 % (reference 0.00346 %)
+         2.00 km/s: PDV arrival 1.5202 us (reference 1.5203); lam at 9 mm at 3.0 us 1.000 (reference 1.000)
+G3: thick flyer, single-shock runs to detonation, 100 zones/mm
+   pass  1.25 km/s: run distance 12.5 mm (reference 12.5 mm; tracers every 1 mm)
+   pass  1.25 km/s: arrivals on the reference's tracers, bitwhiz - reference from -0.2 to +3.9 ns
+   pass  1.50 km/s: run distance 7.5 mm (reference 7.5 mm; tracers every 1 mm)
+   pass  1.50 km/s: arrivals on the reference's tracers, bitwhiz - reference from -0.2 to +4.7 ns
+   pass  1.75 km/s: run distance 4.75 mm (reference 4.75 mm; tracers every 0.5 mm)
+   pass  1.75 km/s: arrivals on the reference's tracers, bitwhiz - reference from +0.0 to +4.7 ns
+   pass  2.00 km/s: run distance 3.25 mm (reference 3.75 mm; tracers every 0.5 mm)
+   pass  2.00 km/s: arrivals on the reference's tracers, bitwhiz - reference from -0.1 to +4.8 ns
+   pass  2.25 km/s: run distance 2.38 mm (reference 2.38 mm; tracers every 0.25 mm)
+   pass  2.25 km/s: arrivals on the reference's tracers, bitwhiz - reference from -0.2 to +4.7 ns
+         Pop plot: ln x_run = 6.298 -2.152 ln P1 (reference 6.158 -2.074; its README 6.158 -2.074)
+G4: thick flyer at 3.00 km/s, the detonation speed
+   pass  D over 10-20 mm 7.5150 km/s (+0.200 % of D_CJ 7.5000; reference 7.505)
+   pass  D over 10-15 mm 7.5230 km/s (+0.307 % of D_CJ 7.5000; reference 7.505)
+   pass  D over 15-20 mm 7.5118 km/s (+0.157 % of D_CJ 7.5000; reference 7.506)
+G5: mesh study, class stack at 2.00 km/s
+          25 zones/mm: PDV arrival 1.5061 us (reference 1.5194, -13.3 ns): the reaction zone spans 3 to 4 cells (reported, not checked)
+   pass   25 zones/mm: run distance 3.5 mm (reference 3.5 mm)
+   pass   50 zones/mm: PDV arrival 1.5209 us (reference 1.5201, +0.8 ns)
+   pass   50 zones/mm: run distance 3.5 mm (reference 3.5 mm)
+   pass  200 zones/mm: PDV arrival 1.5202 us (reference 1.5201, +0.1 ns)
+   pass  200 zones/mm: run distance 3.5 mm (reference 3.5 mm)
+   pass  400 zones/mm: PDV arrival 1.5201 us (reference 1.5201, -0.0 ns)
+   pass  400 zones/mm: run distance 3.5 mm (reference 3.5 mm)
+          25 zones/mm: bitwhiz arrivals, PDV 1.5061, 3 mm 0.5905, 4 mm 0.7315 us
+          50 zones/mm: bitwhiz arrivals, PDV 1.5209, 3 mm 0.5913, 4 mm 0.7302 us
+         100 zones/mm: bitwhiz arrivals, PDV 1.5202, 3 mm 0.5943, 4 mm 0.7302 us
+         200 zones/mm: bitwhiz arrivals, PDV 1.5202, 3 mm 0.5953, 4 mm 0.7301 us
+         400 zones/mm: bitwhiz arrivals, PDV 1.5201, 3 mm 0.5952, 4 mm 0.7301 us
+   pass  convergence: at 400 zones/mm the PDV arrival is -0.0 ns from the reference's; bitwhiz's own difference from it at 50: 0.8, 100: 0.1, 200: 0.1 ns (shrinking, to below 0.5 ns)
+compare_hvrb.py: 36 passed, 0 failed
+
+real	1m38.866s
+user	3m8.274s
+sys	0m1.662s

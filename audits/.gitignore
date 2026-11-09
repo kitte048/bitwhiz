@@ -1,0 +1,3 @@
+# The top-level .gitignore drops *.log (LaTeX and build logs). An audit's
+# logs are its evidence, so they are kept here.
+!*.log

@@ -1,0 +1,36 @@
+study_tcas.py: /home/claude/audit/repo/bitwhiz/bin/bitwhiz_release
+  18 runs in /tmp/tcas_be4uin0t, 2 at a time
+
+E1. The lead shock in the hydro, against its replay (a clock after the mark)
+   pass  AV MatX@0.1 : burns from row 120 (replay marks row 119), P_s 10.892843 GPa, the replay's to 3.3e-16
+   pass  AV MatX@0.3 : burns from row 353 (replay marks row 352), P_s 10.862532 GPa, the replay's to 0.0e+00
+   pass  AV MatX@0.5 : burns from row 589 (replay marks row 588), P_s 10.907855 GPa, the replay's to 0.0e+00
+   pass  AV MatX@0.7 : burns from row 861 (replay marks row 860), P_s 10.861552 GPa, the replay's to 0.0e+00
+   pass  AV MatX@0.9 : burns from row 1159 (replay marks row 1158), P_s 10.956785 GPa, the replay's to 1.1e-16
+   pass  RS2 MatX@0.1 : burns from row 96 (replay marks row 95), P_s 10.775604 GPa, the replay's to 1.1e-16
+   pass  RS2 MatX@0.3 : burns from row 282 (replay marks row 281), P_s 10.883697 GPa, the replay's to 2.2e-16
+   pass  RS2 MatX@0.5 : burns from row 470 (replay marks row 469), P_s 10.880487 GPa, the replay's to 2.2e-16
+   pass  RS2 MatX@0.7 : burns from row 684 (replay marks row 683), P_s 10.778495 GPa, the replay's to 1.1e-16
+   pass  RS2 MatX@0.9 : burns from row 916 (replay marks row 915), P_s 10.810080 GPa, the replay's to 2.2e-16
+
+E2. The detonation, 2.00 km/s, against mesh (D_CJ = 7.4999904 km/s)
+  AV   25 zones/mm: D 7.7058 km/s (+2.74 % from D_CJ, -0.43 % from HVRB's 7.7394); run distance 3.30 mm (HVRB 3.35)
+  AV   50 zones/mm: D 7.5313 km/s (+0.42 % from D_CJ, -0.30 % from HVRB's 7.5538); run distance 3.10 mm (HVRB 3.30)
+  AV  100 zones/mm: D 7.5418 km/s (+0.56 % from D_CJ, -0.03 % from HVRB's 7.5441); run distance 3.05 mm (HVRB 3.30)
+  AV  200 zones/mm: D 7.5372 km/s (+0.50 % from D_CJ, -0.07 % from HVRB's 7.5429); run distance 3.00 mm (HVRB 3.25)
+   pass  AV: D at 200 zones/mm within 0.3 % of HVRB's
+   pass  AV: and within 1.0 % of D_CJ
+   pass  AV: run distances within 1.0 mm over the meshes (3.00 to 3.30)
+  RS2  25 zones/mm: D 7.5540 km/s (+0.72 % from D_CJ, +0.16 % from HVRB's 7.5420); run distance 3.30 mm (HVRB 3.40)
+  RS2  50 zones/mm: D 7.5672 km/s (+0.90 % from D_CJ, +0.36 % from HVRB's 7.5398); run distance 3.15 mm (HVRB 3.30)
+  RS2 100 zones/mm: D 7.5601 km/s (+0.80 % from D_CJ, +0.22 % from HVRB's 7.5436); run distance 3.05 mm (HVRB 3.25)
+  RS2 200 zones/mm: D 7.5495 km/s (+0.66 % from D_CJ, +0.09 % from HVRB's 7.5429); run distance 3.00 mm (HVRB 3.25)
+   pass  RS2: D at 200 zones/mm within 0.3 % of HVRB's
+   pass  RS2: and within 1.0 % of D_CJ
+   pass  RS2: run distances within 1.0 mm over the meshes (3.00 to 3.30)
+
+study_tcas.py: 16 passed, 0 failed
+
+real	2m26.260s
+user	1m53.841s
+sys	0m2.498s

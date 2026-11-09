@@ -1,0 +1,120 @@
+study_leadshock.py: /home/claude/audit/repo/bitwhiz/bin/bitwhiz_release
+  48 runs in /tmp/lshk_zi1b0_fj, 2 at a time
+
+A. Square shocks, Al on Al, 1.5 mm deep: P_s against exact
+  u_p = 0.05 km/s: exact P = 0.7460 GPa, arrival 0.2795 us
+   pass  AV 25/mm u_p 0.05: P_s 0.7432 GPa, -0.371 % (tol 1.5 %)
+   pass  AV 50/mm u_p 0.05: P_s 0.7455 GPa, -0.072 % (tol 1.5 %)
+   pass  AV 100/mm u_p 0.05: P_s 0.7456 GPa, -0.061 % (tol 1.5 %)
+   pass  AV 200/mm u_p 0.05: P_s 0.7457 GPa, -0.038 % (tol 1.5 %)
+       AV  25:   0.7432 (-0.37 %, +35.6 ns);  50:   0.7455 (-0.07 %, +33.4 ns);  100:   0.7456 (-0.06 %, +21.4 ns);  200:   0.7457 (-0.04 %, +14.2 ns)
+   pass  RS2 25/mm u_p 0.05: P_s 0.7461 GPa, +0.010 % (tol 1.5 %)
+   pass  RS2 50/mm u_p 0.05: P_s 0.7459 GPa, -0.016 % (tol 1.5 %)
+   pass  RS2 100/mm u_p 0.05: P_s 0.7456 GPa, -0.051 % (tol 1.5 %)
+   pass  RS2 200/mm u_p 0.05: P_s 0.7457 GPa, -0.043 % (tol 1.5 %)
+       RS2  25:   0.7461 (+0.01 %, +38.7 ns);  50:   0.7459 (-0.02 %, +20.9 ns);  100:   0.7456 (-0.05 %, +11.0 ns);  200:   0.7457 (-0.04 %, +6.0 ns)
+   pass  AV u_p 0.05: t_s lag 35.6 ns at 25/mm, 14.2 at 200/mm
+   pass  RS2 u_p 0.05: t_s lag 38.7 ns at 25/mm, 6.0 at 200/mm
+  u_p = 0.2 km/s: exact P = 3.0958 GPa, arrival 0.2694 us
+   pass  AV 25/mm u_p 0.2: P_s 3.0862 GPa, -0.310 % (tol 1.5 %)
+   pass  AV 50/mm u_p 0.2: P_s 3.0940 GPa, -0.058 % (tol 1.5 %)
+   pass  AV 100/mm u_p 0.2: P_s 3.0944 GPa, -0.047 % (tol 1.5 %)
+   pass  AV 200/mm u_p 0.2: P_s 3.0947 GPa, -0.035 % (tol 1.5 %)
+       AV  25:   3.0862 (-0.31 %, +32.5 ns);  50:   3.0940 (-0.06 %, +22.5 ns);  100:   3.0944 (-0.05 %, +12.5 ns);  200:   3.0947 (-0.03 %, +6.5 ns)
+   pass  RS2 25/mm u_p 0.2: P_s 3.0960 GPa, +0.005 % (tol 1.5 %)
+   pass  RS2 50/mm u_p 0.2: P_s 3.0952 GPa, -0.019 % (tol 1.5 %)
+   pass  RS2 100/mm u_p 0.2: P_s 3.0949 GPa, -0.030 % (tol 1.5 %)
+   pass  RS2 200/mm u_p 0.2: P_s 3.0948 GPa, -0.031 % (tol 1.5 %)
+       RS2  25:   3.0960 (+0.00 %, +31.4 ns);  50:   3.0952 (-0.02 %, +14.7 ns);  100:   3.0949 (-0.03 %, +7.4 ns);  200:   3.0948 (-0.03 %, +3.8 ns)
+   pass  AV u_p 0.2: t_s lag 32.5 ns at 25/mm, 6.5 at 200/mm
+   pass  RS2 u_p 0.2: t_s lag 31.4 ns at 25/mm, 3.8 at 200/mm
+  u_p = 1.0 km/s: exact P = 18.4592 GPa, arrival 0.2259 us
+   pass  AV 25/mm u_p 1.0: P_s 18.4871 GPa, +0.151 % (tol 1.5 %)
+   pass  AV 50/mm u_p 1.0: P_s 18.5603 GPa, +0.548 % (tol 1.5 %)
+   pass  AV 100/mm u_p 1.0: P_s 18.5583 GPa, +0.537 % (tol 1.5 %)
+   pass  AV 200/mm u_p 1.0: P_s 18.5336 GPa, +0.403 % (tol 1.5 %)
+       AV  25:  18.4871 (+0.15 %, +12.6 ns);  50:  18.5603 (+0.55 %, +5.0 ns);  100:  18.5583 (+0.54 %, +2.5 ns);  200:  18.5336 (+0.40 %, +1.2 ns)
+   pass  RS2 25/mm u_p 1.0: P_s 18.4492 GPa, -0.054 % (tol 1.5 %)
+   pass  RS2 50/mm u_p 1.0: P_s 18.4504 GPa, -0.047 % (tol 1.5 %)
+   pass  RS2 100/mm u_p 1.0: P_s 18.4413 GPa, -0.097 % (tol 1.5 %)
+   pass  RS2 200/mm u_p 1.0: P_s 18.4406 GPa, -0.101 % (tol 1.5 %)
+       RS2  25:  18.4492 (-0.05 %, +17.5 ns);  50:  18.4504 (-0.05 %, +7.6 ns);  100:  18.4413 (-0.10 %, +3.5 ns);  200:  18.4406 (-0.10 %, +1.8 ns)
+   pass  AV u_p 1.0: t_s lag 12.6 ns at 25/mm, 1.2 at 200/mm
+   pass  RS2 u_p 1.0: t_s lag 17.5 ns at 25/mm, 1.8 at 200/mm
+  u_p = 3.0 km/s: exact P = 77.7288 GPa, arrival 0.1609 us
+   pass  AV 25/mm u_p 3.0: P_s 78.4795 GPa, +0.966 % (tol 1.5 %)
+   pass  AV 50/mm u_p 3.0: P_s 78.5794 GPa, +1.094 % (tol 1.5 %)
+   pass  AV 100/mm u_p 3.0: P_s 78.5065 GPa, +1.001 % (tol 1.5 %)
+   pass  AV 200/mm u_p 3.0: P_s 78.5723 GPa, +1.085 % (tol 1.5 %)
+       AV  25:  78.4795 (+0.97 %, +7.9 ns);  50:  78.5794 (+1.09 %, +2.8 ns);  100:  78.5065 (+1.00 %, +1.4 ns);  200:  78.5723 (+1.09 %, +0.7 ns)
+   pass  RS2 25/mm u_p 3.0: P_s 78.0828 GPa, +0.455 % (tol 1.5 %)
+   pass  RS2 50/mm u_p 3.0: P_s 78.2973 GPa, +0.731 % (tol 1.5 %)
+   pass  RS2 100/mm u_p 3.0: P_s 78.3311 GPa, +0.775 % (tol 1.5 %)
+   pass  RS2 200/mm u_p 3.0: P_s 78.2832 GPa, +0.713 % (tol 1.5 %)
+       RS2  25:  78.0828 (+0.46 %, +7.5 ns);  50:  78.2973 (+0.73 %, +2.8 ns);  100:  78.3311 (+0.77 %, +1.4 ns);  200:  78.2832 (+0.71 %, +0.7 ns)
+   pass  AV u_p 3.0: t_s lag 7.9 ns at 25/mm, 0.7 at 200/mm
+   pass  RS2 u_p 3.0: t_s lag 7.5 ns at 25/mm, 0.7 at 200/mm
+
+B. The ramp (ramp_linear): its foot (b01), and the shock it steepens into (b03)
+  AV b01, marked at its foot: P_s 0.669, 0.438, 0.295, 0.199 GPa at 25, 50, 100, 200 zones/mm
+   pass  AV b01: P_s falls with the mesh, 0.30 of its value at 25/mm
+  RS2 b01, marked at its foot: P_s 0.468, 0.299, 0.188, 0.114 GPa at 25, 50, 100, 200 zones/mm
+   pass  RS2 b01: P_s falls with the mesh, 0.24 of its value at 25/mm
+   pass  b03 25/mm: AV 8.3755, RS 8.3851 GPa (-0.11 %)
+   pass  b03 50/mm: AV 8.3980, RS 8.5718 GPa (-2.03 %)
+   pass  b03 100/mm: AV 8.4326, RS 8.4940 GPa (-0.72 %)
+   pass  b03 200/mm: AV 8.4409, RS 8.5097 GPa (-0.81 %)
+
+C. A decaying shock (decay.deck, 0.25 mm flyer)
+  AV   25/mm: 0.5 mm 18.371, 1 mm 18.540, 2 mm 17.608, 3 mm 14.888, 4 mm 12.792, 6 mm 10.477
+   pass  AV 25/mm: 0.5 and 1 mm within 1.5 % of 18.459 GPa
+   pass  AV 25/mm: P_s falling from 2 to 6 mm
+  AV   50/mm: 0.5 mm 18.539, 1 mm 18.469, 2 mm 18.454, 3 mm 16.323, 4 mm 13.767, 6 mm 10.831
+   pass  AV 50/mm: 0.5 and 1 mm within 1.5 % of 18.459 GPa
+   pass  AV 50/mm: P_s falling from 2 to 6 mm
+  AV  100/mm: 0.5 mm 18.552, 1 mm 18.464, 2 mm 18.460, 3 mm 16.792, 4 mm 14.323, 6 mm 11.213
+   pass  AV 100/mm: 0.5 and 1 mm within 1.5 % of 18.459 GPa
+   pass  AV 100/mm: P_s falling from 2 to 6 mm
+  AV  200/mm: 0.5 mm 18.507, 1 mm 18.506, 2 mm 18.499, 3 mm 17.180, 4 mm 14.525, 6 mm 11.293
+   pass  AV 200/mm: 0.5 and 1 mm within 1.5 % of 18.459 GPa
+   pass  AV 200/mm: P_s falling from 2 to 6 mm
+  RS2  25/mm: 0.5 mm 18.475, 1 mm 18.424, 2 mm 17.271, 3 mm 14.887, 4 mm 12.835, 6 mm 10.243
+   pass  RS2 25/mm: 0.5 and 1 mm within 1.5 % of 18.459 GPa
+   pass  RS2 25/mm: P_s falling from 2 to 6 mm
+  RS2  50/mm: 0.5 mm 18.447, 1 mm 18.454, 2 mm 18.314, 3 mm 16.083, 4 mm 13.686, 6 mm 10.826
+   pass  RS2 50/mm: 0.5 and 1 mm within 1.5 % of 18.459 GPa
+   pass  RS2 50/mm: P_s falling from 2 to 6 mm
+  RS2 100/mm: 0.5 mm 18.449, 1 mm 18.452, 2 mm 18.444, 3 mm 16.756, 4 mm 14.159, 6 mm 11.120
+   pass  RS2 100/mm: 0.5 and 1 mm within 1.5 % of 18.459 GPa
+   pass  RS2 100/mm: P_s falling from 2 to 6 mm
+  RS2 200/mm: 0.5 mm 18.452, 1 mm 18.445, 2 mm 18.451, 3 mm 17.174, 4 mm 14.441, 6 mm 11.294
+   pass  RS2 200/mm: 0.5 and 1 mm within 1.5 % of 18.459 GPa
+   pass  RS2 200/mm: P_s falling from 2 to 6 mm
+   pass  200/mm: AV and RS within 0.58 % at every depth
+
+D. The floor and the stall (the Python twin, every tracer of A to C)
+   pass  the twin at the module's floor and stall agrees with ls_replay on all 96 tracers
+  floor   0e+00: 0 shocks missed, 2 marked at P ~ 0, 86 of 88 the same as 1e-10
+  floor   1e-14: 0 shocks missed, 0 marked at P ~ 0, 88 of 88 the same as 1e-10
+   pass  floor 1e-14: every shock marked, none at P ~ 0
+  floor   1e-12: 0 shocks missed, 0 marked at P ~ 0, 88 of 88 the same as 1e-10
+   pass  floor 1e-12: every shock marked, none at P ~ 0
+  floor   1e-10: 0 shocks missed, 0 marked at P ~ 0, 88 of 88 the same as 1e-10
+   pass  floor 1e-10: every shock marked, none at P ~ 0
+  floor   1e-08: 0 shocks missed, 0 marked at P ~ 0, 88 of 88 the same as 1e-10
+   pass  floor 1e-08: every shock marked, none at P ~ 0
+  floor   1e-07: 0 shocks missed, 0 marked at P ~ 0, 88 of 88 the same as 1e-10
+   pass  floor 1e-07: every shock marked, none at P ~ 0
+  floor   1e-06: 5 shocks missed, 2 marked at P ~ 0, 81 of 88 the same as 1e-10
+  stall     0: P_s moved at most 1.254 % from the module's; u_p = 0.05 lags (ns): AV_25 35.6, AV_50 37.8, AV_100 72.8, AV_200 117.1, RS2_25 47.5, RS2_50 29.8, RS2_100 18.7, RS2_200 10.9
+  stall 0.003: P_s moved at most 1.254 % from the module's; u_p = 0.05 lags (ns): AV_25 35.6, AV_50 37.8, AV_100 25.7, AV_200 15.9, RS2_25 43.1, RS2_50 23.1, RS2_100 13.2, RS2_200 6.5
+  stall  0.01: P_s moved at most 0.000 % from the module's; u_p = 0.05 lags (ns): AV_25 35.6, AV_50 33.4, AV_100 21.4, AV_200 14.2, RS2_25 38.7, RS2_50 20.9, RS2_100 11.0, RS2_200 6.0
+  stall  0.03: P_s moved at most 2.699 % from the module's; u_p = 0.05 lags (ns): AV_25 35.6, AV_50 29.0, AV_100 19.2, AV_200 12.6, RS2_25 34.2, RS2_50 16.5, RS2_100 9.8, RS2_200 4.9
+  stall   0.1: P_s moved at most 2.715 % from the module's; u_p = 0.05 lags (ns): AV_25 35.6, AV_50 24.6, AV_100 17.0, AV_200 11.0, RS2_25 29.8, RS2_50 14.3, RS2_100 7.6, RS2_200 4.3
+  stall   0.3: P_s moved at most 4.986 % from the module's; u_p = 0.05 lags (ns): AV_25 35.6, AV_50 20.3, AV_100 13.7, AV_200 8.8, RS2_25 25.4, RS2_50 12.1, RS2_100 6.5, RS2_200 3.2
+
+study_leadshock.py: 69 passed, 0 failed
+
+real	1m32.546s
+user	1m12.327s
+sys	0m2.167s

@@ -1,0 +1,40 @@
+ ========================================================
+        ---==>>    __    _ __           __    _
+         --==>>   / /_  (_) /__      __/ /_  (_)___
+          -==>>  / __ \/ / __/ | /| / / __ \/ /_  /
+         --==>> / /_/ / / /_ | |/ |/ / / / / / / /_
+        ---==>>/_.___/_/\__/ |__/|__/_/ /_/_/ /___/
+ --------------------------------------------------------
+         a one-dimensional Lagrangian hydrocode
+ --------------------------------------------------------
+    u |                         _______________________
+      |                ________/    second shock
+      |               /
+      |   ___________/   first shock
+      |__/____________________________________________ t
+ --------------------------------------------------------
+   version    : unknown
+   built      : 2026-11-07 22:47:12 -0700
+   compiler   : GCC version 13.3.0
+   build      : debug (-O1, -fcheck), OpenMP
+   run start  : 2026-11-07 22:47:58 -0700
+ ========================================================
+  2. Input deck: ../tests/decks/ok_temperature.deck
+ --------------------------------------------------------
+   Title                               : ok_temperature
+   Resolved deck                       : ok_temperature.resolved (every default filled in)
+ ========================================================
+  3. OpenMP settings
+ --------------------------------------------------------
+   OpenMP compiled in                  : yes
+   Threads requested (deck)            :        1
+   Processors available                :        2
+   Threads in the team                 :        1
+   Team size seen inside region        :        1
+   Threads that reported in            :        1
+   SINGLE block ran on thread          :        0
+ ========================================================
+  4. Output files
+ --------------------------------------------------------
+   Heartbeat file                      : ok_temperature.heartbeat
+   Tracer file                         : ok_temperature.

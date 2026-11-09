@@ -1,0 +1,140 @@
+ ========================================================
+        ---==>>    __    _ __           __    _
+         --==>>   / /_  (_) /__      __/ /_  (_)___
+          -==>>  / __ \/ / __/ | /| / / __ \/ /_  /
+         --==>> / /_/ / / /_ | |/ |/ / / / / / / /_
+        ---==>>/_.___/_/\__/ |__/|__/_/ /_/_/ /___/
+ --------------------------------------------------------
+         a one-dimensional Lagrangian hydrocode
+ --------------------------------------------------------
+    u |                         _______________________
+      |                ________/    second shock
+      |               /
+      |   ___________/   first shock
+      |__/____________________________________________ t
+ --------------------------------------------------------
+   version    : v1.4.0
+   built      : 2026-11-07 22:35:31 -0700
+   compiler   : GCC version 13.3.0
+   build      : debug (-O0, -fcheck), OpenMP
+   run start  : 2026-11-07 23:12:27 -0700
+ ========================================================
+  2. Input deck: e1_mixed_rs.deck
+ --------------------------------------------------------
+   Title                               : e1_mixed_rs
+   Resolved deck                       : e1_mixed_rs.resolved (every default filled in)
+ ========================================================
+  3. OpenMP settings
+ --------------------------------------------------------
+   OpenMP compiled in                  : yes
+   Threads requested (deck)            :        1
+   Processors available                :        2
+   Threads in the team                 :        1
+   Team size seen inside region        :        1
+   Threads that reported in            :        1
+   SINGLE block ran on thread          :        0
+ ========================================================
+  4. Output files
+ --------------------------------------------------------
+   Heartbeat file                      : e1_mixed_rs.heartbeat
+   Tracer file                         : e1_mixed_rs.tracers.csv
+   History file                        : e1_mixed_rs.hist
+ ========================================================
+  5. Data arrays
+ --------------------------------------------------------
+   Real cells (kmax)                   :      240
+   Database places (imax)              :      483
+   Database slots (nvar)               :       27  (0.1 MB)
+   Cells carrying T                    :      200  (eos = mie_gruneisen_t)
+ --------------------------------------------------------
+   layer         zones    dx (mm)  x left (mm)  u (km/s)
+   Al               40 1.0000E-01     0.000000    2.0000
+   MatH             50 1.0000E-01     4.000000    0.0000
+   MatX             50 1.0000E-01     9.000000    0.0000
+   PMMA            100 1.0000E-01    14.000000    0.0000
+ --------------------------------------------------------
+   Impact face Al:MatH at x =  4.000000 mm
+     u =  1.2694 km/s, weighted from  2.0000 |  0.0000
+ ========================================================
+  6. Initialization
+ --------------------------------------------------------
+   Time (us)                           :        0.000000
+   Cycle                               :        0
+   Total mass (g/cm^3*mm)              :  3.89900000E+01
+   x-momentum (g/cm^3*mm*km/s)         :  2.22400000E+01
+   Total energy (GPa*mm)               :  2.22400000E+01
+   First time step (us)                :  1.13207547E-02
+   ... set by cell                     :       23
+   Setup checks                        : all passed
+ ========================================================
+  7. Simulation
+ --------------------------------------------------------
+   Method                              : RS, order 2 (MUSCL-Hancock, Van Leer)
+   Threads in the time loop            :        1
+ --------------------------------------------------------
+         cycle      t (us)     dt (us)    max P (GPa)
+           39    0.307474  7.5593E-03      12.817531
+           82    0.604522  5.3437E-03      31.407132
+          142    0.902740  4.2472E-03      37.412021
+          208    1.200603  4.5382E-03      37.876678
+          275    1.502815  4.6355E-03      38.297606
+          342    1.803524  4.8346E-03      19.564638
+          401    2.104500  5.2254E-03      17.386244
+          456    2.404581  5.5553E-03      15.411737
+          508    2.704122  5.9366E-03      14.419030
+          558    3.000000  1.6168E-03      13.138384
+ --------------------------------------------------------
+   Cycles                              :      558
+   Final time (us)                     :        3.000000
+   Mass error (relative)               :  0.00000000E+00
+   Energy error (relative)             : -1.59744320E-16
+   x-momentum change                   :  0.00000000E+00
+   First tensile cell                  : 2 (Al), t =   1.0485 us
+   Most tension held, intact (GPa)     : -9.87810676E-03
+   First cell to break (spall)         : 2 (Al), t =   1.0485 us
+   Cells broken by the end             :       18
+   Deepest tension at a break (GPa)    : -2.38014664E-02
+   T range, intact cells (K)           : 297.999 to 8124.605
+   Hottest intact cell                 : 84 (MatH), t =   0.8193 us, x =   8.4233 mm
+   First cell to react                 : 41 (MatH), t =   0.0213 us, x =   4.0683 mm
+   Cells burnt out, MatH               :       50  of 50
+   Cells burnt out, MatX               :       50  of 50
+   Largest lam                         :        1.000000
+   Wall time per cycle (us)            :           139.3
+ ========================================================
+  8. Output files, closed
+ --------------------------------------------------------
+   Resolved deck                       : e1_mixed_rs.resolved  (6 KB)
+   Heartbeat file                      : e1_mixed_rs.heartbeat  (59 KB)
+   Tracer file                         : e1_mixed_rs.tracers.csv  (83 KB)
+   History file                        : e1_mixed_rs.hist  (67 KB, 13 frames)
+ ========================================================
+  9. Pictures
+ --------------------------------------------------------
+   Colormap                            : viridis
+   History file                        : e1_mixed_rs.hist
+   Frames                              : 13, t = 0.0 to 3.0 us
+   Written with                        : plot_dt = 0.25 us, plot_every = 0
+   x across (mm)                       : 0.0 to 24.0
+   t up (us)                           : 0.0 to 3.0
+   Color ranges                        : robust: min to the top held for 50 cycles
+   u in the run (km/s)                 : -0.71043 to 3.1596
+   u colors (km/s)                     : -0.71043 to 3.1596  (window 0.0 to 1.0)
+   P in the run (GPa)                  : -0.0093097 to 40.197
+   P colors (GPa)                      : -0.0093097 to 40.197  (window 0.0 to 1.0)
+   White                               : outside the material, open spall (D = 1, P = 0);
+                                       : in P also material no wave has reached
+   Drawing t-x diagrams                : e1_mixed_rs.tx_u.bmp, e1_mixed_rs.tx_p.bmp
+   Tracer file                         : e1_mixed_rs.tracers.csv
+   Rows                                : 61, t = 0.0 to 3.0 us
+   Drawing tracer plots                : 5, e1_mixed_rs.tr_<tracer>.bmp
+   Tracer mid u (km/s)                 : 0.0 to 2.8068, y axis -0.2 to 3.0
+   Tracer midh u (km/s)                : -0.13094 to 2.5909, y axis -0.3 to 2.8
+   Tracer iface u (km/s)               : 0.0 to 2.9541, y axis -0.2 to 3.2
+   Tracer pdv u (km/s)                 : -6.3363e-11 to 2.9558, y axis -0.2 to 3.2
+   Tracer flyer u (km/s)               : -0.54087 to 2.0, y axis -0.7 to 2.2
+ ========================================================
+   run end    : 2026-11-07 23:12:29 -0700
+   wall clock :      1.702 s
+   CPU time   :      1.693 s (all threads)
+ ========================================================

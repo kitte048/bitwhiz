@@ -1,0 +1,122 @@
+ ========================================================
+        ---==>>    __    _ __           __    _
+         --==>>   / /_  (_) /__      __/ /_  (_)___
+          -==>>  / __ \/ / __/ | /| / / __ \/ /_  /
+         --==>> / /_/ / / /_ | |/ |/ / / / / / / /_
+        ---==>>/_.___/_/\__/ |__/|__/_/ /_/_/ /___/
+ --------------------------------------------------------
+         a one-dimensional Lagrangian hydrocode
+ --------------------------------------------------------
+    u |                         _______________________
+      |                ________/    second shock
+      |               /
+      |   ___________/   first shock
+      |__/____________________________________________ t
+ --------------------------------------------------------
+   version    : v1.4.0
+   built      : 2026-11-07 22:35:31 -0700
+   compiler   : GCC version 13.3.0
+   build      : optimized (-O2), OpenMP
+   run start  : 2026-11-07 23:20:20 -0700
+ ========================================================
+  2. Input deck: hvrb_c0p6.deck
+ --------------------------------------------------------
+   Title                               : hvrb_c0p6
+   Resolved deck                       : hvrb_c0p6.resolved (every default filled in)
+ ========================================================
+  3. OpenMP settings
+ --------------------------------------------------------
+   OpenMP compiled in                  : yes
+   Threads requested (deck)            :        1
+   Processors available                :        2
+   Threads in the team                 :        1
+   Team size seen inside region        :        1
+   Threads that reported in            :        1
+   SINGLE block ran on thread          :        0
+ ========================================================
+  4. Output files
+ --------------------------------------------------------
+   Heartbeat file                      : hvrb_c0p6.heartbeat
+   Tracer file                         : hvrb_c0p6.tracers.csv
+   History file                        : none (no plot_every or plot_dt)
+ ========================================================
+  5. Data arrays
+ --------------------------------------------------------
+   Real cells (kmax)                   :      945
+   Database places (imax)              :     1893
+   Database slots (nvar)               :       27  (0.4 MB)
+   Cells carrying T                    :      350  (eos = mie_gruneisen_t)
+ --------------------------------------------------------
+   layer         zones    dx (mm)  x left (mm)  u (km/s)
+   Ta              105 2.8571E-02    -7.000000    2.0000
+   Al              140 2.8571E-02    -4.000000    2.0000
+   MatX            350 2.8571E-02     0.000000    0.0000
+   PMMA            350 2.8571E-02    10.000000    0.0000
+ --------------------------------------------------------
+   Impact face Al:MatX at x =  0.000000 mm
+     u =  1.2694 km/s, weighted from  2.0000 |  0.0000
+ ========================================================
+  6. Initialization
+ --------------------------------------------------------
+   Time (us)                           :        0.000000
+   Cycle                               :        0
+   Total mass (g/cm^3*mm)              :  8.89400000E+01
+   x-momentum (g/cm^3*mm*km/s)         :  1.22140000E+02
+   Total energy (GPa*mm)               :  1.22140000E+02
+   First time step (us)                :  3.23450135E-03
+   ... set by cell                     :      106
+   Setup checks                        : all passed
+ ========================================================
+  7. Simulation
+ --------------------------------------------------------
+   Method                              : RS, order 2 (MUSCL-Hancock, Van Leer)
+   Threads in the time loop            :        1
+ --------------------------------------------------------
+         cycle      t (us)     dt (us)    max P (GPa)
+          137    0.301894  2.1454E-03      12.930642
+          292    0.600248  1.3958E-03      36.345589
+          528    0.900305  1.3236E-03      38.506952
+          762    1.201066  1.2841E-03      37.628068
+          994    1.500479  1.2738E-03      37.926782
+         1223    1.800418  1.4101E-03      24.427629
+         1429    2.100280  1.5047E-03      21.584077
+         1622    2.400356  1.6109E-03      21.369561
+         1805    2.700613  1.6866E-03      20.380743
+         1980    3.000000  1.4853E-03      15.713880
+ --------------------------------------------------------
+   Cycles                              :     1980
+   Final time (us)                     :        3.000000
+   Mass error (relative)               :  0.00000000E+00
+   Energy error (relative)             : -8.14442304E-16
+   x-momentum change                   :  0.00000000E+00
+   First tensile cell                  : 596 (PMMA), t =   1.5186 us
+   Most tension held, intact (GPa)     : -4.47798707E+00
+   First cell to break (spall)         : none
+   T range, intact cells (K)           : 298.000 to 8211.232
+   Hottest intact cell                 : 365 (MatX), t =   0.6729 us, x =   3.4522 mm
+   First cell to react                 : 246 (MatX), t =   0.0061 us, x =   0.0195 mm
+   Cells burnt out, MatX               :      350  of 350
+   Largest lam                         :        1.000000
+   Wall time per cycle (us)            :           315.6
+ ========================================================
+  8. Output files, closed
+ --------------------------------------------------------
+   Resolved deck                       : hvrb_c0p6.resolved  (5 KB)
+   Heartbeat file                      : hvrb_c0p6.heartbeat  (204 KB)
+   Tracer file                         : hvrb_c0p6.tracers.csv  (2.1 MB)
+ ========================================================
+  9. Pictures
+ --------------------------------------------------------
+   Colormap                            : viridis
+   Tracer file                         : hvrb_c0p6.tracers.csv
+   Rows                                : 1981, t = 0.0 to 3.0 us
+   Drawing tracer plots                : 4, hvrb_c0p6.tr_<tracer>.bmp
+   Tracer pdv u (km/s)                 : -0.000034744 to 3.5589, y axis -0.2 to 3.8
+   Tracer impact u (km/s)              : 0.96894 to 1.7635, y axis 0.92 to 1.81
+   Tracer ta_al u (km/s)               : 1.0772 to 2.0, y axis 1.0 to 2.1
+   Tracer mid_x u (km/s)               : 0.0 to 3.2716, y axis -0.2 to 3.5
+ ========================================================
+   run end    : 2026-11-07 23:20:21 -0700
+   wall clock :      0.848 s
+   CPU time   :      0.812 s (all threads)
+ ========================================================
