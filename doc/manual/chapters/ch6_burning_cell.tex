@@ -80,9 +80,9 @@ its zero-temperature curve plus a thermal part $\thv$, linear in $T$.
 \trace{modules/temp_mod.f95}{temp_cold_cell, cold_step, temp_of}{test_temp}
 
 \paragraph{How a cell carries $e_S$.} \Cref{eq:isentrope} is linear in
-$e_S$, so from one compression to the next its solution is exact but for one
-integral of $\Pi$, which \bw\ evaluates by three-point Gauss--Legendre
-quadrature on pieces no longer than $\Delta\eta = 0.005$. Each cell carries
+$e_S$, so its solution from one compression to the next is exact, except for
+one integral of $\Pi$. \bw\ evaluates that integral by three-point
+Gauss--Legendre quadrature, on pieces no longer than $\Delta\eta = 0.005$. Each cell carries
 its own $e_S$ and moves it to its new density once a step, rather than
 reading a table, so that constants graded cell by cell (planned) need no
 table per material. (Module \code{temperature} calls this carried value
@@ -100,9 +100,9 @@ ideal_gas}, with \key{GAMMA} and \key{Q}) with the solid's specific heat:
   c_{\mathrm{gas}}^2 = \gamma(\gamma - 1)\thv.
   \label{eq:gas}
 \end{equation}
-The products' energy is zero at $T = 0$ less the heat of reaction, so a
-cell that reacts at fixed $e$ gains $Q$ of thermal energy per unit mass
-reacted. One $\Cv$ for both phases is a simplification (real products
+At $T = 0$ the products' energy is $-Q$, the heat of reaction below the
+solid's zero, so a cell that reacts at fixed $e$ gains $Q$ of thermal energy
+per unit mass reacted. One $\Cv$ for both phases is a simplification (real products
 have a specific heat of their own); it is what makes the closure below exact
 without iteration. Another products equation of state (JWL, a
 table) would be another set of routines in module \code{products}, and with

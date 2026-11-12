@@ -53,10 +53,10 @@ burn until its cell's lead shock is marked (\cref{sec:lead-shock}).}
   rate's, first order in $\Delta t$. Only FlashFire, whose topology has no
   closed form, will be sub-cycled.
 \item \textbf{Repaired, not verbatim.} Three models were proposed by a
-  language model (ChatGPT 4o-mini) in a 2025 survey of reactive burn
-  models \cite{kittell2025sand}, as written; as written, none can run. Each
-  goes in with the fewest repairs that make it well-posed, and each repair
-  is named in its section.
+  language model (ChatGPT 4o-mini) in a 2025 survey of reactive burn models
+  \cite{kittell2025sand}. None can run exactly as proposed, so each goes in
+  with the fewest repairs that make it well-posed, and each repair is named
+  in its section.
 \item \textbf{One key, one meaning.} \key{PR} (GPa), the reference
   pressure, serves every model that has one; \key{NS} is the exponent on
   $1 + \PS/P_R$ in all three gated models (\cref{app:deck-keys}).
@@ -68,7 +68,7 @@ burn until its cell's lead shock is marked (\cref{sec:lead-shock}).}
 
 The History Variable Reactive Burn model of G.~I.~Kerley
 \cite{starkenberg2002,starkenberg2010,stewart2024} is pressure-based,
-simple and robust, and in wide use. Its rate is \emph{separable}: a
+simple and robust, and in widespread use. Its rate is \emph{separable}: a
 function of $\lam$ alone times a function of the pressure alone,
 \begin{equation}
   \frac{\dd\lam}{\dd t} = g(\lam)\,\Phi(P).
@@ -412,7 +412,9 @@ Arrhenius rate with a two-exponent topology:
 
 \paragraph{Repairs.} (1) $\lam^\beta$ is zero at $\lam = 0$, so as written
 the burn never starts: $\lam$ is seeded to $\lam_0$ at the lead shock's mark,
-an ignition fraction in the spirit of ignition-and-growth models. (2) The
+an ignition fraction in the spirit of ignition-and-growth models. (The seed
+is decided; $\lam_0$ is the deck key \key{LAM0}, and its allowed range and
+whether it has a default are set when FlashFire is built.) (2) The
 activation energy enters as one activation temperature, $T_a = E_a/R$, with
 no per-mole or per-gram units. (3) Gated by the lead shock, $\PS$ frozen
 there.

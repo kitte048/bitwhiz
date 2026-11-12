@@ -283,7 +283,7 @@ manual:
 	cd $(MANUAL)/figures && for f in *.tex; do \
 	   pdflatex -interaction=nonstopmode -halt-on-error $$f > /dev/null \
 	   || { echo "manual: figure $$f failed (see its .log)"; exit 1; }; done
-	cd $(MANUAL) && v=$$(git describe --tags --dirty 2>/dev/null || echo development) \
+	cd $(MANUAL) && v=$$(git --no-optional-locks describe --tags --dirty 2>/dev/null || echo development) \
 	   && for i in 1 2 3; do \
 	   pdflatex -interaction=nonstopmode -halt-on-error -jobname=bitwhiz_manual \
 	   "\def\bwversion{bitwhiz $$v}\input{bitwhiz_manual}" > /dev/null \
