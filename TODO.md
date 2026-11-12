@@ -74,7 +74,8 @@ Far out, research:
     cylindrical and spherical geometry, 2D, PNG (Ideas).
 
 Throughout: no bloat. Cost per cycle stays the same or improves, and
-`make test` stays a few minutes.
+`make test` stays a few minutes: 20 at the most (DK, Nov 12; at 1.6.0,
+5 to 8 minutes on GitHub's runners, gcc 8, 13 and latest).
 
 ## 1. Velocity profiles (released in 1.1.0)
 Design and status: `doc/design/distributions.md`.
