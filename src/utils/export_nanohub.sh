@@ -36,7 +36,8 @@
 #                                                                      #
 #  D. E. Kittell (with Claude), 10/23/26; VERSION file, 10/24/26;     #
 #  decks, deck reference and VERSION where users can read them,      #
-#  11/01/26; gold-standard data left out, 11/02/26.                    #
+#  11/01/26; gold-standard data left out, 11/02/26; the push note      #
+#  without the IP block (fixed by nanoHUB), 11/10/26.                  #
 #**********************************************************************#
 set -e
 
@@ -142,8 +143,8 @@ else
    echo "Changed in the clone:"
    git -C "$dest" status --short
    echo
-   echo "To publish it (one push: nanoHUB may block an address that pushes"
-   echo "often), from $dest:"
+   echo "To publish it (one push, the commit and its tag together), from"
+   echo "$dest:"
    echo "   git add -A src/bitwhiz examples bin/VERSION"
    echo "   git commit -m \"bitwhiz $tag\""
    echo "   git tag $tag"

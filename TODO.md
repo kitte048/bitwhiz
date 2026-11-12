@@ -22,9 +22,8 @@ at 1.3.0 and working that day.
 ## Priorities
 Next, an afternoon each, little risk:
 1. Publication (section 9): v1.3.4 to check Zenodo, the note to JOSS's
-   editors, the public trail toward JOSS (May 2027) and SCCM 2027; and a
-   follow-up on ticket #516409 (IP blocks) before beta testers use the tool
-   heavily.
+   editors, the public trail toward JOSS (May 2027) and SCCM 2027. (The IP
+   blocks, ticket #516409, were fixed by nanoHUB Nov 10: section 2.)
 2. The notebook (section 2), its changes collected into one nanoHUB
    release while beta testing runs: the Stop button first (testers will
    feel it), then a movie frame download, the movie step's timing, a
@@ -150,13 +149,16 @@ release: each costs a push and an install.
       the reference data.
 
 ### Open questions (nanoHUB and Purdue)
-- [ ] **IP blocks:** support ticket #516409. The block followed git pushes
+- [x] **IP blocks:** support ticket #516409. The block followed git pushes
       (Oct 22 evening, Oct 23 morning) and also repeated page visits (Oct 23
-      afternoon, no git). Follow up with the browsing case before sending
-      testers; ask what triggers it and how to push without tripping it.
-      No block during the 1.1.0 release (Nov 1-2: one push of two commits
-      and a tag, the install, one test session, approval): one push per
-      release, with its tag, seems to be safe.
+      afternoon, no git). No block during the 1.1.0 release (Nov 1-2: one
+      push of two commits and a tag, the install, one test session,
+      approval). Resolved Nov 10: nanoHUB's server logged each push first
+      as refused (Apache's AH01797) and then allowed it by another rule, and
+      its fail2ban read the refusal as an attack and blocked the address;
+      nanoHUB corrected the fail2ban configuration. One push per release,
+      with its tag, stays the habit (RELEASING.md). The browsing case of
+      Oct 23 was not addressed separately: watch for it with testers.
 - [ ] **Copyright holder** on the license line (Apache 2.0, "custom" on
       nanoHUB): David E. Kittell, or the Purdue Research Foundation? Ask OTC.
 - [x] **Export control:** a written determination from Purdue's export

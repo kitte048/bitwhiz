@@ -40,10 +40,15 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   into its `bin/` (an installed tool's `src/` is not readable by its users),
   lists files the tag no longer has, and prints the commands to commit, tag and
   push. Then, in the clone, run those commands.
-- **Push once.** nanoHUB has blocked this machine's address for hours after git
-  pushes (support ticket open, Oct 2026), so send the commit and its tag in one
+- **Push once.** Send the commit and its tag in one
   `git push origin master vX.Y.Z`, with git's credential helper set
-  (`git config --global credential.helper osxkeychain`).
+  (`git config --global credential.helper osxkeychain`). In Oct 2026
+  nanoHUB blocked this machine's address for hours after git pushes
+  (ticket #516409): its server logged each push first as refused (Apache's
+  AH01797) and then allowed it by another rule, and its fail2ban read the
+  refusal as an attack. nanoHUB corrected fail2ban (Nov 10, 2026), so pushes
+  should no longer be blocked; one push per release, with its tag, stays the
+  habit.
 - **Install.** On the tool's status page, follow the link **"Wait! I've made
   more changes"** (for a tool already installed or approved; it tells nanoHUB
   that new code is in the repository), or mark the code uploaded (status
