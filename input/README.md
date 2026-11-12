@@ -167,15 +167,16 @@ Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
 | `spall_strength` | GPa | 0.01 |
 | `CV` | J/(g K) | required with `mie_gruneisen_t`; not allowed without it |
 | `T0` | K | required with `mie_gruneisen_t`; not allowed without it |
-| `burn` | `hvrb`, `thermalcascade` | none (inert) |
+| `burn` | `hvrb`, `thermalcascade`, `flashfire` | none (inert) |
 | `PR`, `ZR`, `MR`, `XR`, `PI`, `TAU0` | GPa, -, -, -, GPa, us | each required with `burn = hvrb`; not allowed without it |
 | `HT`, `TC`, `GT`, `NS`, `PR` | 1/(us K^GT), K, -, -, GPa | each required with `burn = thermalcascade`; not allowed without it |
+| `KFF`, `AFF`, `BFF`, `TA`, `NS`, `PR`, `LAM0` | 1/us, -, -, K, -, GPa, - | each required with `burn = flashfire` (`LAM0` strictly between 0 and 1); not allowed without it |
 | `products` | `ideal_gas` | none: required with `burn` (no default) |
 | `GAMMA`, `Q` | -, kJ/g (= MJ/kg) | each required with `products = ideal_gas`; not allowed without it |
 
 A material that no layer uses gets a warning, not an error. A burn key means
 the same thing in every model that takes it (`PR`, the reference pressure, is
-HVRB's and ThermalCascade's), and a model takes only its own: a key of another
+every model's, and `NS` ThermalCascade's and FlashFire's), and a model takes only its own: a key of another
 model is an error ("ZR is not a key of burn = thermalcascade (it is for burn =
 hvrb ...)"), as is any burn key without a burn.
 
@@ -258,6 +259,40 @@ decides (`doc/design/burn_models.md`, step 5). Example: below, and
     GT = 1.5
     NS = 2.0
     PR = 7.0                 # GPa
+    products = ideal_gas
+    GAMMA = 2.60
+    Q = 4.8828               # kJ/g
+
+**Burning (`burn = flashfire`).** FlashFire, proposed by ChatGPT 4o-mini in
+SAND2025-09228 (§5.2.1) and repaired where it can not run as written
+(`doc/design/burn_models.md`, step 6): the same solid, products and closure,
+with the Arrhenius rate
+
+    dlam/dt = KFF (1 - lam)^AFF lam^BFF exp(-TA/T) (1 + P_s/PR)^NS
+
+**once the cell's lead shock is marked, where lam is seeded to `LAM0`**
+(lam^BFF is 0 at lam = 0, so without the seed nothing would burn; before the
+mark, nothing burns). `TA` is the activation energy over the gas constant, a
+temperature; T is the closure's, so burning heats the cell and, through the
+Arrhenius factor, speeds the burn steeply. There is no threshold: every
+marked cell burns in the end. The step is sub-cycled by RK4, each sub-step
+moving lam by about a tenth of lam (or of 1 - lam), with T following lam
+within the step; an algorithm constant, not a key. Once 1 - lam < 1e-12 the
+cell is burnt out (lam = 1, counted on the screen). The run log's first cell
+to react is the first one seeded, the step after its lead shock is marked. `KFF = 0` never burns, not
+even the seed (the detector still runs, and changes nothing); `TA = 0` drops
+the Arrhenius factor. `LAM0` must be between 0 and 1 (not 0 or 1); `KFF`,
+`AFF`, `BFF` and `TA` are 0 or more. Example: below, and
+`me697_ffire_2p00.deck` (section 6), an example set, not a calibration:
+
+    burn = flashfire
+    KFF  = 55.0              # 1/us
+    AFF  = 1.0
+    BFF  = 0.5
+    TA   = 3000.0            # K
+    NS   = 1.0
+    PR   = 7.0               # GPa
+    LAM0 = 1.0e-4
     products = ideal_gas
     GAMMA = 2.60
     Q = 4.8828               # kJ/g
@@ -421,6 +456,16 @@ TC), and at 1.00 nothing burns.
 Watch `TK` rise with `XRN` in the tracer file: the cascade. Its detonation is
 HVRB's (the same products: within 0.1 % at 200 zones/mm,
 `tests/verification/study_tcas.py`). About 3 s (release build).
+
+**The same, by FlashFire,** `me697_ffire_2p00.deck`: Material X burning by
+`burn = flashfire` (Material block, "Burning"), seeded at each cell's lead
+shock, with an example set of constants chosen so that at 2.00 km/s it
+detonates about 3.5 mm in, as HVRB's does; RS at order 2. Its Pop plot follows
+HVRB's: 1.75 km/s detonates about 4.9 mm in and 1.50 about 7.2 mm (HVRB 5.0 and
+7.5); at 1.25 Material X burns behind the shock without building a detonation
+within 10 mm, and at 1.00 slowly. Its detonation speed converges with the mesh
+to within 0.2 % of D_CJ (`tests/verification/study_ffire.py`). About 3 s
+(release build).
 
 **Keep the origin near the problem.** Positions are stored as plain numbers, so
 round-off in x grows with the size of x: a cell's width is the difference of
@@ -697,8 +742,8 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
 
   (7 frames a second: 35 frames make 5 s; `yuv420p` so browsers play it).
   The class deck, `pulse_split_normal.deck`, `steepening_hump.deck`,
-  `me697_hvrb_2p00.deck` and `me697_tcas_2p00.deck` make movies (35, 35,
-  25, 35 and 35 frames).
+  `me697_hvrb_2p00.deck`, `me697_tcas_2p00.deck` and `me697_ffire_2p00.deck`
+  make movies (35, 35, 25, 35, 35 and 35 frames).
 
 - **Read from the files, never from memory.** The t-x diagrams come from
   `<title>.hist` and the tracer plots from `<title>.tracers.csv`, so a picture
@@ -847,7 +892,7 @@ so the heartbeat, tracer and history files it reads are never touched.
 | `xvel_profile`, `xvel_amplitude` | `layer(l)%prof_name`, `prof_np`, `prof_par`; `xamp`, `have_amp` |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
 | `Material` keys `eos`, `CV`, `T0` | `material(m)%eos` (`eos_mie_gruneisen`, `eos_mie_gruneisen_t`), `CV` (J/(g K)), `T0`; copied into `layer(l)%eos`, `cv` (kJ/(g K): `CV`/1000), `T0`, then into module `temperature` (`src/modules/temp_mod.f95`), cell by cell |
-| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `HT` ... `NS`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `thermalcascade` (`tcas_mod.f95`, with `leadshock`, `lshk_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
+| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `HT` ... `NS`, `KFF` ... `LAM0`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `thermalcascade` (`tcas_mod.f95`, with `leadshock`, `lshk_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
 | `num_threads` | `nproc` |
 | `Run`, `Output`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `plot_dt`, `colormap`, `CFL`, `stack_resolution`, ...) |
 | `tracer` | `tracer(n)%...`: name, location, `x0`, `kface`, `w`, `kcell` |

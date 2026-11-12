@@ -31,6 +31,11 @@ program test_btab
 !       slots tc_HT to tc_PR, PR shared with HVRB (one key, one
 !       meaning), the detector's five numbers its history, and its
 !       checks (HT, TC, GT, NS >= 0, so HT = 0 is the inert limit).
+!    9. FlashFire's row is the slot table's: KFF, AFF, BFF, TA, NS, PR,
+!       LAM0 in slots ff_KFF to ff_LAM0, NS shared with ThermalCascade
+!       and PR with both, the detector's five numbers its history, and
+!       its checks (KFF, AFF, BFF, TA >= 0; LAM0 strictly between 0 and
+!       1, the one key with chk_open01).
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -41,14 +46,17 @@ program test_btab
 !                (with Claude)
 !    11/07/26    D. E. Kittell        8: ThermalCascade's row (step 5)
 !                (with Claude)
+!    11/12/26    D. E. Kittell        9: FlashFire's row (step 6); 4
+!                (with Claude)        knows chk_open01
 !
 !**********************************************************************!
 use bits, only: int32, quit
 use burn_table, only: npar_max, nst_max, nburn, burn_none, burn_hvrb, &
    burn_names, burn_long, nbkey, bkey_name, bkey_check, bkey_note, &
-   chk_any, chk_positive, chk_nonneg, burn_npar, burn_key, burn_nst, &
+   chk_any, chk_positive, chk_nonneg, chk_open01, burn_npar, burn_key, burn_nst, &
    bkey_index, burn_takes, hv_PR, hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, &
-   hv_phi, burn_uses_ls, burn_tcas, tc_HT, tc_TC, tc_GT, tc_NS, tc_PR
+   hv_phi, burn_uses_ls, burn_tcas, tc_HT, tc_TC, tc_GT, tc_NS, tc_PR, &
+   burn_ffire, ff_KFF, ff_AFF, ff_BFF, ff_TA, ff_NS, ff_PR, ff_LAM0
 use leadshock, only: ls_nst
 implicit none
 
@@ -65,6 +73,9 @@ character(len=8), parameter, dimension(6) :: hvrb_keys = (/ &
    'TAU0    ' /)
 character(len=8), parameter, dimension(5) :: tcas_keys = (/ &
    'HT      ', 'TC      ', 'GT      ', 'NS      ', 'PR      ' /)
+character(len=8), parameter, dimension(7) :: ffire_keys = (/ &
+   'KFF     ', 'AFF     ', 'BFF     ', 'TA      ', 'NS      ', &
+   'PR      ', 'LAM0    ' /)
 integer(kind=int32) :: ncheck, nfail, i, j, ib, s, n
 logical :: ok
 
@@ -131,7 +142,8 @@ do j = 1, nbkey
    if ( .not. any( (/ ( burn_takes( ib, j ), ib = 1, nburn ) /) ) ) &
       ok = .false.
    if ( bkey_check(j) /= chk_any .and. bkey_check(j) /= chk_positive &
-      .and. bkey_check(j) /= chk_nonneg ) ok = .false.
+      .and. bkey_check(j) /= chk_nonneg .and. bkey_check(j) /= chk_open01 ) &
+      ok = .false.
    if ( len_trim(bkey_note(j)) == 0 ) ok = .false.
 end do
 call check( ok, '4. every key is some model''s, with a check and a note' )
@@ -196,6 +208,27 @@ end do
 ok = ok .and. bkey_check( burn_key(tc_PR,burn_tcas) ) == chk_positive
 call check( ok, '8. ThermalCascade: HT TC GT NS PR in slots 1-5 (PR '// &
    'HVRB''s), the detector its history, its checks' )
+
+!*** 9. FlashFire, as the slot table has it.
+ok = trim(burn_names(burn_ffire)) == 'flashfire' .and. &
+   burn_npar(burn_ffire) == 7 .and. burn_nst(burn_ffire) == ls_nst .and. &
+   burn_uses_ls(burn_ffire)
+do s = 1, 7
+   if ( trim(bkey_name( burn_key(s,burn_ffire) )) /= trim(ffire_keys(s)) ) &
+      ok = .false.
+end do
+ok = ok .and. ff_KFF == 1 .and. ff_AFF == 2 .and. ff_BFF == 3 .and. &
+   ff_TA == 4 .and. ff_NS == 5 .and. ff_PR == 6 .and. ff_LAM0 == 7 .and. &
+   burn_key(ff_NS,burn_ffire) == burn_key(tc_NS,burn_tcas) .and. &
+   burn_key(ff_PR,burn_ffire) == burn_key(hv_PR,burn_hvrb)
+do s = 1, 4
+   if ( bkey_check( burn_key(s,burn_ffire) ) /= chk_nonneg ) ok = .false.
+end do
+ok = ok .and. bkey_check( burn_key(ff_PR,burn_ffire) ) == chk_positive .and. &
+   bkey_check( burn_key(ff_LAM0,burn_ffire) ) == chk_open01 .and. &
+   count( bkey_check == chk_open01 ) == 1
+call check( ok, '9. FlashFire: KFF AFF BFF TA NS PR LAM0 in slots 1-7 '// &
+   '(NS and PR shared), the detector its history, its checks' )
 
 if ( nfail > 0 ) then
    write(*,'(a,i0,a,i0,a)') ' test_btab: ', nfail, ' of ', ncheck, &

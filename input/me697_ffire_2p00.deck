@@ -1,0 +1,177 @@
+#**********************************************************************#
+#  ME 697 class project with a reactive Material X: FlashFire          #
+#                                                                      #
+#  The class problem (me697_double_shock_2p00.deck), with Material X   #
+#  burning by FlashFire, the third of bitwhiz's burn models            #
+#  (doc/design/burn_models.md): proposed by ChatGPT 4o-mini in         #
+#  SAND2025-09228, repaired, and gated by the lead shock:              #
+#                                                                      #
+#   dlam/dt = KFF (1 - lam)^AFF lam^BFF exp(-TA/T) (1 + P_s/PR)^NS     #
+#                                                                      #
+#  once the cell's lead shock is marked, where lam is seeded to LAM0   #
+#  (its pressure, P_s, frozen there; before it, nothing burns). T is   #
+#  the closure's temperature, solid and products alike, so burning     #
+#  heats the cell and speeds the burn, and the Arrhenius factor makes  #
+#  that feedback steep.                                                #
+#                                                                      #
+#      | Ta 3.0 | Al 4.0 |=> Material X 10.0 | PMMA 10.0 |  PDV ->     #
+#     x=-7.0           x=0 (impact plane)    x=10.0      x=20.0        #
+#                                                                      #
+#  KFF, AFF, BFF, TA, NS and LAM0 here are an example, not a           #
+#  calibration (that is the design note's step 10): chosen so that at  #
+#  2.00 km/s the shock grows to a detonation about 3.5 mm into         #
+#  Material X, as HVRB's does (me697_hvrb_2p00.deck). The products are #
+#  the HVRB deck's ideal gas. The burn's keys, and what each does:     #
+#  input/README.md, Material block; every other key is the class       #
+#  deck's (its key reference, at its end). Units: mm, us, g/cc, km/s,  #
+#  GPa, K.                                                             #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00            # km/s, flyer velocity
+
+ Begin Run
+  plots_only = no    # yes or no
+  title       = ffire_2p00
+  t_end       = 3.0             # us: the detonation reaches the PDV
+                                # interface near 1.5 us at 2.00 km/s
+  num_threads = 1
+ End Run
+
+ Begin Output                   # nothing listed here = nothing written
+  plot_dt     = 0.005           # us between snapshots: under a
+                                # pixel row of the t-x diagrams
+  movie_frames = 35             # the pressure movie, 0 to 3.0 us
+  tracer_dt   = 0.005           # us between tracer rows (the
+                                # reference's spacing); 0 = every cycle
+  colormap    = viridis         # for bitmap pictures
+
+  tracer = pdv     MatX:PMMA    # the PDV signal
+  tracer = impact  Al:MatX      # impact plane
+  tracer = ta_al   Ta:Al        # where the second shock is born
+  tracer = mid_x   MatX@0.5     # mid-sample, past the run distance
+ End Output
+
+ Begin Solver
+  method = RS                   # the Riemann solver: a shock 1-2 cells
+  order  = 2                    # sharp, and a smooth burn behind it
+                                # (second order, MUSCL-Hancock)
+  BL     = 0.1                  # method = AV's linear and quadratic
+  BQ     = 2.0                  # viscosity coefficients (the equation
+                                # sheet's defaults); RS ignores them
+  CFL    = 0.6
+ End Solver
+
+ # Mie-Gruneisen on the principal Hugoniot (rev-0, Eqs. 4 and 6):
+ #   Us = C0 + S1*up + (S2/C0)*up^2,   rho*Gamma = R0*G0
+ Begin Material Ta              # tantalum, backing plate
+  R0 = 16.65                    # g/cm^3, initial density
+  C0 = 3.40                     # km/s, Hugoniot intercept
+  S1 = 1.20                     # -,    Us-up slope
+  S2 = 0.0                      # -,    Us-up curvature (default 0)
+  G0 = 1.60                     # -,    Gruneisen coefficient
+  spall_strength = 5.0          # GPa, dynamic. Tantalum is strong in
+                                # tension (spall strengths of several
+                                # GPa are reported); at 5.0 the Ta here
+                                # holds its ~2 GPa tension, as in the
+                                # reference data. Other materials take
+                                # the default, 0.01 GPa (input/README.md)
+ End Material
+
+ Begin Material Al              # aluminum, flyer face
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  S2 = 0.0
+  G0 = 2.00
+ End Material
+
+ Begin Material MatX            # notional HE surrogate, reactive
+  eos  = mie_gruneisen_t        # the unreacted solid, plus T: the burn's
+  R0   = 1.60                   # closure mixes it with the products at
+  C0   = 2.50                   # one density and one temperature
+  S1   = 1.80
+  S2   = -0.10
+  G0   = 1.20
+  CV   = 1.1633418              # J/(g K), both phases
+  T0   = 298.0                  # K
+
+  burn = flashfire              # FlashFire, gated by the lead shock
+  KFF  = 55.0                  # 1/us, rate constant
+  AFF  = 1.0                    # exponent on (1 - lam)
+  BFF  = 0.5                    # exponent on lam
+  TA   = 3000.0                 # K, activation temperature, E_a/R
+  NS   = 1.0                    # exponent on (1 + P_s/PR)
+  PR   = 7.0                    # GPa, reference pressure
+  LAM0 = 1.0e-4                 # lam at the lead shock's mark (the seed)
+
+  products = ideal_gas          # P = (GAMMA - 1) rho CV T, as the HVRB
+                                # deck's
+  GAMMA    = 2.60
+  Q        = 4.8828             # kJ/g (= MJ/kg), heat of reaction
+ End Material
+
+ Begin Material PMMA            # window; Lacina et al. (2018) linear fit
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  S2 = 0.0
+  G0 = 0.90                     # estimated from Plexiglass (rev-0 Table 1)
+ End Material
+
+ Begin Stack
+  resolution = 35               # zones/mm: 105 + 140 + 350 + 350 = 945
+  origin     = Al:MatX          # x = 0 at the impact plane
+
+  Begin Layer
+   material = Ta
+   width    = 3.0               # mm
+   xvel     = u_fly             # km/s, + is to the right
+  End Layer
+
+  Begin Layer
+   material = Al
+   width    = 4.0
+   xvel     = u_fly
+  End Layer
+
+  Begin Layer
+   material = MatX
+   width    = 10.0
+  End Layer
+
+  Begin Layer
+   material = PMMA
+   width    = 10.0
+  End Layer
+ End Stack
+End bitwhiz
+
+Notes (ignored by the parser):
+- Velocity sweep: change "define u_fly" only. Measured at this deck's
+  35 zones/mm, RS order 2: 2.00 km/s detonates about 3.5 mm in, 1.75
+  about 4.9 mm and 1.50 about 7.2 mm (HVRB, this deck's twin: 3.5, 5.0
+  and 7.5 mm). The Arrhenius factor has no threshold: every cell whose
+  lead shock is marked burns in the end. At 1.25 km/s Material X burns
+  behind the shock (lam near 1 at 5 mm by 3 us) without building a
+  detonation within 10 mm; at 1.00, slowly (lam about 0.008 at 5 mm by
+  3 us). Calibration (step 10) will choose the constants to follow
+  HVRB's Pop plot.
+- Each tracer's XRN column (the tracer file) is its cell's extent of
+  reaction, lam, 0 to 1, from LAM0 at its lead shock; TK its temperature
+  (in Material X). TK rises as lam does, and the Arrhenius factor with it.
+- The lead shock: a cell burns only after its lead shock is marked (SURF's
+  detector, Menikoff and Shaw 2010; doc/design/burn_models.md, step 4),
+  and is seeded to LAM0 there (lam^BFF is 0 at lam = 0, so without the
+  seed nothing would ever burn). A smooth ramp is marked too, at its foot,
+  with P_s near 0: then (1 + P_s/PR)^NS is near 1, and T decides.
+- The step: RK4 sub-steps, each moving lam by at most 0.1 of lam (or of
+  1 - lam), with T following lam within the step (the closure's: T rises
+  by (e_c + Q)/C_V per unit lam at fixed rho and e). An algorithm
+  constant, not a key (doc/design/burn_models.md, step 6).
+- Method RS at order 2 (the Solver block), as the other burn decks: a
+  sharp shock and a smooth burn behind it. Try method = AV to compare.
+  KFF = 0 is the inert limit: no seed and no burn (the detector still
+  runs, and changes nothing).
+- "Cells burnt out" on the screen counts lam = 1: FlashFire sets lam = 1
+  once 1 - lam < 1e-12, so its detonated cells are counted.

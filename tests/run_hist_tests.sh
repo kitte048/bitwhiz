@@ -92,7 +92,7 @@ CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 . "$(dirname "$0")/report.sh"
-plan 32 "history tests"
+plan 36 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -551,6 +551,11 @@ inert_limit hvrb_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_hvrb
 # must change nothing (doc/design/burn_models.md, step 5).
 inert_limit tcas_inert    tests/decks/ok_temperature.deck    tests/decks/ok_tcas_inert.deck
 inert_limit tcas_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_tcas_inert_rs.deck
+# FlashFire at KFF = 0 (tests/decks/ok_ffire_inert.deck, and _rs): the
+# detector runs, and KFF = 0 seeds nothing (doc/design/burn_models.md,
+# step 6): nothing may change.
+inert_limit ffire_inert    tests/decks/ok_temperature.deck    tests/decks/ok_ffire_inert.deck
+inert_limit ffire_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_ffire_inert_rs.deck
 
 # Case: a burn with method RS (tests/decks/ok_hvrb_rs.deck, order 2: the
 # closure in its state and the reaction's source in its predictor), as
@@ -562,6 +567,11 @@ against_tracer hvrb_rs tests/decks/ok_hvrb_rs.deck 0.05 pdv
 # only nears 1, by an exact exponential step, so no "1 at the end".)
 against_tracer tcas    tests/decks/ok_tcas.deck    0.05 pdv
 against_tracer tcas_rs tests/decks/ok_tcas_rs.deck 0.05 pdv
+
+# Case: FlashFire (tests/decks/ok_ffire.deck, and _rs: each MatX cell
+# seeded at its lead shock's mark, then burning by RK4 sub-steps).
+against_tracer ffire    tests/decks/ok_ffire.deck    0.05 pdv
+against_tracer ffire_rs tests/decks/ok_ffire_rs.deck 0.05 pdv
 
 # Case: velocity profiles (xvel_profile, xvel_amplitude). Frame 1 is
 # t = 0, so its face velocities (KMPS, real32) must be what the deck

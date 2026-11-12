@@ -19,6 +19,7 @@
 	src/modules/lshk_mod.o \
 	src/modules/hvrb_mod.o \
 	src/modules/tcas_mod.o \
+	src/modules/ffire_mod.o \
 	src/modules/burn_mod.o \
 	src/modules/av_mod.o \
 	src/modules/rs_mod.o \

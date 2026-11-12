@@ -60,6 +60,8 @@ module deck
 !                                     resolved deck): a key another
 !                                     model takes is an error; the
 !                                     constants by key, then by slot
+!    11/12/26    D. E. Kittell        A burn key's check chk_open01,
+!                (with Claude)        0 < x < 1 (FlashFire's LAM0)
 !
 !**********************************************************************!
 !
@@ -124,7 +126,7 @@ module deck
 use bits,  only: dp, int32, int64, zero, one, kpt6, nline
 use shock
 use burn_table, only: nburn, burn_none, burn_names, burn_long, nbkey, &
-   bkey_name, bkey_check, bkey_note, chk_positive, chk_nonneg, &
+   bkey_name, bkey_check, bkey_note, chk_positive, chk_nonneg, chk_open01, &
    burn_npar, burn_key, burn_takes, bkey_index
 use distributions, only: dist_t, dist_set, dist_nparam, dist_mean, &
    dist_names
@@ -1421,6 +1423,12 @@ contains
       case (chk_nonneg)
          if (x < zero) then
             call deck_error(ln, trim(key)//' must be 0 or more')
+            ok = .false.
+         end if
+      case (chk_open01)
+         if (.not. (x > zero .and. x < one)) then
+            call deck_error(ln, trim(key)// &
+               ' must be between 0 and 1 (not 0 or 1)')
             ok = .false.
          end if
       end select

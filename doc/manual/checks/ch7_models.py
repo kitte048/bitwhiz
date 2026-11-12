@@ -84,3 +84,18 @@ th = sp.symbols('that', positive=True)                  # t-hat = t / t_c
 tc = 1/(2*G*N**sp.Rational(1, 3))                       # t_c: a center's diameter 2 G t reaches the spacing N^(-1/3)
 ok(sp.simplify(sp.Rational(4, 3)*sp.pi*M3.subs(t, th*tc)
                - sp.pi/6*th**3), 'CLAUDE: all lit at once, G constant: (pi/6) that^3')
+
+#*** FlashFire: at a fixed T with B_F = 0, dlam/dt = c (1 - lam)^A_F has the
+#*** closed forms test_ffire uses; and h of eq. (ff-h) is RK4-exact for a
+#*** constant rate (A_F = B_F = T_a = 0): lam1 + r dt.
+c, A, l0 = sp.symbols('c A_F lambda_0', positive=True)
+lt = 1 - ((1 - l0)**(1 - A) - (1 - A)*c*t)**(1/(1 - A))
+res = sp.lambdify((c, A, l0, t), sp.diff(lt, t) - c*(1 - lt)**A, 'mpmath')
+w = max(abs(res(mp.mpf(cc), mp.mpf(aa), mp.mpf('1e-4'), mp.mpf(tt)))
+        for cc, aa, tt in [(2, 0.5, 0.3), (2, 2, 1.5), (5, 1.5, 0.1), (1, 0.25, 0.2)])
+ok(w < 1e-25, 'FlashFire: (1-lam)^(1-A) linear in t solves dlam/dt = c (1-lam)^A (4 points)')
+le = 1 - (1 - l0)*sp.exp(-c*t)
+ok(sp.simplify(sp.diff(le, t) - c*(1 - le)), 'FlashFire: A_F = 1, the exponential')
+r0, h = sp.symbols('r h', positive=True)
+k1 = k2 = k3 = k4 = r0                       # a constant rate: every stage r
+ok(sp.simplify(l0 + h*(k1 + 2*k2 + 2*k3 + k4)/6 - (l0 + r0*h)), 'FlashFire: RK4 exact for a constant rate')

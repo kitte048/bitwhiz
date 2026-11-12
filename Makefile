@@ -197,9 +197,10 @@ $(1)src/modules/mix_mod.o:   $(1)src/modules/eos_mod.o $(1)src/modules/prod_mod.
 $(1)src/modules/hvrb_mod.o:  $(1)src/modules/bit_mod.o
 $(1)src/modules/lshk_mod.o:  $(1)src/modules/bit_mod.o
 $(1)src/modules/tcas_mod.o:  $(1)src/modules/bit_mod.o
+$(1)src/modules/ffire_mod.o: $(1)src/modules/bit_mod.o
 $(1)src/modules/burn_mod.o:  $(1)src/modules/hvrb_mod.o $(1)src/modules/mix_mod.o \
                              $(1)src/modules/btab_mod.o $(1)src/modules/lshk_mod.o \
-                             $(1)src/modules/tcas_mod.o \
+                             $(1)src/modules/tcas_mod.o $(1)src/modules/ffire_mod.o \
                              $(1)src/modules/temp_mod.o \
                              $(1)src/modules/eos_mod.o $(1)src/modules/shock_mod.o \
                              $(1)src/modules/bit_mod.o
@@ -238,7 +239,8 @@ $(eval $(call MOD_ORDER,))
 ###  call bmpmaker and the colormaps.
 ############################################################
 UNIT_TESTS = ./bin/test_eos ./bin/test_hist ./bin/test_dist ./bin/test_temp \
-	./bin/test_hvrb ./bin/test_btab ./bin/test_lshk ./bin/test_tcas
+	./bin/test_hvrb ./bin/test_btab ./bin/test_lshk ./bin/test_tcas \
+	./bin/test_ffire
 
 ./bin/test_%: tests/test_%.f95 $(MOD_OBJS) $(LIB_OBJS)
 	@mkdir -p ./bin
@@ -263,6 +265,7 @@ test: $(EXECS) $(UNIT_TESTS)
 	./bin/test_btab
 	./bin/test_lshk
 	./bin/test_tcas
+	./bin/test_ffire
 	BIN=$(EXECS) ./tests/run_deck_tests.sh
 	BIN=$(EXECS) ./tests/run_omp_tests.sh
 	BIN=$(EXECS) ./tests/run_hist_tests.sh

@@ -8,11 +8,11 @@ burn key that is not the material's model's is a deck error, as is any burn
 key without a burn.
 
 \begin{center}\small
-\begin{tabular}{@{}l l l l@{}}
+\begin{tabularx}{\textwidth}{@{}l l l Y@{}}
 \toprule
 Key & Symbol & Units in the deck & Used by \\
 \midrule
-\key{burn} & -- & \key{hvrb}, \key{thermalcascade} & a material that burns \\
+\key{burn} & -- & \key{hvrb}, \key{thermalcascade}, \key{flashfire} & a material that burns \\
 \key{eos} & -- & \key{mie_gruneisen_t} & required with a burn \\
 \key{CV}, \key{T0} & $\Cv$, $T_0$ & J/(g\,K), K & the reactant \\
 \key{products} & -- & \key{ideal_gas} & required with a burn \\
@@ -23,9 +23,13 @@ Key & Symbol & Units in the deck & Used by \\
 \key{PI}, \key{TAU0} & $P_I$, $\tau_0$ & GPa, \textmu s & HVRB \\
 \key{HT} & $H_T$ & 1/(\textmu s\,K$^{G_T}$) & ThermalCascade \\
 \key{TC}, \key{GT} & $T_c$, $G_T$ & K, -- & ThermalCascade \\
-\key{NS} & $N_S$ & -- & ThermalCascade (and FlashFire, StochasticIgnite) \\
+\key{NS} & $N_S$ & -- & ThermalCascade, FlashFire (and StochasticIgnite) \\
+\key{KFF} & $K_F$ & 1/\textmu s & FlashFire \\
+\key{AFF}, \key{BFF} & $A_F$, $B_F$ & -- & FlashFire \\
+\key{TA} & $T_a$ & K & FlashFire \\
+\key{LAM0} & $\lam_0$ & -- (between 0 and 1) & FlashFire \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{center}
 
 The deck's \key{CV} is in J/(g\,K); the code divides it by 1000, to

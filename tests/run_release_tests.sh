@@ -42,7 +42,9 @@ tests/decks/ok_temperature_rs.deck
 tests/decks/ok_hvrb.deck
 tests/decks/ok_hvrb_rs.deck
 tests/decks/ok_tcas.deck
-tests/decks/ok_tcas_rs.deck"
+tests/decks/ok_tcas_rs.deck
+tests/decks/ok_ffire.deck
+tests/decks/ok_ffire_rs.deck"
 
 plan $(echo "$DECKS" | wc -w | tr -d ' ') "release tests"
 

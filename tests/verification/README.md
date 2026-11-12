@@ -103,6 +103,16 @@ deck: the same products, so the same detonation speed. The results are in
 
     python3 tests/verification/study_tcas.py
 
+`study_ffire.py` checks FlashFire (`burn = flashfire`) the same way. The lead
+shock inside the hydro: set to a constant rate once marked (RK4 integrates it
+exactly), a cell's first lam, less its seed, gives back the replay's P_s. And
+the detonation of `input/me697_ffire_2p00.deck` against mesh, AV and RS:
+converged, near D_CJ, and beside HVRB's. The results are in
+`doc/design/burn_models.md`, "As built: step 6" (about 4 minutes on 2 cores,
+`--quick` about 1):
+
+    python3 tests/verification/study_ffire.py
+
 ## Gold-standard sets (subfolders)
 - `inert_gauges/`: the same problem, Material X inert, with 13 tracers (every
   1 mm through Material X) and density and temperature: set G1.

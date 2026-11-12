@@ -667,3 +667,195 @@ never pass TC and do not burn. The run log's "cells burnt out" counts lam
 = 1 exactly, which this exact step reaches only by rounding (0 of 350 at
 2.00 km/s, with lam 1 to round-off behind the front); left as it is, since
 changing it would change HVRB's screen output.
+
+## Step 6, FlashFire: the plan (approved Nov 12, 2026)
+
+Approved by DK, Nov 12, with the step changed from Heun to RK4 (below).
+FlashFire as designed above ("FlashFire", the seed at the lead shock, T_a,
+the gate), with DK's decisions of Nov 12 and the details the build needs.
+
+**Decided (DK, Nov 12):**
+1. **Written up in the manual only** (`doc/manual/`, chapter 7's FlashFire
+   section from "under development" to as built, with trace tags): no
+   course equation sheet, since the manual now owns bitwhiz's equations
+   (`doc/design/manual.md`).
+2. **T follows lam within the step.** At fixed rho and e the closure makes
+   vartheta linear in lam (manual, eq. (6.6)), so each sub-step uses
+       T(lam) = T^n + (lam - lam^n) b,     b = (e_c + Q)/C_V,
+   b from the cell's state at the step's start (e_c of the held solid if
+   held). The cascade's feedback is resolved within the step for a few
+   flops, with no EOS call.
+3. **LAM0 required,** with 0 < LAM0 < 1; 1e-4 in the example deck.
+4. Released as 1.6.0, on branch `flashfire`.
+
+**The rate, as it will be built:**
+
+    r(lam, T) = KFF (1 - lam)^AFF lam^BFF exp(-TA/T) (1 + max(P_s, 0)/PR)^NS
+
+for T > 0 and lam < 1, else 0 (tests, not max(..)^.., as for HVRB and
+ThermalCascade: no 0^0 at lam = 1 with AFF = 0). TA = 0 is no Arrhenius
+factor; KFF = 0 the inert limit.
+
+**The seed.** In the first step after the lead shock is marked, lam <-
+max(lam, LAM0), then the sub-steps. At fixed rho and e, so energy is
+conserved; P moves by about (dP/dlam) LAM0. For method RS the step's rate,
+(lam^(n+1) - lam^n)/dt, includes the seed for that one step (with LAM0 =
+1e-4 and dt about 3e-3 us, 0.03/us: small against a burning cell's rate).
+
+**The step: RK4 sub-steps, Delta lam relative to lam and to 1 - lam
+(DK, Nov 12).** FlashFire's topology has no closed form, so the step is
+sub-cycled: each sub-step h = min(time left, eps min(lam, 1 - lam)/r), the
+classical fourth-order Runge-Kutta method (RK4) with T(lam) at each stage,
+lam kept in [LAM0, 1]; once 1 - lam < 1e-12 the cell is burnt out, lam = 1
+(so a cell whose AFF < 1 reaches 1 in a finite number of sub-steps).
+**eps = 0.1, an algorithm constant, not a deck key (DK).** Prototyped
+against the constant-volume cascade (T = 740 K + 4200 K lam, TA = 12000 K,
+Material X's scale), the time to lam = 0.99 against a 30-digit quadrature;
+first Heun (the plan as first proposed):
+
+| step | eps (or Delta lam_max) | dt = 1e-3 us | dt = 4e-3 us | sub-steps |
+|---|---|---|---|---|
+| Euler, Delta lam <= 0.01 (absolute, as first designed) | 0.01 | 9e-3 | | 580 |
+| Euler, relative | 0.05 | 8e-3 | 2.1e-2 | 300-600 |
+| Heun, relative | 0.1 | 2.1e-4 | 7.6e-4 | 190-540 |
+| **Heun, relative** | **0.05** | **9.7e-5** | **3.3e-4** | **290-600** |
+| Heun, relative | 0.02 | 3.6e-5 | 6.4e-5 | 670-860 |
+
+(AFF, BFF = 1, 0.5 and 0.5, 0.5; AFF = 2, BFF = 0 gives 4e-4 at 0.05.)
+Then RK4 against Heun, and against a fixed number of sub-steps per hydro
+step (the trade's rule of thumb, 10 to 20, DK), for AFF, BFF = 1, 0.5 and
+2, 0 (the ranges span both):
+
+| step | dt = 1e-3 us | dt = 4e-3 us | rate evaluations | most sub-steps in one hydro step |
+|---|---|---|---|---|
+| Heun, 10 per step | 2.7e-4 to 4.7e-3 | 6.8e-4 to 1.7e-2 | 2,400-9,700 | 10 |
+| Heun, 20 per step | 6.7e-5 to 1.3e-3 | 6.7e-4 to 7.9e-4 | 4,900-19,000 | 20 |
+| Heun, relative, eps = 0.05 | 9.7e-5 to 4.0e-4 | 3.3e-4 to 4.3e-4 | 500-1,200 | 102-129 |
+| RK4, relative, eps = 0.2 | 8.6e-6 to 4.2e-5 | 1.9e-5 to 1.0e-4 | 260-2,000 | 23-31 |
+| **RK4, relative, eps = 0.1** | **2.0e-7 to 1.0e-5** | **2.9e-7 to 1.4e-5** | **510-2,200** | **49-64** |
+
+Most hydro steps take one or two sub-steps (about one on average over a
+whole burn); they pile up only in the runaway. A fixed number per step
+spends 10 to 40 times the evaluations sub-stepping the induction, where
+nothing happens, and too few in the runaway. RK4 at eps = 0.1 costs about
+what Heun at 0.05 does and is one to three orders more accurate, its error
+falling as a fourth-order method's should.
+An absolute cap on Delta lam does not converge: in the slow induction from
+LAM0, where most of the time is spent, it never limits the sub-step, and
+the error is the hydro's dt. The relative cap does, with sub-steps over a
+cell's whole burn of about (ln(1/LAM0) + ln(1e12))/eps, under 400 at 0.1.
+What remains is the rate's frozen inputs (P_s, T^n, b), first order in dt,
+as for every model.
+
+**The burn table.** A row for `burn_ffire`: keys KFF (1/us, >= 0), AFF (>=
+0), BFF (>= 0), TA (K, >= 0), NS (shared, >= 0), PR (shared, > 0) and LAM0
+(new check, `chk_open01`: 0 < LAM0 < 1), in that slot order; 5 new keys
+(nbkey 10 to 15), npar 7 (<= npar_max = 8); its history the detector's five
+numbers (`burn_uses_ls`), nst 5. The deck reader takes the new check from
+the table; its message: "LAM0 must be between 0 and 1 (not 0 or 1)".
+
+**The code.** Module `flashfire` (`src/modules/ffire_mod.f95`, uses only
+`bits`, pure and elemental, no state): `ff_rate` and `ff_step`. Module
+`burn`: `cell_burn` gains b (an argument the other models ignore, so they
+stay bit for bit) and FlashFire's case, gated as ThermalCascade is;
+`burn_step` (AV) and `burn_rate_rs` (RS) compute b from the cell's carried
+e_S and its eta at the step's start (before `temp_cold_cell` moves them).
+
+**Tests.**
+- `tests/test_ffire.f95` against `tests/ffire_reference.py` (50 digits):
+  the rate at states across T > 0, T <= 0, lam at LAM0, near 1, AFF = 0,
+  BFF = 0, TA = 0, P_s < 0; with T fixed (b = 0) and BFF = 0 against the
+  closed form, (1 - lam)^(1 - AFF) linear in t (AFF /= 1), exp for AFF = 1;
+  the cascade at constant volume against the 50-digit quadrature, its error
+  falling with eps; the seed; burn-out at 1 - lam < 1e-12; KFF = 0, no burn.
+- `test_btab`: FlashFire's row, and the new check.
+- Decks: `ok_ffire`, `ok_ffire_rs` (also OpenMP, release and history
+  decks), the inert limits `ok_ffire_inert`, `_rs` (KFF = 0, bit for bit
+  with the inert run), and bad decks: a key left out, LAM0 = 0 and 1, a
+  ThermalCascade key in FlashFire and the reverse, AFF < 0.
+- `tests/verification/study_ffire.py`, as `study_tcas.py`: (E1) with TA = 0,
+  AFF = BFF = 0, NS = 1, PR = 1 GPa, the rate is the clock KFF (1 + P_s), and
+  Heun is exact for a constant rate, so the first burning row's lam gives
+  P_s back against `ls_replay`; (E2) the example deck's detonation against
+  mesh, AV and RS, beside HVRB's: D against HVRB's and D_CJ, run distance.
+- HVRB and ThermalCascade bit for bit: the 43 decks and the burn decks
+  against `9ec1ead`, `make test`, `make release`, `compare_hvrb.py
+  --quick`, `study_tcas.py --quick`.
+
+**The example deck** (`input/me697_ffire_2p00.deck`, method RS, order 2):
+constants chosen, as ThermalCascade's were, so that 2.00 km/s detonates near
+HVRB's 3.5 mm; LAM0 = 1e-4. An example, not a calibration.
+
+## As built: step 6, FlashFire (Nov 12, 2026)
+
+**Module `flashfire`** (`src/modules/ffire_mod.f95`, uses only `bits`):
+`ff_rate`, KFF (1 - lam)^AFF lam^BFF exp(-TA/T) (1 + max(P_s, 0)/PR)^NS for
+0 < lam < 1 and T > 0, else 0 (tests, so no 0^0 and no T = 0 division);
+`ff_step`, the seed, then RK4 sub-steps with the relative cap (eps = 0.1),
+T following lam as T1 + (lam - lam1) b, lam = 1 once 1 - lam < 1e-12, and a
+hard limit of 100,000 sub-steps per call against a fault (not reached in
+the tests or studies), and `ff_tslope`, b = (e_c + Q)/C_V.
+Elemental, no state. **KFF = 0 is the inert limit, with no seed** (decided
+in the build: otherwise no key would give an inert run, and the inert-limit
+test, as ThermalCascade's at HT = 0, needs one).
+
+**Its row** (module `burn_table`): `burn_ffire`, keys KFF, AFF, BFF, TA (>= 0),
+NS (ThermalCascade's), PR (shared) and LAM0, with the new check
+`chk_open01` (0 < LAM0 < 1; module `deck`: "LAM0 must be between 0 and 1
+(not 0 or 1)"); slots `ff_KFF` ... `ff_LAM0`; its history the detector's
+five numbers. **Module `burn`:** `cell_burn` takes b, from `ff_slope`, (e_c
++ Q)/C_V at the step's start (`ff_tslope`, from the carried e_S and its
+eta, or the held solid's), computed before `temp_cold_cell` in `burn_step` (AV) and at
+the cycle's start in `burn_rate_rs` (RS); 0, and unused, for the other
+models.
+
+**HVRB and ThermalCascade bit for bit:** every input deck and every `ok_`
+deck (48), debug builds, against `9ec1ead`: heartbeat, tracer rows, history
+frames, the resolved deck and every bitmap identical (the screen's
+heartbeat size line aside, which carries the build's version string).
+
+**Tests.** `tests/test_ffire.f95` (6 checks) against `tests/ffire_reference.py`
+(50 digits): the rate at 11 states to 2.1e-15; the seed exactly, and KFF = 0
+seeding nothing; a constant rate exactly; a fixed T with BFF = 0 against the
+closed forms (AFF = 1, 0.5, 2, 1.5), 1 - lam to 1.7e-6, and burn-out at lam
+= 1 exactly; the cascade at constant volume, where T follows lam exactly, so
+only the integration errs: the times to lam = 0.5 and 0.99 within 6e-7 for
+1000 and 100 hydro steps; and b against module mixture's own vartheta at
+two lam (held solid too), to 3.5e-16 (added after an independent review
+found `ff_slope` otherwise untested). `test_btab` gains FlashFire's row (check 9, and 4
+knows `chk_open01`). Decks: `ok_ffire`, `ok_ffire_rs` (also OpenMP, release
+and history decks), the inert limits `ok_ffire_inert`, `_rs` (KFF = 0, the
+inert run bit for bit, XRN aside), six bad decks (LAM0 left out, 0 and 1;
+AFF < 0; a ThermalCascade key in FlashFire and the reverse).
+
+**In runs** (`tests/verification/study_ffire.py`, 18 checks):
+
+- **The lead shock in the hydro is its replay's.** With TA = 0, AFF = BFF =
+  0, NS = 1, PR = 1 GPa, KFF = 1e-6 and LAM0 = 1e-12, a marked cell is
+  seeded and burns at the constant rate KFF (1 + P_s), which RK4 integrates
+  exactly: at five tracers, AV and RS, each cell burns from the row after
+  `ls_replay`'s mark, its P_s the replay's to 1e-15.
+- **Its detonation converges.** The example deck at 2.00 km/s, 25 to 200
+  zones/mm: D 7.5075 (AV) and 7.5099 km/s (RS) at 200, within 0.1 % of 100
+  zones/mm's and +0.10, +0.13 % from D_CJ; 0.44 to 0.47 % below HVRB's on the
+  same meshes (HVRB +0.6 %: the deck's drive holds HVRB, with its shorter
+  reaction zone, further above D_CJ; FlashFire's lam = 0.99 is about 0.16 mm
+  behind its front, HVRB's 0.07). AV at 25 zones/mm is only 0.4 % fast: the
+  gate keeps the burn out of AV's smeared shock. Run distance 3.35 to 3.60
+  mm over the meshes.
+
+**The example deck** (`input/me697_ffire_2p00.deck`; KFF = 55, AFF = 1, BFF
+= 0.5, TA = 3000 K, NS = 1, PR = 7 GPa, LAM0 = 1e-4): an example, not a
+calibration, chosen so that at 2.00 km/s it detonates near HVRB's 3.5 mm;
+at its 35 zones/mm, RS order 2: 1.75 km/s 4.9 mm and 1.50 7.2 mm (HVRB 5.0
+and 7.5); at 1.25 a burn behind the shock that does not detonate within
+10 mm, at 1.00 a slow one (no threshold). **A first set** (KFF = 400, TA =
+6000 K, NS = 2), tuned to the same 3.5 mm, burned within one cell at the
+detonation front on every mesh to 200 zones/mm (the Arrhenius factor at
+the von Neumann state, and (1 + P_s/PR)^2 there, made the burn
+near-instantaneous), and its D did not converge (RS 7.486 to 7.599 km/s
+from 25 to 200 zones/mm; AV 2.7 to 3.4 % fast): replaced by the set above,
+whose reaction zone the mesh resolves.
+
+**The manual:** chapter 7's FlashFire section, as built, with its trace
+tags; chapter 1 and the appendices updated. No course equation sheet (DK).

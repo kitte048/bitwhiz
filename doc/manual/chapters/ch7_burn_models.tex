@@ -1,8 +1,8 @@
 \chapter{Burn models}
 \label{ch:burn-models}
 
-\checkedagainst{1.4.1 (\code{7092d89})}{HVRB, the lead shock and
-ThermalCascade as built; FlashFire, StochasticIgnite, HALO and CLAUDE as
+\checkedagainst{1.6.0 (branch \code{flashfire})}{HVRB, the lead shock,
+ThermalCascade and FlashFire as built; StochasticIgnite, HALO and CLAUDE as
 designed in \code{doc/design/burn_models.md} (approved Nov 6, 2026), not yet
 built. Closed forms are checked in \code{doc/manual/checks/ch7_models.py}.}
 
@@ -26,7 +26,7 @@ burn until its cell's lead shock is marked (\cref{sec:lead-shock}).}
 \key{thermalcascade} & ThermalCascade & SAND2025-09228 \S 5.2.3
   \cite{kittell2025sand}, repaired & built, 1.4.0 & yes \\
 \key{flashfire} & FlashFire & SAND2025-09228 \S 5.2.1, repaired &
-  under development & yes \\
+  built, 1.6.0 & yes \\
 \key{stochasticignite} & StochasticIgnite & SAND2025-09228 \S 5.2.2,
   repaired & under development & yes \\
 \key{halo} & HALO & Kittell's ADRB (2016), revised & under development
@@ -51,7 +51,7 @@ burn until its cell's lead shock is marked (\cref{sec:lead-shock}).}
   is given, starts cleanly from $\lam = 0$, has no singularity at $\lam = 1$,
   and stays in $[0, 1]$ however large the step; its only error is the
   rate's, first order in $\Delta t$. Only FlashFire, whose topology has no
-  closed form, will be sub-cycled.
+  closed form, is sub-cycled (\cref{sec:flashfire}).
 \item \textbf{Repaired, not verbatim.} Three models were proposed by a
   language model (ChatGPT 4o-mini) in a 2025 survey of reactive burn models
   \cite{kittell2025sand}. None can run exactly as proposed, so each goes in
@@ -397,53 +397,139 @@ pattern of shock initiation in heterogeneous explosives.
 \section{FlashFire}
 \label{sec:flashfire}
 
-\begin{underdev}[: planned for 1.6.0]
-Designed (\code{doc/design/burn_models.md}), not yet built. The equations
-and keys may change when it is.
-\end{underdev}
-
-Proposed in the same survey (\cite{kittell2025sand}, \S 5.2.1) as an
-Arrhenius rate with a two-exponent topology:
-\begin{equation}
-  \frac{\dd\lam}{\dd t} = K\,(1 - \lam)^{\alpha}\,\lam^{\beta}\,
-  e^{-T_a/T}\Bigl(1 + \frac{\PS}{P_R}\Bigr)^{n}.
-  \label{eq:ff-rate}
-\end{equation}
+FlashFire was proposed in the same survey (\cite{kittell2025sand}, \S 5.2.1)
+as an Arrhenius rate with a two-exponent topology,
+\begin{equation*}
+  \frac{\dd\lam}{\dd t} = k\,(1 - \lam)^{\alpha}\,\lam^{\beta}\,
+  e^{-E_a/RT}\Bigl(1 + \frac{\PS}{P_R}\Bigr)^{n}.
+\end{equation*}
+The Arrhenius factor makes its feedback steep: burning heats the cell
+(\cref{eq:theta}), and the rate grows exponentially in $-1/T$.
 
 \paragraph{Repairs.} (1) $\lam^\beta$ is zero at $\lam = 0$, so as written
-the burn never starts: $\lam$ is seeded to $\lam_0$ at the lead shock's mark,
-an ignition fraction in the spirit of ignition-and-growth models. (The seed
-is decided; $\lam_0$ is the deck key \key{LAM0}, and its allowed range and
-whether it has a default are set when FlashFire is built.) (2) The
-activation energy enters as one activation temperature, $T_a = E_a/R$, with
-no per-mole or per-gram units. (3) Gated by the lead shock, $\PS$ frozen
-there.
+the burn never starts: $\lam$ is seeded to $\lam_0$ (the key \key{LAM0},
+$0 < \lam_0 < 1$) at the lead shock's mark, an ignition fraction in the
+spirit of ignition-and-growth models. (2) The activation energy enters as one
+activation temperature, $T_a = E_a/R$, with no per-mole or per-gram units.
+(3) Gated by the lead shock, $\PS$ frozen there. As built, with $\PS < 0$
+taken as 0:
+\begin{equation}
+  \frac{\dd\lam}{\dd t} = K_F\,(1 - \lam)^{A_F}\,\lam^{B_F}\,
+  e^{-T_a/T}\Bigl(1 + \frac{\max(\PS, 0)}{P_R}\Bigr)^{N_S}
+  \ \text{ for } 0 < \lam < 1 \text{ and } T > 0, \ \text{ else } 0.
+  \label{eq:ff-rate}
+\end{equation}
+The conditions are tests, as for HVRB's threshold, so $(1 - \lam)^{A_F}$ is
+never $0^0$ and $T_a/T$ never divides by zero. $T_a = 0$ drops the Arrhenius
+factor. $K_F = 0$ is the inert limit: no burn and no seed. Any $K_F > 0$ seeds at
+the mark, even where the rate is still zero, so the run log's first cell to
+react is the first one seeded.
+\trace{modules/ffire_mod.f95}{ff_rate}{test_ffire}
 
-\paragraph{The step.} The topology $(1 - \lam)^\alpha\lam^\beta$ has no
-closed form in general, so FlashFire will be sub-cycled: explicit sub-steps,
-each changing $\lam$ by at most an algorithm constant $\Delta\lam_{\max}$,
-with $\lam$ kept in $[\lam_0, 1]$. Its history is the detector's five
-numbers.
+\paragraph{The temperature within a step.} At fixed $\rho$ and $e$,
+\cref{eq:theta} makes $\thv$ linear in $\lam$, so over a step
+\begin{equation}
+  T(\lam) = T^n + (\lam - \lam^n)\,b, \qquad b = \frac{e_c + Q}{\Cv},
+  \label{eq:ff-T}
+\end{equation}
+with $T^n$, $\lam^n$ and $b$ from the cell's state at the step's start ($e_c$
+of the held solid if it is held, \cref{sec:tension}). Each stage of the step
+below uses its own $T(\lam)$, so the cascade's feedback is resolved within
+the step, for a few operations and no call to the equation of state.
+\trace{modules/burn_mod.f95}{ff_slope, cell_burn}{test_ffire, study_ffire.py}
+\trace{modules/ffire_mod.f95}{ff_tslope}{test_ffire}
 
-\begin{center}\small
-\begin{tabular}{@{}l l l l@{}}
+\paragraph{The step.} The topology $(1 - \lam)^{A_F}\lam^{B_F}$ has no closed
+form in general, so the step is sub-cycled. First the seed, $\lam \leftarrow
+\max(\lam^n, \lam_0)$; then, while time is left, a sub-step of
+\begin{equation}
+  h = \min\Bigl(\text{time left},\ \varepsilon\,\frac{\min(\lam, 1 - \lam)}{r}\Bigr),
+  \qquad \varepsilon = 0.1,
+  \label{eq:ff-h}
+\end{equation}
+by the classical fourth-order Runge--Kutta method (RK4), with $T(\lam)$ of
+\cref{eq:ff-T} at each stage and $\lam$ kept in $[\lam_0, 1]$. Once $1 -
+\lam < 10^{-12}$ the cell is burnt out, $\lam = 1$ (so a burn with $A_F < 1$,
+which reaches 1 in a finite time, ends in a finite number of sub-steps).
+$\varepsilon$ is an algorithm constant, not a deck key.
+\trace{modules/ffire_mod.f95}{ff_step}{test_ffire}
+
+The cap on $\Delta\lam$ is relative to $\lam$ and to $1 - \lam$, not absolute:
+in the slow induction from $\lam_0$, where most of the time is spent, an
+absolute cap never limits the sub-step, and its error then follows the hydro's
+$\Delta t$ and does not converge. Measured against a 30-digit quadrature of
+the cascade at constant volume (\code{doc/design/burn_models.md}, ``Step 6''),
+RK4 with the relative cap at $\varepsilon = 0.1$ gives the time to $\lam =
+0.99$ to about $10^{-5}$ ($1.4\times10^{-5}$ at the worst case tried), one to
+three orders of magnitude closer
+than Heun's method at the same cost, and closer, at a quarter to a tenth of
+the cost, than a fixed 10 or 20 sub-steps per hydro step. Most hydro steps
+take one or two sub-steps; they pile up, to about 60, only in the runaway. A
+cell's whole burn takes about $(\ln(1/\lam_0) + \ln 10^{12})/\varepsilon$
+sub-steps beyond one per hydro step, under 400 with $\lam_0 = 10^{-4}$. What
+remains is the rate's frozen inputs ($\PS$, $T^n$, $b$), first order in
+$\Delta t$, as for every model.
+
+\begin{table}[h]
+\centering\small
+\caption{FlashFire's keys, and the example deck's values
+(\code{input/me697_ffire_2p00.deck}: an example chosen to detonate near
+HVRB's run distance at 2.00~km/s, not a calibration).}
+\label{tab:ff-keys}
+\begin{tabular}{@{}l l l l r@{}}
 \toprule
-Key & Symbol & Units & Meaning \\
+Key & Symbol & Units & Deck check & Example \\
 \midrule
-\key{KFF}  & $K$        & 1/\textmu s & rate constant \\
-\key{AFF}  & $\alpha$   & -- & topology exponent on $1 - \lam$ \\
-\key{BFF}  & $\beta$    & -- & topology exponent on $\lam$ \\
-\key{TA}   & $T_a$      & K  & activation temperature \\
-\key{NS}   & $n$        & -- & exponent on $1 + \PS/P_R$ \\
-\key{PR}   & $P_R$      & GPa & reference pressure \\
-\key{LAM0} & $\lam_0$   & -- & ignition fraction at the lead shock \\
+\key{KFF}  & $K_F$     & 1/\textmu s & $\ge 0$ & 55 \\
+\key{AFF}  & $A_F$     & --  & $\ge 0$ & 1 \\
+\key{BFF}  & $B_F$     & --  & $\ge 0$ & 0.5 \\
+\key{TA}   & $T_a$     & K   & $\ge 0$ & 3000 \\
+\key{NS}   & $N_S$     & --  & $\ge 0$ & 1 \\
+\key{PR}   & $P_R$     & GPa & $> 0$   & 7 \\
+\key{LAM0} & $\lam_0$  & --  & $0 < \lam_0 < 1$ & $10^{-4}$ \\
 \bottomrule
 \end{tabular}
-\end{center}
+\end{table}
 
-\paragraph{Planned tests.} $\lam_0$ alone at a constant state against the
-closed form for $\beta = 0$ (a $(1 - \lam)^{1 - \alpha}$ decay); the
-Arrhenius factor at 50 digits; no lead shock, no burn.
+With the example's constants (35 zones/mm, method RS, order 2) FlashFire's
+Pop plot follows HVRB's: 2.00, 1.75 and 1.50~km/s detonate about 3.5, 4.9 and
+7.2~mm into Material~X (HVRB: 3.5, 5.0 and 7.5). The Arrhenius factor has no
+threshold, so every marked cell burns in the end: at 1.25~km/s Material~X
+burns behind the shock without building a detonation within 10~mm, and at
+1.00~km/s it burns slowly. At detonation its reaction zone is about 2.5 times
+HVRB's ($\lam = 0.99$ about 0.16~mm behind the front, against 0.07, at 200
+zones/mm). An Arrhenius rate is sensitive at detonation states: a first
+example set, with $T_a = 6000$~K and $N_S = 2$, burned within a single cell at
+the front on every mesh up to 200 zones/mm, and its detonation speed did not
+converge (method RS: 7.486 to 7.599~km/s from 25 to 200 zones/mm); the set
+above resolves its reaction zone.
+
+\paragraph{Verification.}
+\begin{itemize}
+\item \code{test_ffire}, against 50-digit values (\code{tests/ffire_reference.py}):
+  the rate at 11 states (at the seed, at 0 and 1, $T \le 0$, $A_F$, $B_F$,
+  $T_a$ or $K_F$ zero, $\PS < 0$) to $3\times10^{-15}$; the seed, exactly, and
+  $K_F = 0$ seeding nothing; a constant rate, exactly; a fixed temperature
+  with $B_F = 0$ against the closed forms, $1 - \lam$ to $2\times10^{-6}$,
+  and burn-out at $\lam = 1$ exactly; and the cascade at constant volume,
+  where $T$ follows $\lam$ exactly, so the times to $\lam = 0.5$ and $0.99$
+  depend on the integration alone: within $6\times10^{-7}$ for 1000 and for
+  100 hydro steps; and $b$ of \cref{eq:ff-T}, against the closure's own
+  $\thv$ at two $\lam$, the held solid's too, to round-off.
+\item In the hydro (\code{tests/verification/study_ffire.py}): with $T_a =
+  0$, $A_F = B_F = 0$, $N_S = 1$, a marked cell is seeded and then burns at
+  the constant rate $K_F(1 + \PS)$, which RK4 integrates exactly, so its
+  first step's $\lam$ returns $\PS$: at five tracers, both methods, each cell
+  burns from the step after the one where an independent replay of the
+  detector marks it, with the replay's $\PS$ to $10^{-15}$.
+\item The detonation converges with the mesh, under both methods: within
+  0.1~\% between 100 and 200 zones/mm, and within 0.2~\% of $D_{CJ}$ at 200.
+  It runs 0.4 to 0.5~\% below HVRB's on the same deck: the deck's drive (its
+  second shock), which holds HVRB 0.6~\% above $D_{CJ}$, holds FlashFire,
+  with its longer reaction zone, only 0.1~\% above.
+\item The inert limit ($K_F = 0$, the detector running) is the inert run bit
+  for bit, both methods; HVRB and ThermalCascade are unchanged bit for bit.
+\end{itemize}
 
 % ---------------------------------------------------------------------
 \section{StochasticIgnite}

@@ -57,10 +57,11 @@ Medium term, the reactive physics:
    `study_leadshock.py`) done Nov 6, HVRB bit for bit; step 5,
    ThermalCascade (`burn = thermalcascade`, `study_tcas.py`; a smooth
    ramp's foot opens the gate, P_s -> 0: DK's option (a)), Nov 7: 1.4.0.
-   Next (DK, Nov 8): 1.5.0 is the manual (`doc/design/manual.md`), with
-   the equations of all six burn models, the four not yet built marked
-   under development; then step 6, FlashFire, in 1.6.0. Then JWL
-   products, the 25 zones/mm difference (section 3). The v1.4.0 review's
+   1.5.0, the manual (`doc/design/manual.md`), Nov 12; step 6, FlashFire
+   (`burn = flashfire`, `study_ffire.py`; RK4 sub-steps, T following lam:
+   DK, Nov 12), on branch `flashfire` for 1.6.0. Next, step 7,
+   StochasticIgnite. Then JWL products, the 25 zones/mm difference
+   (section 3). The v1.4.0 review's
    open findings are in section 8 (`audits/README.md` tracks them).
 10. With it or after: a broken cell's temperature (section 5; a burning
     cell's done in 1.3.3); strength, the spall "knocking" (section 6).
