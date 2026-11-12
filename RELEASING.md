@@ -59,6 +59,11 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   tool fresh and test it: Run, Redraw pictures only, the movie (it plays,
   and Files lists the .mp4, not its frames), an error on purpose, the
   history plot. Approve it on the status page when it works.
+- **The manual.** Before tagging, check the "checked against" line of
+  every chapter the release touches (`doc/manual/README.md`), then, at the
+  tag, `make manual` and attach `doc/manual/bitwhiz_manual.pdf` to the
+  GitHub release as `bitwhiz_manual_X.Y.Z.pdf` (and to nanoHUB's page as a
+  supporting document, replacing the last one).
 - **GitHub release and Zenodo.** A pushed tag is not a release: on GitHub,
   Releases, "Draft a new release" (or Tags, the tag's menu, "Create release"),
   choose the tag, title it "bitwhiz X.Y.Z: a few words" (e.g. "bitwhiz 1.4.1:

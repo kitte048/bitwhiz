@@ -46,6 +46,10 @@ src/modules/build_mod.f95
 *.resolved
 
 # ---- LaTeX build products (doc/) ------------------------------------
+# The manual's PDF and its figures' PDFs are built by 'make manual' and
+# attached to each release, not kept here.
+doc/manual/bitwhiz_manual.pdf
+doc/manual/figures/*.pdf
 # doc/ keeps each sheet's .tex and .pdf, and the figure .tex and .pdf
 # files the sheet needs; rebuilding it there writes these, which are not
 # kept.

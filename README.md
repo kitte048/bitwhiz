@@ -31,7 +31,8 @@ make test                                          # every test, about 4 minutes
 |---|---|
 | `input/README.md` | the input deck: its syntax, every block and key, and the files a run writes |
 | `doc/` | the equation sheets the code follows (frozen copies) |
-| `doc/design/` | design notes and studies: velocity profiles, materials and the burn, five more burn models (ThermalCascade built, four to come), the lead shock, method AV, the manual to come (1.5.0) |
+| `doc/manual/` | the bitwhiz manual (`make manual`): so far the burning cell and the six burn models; the rest to come |
+| `doc/design/` | design notes and studies: velocity profiles, materials and the burn, five more burn models (ThermalCascade built, four to come), the lead shock, method AV, the manual's plan |
 | `audits/` | independent reviews of releases, archived as delivered, and what became of each finding |
 | `tests/verification/README.md` | the reference data, and the scripts that compare bitwhiz with it |
 | `CONTRIBUTING.md`, `RELEASING.md` | reporting issues and contributing; how a version is released |
@@ -252,7 +253,7 @@ the export, nanoHUB's gfortran 8.3) is in `RELEASING.md`.
 | `tests` | unit tests (`test_*.f95`, with their 50-digit references `*_reference.py`), deck, OpenMP, history file and release tests, `verification/` reference tracer data, its reader (`gold.py`), the comparisons with it (`compare_g1.py`, `compare_hvrb.py`) the study of method AV (`study_av.py`), of the lead-shock detector (`study_leadshock.py`, with `ls_replay.f95`) and of ThermalCascade in runs (`study_tcas.py`) |
 | `bin` | the executables: `bitwhiz` (debug), `bitwhiz_release` (optimized) |
 | `build/release` | the release build's objects and module files (made by `make release`, not in git) |
-| `doc` | the equation sheets the code is checked against, frozen copies (`doc/README.md`) |
+| `doc` | the equation sheets the code is checked against, frozen copies (`doc/README.md`); `manual/`, the manual (`doc/manual/README.md`) |
 | `audits` | independent reviews of releases and their artifacts (`audits/README.md`) |
 
 ## Citing

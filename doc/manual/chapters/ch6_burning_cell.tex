@@ -1,0 +1,399 @@
+\chapter{The burning cell}
+\label{ch:burning-cell}
+
+\checkedagainst{1.4.1 (\code{7092d89})}{The closure's closed forms are
+derived symbolically in \code{doc/manual/checks/ch6_closure.py}; the code
+is checked against 50-digit values by \code{test_hvrb}.}
+
+A burn model tells a cell how fast to react. Everything else a reacting
+cell needs (what its pressure, sound speed and temperature are, part way
+through the reaction) is the same for every model in \bw, and is the
+subject of this chapter. \Cref{ch:burn-models} then gives each model's rate.
+
+\section{What a burn adds to a cell}
+\label{sec:burn-adds}
+
+A material that burns (deck: \key{burn = hvrb} or \key{thermalcascade},
+with \key{eos = mie_gruneisen_t} and \key{products = ideal_gas}) carries one
+more number in every cell, the \emph{extent of reaction} $\lam$: the mass
+fraction of the cell that has become detonation products, from $\lam = 0$
+(unreacted) to $\lam = 1$ (burnt out). On a Lagrangian mesh the cell
+carries its own $\lam$ with it, so there is nothing to advect. Three things
+are added to the hydrodynamics, and nothing else in the cycle changes:
+\begin{enumerate}
+\item a \emph{rate law}, which moves $\lam$ forward in time (each model's
+  own, \cref{ch:burn-models});
+\item a \emph{closure}, which gives the cell's pressure and sound speed from
+  its density $\rho$, specific internal energy $e$ and $\lam$
+  (\cref{sec:closure,sec:sound-speed});
+\item a place in the cycle where $\lam$ is updated (\cref{sec:one-cycle}).
+\end{enumerate}
+
+The chemical energy is carried in $e$ itself: the products' energy is
+measured so that reaction releases the heat of reaction $Q$ into the
+mixture's temperature, at fixed $\rho$ and $e$ (\cref{sec:products}).
+Burning therefore does no work and adds no energy of its own: total energy
+is conserved exactly as in an inert run, and the run's energy error (the
+heartbeat file) is the check.
+
+\section{The unreacted solid}
+\label{sec:solid}
+
+The reactant is a Mie--Gr\"uneisen solid with a temperature (deck:
+\key{eos = mie_gruneisen_t}, with the specific heat \key{CV} and the
+temperature at rest \key{T0}). With $\rho\Gamma = \rhoz\Gz$ its pressure is
+\begin{equation}
+  \Ps(\rho, e) = \rhoz\Gz\, e + \Pi(\rho),
+  \label{eq:mg}
+\end{equation}
+where $\Pi$ depends on the density alone: the Hugoniot's part in
+compression, and a cubic in $\rho - \rhoz$ in expansion (\cref{ch:materials}).
+\trace{modules/eos_mod.f95}{mg_pressure}{test_eos}
+
+The temperature needs two curves of the volume alone. With the
+compression $\eta = 1 - \rhoz/\rho$, the \emph{isentrope from rest},
+$e_S(\rho)$, is the solution of
+\begin{equation}
+  \frac{\dd e_S}{\dd\rho} = \frac{\Ps(\rho, e_S)}{\rho^2},
+  \qquad e_S(\rhoz) = 0,
+  \label{eq:isentrope}
+\end{equation}
+and its temperature is $T_S = T_0\exp(\Gz\eta)$. A state off the isentrope
+at the same density differs from it by $\Cv$ times the temperature
+difference, $e = e_S + \Cv(T - T_S)$. It is convenient to collect the
+temperature-independent part into the \emph{zero-temperature curve},
+\begin{equation}
+  e_c(\rho) = e_S(\rho) - \Cv T_S(\rho), \qquad
+  \Pc(\rho) = \Pi(\rho) + \rhoz\Gz\, e_c(\rho),
+  \label{eq:cold}
+\end{equation}
+the energy and pressure the solid would have at $T = 0$, so that, with
+$\thv \equiv \Cv T$,
+\begin{equation}
+  e = e_c(\rho) + \thv, \qquad
+  \Ps = \Pc(\rho) + \rhoz\Gz\,\thv, \qquad
+  \frac{\dd e_c}{\dd\rho} = \frac{\Pc}{\rho^2}.
+  \label{eq:solid-theta}
+\end{equation}
+\Cref{eq:solid-theta} is the form the closure uses: the solid's state is
+its zero-temperature curve plus a thermal part $\thv$, linear in $T$.
+\trace{modules/temp_mod.f95}{temp_cold_cell, cold_step, temp_of}{test_temp}
+
+\paragraph{How a cell carries $e_S$.} \Cref{eq:isentrope} is linear in
+$e_S$, so from one compression to the next its solution is exact but for one
+integral of $\Pi$, which \bw\ evaluates by three-point Gauss--Legendre
+quadrature on pieces no longer than $\Delta\eta = 0.005$. Each cell carries
+its own $e_S$ and moves it to its new density once a step, rather than
+reading a table, so that constants graded cell by cell (planned) need no
+table per material. (Module \code{temperature} calls this carried value
+\code{ec}; module \code{mixture} calls $e_c$ of \cref{eq:cold}
+\code{ecs}. This manual uses $e_S$ and $e_c$.)
+
+\section{The products}
+\label{sec:products}
+
+The detonation products are an ideal gas (deck: \key{products =
+ideal_gas}, with \key{GAMMA} and \key{Q}) with the solid's specific heat:
+\begin{equation}
+  \Pg = (\gamma - 1)\rho\,\Cv T = (\gamma - 1)\rho\,\thv, \qquad
+  e_{\mathrm{gas}} = \Cv T - Q, \qquad
+  c_{\mathrm{gas}}^2 = \gamma(\gamma - 1)\thv.
+  \label{eq:gas}
+\end{equation}
+The products' energy is zero at $T = 0$ less the heat of reaction, so a
+cell that reacts at fixed $e$ gains $Q$ of thermal energy per unit mass
+reacted. One $\Cv$ for both phases is a simplification (real products
+have a specific heat of their own); it is what makes the closure below exact
+without iteration. Another products equation of state (JWL, a
+table) would be another set of routines in module \code{products}, and with
+its own $\Cv$ the closure would become a one-variable solve for $T$ in the
+same place.
+\trace{modules/prod_mod.f95}{idg_state}{test_hvrb}
+
+\section{The closure: one density, one temperature}
+\label{sec:closure}
+
+A partly burnt cell is a mixture of solid and gas. \bw\ puts both phases at
+the cell's density and at one temperature (\emph{density--temperature
+equilibrium}). The phases' pressures then differ, and the cell's pressure
+is their mass-weighted mean. (Pressure--temperature equilibrium, the common
+alternative, solves for two densities instead.) Because both phases have
+the same density, the products' volume fraction equals their mass fraction:
+$\lam$ is both.
+
+The mixture's energy is the mass-weighted sum of the phases', by
+\cref{eq:solid-theta,eq:gas}:
+\begin{equation*}
+  e = (1 - \lam)\,(e_c + \thv) + \lam\,(\thv - Q).
+\end{equation*}
+It is linear in $\thv$, so given $(\rho, e, \lam)$ the temperature follows
+at once, and with it the pressure:
+\begin{align}
+  \thv &= e - (1 - \lam)\, e_c(\rho) + \lam Q, \qquad T = \thv/\Cv,
+  \label{eq:theta}\\
+  P &= (1 - \lam)\,\bigl[\Pc(\rho) + \rhoz\Gz\,\thv\bigr]
+     + \lam\,(\gamma - 1)\rho\,\thv.
+  \label{eq:pmix}
+\end{align}
+\trace{modules/mix_mod.f95}{mix_state}{test_hvrb}
+
+\paragraph{Limits.} At $\lam = 0$, \cref{eq:pmix} is the Mie--Gr\"uneisen
+pressure at $(\rho, e)$, and \bw\ evaluates it there with the inert
+routine itself: a cell that has not started to burn is the inert material
+bit for bit, tension and spall included. At $\lam = 1$ it is the ideal gas,
+$P = (\gamma - 1)\rho(e + Q)$, and the solid is not evaluated at all.
+
+\paragraph{Why burning can raise the pressure.} At equal density and
+temperature a compressed solid is stiffer than the gas, but each unit of
+$\lam$ adds $e_c + Q$ to $\thv$ (\cref{eq:theta}). Early in the reaction
+the heat usually wins, so the pressure behind a shock can rise as the cell
+burns, as it does in the reaction zone of a detonation.
+
+\paragraph{A check with a closed form.} A cell at rest that burns
+completely at constant volume ($\rho = \rhoz$, $e = 0$) ends at
+$P = (\gamma - 1)\rhoz Q$ and $\thv = Q$: 12.499968~GPa for the class
+problem's Material~X ($\rhoz = 1.60$~g/cm$^3$, $\gamma = 2.60$,
+$Q = 4.8828$~kJ/g).
+\trace{modules/mix_mod.f95}{mix_state}{test_hvrb}
+
+\section{Tension: the solid dropped, then held}
+\label{sec:tension}
+
+\paragraph{Dropped.} A cell that has started to burn holds no tension: the
+gas fills the cracks of a reacting solid. So where the solid would pull
+($\Ps < 0$), it is left out of the pressure,
+\begin{equation}
+  P = (1 - \lam)\max(\Ps, 0) + \lam\,\Pg, \qquad 0 < \lam < 1.
+  \label{eq:dropped}
+\end{equation}
+Only the solid's pressure is dropped; $\thv$, $T$ and the energy are as
+\cref{eq:theta} writes them. A cell at $\lam = 0$ is not affected (it is the
+inert material, which may spall).
+\trace{modules/mix_mod.f95}{mix_state, mix_pulls}{test_hvrb}
+
+\paragraph{Held where it first pulled.} A dropped solid does no work, yet as
+the cell stretched its $e_c(\rho)$ went on changing, by
+$\dd e_c = \Pc\,\dd\rho/\rho^2$ (\cref{eq:solid-theta}): energy moved into or
+out of $\thv$ by no force. In runs this drove $\thv$, and $T$, negative
+(to $-4300$~K, Material~X struck at 1~km/s with method AV). So \bw\ stops
+the solid where it first pulls: it cavitates, and the gas fills the rest.
+Each burning cell keeps a hold density $\rho_h$ and the isentrope's energy
+there, $e_{S,h} = e_S(\rho_h)$, set once a step after $\lam$ and $e_S$ are
+updated:
+\begin{itemize}
+\item while the cell is stretched past its hold ($\rho < \rho_h$): kept;
+\item otherwise, if the solid pulls at the cell's own density: $\rho_h =
+  \rho$, $e_{S,h} = e_S(\rho)$;
+\item otherwise: not held ($\rho_h = 0$);
+\end{itemize}
+and never at $\lam = 0$ or $1$. While held, every term of the solid is
+evaluated at $(\rho_h, e_{S,h})$ and the gas at the cell's own $\rho$:
+$e_c$ is fixed at $e_{S,h} - \Cv T_0\exp(\Gz\eta_h)$, and
+\begin{equation}
+  P = s\,(1 - \lam)\,\Ps(\rho_h,\, e_c + \thv) + \lam\,(\gamma - 1)\rho\,\thv,
+  \label{eq:held}
+\end{equation}
+with $s = 1$ if the held solid pushes and $s = 0$ if it would still pull.
+At $\rho = \rho_h$ the held and unheld closures agree, so $P$ is
+continuous; a cell that is never held gets the same bits as without the
+rule. Held and dropped, an expansion at fixed $\lam$ cools the cell as
+$\thv \propto \rho^{\lam(\gamma - 1)}$: never below zero, nor below the gas
+alone expanded the same way.
+\trace{modules/mix_mod.f95}{mix_state, mix_pulls}{test_hvrb}
+\trace{modules/burn_mod.f95}{burn_hold}{run_hist_tests.sh}
+
+\section{The sound speed}
+\label{sec:sound-speed}
+
+The sound speed at fixed $\lam$, of the pressure actually used, is
+$c^2 = (\partial P/\partial\rho)_{e,\lam} + (P/\rho^2)(\partial P/\partial
+e)_{\rho,\lam}$. It sets the time step and method AV's viscosity, and method
+RS's impedance; it does not change the converged solution. For the closure
+of \cref{eq:pmix} it is exactly
+\begin{equation}
+  c^2 = (1 - \lam)\,c_{\mathrm{sol}}^2 + \lam\,c_{\mathrm{gas}}^2
+        - \lam(1 - \lam)\Bigl(\frac{\rhoz\Gz}{\rho} - \gamma + 1\Bigr)^{2}\thv,
+  \label{eq:c-exact}
+\end{equation}
+with $c_{\mathrm{sol}}$ the inert Mie--Gr\"uneisen sound speed at $(\rho,
+e_c + \thv)$: the mass-weighted mean of the phases' squares, less a term
+from the spread of their two Gr\"uneisen coefficients ($\rhoz\Gz/\rho$ for
+the solid, $\gamma - 1$ for the gas). The mass-weighted mean alone is about
+1~\% high for Material~X; the equal-pressure (Wood) rule would be about
+15~\% low.
+\trace{modules/mix_mod.f95}{mix_state}{test_hvrb}
+
+With the solid dropped (\cref{eq:dropped}), and held (\cref{eq:held}),
+\begin{align}
+  c^2_{\mathrm{dropped}} &= \lam(\gamma - 1)\Bigl[\thv\,\bigl(1 + \lam(\gamma - 1)\bigr)
+     - (1 - \lam)\frac{\Pc}{\rho}\Bigr],
+  \label{eq:c-dropped}\\
+  c^2_{\mathrm{held}} &= \lam(\gamma - 1)\,\thv
+     + \frac{P}{\rho^2}\bigl[s\,(1 - \lam)\rhoz\Gz + \lam(\gamma - 1)\rho\bigr].
+  \label{eq:c-held}
+\end{align}
+Held and dropped ($s = 0$), \cref{eq:c-held} is $\lam(\gamma-1)\thv\,(1 +
+\lam(\gamma - 1)) > 0$ wherever $\thv > 0$.
+
+\paragraph{Guards.} If $c^2 \le 0$, or, for a cell that is not held,
+$\thv \le 0$ (where the gas has no pressure and \cref{eq:c-exact} does not
+hold), \bw\ falls back, in order, to the mass-weighted mean $(1 -
+\lam)c_{\mathrm{sol}}^2 + \lam c_{\mathrm{gas}}^2$ (with $c_{\mathrm{sol}}$
+at $\max(\Ps, 0)$, and at $\rho_h$ if the solid is held), then to the gas's
+alone; if neither is positive the cell has no sound speed, and the run
+stops as it does for an inert cell with none. Which rule gave $c$ is
+returned with it.
+\trace{modules/mix_mod.f95}{mix_state}{test_hvrb}
+
+\section{The reaction source for method RS}
+\label{sec:rs-source}
+
+Method RS at second order moves each cell's pressure half a step inside the
+step, in its predictor, with the acoustic equation $\dd P/\dd t =
+-Z^2\,\partial u/\partial h$ ($Z = \rho c$, $h$ the mass coordinate). With
+reaction the pressure equation gains a source, Fickett and Davis's
+thermicity $\sigma$ times the rate $r = \dd\lam/\dd t$
+\cite{fickett1979,kittell2020pep}:
+\begin{equation}
+  \frac{\dd P}{\dd t} = -Z^2\frac{\partial u}{\partial h} + \rho c^2\sigma\, r,
+  \qquad
+  \rho c^2\sigma = \Bigl(\frac{\partial P}{\partial\lam}\Bigr)_{\rho, e}.
+  \label{eq:rs-source}
+\end{equation}
+For the closure, with the solid in and dropped,
+\begin{align}
+  \Bigl(\frac{\partial P}{\partial\lam}\Bigr)_{\rho,e}
+  &= -\Ps + \Pg + \bigl[(1 - \lam)\rhoz\Gz + \lam(\gamma - 1)\rho\bigr](e_c + Q),
+  \label{eq:dpdlam}\\
+  \Bigl(\frac{\partial P}{\partial\lam}\Bigr)_{\rho,e,\ \mathrm{dropped}}
+  &= \Pg + \lam(\gamma - 1)\rho\,(e_c + Q),
+  \label{eq:dpdlam-dropped}
+\end{align}
+with $\gamma - 1$ taken as 0 where $\thv \le 0$ (no gas pressure there). At
+$\lam = 1$ the dropped form is used (the solid is not evaluated, and nothing
+multiplies it then); at $\lam = 0$ too, if the solid is in tension, since
+the cell's first step of burning drops it (the pressure itself jumps there,
+from $\Ps < 0$ to $P \ge 0$).
+\trace{modules/mix_mod.f95}{mix_state}{test_hvrb}
+
+Two choices make the source consistent with the rest of the step. It is held
+constant over the step, from the cell's state at the step's start, as $Z$ is.
+And its rate is the step's own, $r = (\lam^{n+1} - \lam^{n})/\Delta t$ from
+the model's update, not the instantaneous rate at $\lam^n$ (HVRB's is
+infinite at $\lam = 0$ for some exponents, and zero there for others; the
+step's mean is always finite and is the $\lam$ the closure then uses). The
+source shapes only the face pressures the Riemann problem is given; the
+conservative update, and so energy conservation, are untouched. Order 1 has
+no predictor and no source.
+\trace{modules/burn_mod.f95}{burn_rate_rs}{compare_hvrb.py}
+\trace{modules/rs_mod.f95}{rs_face_states}{compare_hvrb.py}
+
+\section{Every cell's model, constants and history}
+\label{sec:burn-table}
+
+Every burn model's deck keys, per-cell constants and history variables are
+described by one table (module \code{burn_table}); a new model is a row in
+it, a module of its own for its rate, and a case in one routine. For cell
+$k$, module \code{burn} keeps
+\begin{itemize}
+\item \code{bmod(k)}, the cell's model (0 if it does not burn);
+\item \code{bpar(1:8, k)}, the constants of its rate law, in the slots its
+  row names (8 is the most any of the six models needs);
+\item \code{bst(1:6, k)}, its history variables (HVRB's $\phi$; the lead
+  shock's five numbers);
+\end{itemize}
+and, for every model, $\lam$, the products' $\gamma$ and $Q$, and the hold
+$(\rho_h, e_{S,h})$. Each cell's numbers lie together in memory, and every
+cell writes only its own, so a run gives the same bits on any number of
+threads. A deck without a burn allocates none of this and runs exactly as
+before.
+\trace{modules/burn_mod.f95}{alloc_burn, fill_constants}{test_btab, run_deck_tests.sh}
+
+\paragraph{Keys.} Burn keys sit flat in the Material block, under three
+rules: one key, one meaning, across all models (\key{PR}, the reference
+pressure, serves every model that has one); each model accepts only its own
+keys, and any other burn key is a deck error; and no burn key shares a name
+with another Material key. \Cref{app:deck-keys} lists them.
+
+\paragraph{The constants stay constant.} \code{bmod} and \code{bpar} are
+written once, at setup, from the cell's layer. They are protected (no other
+module can assign to them: it does not compile), and the models receive them
+as \code{intent(in)} in pure routines. At the run's end \code{burn_audit}
+fills them again from the layers and compares them bit by bit; a difference
+stops the run with an error, since it could only be a fault in \bw. (Every
+burning deck in \code{make test} runs this audit; that it does stop a run was
+shown once, by changing a constant in a scratch build.) Graded
+constants (planned) will vary from cell to cell, never in time, and change
+only how \code{bpar} is filled.
+\trace{modules/burn_mod.f95}{fill_constants, burn_audit}{run_deck_tests.sh}
+
+\section{One cycle}
+\label{sec:one-cycle}
+
+Each model's rate uses the cell's state at the start of the step ($P^n$,
+$T^n$, its history), and $\lam^{n+1}$ then feeds the closure. Where a
+model's reaction topology has a closed form, its step is exact in $\lam$ for
+that rate (\cref{ch:burn-models}); the only error is the rate's, first order
+in $\Delta t$.
+
+\paragraph{Method AV} (one cycle; \code{maincode}, section~7):
+\begin{enumerate}[label=(\alph*)]
+\item momentum, positions, volumes and energies, as for any cell;
+\item the burn (\code{burn_step}): $e_S$ moved to the new volume, then each
+  cell's model steps its history and $\lam$ from the start-of-step state
+  (\code{cell_burn}), then the hold (\code{burn_hold},
+  \cref{sec:tension});
+\item the pressures: a cell with $\lam > 0$ from the closure at
+  $(\rho, e, \lam)^{n+1}$, a cell at $\lam = 0$ as an inert cell;
+\item the temperatures, $T = \thv/\Cv$ for a burning cell;
+\item for the models that need it, the lead-shock detector, from each
+  cell's state at the step's end (\code{burn_detect},
+  \cref{sec:lead-shock}).
+\end{enumerate}
+Steps (d) and (e) close every cycle of method RS too.
+\trace{modules/burn_mod.f95}{burn_step, cell_burn, burn_detect}{run_hist_tests.sh}
+
+\paragraph{Method RS} (\code{maincode}, \code{rs_region}) needs $\lam^{n+1}$
+before the predictor runs, so the burn comes first: the rate and the
+reaction source from the state at the step's start
+(\code{burn_rate_rs}, \cref{sec:rs-source}); then the predictor and the
+Riemann problems; then each cell's update, $e_S$ to the new volume, the
+hold, and the closure.
+
+\paragraph{The gate.} A model that needs the lead shock
+(\cref{sec:lead-shock}) does not burn until it is marked. The detector runs
+at the end of a step, after the pressures, and the model reads the mark at
+the start of the next, so a cell marked during step $n$ first burns in step
+$n + 1$.
+
+\paragraph{What a run reports.} The tracer file gets each tracer's $\lam$
+(column \key{XRN}), the history file an \key{XRN} variable, and the run log
+the first cell to react and the cells burnt out (those at $\lam = 1$
+exactly; a model whose step only approaches 1, as ThermalCascade's does,
+reaches it only by rounding, so its count is near 0 even behind a
+detonation: 0 of 350 cells in its example deck).
+
+\section{Verification}
+\label{sec:burning-cell-verification}
+
+\begin{itemize}
+\item \code{test_hvrb} checks the closure against 50-digit values
+  (\code{tests/hvrb_reference.py}): $P$, $c$, $\thv$ and $\partial
+  P/\partial\lam$ at states across the range, all by the exact sound speed;
+  $\lam = 0$ is the inert routine bit for bit; the constant-volume burn ends
+  at 12.499968~GPa with $\thv = Q$; the guards; and the hold (continuous at
+  $\rho_h$, $c^2$ and $\partial P/\partial\lam$ equal to differences of $P$,
+  and a held, dropped cell stretched to $\rho/100$ keeping $\thv > 0$ and
+  following $\rho^{\lam(\gamma-1)}$).
+\item The inert limit: a burn that never starts gives the inert run's
+  heartbeat, tracer rows and history frames bit for bit, $\lam$'s own column
+  aside (\code{tests/run_hist_tests.sh}, with the decks
+  \code{ok_hvrb_inert} and \code{ok_tcas_inert}, methods AV and RS).
+\item Energy: while Material~X burns, total energy is conserved to
+  round-off by both methods (measured with the gold-standard comparisons,
+  \code{tests/verification/compare_hvrb.py}, since 1.3.2;
+  \code{doc/design/materials.md}). The script itself checks the
+  reference's tolerance, 0.01~\%.
+\item The closed forms of this chapter are derived from the definitions by
+  \code{doc/manual/checks/ch6_closure.py} (sympy).
+\end{itemize}

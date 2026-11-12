@@ -1,0 +1,155 @@
+% =====================================================================
+%  bitwhiz: Theory and Verification Manual
+%  D. E. Kittell (with Claude). Apache License 2.0, as the code.
+%
+%  Build:  make manual   (from the repository's top folder; the PDF is
+%  doc/manual/bitwhiz_manual.pdf, not kept in git). The plan, what owns
+%  what, and the milestones: doc/design/manual.md. How to write here:
+%  doc/manual/README.md.
+% =====================================================================
+\documentclass[11pt,oneside]{report}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in,headheight=14pt]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,mathtools,bm}
+\usepackage{booktabs,array,tabularx}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[many]{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{xurl}
+\urlstyle{tt}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,capitalise]{cleveref}
+
+\setlist{itemsep=2pt,topsep=4pt}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+\numberwithin{equation}{chapter}
+
+%*** Colors, as the equation sheets' (Okabe-Ito blue, slate frames).
+\definecolor{slate}{HTML}{2C3E50}
+\definecolor{oiblue}{HTML}{0072B2}
+\definecolor{oivermil}{HTML}{D55E00}
+\definecolor{tracegray}{HTML}{6B7785}
+
+%*** The version, from the build (make manual passes git describe).
+\providecommand{\bwversion}{(development copy)}
+\renewcommand{\bibname}{References}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textsc{bitwhiz} manual}
+\fancyhead[R]{\small\nouppercase{\leftmark}}
+\fancyfoot[C]{\small\thepage}
+\fancyfoot[R]{\small\color{tracegray}\bwversion}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\small\thepage}%
+  \fancyfoot[R]{\small\color{tracegray}\bwversion}%
+  \renewcommand{\headrulewidth}{0pt}}
+
+\titleformat{\chapter}[display]{\normalfont\bfseries\color{slate}}%
+  {\large\chaptertitlename\ \thechapter}{4pt}{\LARGE}
+\titlespacing*{\chapter}{0pt}{0pt}{18pt}
+
+%*** Names in the code: \code{tc_rate} (underscores as they are).
+\newcommand{\code}[1]{\nolinkurl{#1}}   % breaks after / and _ (xurl)
+\newcommand{\key}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\bw}{\textsf{bitwhiz}}
+
+%*** Where an equation lives, and what tests it (the trace tag).
+%*** \trace{file}{routines}{tests}: file under src/; routines and tests
+%*** comma-separated. tests/manual_check.py reads every \trace and
+%*** checks that each routine is still in its file and each test still
+%*** exists (doc/manual/README.md).
+\newcommand{\trace}[3]{\par\nopagebreak\vspace{-2pt}%
+  {\raggedleft\footnotesize\color{tracegray}%
+   code: \texttt{\detokenize{#1}}, \texttt{\detokenize{#2}}%
+   \quad tests: \texttt{\detokenize{#3}}\par}\vspace{2pt}}
+
+%*** What a chapter was checked against (its first page).
+\newcommand{\checkedagainst}[2]{%
+  \begin{tcolorbox}[colback=white,colframe=tracegray,boxrule=0.4pt,
+    arc=1mm,left=4pt,right=4pt,top=2pt,bottom=2pt,fontupper=\small]
+  \textbf{Checked against} \bw\ #1. #2
+  \end{tcolorbox}}
+
+%*** A model, or a part of one, written down but not yet built.
+\newtcolorbox{underdev}[1][]{colback=oivermil!4!white,colframe=oivermil,
+  boxrule=0.6pt,arc=1.5mm,breakable,
+  title={\textbf{Under development}#1},fonttitle=\small,
+  coltitle=white,colbacktitle=oivermil}
+
+%*** A chapter or section that is planned for a later version.
+\newcommand{\tocome}[1]{%
+  \begin{tcolorbox}[colback=slate!3!white,colframe=slate!40!white,
+    boxrule=0.4pt,arc=1mm,fontupper=\small]
+  \textbf{To come.} #1
+  \end{tcolorbox}}
+
+%*** Symbols used throughout (Appendix A lists them).
+\newcommand{\Pg}{P_{\mathrm{gas}}}
+\newcommand{\Ps}{P_{\mathrm{sol}}}
+\newcommand{\Pc}{P_{c}}
+\newcommand{\Cv}{C_{V}}
+\newcommand{\rhoz}{\rho_0}
+\newcommand{\Gz}{\Gamma_0}
+\newcommand{\thv}{\vartheta}
+\newcommand{\lam}{\lambda}
+\newcommand{\Hug}{\mathcal{H}}
+\newcommand{\PS}{P_{s}}
+\newcommand{\dd}{\mathrm{d}}
+
+\hypersetup{pdftitle={bitwhiz: Theory and Verification Manual},
+  pdfauthor={D. E. Kittell (with Claude)}}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{1.5in}
+{\Huge\bfseries\color{slate} \textsf{bitwhiz}\par}
+\vspace{10pt}
+{\LARGE Theory and Verification Manual\par}
+\vspace{24pt}
+{\large A one-dimensional Lagrangian hydrocode for shock and detonation
+physics, and a home for open source burn models\par}
+\vspace{36pt}
+{\large D. E. Kittell (with Claude)\par}
+\vspace{12pt}
+{\normalsize \bwversion\par}
+\vfill
+{\small
+Source: \url{https://github.com/kitte048/bitwhiz}\quad
+Archive: doi:10.5281/zenodo.23999297 (all versions)\\[4pt]
+Copyright 2026 D. E. Kittell. Licensed under the Apache License,
+Version 2.0, as the code is.\par}
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+
+\include{chapters/ch1_overview}
+\include{chapters/ch2_lagrangian}
+\include{chapters/ch3_method_av}
+\include{chapters/ch4_method_rs}
+\include{chapters/ch5_materials}
+\include{chapters/ch6_burning_cell}
+\include{chapters/ch7_burn_models}
+\include{chapters/ch8_verification}
+
+\appendix
+\include{chapters/appA_notation}
+\include{chapters/appB_deck_keys}
+\include{chapters/appC_history}
+
+\include{chapters/references}
+
+\end{document}

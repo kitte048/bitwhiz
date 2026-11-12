@@ -1,0 +1,42 @@
+\chapter{Overview}
+\label{ch:overview}
+
+\bw\ is a one-dimensional, planar, Lagrangian hydrocode for shock and
+detonation physics, written in Fortran 2018. It computes plate-impact
+problems: a flyer strikes a layered target, and shock and release waves run
+through the stack. It began as the reference code for ME~697, Intermediate
+Shock and Detonation Theory (Purdue University, Fall 2026); from version 1.4
+it is also a home for \emph{open source burn models}: reactive burn models
+written down in full, built into a public code, and checked in the open.
+
+This manual says what the code computes and why. It is the source of truth
+for the public: where the code and an older document disagree, this manual
+follows the code, and says so. Decisions and the studies behind them are
+recorded in the design notes (\code{doc/design/}), the input deck in
+\code{input/README.md}, and each routine in its module's header; this manual
+points to them rather than repeating them.
+
+\section{This version}
+
+The manual is written in three milestones (\code{doc/design/manual.md}).
+This first one, with \bw\ 1.5.0, completes the two chapters on reactive
+burn: \cref{ch:burning-cell}, the burning cell (the closure every burn model
+shares), and \cref{ch:burn-models}, the six burn models, two of them built
+and four under development. The chapters on the hydrodynamics and the
+materials, and the verification chapter, are outlined and come next; until
+then the equation sheets in \code{doc/} describe those parts.
+
+\section{How to read an equation here}
+
+An equation that the code implements carries a \emph{trace tag} under it:
+the source file and routine that compute it, and the tests that check it,
+for example
+\trace{modules/tcas_mod.f95}{tc_rate}{test_tcas}
+A script run by \code{make test} checks that every routine and test named in
+a tag still exists, so a tag cannot silently point at nothing. Each chapter
+names the version of \bw\ its equations were last checked against.
+Symbols are listed in \cref{app:notation}; units are \bw's throughout:
+mm, \textmu s, g/cm$^3$, km/s, GPa, kJ/g (= (km/s)$^2$) and K.
+
+\tocome{What \bw\ is for, a first run (the class problem, step by step),
+the layout of a deck, and what each output file holds (milestone M3).}

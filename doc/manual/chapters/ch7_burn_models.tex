@@ -1,0 +1,679 @@
+\chapter{Burn models}
+\label{ch:burn-models}
+
+\checkedagainst{1.4.1 (\code{7092d89})}{HVRB, the lead shock and
+ThermalCascade as built; FlashFire, StochasticIgnite, HALO and CLAUDE as
+designed in \code{doc/design/burn_models.md} (approved Nov 6, 2026), not yet
+built. Closed forms are checked in \code{doc/manual/checks/ch7_models.py}.}
+
+\bw\ carries a family of reactive burn models on one footing: the same
+reactant, the same ideal-gas products, the same closure
+(\cref{ch:burning-cell}), and the same tests. A model adds only its rate
+law, its per-cell constants and history, and its deck keys.
+\Cref{tab:models} lists the six.
+
+\begin{table}[h]
+\centering\small
+\caption{The burn models. A model ``gated'' by the lead shock does not
+burn until its cell's lead shock is marked (\cref{sec:lead-shock}).}
+\label{tab:models}
+\begin{tabularx}{\textwidth}{@{}l l Y l c@{}}
+\toprule
+\key{burn =} & Model & Source & Status & Gated \\
+\midrule
+\key{hvrb} & History Variable Reactive Burn & Kerley; Starkenberg
+  \cite{starkenberg2002} & built, 1.3.0 & no \\
+\key{thermalcascade} & ThermalCascade & SAND2025-09228 \S 5.2.3
+  \cite{kittell2025sand}, repaired & built, 1.4.0 & yes \\
+\key{flashfire} & FlashFire & SAND2025-09228 \S 5.2.1, repaired &
+  under development & yes \\
+\key{stochasticignite} & StochasticIgnite & SAND2025-09228 \S 5.2.2,
+  repaired & under development & yes \\
+\key{halo} & HALO & Kittell's ADRB (2016), revised & under development
+  & no \\
+\key{claude} & CLAUDE & proposed by Claude (Anthropic), 2026 & under
+  development & no \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{What every model follows}
+\label{sec:model-rules}
+
+\begin{itemize}
+\item \textbf{The rate at the step's start.} A model's rate uses the cell's
+  state at the start of the step ($P^n$, $T^n$, its history); $\lam^{n+1}$
+  then feeds the closure.
+\item \textbf{Steps that stay exact.} Where a model's \emph{topology} (how
+  the rate depends on $\lam$) has a closed form, the step integrates a
+  potential and maps it to $\lam$, or takes the exact exponential of a rate
+  first order in $1 - \lam$. Such a step is exact in $\lam$ for the rate it
+  is given, starts cleanly from $\lam = 0$, has no singularity at $\lam = 1$,
+  and stays in $[0, 1]$ however large the step; its only error is the
+  rate's, first order in $\Delta t$. Only FlashFire, whose topology has no
+  closed form, will be sub-cycled.
+\item \textbf{Repaired, not verbatim.} Three models were proposed by a
+  language model (ChatGPT 4o-mini) in a 2025 survey of reactive burn
+  models \cite{kittell2025sand}, as written; as written, none can run. Each
+  goes in with the fewest repairs that make it well-posed, and each repair
+  is named in its section.
+\item \textbf{One key, one meaning.} \key{PR} (GPa), the reference
+  pressure, serves every model that has one; \key{NS} is the exponent on
+  $1 + \PS/P_R$ in all three gated models (\cref{app:deck-keys}).
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{HVRB}
+\label{sec:hvrb}
+
+The History Variable Reactive Burn model of G.~I.~Kerley
+\cite{starkenberg2002,starkenberg2010,stewart2024} is pressure-based,
+simple and robust, and in wide use. Its rate is \emph{separable}: a
+function of $\lam$ alone times a function of the pressure alone,
+\begin{equation}
+  \frac{\dd\lam}{\dd t} = g(\lam)\,\Phi(P).
+  \label{eq:hvrb-separable}
+\end{equation}
+
+\paragraph{The history variable.} With $\phi(t) = \int_0^t \Phi\,\dd t'$,
+\cref{eq:hvrb-separable} is $\dd\lam/\dd\phi = g(\lam)$, so $\lam$ is a
+function of $\phi$ alone: the extent of reaction depends only on the
+accumulated pressure history, not on how the pressure was delivered.
+
+\paragraph{The reaction potential} ($P_R$, $Z_R$, $P_I$, $\tau_0$):
+\begin{equation}
+  \Phi = \frac{1}{\tau_0}\Bigl(\frac{P - P_I}{P_R}\Bigr)^{Z_R}
+  \ \text{ if } P > P_I, \qquad \Phi = 0 \ \text{ otherwise},
+  \label{eq:hvrb-phi}
+\end{equation}
+with $P$ the cell's mixture pressure. $\phi$ grows only while $P > P_I$ and
+never decreases. Only the product $\tau_0 P_R^{Z_R}$ enters, so $\tau_0 =
+1$~\textmu s by convention \cite{starkenberg2014}. The threshold is a test,
+not $\max(P - P_I, 0)^{Z_R}$: at $Z_R = 0$ that would be $0^0$, which
+Fortran leaves to the processor, and a cell at rest would burn. With the
+test, a cell at or below $P_I$ never burns, for every $Z_R$, and a cell in
+tension never burns either.
+\trace{modules/hvrb_mod.f95}{hvrb_rate}{test_hvrb}
+
+\paragraph{The topology} ($M_R$, $X_R$):
+\begin{align}
+  \lam &= 1 - \Bigl(1 - \frac{\phi^{M_R}}{X_R}\Bigr)^{X_R},
+  \qquad 0 \le \phi \le \phi_{\mathrm{end}} = X_R^{1/M_R},
+  \ \text{then } \lam = 1;
+  \label{eq:hvrb-lam}\\
+  \phi &= \Bigl[X_R\bigl(1 - (1 - \lam)^{1/X_R}\bigr)\Bigr]^{1/M_R};
+  \label{eq:hvrb-inverse}\\
+  g(\lam) &= \frac{\dd\lam}{\dd\phi}
+  = M_R X_R^{\,1 - 1/M_R}(1 - \lam)^{1 - 1/X_R}
+    \bigl[1 - (1 - \lam)^{1/X_R}\bigr]^{1 - 1/M_R}.
+  \label{eq:hvrb-g}
+\end{align}
+$g(0) = 0$ needs $M_R > 1$ (a delay behind the shock), and $g(1) = 0$ needs
+$X_R > 1$ (a gradual finish). For the class problem's Material~X ($M_R =
+1.5$, $X_R = 2.5$), $g$ peaks at $\lam = 0.394$ ($g = 0.854$) and the burn
+ends at $\phi_{\mathrm{end}} = 1.842$ (\cref{fig:hvrb-topology}).
+\trace{modules/hvrb_mod.f95}{hvrb_lambda, hvrb_phi_end}{test_hvrb}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/hvrb_topology.pdf}
+\caption{HVRB's topology, exact curves. (a) $\lam(\phi)$; (b) $g(\lam) =
+\dd\lam/\dd\phi$. Blue: Material~X, $M_R = 1.5$, $X_R = 2.5$. Orange: $M_R
+= 1.5$, $X_R = 1$, where $g$ does not return to zero and the burn stops
+abruptly at $\phi = 1$.}
+\label{fig:hvrb-topology}
+\end{figure}
+
+\paragraph{The step.} The stiff part, $g$, is integrated exactly: $\phi$ is
+summed and $\lam$ is \cref{eq:hvrb-lam} of it,
+\begin{equation}
+  \phi^{n+1} = \min\bigl(\phi^n + \Phi(P^n)\,\Delta t,\ \phi_{\mathrm{end}}\bigr),
+  \qquad \lam^{n+1} = \lam(\phi^{n+1}).
+  \label{eq:hvrb-step}
+\end{equation}
+So $\lam$ stays in $[0, 1]$ by construction and reaches 1 exactly at
+$\phi_{\mathrm{end}}$; the only error is the first-order quadrature of
+$\Phi$. For small $\phi$, $1 - (1 - x)^{X_R}$ with $x = \phi^{M_R}/X_R$ loses
+digits as $x \to 0$, so below $x = 0.05$ \bw\ sums its binomial series (16
+terms). Measured against 50 digits, the series keeps $\lam$ to $7\times
+10^{-16}$ (relative) or better for $X_R \le 25$; above that it loses digits
+($10^{-14}$ at $X_R = 30$, $7\times 10^{-6}$ at 80). Physical values of $X_R$
+are a few, and the deck does not yet limit it.
+\trace{modules/hvrb_mod.f95}{hvrb_step, hvrb_lambda}{test_hvrb}
+
+\paragraph{A burn on a clock.} With $Z_R = 0$, $\Phi = 1/\tau_0$ above
+$P_I$, so $\phi$ is the time spent above threshold over $\tau_0$ and
+$P_R$ has no effect. With $M_R = 1$ this is the $d^n$ law of a burning
+grain, $\lam = 1 - (1 - t/t_b)^{3/n}$, with $X_R = 3/n$ and burn-out at
+$t_b = X_R\tau_0$ (the $d^2$ law: $X_R = 1.5$).
+\trace{modules/hvrb_mod.f95}{hvrb_step}{test_hvrb}
+
+\paragraph{What HVRB cannot do.} A cell held above $P_I$ eventually burns,
+whatever its history: HVRB cannot quench, and it cannot desensitize (a weak
+first shock does not make a later strong one less effective)
+\cite{tuttle2018}. The models below that use the lead shock, or the
+dissipated energy, are built to differ here.
+
+\begin{table}[h]
+\centering\small
+\caption{HVRB's keys, and the notional Material~X set of the class problem
+(with the reactant's $\Cv = 1.1633418$~J/(g\,K), $T_0 = 298$~K, and the products'
+$\gamma = 2.60$, $Q = 4.8828$~kJ/g).}
+\label{tab:hvrb-keys}
+\begin{tabular}{@{}l l l l r@{}}
+\toprule
+Key & Symbol & Units & Deck check & Material X \\
+\midrule
+\key{PR}   & $P_R$    & GPa & $> 0$   & 7.0 \\
+\key{ZR}   & $Z_R$    & --  & $\ge 0$ & 3.0 \\
+\key{MR}   & $M_R$    & --  & $> 0$   & 1.5 \\
+\key{XR}   & $X_R$    & --  & $> 0$   & 2.5 \\
+\key{PI}   & $P_I$    & GPa & $\ge 0$ & 1.0 \\
+\key{TAU0} & $\tau_0$ & \textmu s & $> 0$ & 1.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Verification.}
+\begin{itemize}
+\item \code{test_hvrb}, against 50-digit values: $\lam(\phi)$ across the
+  topology; $\lam(0) = 0$ and $\lam = 1$ exactly from
+  $\phi_{\mathrm{end}}$ on; the threshold for $Z_R = 0$ to 3; and the $d^2$
+  law, 650 steps, against its closed form.
+\item Against independent reference data, the gold-standard sets G2--G5
+  (\code{tests/verification/compare_hvrb.py}, methods AV and RS): at
+  1.3.0 (\code{eeb3cf7}) the run distances at 1.50, 1.75 and 2.00~km/s were
+  the reference's (7.5, 5.5, 3.5~mm), arrivals within 5~ns, and the mesh
+  study's PDV arrival converged to the reference's to 0.1~ns.
+\item Detonation: the detonation speed converges to $D_{CJ} = 7.4999904$~km/s
+  of Material~X's products with mesh refinement, under both methods
+  (\code{tests/verification/study_av.py}; \code{doc/design/av_study.md}).
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{The lead shock}
+\label{sec:lead-shock}
+
+Three of the models (ThermalCascade, FlashFire, StochasticIgnite) depend on
+the pressure of the \emph{lead shock}, the first shock a cell sees, and
+freeze it there: a later shock acts only through the local state, which is
+how a model can respond to shock desensitization. \bw\ finds the lead shock
+cell by cell with the detector of Menikoff and Shaw's SURF model
+\cite{menikoff2010}, which needs no threshold on the artificial viscosity and
+no shock counter, and works the same way with methods AV and RS.
+
+\paragraph{The Hugoniot residual.} With the state ahead of the lead shock the
+cell's own at $t = 0$ (at rest, $V_0 = 1/\rhoz$, $e_0 = 0$, $P_0 = 0$, as
+every \bw\ cell starts),
+\begin{equation}
+  \Hug = e - e_0 - \tfrac{1}{2}(V_0 - V)(P + P_0)
+       = e - \tfrac{1}{2}(V_0 - V)\,P,
+  \label{eq:hugoniot-residual}
+\end{equation}
+the residual of the Hugoniot's energy jump condition: $\Hug = 0$ on the
+Hugoniot. (Menikoff and Shaw print $P - P_0$, an erratum, moot here.) Inside
+a steady smeared shock the state follows the Rayleigh line with total stress
+$P + q$, and the energy equation gives exactly
+\begin{equation}
+  \Hug = \tfrac{1}{2}\,q\,(V_0 - V),
+  \label{eq:hugoniot-q}
+\end{equation}
+positive inside the shock and back to zero as the cell reaches the shocked
+state ($q$ is method AV's viscosity; method RS's dissipation plays its
+part).
+\trace{modules/lshk_mod.f95}{ls_h}{test_lshk}
+
+\paragraph{The detector} keeps five numbers per cell: $\Hug$ at the last
+step, its largest value since armed, a flag, and $\PS$ and $t_s$ once
+marked. It is stepped once a cycle, from the cell's state at the step's end:
+\begin{enumerate}
+\item \emph{Armed} once the cell is compressed ($\rho > \rhoz$) and $\Hug >
+  10^{-10}\,C_0^2$: a floor in the material's own energy scale, so that the
+  exponentially small precursor ahead of a wave, and its round-off, are never
+  read as a shock.
+\item \emph{Rising} while $\Hug$ grows past its largest value.
+\item \emph{Marked}, after $\Hug$'s peak, at the first of:
+  \begin{itemize}
+  \item $\Hug \le 0$, a zero crossing (compression follows the shock), $t_s$
+    interpolated between the two steps;
+  \item $\Hug$ rising again, a local minimum however shallow (expansion
+    follows), $t_s$ the minimum's step;
+  \item a \emph{stall}: a step's fall below 0.01 of the largest one-step fall
+    since the peak, $t_s$ this step.
+  \end{itemize}
+  $\PS$ is $P$ at the step that marks it.
+\item \emph{Frozen}: $\PS$ and $t_s$ never change again, whatever follows.
+\end{enumerate}
+A rise past the largest value before any mark sends the detector back to
+rising.
+\trace{modules/lshk_mod.f95}{ls_step, ls_marked}{test_lshk, study_leadshock.py}
+
+The stall and the absence of hysteresis were both forced by measurement. A
+weak shock's $\Hug$ in method AV does not come back down to zero but to a
+plateau a little above it (the shocked state lies slightly off the
+Hugoniot), so any test like ``below half the peak'' misses every weak shock;
+and its slow creep down that plateau, ended only by round-off, put the first
+local minimum later on finer meshes, so the stall is needed for the mark to
+converge. The two constants ($10^{-10}$ and 0.01) are algorithm constants,
+not deck keys, each chosen from the middle of the range that works
+(\code{doc/design/burn_models.md}, ``As built: step 4'').
+
+\paragraph{How well it works} (\code{tests/verification/study_leadshock.py},
+69 checks, at \code{78e7d01}). Against exact Hugoniot states, aluminum on
+aluminum at 0.75 to 78~GPa, 25 to 200 zones/mm: $\PS$ within 1.1~\% for both
+methods; method AV's is about 1~\% high at strong shocks, where the mark
+samples its post-shock ringing. The lag of $t_s$ behind the shock is the
+smeared shock's rise, and shrinks with the mesh. A decaying shock's $\PS$
+follows its decay; a ramp that steepens into a shock is marked at the shock.
+
+\paragraph{A smooth ramp.} The foot of a smooth ramp is a compression front
+too, so it is marked, at a $\PS$ that falls toward zero as the mesh is
+refined. Nothing tried tells a smooth ramp from a weak shock on a coarse
+mesh. This is accepted and documented: the gate opens at the ramp's foot with
+$\PS \to 0$, and each model's own rate decides what follows (ThermalCascade
+still needs $T > T_c$). A threshold on $\PS$ would be a deck key that does
+not converge with the mesh.
+
+\paragraph{The gate.} A gated model has $\lam = 0$ until its cell's lead
+shock is marked; the cell first burns in the step after the mark
+(\cref{sec:one-cycle}). This keeps a gated model's burn out of method AV's
+smeared shock by the model's definition, not by a control.
+
+% ---------------------------------------------------------------------
+\section{ThermalCascade}
+\label{sec:thermalcascade}
+
+ThermalCascade was proposed by ChatGPT 4o-mini in a 2025 survey of reactive
+burn models (\cite{kittell2025sand}, \S 5.2.3), as
+\begin{equation*}
+  \frac{\dd\lam}{\dd t} = h\,(1 - \lam)\,(T - T_c)^{\gamma_T}
+  \Bigl(1 + \frac{\PS}{P_R}\Bigr)^{p}.
+\end{equation*}
+Its name is its feedback: burning raises $T$ (\cref{eq:theta}), which raises
+the rate.
+
+\paragraph{Repairs.} (1) $(T - T_c)^{\gamma_T}$ is not real below $T_c$ for
+non-integer $\gamma_T$, and would run the reaction backward for odd
+integers; it becomes $\max(T - T_c, 0)^{\gamma_T}$, no burn at or below
+$T_c$. (2) $\PS$ is the lead shock's, frozen at its mark, and the model is
+gated by it (\cref{sec:lead-shock}). As built, with $\PS < 0$ taken as 0:
+\begin{equation}
+  \frac{\dd\lam}{\dd t} = r\,(1 - \lam), \qquad
+  r = H_T\,(T - T_c)^{G_T}\Bigl(1 + \frac{\max(\PS, 0)}{P_R}\Bigr)^{N_S}
+  \ \text{ if } T > T_c, \qquad r = 0 \ \text{ otherwise}.
+  \label{eq:tc-rate}
+\end{equation}
+As for HVRB's threshold, $T > T_c$ is a test, so $G_T = 0$ is a clock above
+$T_c$ and nothing at or below it. $T$ is the closure's temperature
+(\cref{eq:theta}), one for the solid and the products, at the step's start.
+\trace{modules/tcas_mod.f95}{tc_rate}{test_tcas}
+
+\paragraph{The step.} The rate is first order in $1 - \lam$, so at the rate
+$r$ of the step's start it is exact over $\Delta t$:
+\begin{equation}
+  \lam^{n+1} = \lam^n + (1 - \lam^n)\bigl(1 - e^{-r\Delta t}\bigr).
+  \label{eq:tc-step}
+\end{equation}
+$\lam$ stays in $[0, 1)$ with no stiffness however large $r\Delta t$ (the
+cascade's runaway is where an explicit step would fail). $1 - e^{-x}$ is
+summed by its series below $x = 0.5$ (16 terms), since Fortran has no
+\code{expm1}, so a small $\lam$ keeps its digits. The step never reaches 1:
+a burnt-out cell is at 1 to round-off. The only error is $r$'s, from $T^n$
+and $\PS$ held over the step: first order in $\Delta t$.
+\trace{modules/tcas_mod.f95}{tc_step, tc_om}{test_tcas}
+
+\paragraph{The cascade at constant volume.} At fixed $\rho$ and $e$,
+\cref{eq:theta} makes $T$ linear in $\lam$, $T = T_a + b\lam$ with $b = (e_c +
+Q)/\Cv$: each unit of reaction adds the cold energy and the heat of reaction.
+The time to reach $\lam^\ast$ from 0 is then
+\begin{equation}
+  t(\lam^\ast) = \int_0^{\lam^\ast}
+    \frac{\dd\lam}{H_T S\,(1 - \lam)\,(T_a + b\lam - T_c)^{G_T}},
+  \qquad S = \Bigl(1 + \frac{\PS}{P_R}\Bigr)^{N_S},
+  \label{eq:tc-cascade}
+\end{equation}
+which for $G_T = 1$ is, with $A = T_a - T_c$,
+\begin{equation}
+  t(\lam^\ast) = \frac{1}{H_T S\,(A + b)}
+  \Bigl[\ln\frac{A + b\lam^\ast}{A} - \ln(1 - \lam^\ast)\Bigr].
+  \label{eq:tc-cascade-gt1}
+\end{equation}
+\trace{modules/tcas_mod.f95}{tc_step, tc_rate}{test_tcas}
+
+\begin{table}[h]
+\centering\small
+\caption{ThermalCascade's keys, and the example deck's values
+(\code{input/me697_tcas_2p00.deck}: an example chosen to detonate near
+HVRB's run distance at 2.00~km/s, not a calibration).}
+\label{tab:tc-keys}
+\begin{tabular}{@{}l l l l r@{}}
+\toprule
+Key & Symbol & Units & Deck check & Example \\
+\midrule
+\key{HT} & $H_T$ & 1/(\textmu s\,K$^{G_T}$) & $\ge 0$ & $3\times10^{-5}$ \\
+\key{TC} & $T_c$ & K & $\ge 0$ & 600 \\
+\key{GT} & $G_T$ & -- & $\ge 0$ & 1.5 \\
+\key{NS} & $N_S$ & -- & $\ge 0$ & 2 \\
+\key{PR} & $P_R$ & GPa & $> 0$ & 7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+$H_T = 0$ is the inert limit. Because the threshold is in temperature,
+ThermalCascade is sharper than HVRB: the example's constants were chosen
+so that 2.00~km/s detonates near HVRB's 3.5~mm (at 35 zones/mm, method AV),
+while 1.50~km/s does not detonate within 10~mm, and at 1.25~km/s and below no
+cell passes $T_c$. Lowering $H_T$ delays the reaction behind the lead shock,
+and the pressure builds there first: with $H_T = 0.7\times10^{-5}$ in the
+example deck (2.00~km/s, method RS, 35 zones/mm, at \code{f6b572a}) the peak
+pressure grows from 11 to 24~GPa 2 to 4~mm behind the lead shock, and
+overtakes it about 7~mm into Material~X. This growth behind the front is the
+pattern of shock initiation in heterogeneous explosives.
+
+\paragraph{Verification.}
+\begin{itemize}
+\item \code{test_tcas}, against 50-digit values (\code{tests/tcas_reference.py}):
+  the rate at 11 states (at, just above and below $T_c$; $G_T = 0$; $\PS <
+  0$) to $3\times 10^{-16}$; $1 - e^{-x}$ from $10^{-16}$ to 50; the step;
+  1000 steps at a fixed rate equal one step of $1000\,\Delta t$ (exact); and the cascade at constant volume,
+  \cref{eq:tc-cascade}, whose time to $\lam = 0.99$ converges at first order
+  in $\Delta t$.
+\item In the hydro (\code{tests/verification/study_tcas.py}, at
+  \code{58a5392}): with $T_c = 0$, $G_T = 0$, $N_S = 1$, a marked cell burns
+  as a clock, so its first step's $\lam$ returns $\PS$; at five tracers, both
+  methods, each cell burns from the step after the one where an independent
+  replay of the detector marks it, with the replay's $\PS$ to $3\times
+  10^{-16}$.
+\item Its detonation is HVRB's: the same products give the same detonation,
+  speed within 0.1~\% of HVRB's on the same mesh (200 zones/mm, both
+  methods). Its run distance, 3.30 to 3.00~mm over 25 to 200 zones/mm,
+  is still moving with the mesh at 200 zones/mm; a study to 400 zones/mm is
+  planned (\code{TODO.md}, section 8, from the review of v1.4.0).
+\item The inert limit ($H_T = 0$, the detector running) is the inert run bit
+  for bit, both methods.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{FlashFire}
+\label{sec:flashfire}
+
+\begin{underdev}[: planned for 1.6.0]
+Designed (\code{doc/design/burn_models.md}), not yet built. The equations
+and keys may change when it is.
+\end{underdev}
+
+Proposed in the same survey (\cite{kittell2025sand}, \S 5.2.1) as an
+Arrhenius rate with a two-exponent topology:
+\begin{equation}
+  \frac{\dd\lam}{\dd t} = K\,(1 - \lam)^{\alpha}\,\lam^{\beta}\,
+  e^{-T_a/T}\Bigl(1 + \frac{\PS}{P_R}\Bigr)^{n}.
+  \label{eq:ff-rate}
+\end{equation}
+
+\paragraph{Repairs.} (1) $\lam^\beta$ is zero at $\lam = 0$, so as written
+the burn never starts: $\lam$ is seeded to $\lam_0$ at the lead shock's mark,
+an ignition fraction in the spirit of ignition-and-growth models. (2) The
+activation energy enters as one activation temperature, $T_a = E_a/R$, with
+no per-mole or per-gram units. (3) Gated by the lead shock, $\PS$ frozen
+there.
+
+\paragraph{The step.} The topology $(1 - \lam)^\alpha\lam^\beta$ has no
+closed form in general, so FlashFire will be sub-cycled: explicit sub-steps,
+each changing $\lam$ by at most an algorithm constant $\Delta\lam_{\max}$,
+with $\lam$ kept in $[\lam_0, 1]$. Its history is the detector's five
+numbers.
+
+\begin{center}\small
+\begin{tabular}{@{}l l l l@{}}
+\toprule
+Key & Symbol & Units & Meaning \\
+\midrule
+\key{KFF}  & $K$        & 1/\textmu s & rate constant \\
+\key{AFF}  & $\alpha$   & -- & topology exponent on $1 - \lam$ \\
+\key{BFF}  & $\beta$    & -- & topology exponent on $\lam$ \\
+\key{TA}   & $T_a$      & K  & activation temperature \\
+\key{NS}   & $n$        & -- & exponent on $1 + \PS/P_R$ \\
+\key{PR}   & $P_R$      & GPa & reference pressure \\
+\key{LAM0} & $\lam_0$   & -- & ignition fraction at the lead shock \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Planned tests.} $\lam_0$ alone at a constant state against the
+closed form for $\beta = 0$ (a $(1 - \lam)^{1 - \alpha}$ decay); the
+Arrhenius factor at 50 digits; no lead shock, no burn.
+
+% ---------------------------------------------------------------------
+\section{StochasticIgnite}
+\label{sec:stochasticignite}
+
+\begin{underdev}[: planned]
+Designed (\code{doc/design/burn_models.md}), not yet built.
+\end{underdev}
+
+Proposed in the same survey (\cite{kittell2025sand}, \S 5.2.2) as a rate
+with a random factor, $\dd\lam/\dd t = g(\lam)\,(\mu + \sigma Z)\,(1 +
+\PS/P_R)^m$, $Z$ a standard normal deviate. As designed for \bw:
+\begin{itemize}
+\item \textbf{The topology} is the Kolmogorov--Johnson--Mehl--Avrami (KJMA)
+  form, written as a potential so the step is exact:
+  \begin{equation}
+    \lam = 1 - e^{-\phi^{a}}, \qquad
+    \frac{\dd\phi}{\dd t} = \max(\mu + \sigma Z, 0)\,
+    \Bigl(1 + \frac{\PS}{P_R}\Bigr)^{m},
+    \label{eq:si}
+  \end{equation}
+  with $a$ the Avrami exponent (3 for random points growing in three
+  dimensions). After the lead shock the rate is constant but for $\lam$: a
+  burn on a clock, as HVRB's with $Z_R = 0$.
+\item \textbf{$Z$ is a frozen field}, one value per bin of the material's
+  initial position, in bins of a correlation length $\ell_c$. The values
+  come from a fixed table of 20,000 uniform deviates drawn from atmospheric
+  noise (RANDOM.ORG, 2025) and carried in the code: a deck's \key{SEED} sets
+  the starting index, and bin $j$ reads entry $\mathrm{mod}(\mathrm{SEED} +
+  j s, 20000) + 1$, with $s$ a fixed prime coprime with 20,000. Each uniform
+  becomes a standard normal by Wichura's algorithm AS~241 \cite{wichura1988}.
+  So refining the mesh keeps the same realization, a new \key{SEED} is a new
+  member of an ensemble, and every draw is a function of (\key{SEED}, initial
+  position) alone: results stay bit for bit on any number of threads.
+  (Per-step noise was considered and set aside: it needs $\sqrt{\Delta t}$
+  scaling and would exhaust and correlate the table.)
+\item \textbf{Repairs:} $\mu + \sigma Z$ is floored at 0 (a cell cannot
+  burn backward), and the model is gated by the lead shock.
+\end{itemize}
+
+\begin{center}\small
+\begin{tabular}{@{}l l l l@{}}
+\toprule
+Key & Symbol & Units & Meaning \\
+\midrule
+\key{MU}     & $\mu$    & 1/\textmu s & mean rate \\
+\key{SIGMA}  & $\sigma$ & 1/\textmu s & its standard deviation \\
+\key{AVRAMI} & $a$      & -- & Avrami exponent \\
+\key{NS}     & $m$      & -- & exponent on $1 + \PS/P_R$ \\
+\key{PR}     & $P_R$    & GPa & reference pressure \\
+\key{LC}     & $\ell_c$ & mm & correlation length of $Z$ \\
+\key{SEED}   & --       & integer & the realization \\
+\bottomrule
+\end{tabular}
+\end{center}
+Its history: the detector's five numbers and $\phi$; $Z$ is a per-cell
+constant, computed once at setup.
+
+\paragraph{Planned tests.} $\sigma = 0$ against KJMA's closed form; AS~241
+against 50 digits; the field's mean and variance over the table; the same
+\key{SEED}, the same bits; mesh refinement keeps the realization.
+
+% ---------------------------------------------------------------------
+\section{HALO}
+\label{sec:halo}
+
+\begin{underdev}[: planned]
+Designed (\code{doc/design/burn_models.md}), not yet built.
+\end{underdev}
+
+HALO (Hot-spot Activation, Loss and Overlap) revises D.~E.~Kittell's
+activation and dissipation reactive burn model (ADRB, 2016, unpublished). It
+has no shock detector and no switches: hot spots are activated by
+compression and dissipated, never reactivated, so a weak first shock
+desensitizes. Three variables per cell, updated in this order each step:
+\begin{enumerate}
+\item \textbf{Activation}, by the measure
+  \begin{equation}
+    \Delta E_D = \sqrt{\max(\Delta e, 0)\,\max(-\Delta v, 0)}
+    \label{eq:halo-ed}
+  \end{equation}
+  per step ($v$ the specific volume), which converges to $E_D = \int
+  \sqrt{\sigma}\,|\dd v|$ over compression, $\sigma = -\dd e/\dd v$ the
+  stress doing the work: independent of the mesh and the time step. (The
+  2016 form put the root over $\max(\Delta e, 0)$ alone, which made each
+  increment of order $\Delta t^{3/2}$ and $E_D$ shrink with the number of
+  steps across a shock.) The 2016 safeguard $(1 - \lam)$ is not needed, since
+  \bw\ burns at fixed $e$ and reaction heat never enters $\Delta e$.
+\item \textbf{Hot spots}, a fraction $\eta \in [0, 1]$:
+  \begin{equation}
+    \frac{\dd\eta}{\dd t} = \frac{\dd}{\dd t}\,
+      \mathrm{erf}\Bigl[\Bigl(\frac{E_D}{E_{D0}}\Bigr)^{\beta_H}\Bigr]
+      - \frac{\eta\,(1 - \lam)^{\delta}}{\tau_d},
+    \label{eq:halo-eta}
+  \end{equation}
+  stepped exactly: $\eta \leftarrow \eta\exp\bigl(-(1 - \lam)^\delta\Delta
+  t/\tau_d\bigr) + \Delta\,\mathrm{erf}$.
+\item \textbf{Burn}, through a potential:
+  \begin{equation}
+    \frac{\dd s}{\dd t} = \frac{\eta^{1/d}}{\tau_b}
+      \Bigl(\frac{\max(P, 0)}{P_R}\Bigr)^{n_H},
+    \qquad \lam = 1 - e^{-s^{d}},
+    \label{eq:halo-burn}
+  \end{equation}
+  which is the 2016 rate exactly (by the chain rule), without its small
+  regularizing constant. $d$ is a fractal dimension of the burn, from 2
+  (cylinders) to 3 (spheres).
+\end{enumerate}
+
+\begin{center}\small
+\begin{tabular}{@{}l l l l@{}}
+\toprule
+Key & Symbol & Units & Meaning \\
+\midrule
+\key{ED0}   & $E_{D0}$  & GPa$^{1/2}$\,cm$^3$/g & activation scale \\
+\key{BETAH} & $\beta_H$ & -- & sharpness of activation \\
+\key{TAUD}  & $\tau_d$  & \textmu s & hot-spot dissipation time \\
+\key{DELTA} & $\delta$  & -- & reaction-deficit exponent of dissipation \\
+\key{DFRAC} & $d$       & -- & fractal dimension of the burn, 2 to 3 \\
+\key{NH}    & $n_H$     & -- & burn-rate pressure exponent \\
+\key{TAUB}  & $\tau_b$  & \textmu s & burn time at $P = P_R$, $\eta = 1$ \\
+\key{PR}    & $P_R$     & GPa & pressure unit (only $\tau_b P_R^{n_H}$ matters) \\
+\bottomrule
+\end{tabular}
+\end{center}
+HALO is not gated: it burns wherever $\eta > 0$, inside method AV's smeared
+shock too.
+
+\paragraph{Planned tests.} $\eta$ and $P$ constant against $\lam = 1 -
+\exp(-(t/\tau)^d)$; no compression, no burn; dissipation alone against its
+exponential; $E_D$ for a double shock below a single shock to the same state.
+
+% ---------------------------------------------------------------------
+\section{CLAUDE}
+\label{sec:claude}
+
+\begin{underdev}[: planned, the last of the six]
+Designed (\code{doc/design/burn_models.md}), not yet built; three questions
+on its formulation are open (below).
+\end{underdev}
+
+CLAUDE (Centers Lit by Accumulated Unrecoverable Dissipated Energy) was
+proposed by Claude (Anthropic) in 2026, at D.~E.~Kittell's invitation. It is
+built from the key areas of the 2025 survey (\cite{kittell2025sand}, \S 2.4):
+burn centers lit by the shock, growth by deflagration and overlap (a
+fourth, quenching, is held back; below), each written so it can be tested
+exactly.
+\begin{enumerate}
+\item \textbf{Activation:} $w \mathrel{+}= \max(\Delta e + P\Delta v, 0)$
+  each step, a measure of the irreversible work done on the cell (whether
+  it is to be read as dissipated energy or as entropy is open, below). A
+  double shock does less of it than a single shock to the same state, so
+  desensitization comes without a switch or a detector.
+\item \textbf{Burn centers from a finite pool:} $n(w) = N_{\max}\bigl(1 -
+  \exp[-(w/W_0)^{k_w}]\bigr)$ per unit volume, new centers born whenever $w$
+  rises (at a reshock too).
+\item \textbf{Growth at a deflagration speed:} each center's radius grows at
+  $G = D_0\,(\max(P, 0)/P_R)^{n_g}$.
+\item \textbf{Exact overlap, with history} (Avrami's extended volume; Farjas
+  and Roura \cite{farjas2006}): with the moments $M_j$, the sum over
+  centers of their radius to the power $j$ per unit volume,
+  \begin{equation}
+    \lam = 1 - \exp\Bigl(-\frac{4\pi}{3}M_3\Bigr), \qquad
+    M_0' = \dot n, \quad M_1' = G M_0, \quad M_2' = 2 G M_1, \quad
+    M_3' = 3 G M_2,
+    \label{eq:claude}
+  \end{equation}
+  exact for any history of nucleation and growth. Centers born at a reshock
+  start small and grow on their own clock. For $G$ constant over a step every
+  radius grows by $\Delta R = G\Delta t$, and the moments' update is exact:
+  $M_j \leftarrow \sum_{i \le j}\binom{j}{i}\Delta R^{\,j - i} M_i$, then
+  $M_0 \mathrel{+}= \Delta n$.
+\end{enumerate}
+Its history: $w$, $M_0$ to $M_3$.
+
+\begin{center}\small
+\begin{tabular}{@{}l l l l@{}}
+\toprule
+Key & Symbol & Units & Meaning \\
+\midrule
+\key{NMAX} & $N_{\max}$ & 1/mm$^3$ & burn centers available ($N_{\max}^{-1/3}$ their spacing) \\
+\key{W0}   & $W_0$      & kJ/g     & dissipated energy that lights 63~\% of them \\
+\key{KW}   & $k_w$      & --       & sharpness of lighting \\
+\key{D0}   & $D_0$      & mm/\textmu s & deflagration speed at $P_R$ \\
+\key{NG}   & $n_g$      & --       & its pressure exponent \\
+\key{PR}   & $P_R$      & GPa      & reference pressure \\
+\bottomrule
+\end{tabular}
+\end{center}
+Every constant is meant to be measurable: $N_{\max}$ from the
+microstructure, $D_0$ and $n_g$ from deflagration data, before any shock
+data, leaving only $W_0$ and $k_w$ to fit to a single-shock run distance. A
+quench time is held back as a seventh constant, to be added only if the
+double-shock study needs it.
+
+\paragraph{Open questions} (from the review of v1.4.0, finding F-12;
+\code{audits/README.md}):
+\begin{enumerate}
+\item \emph{What $w$ is.} The sum is dissipated energy ($\int T\,\dd s$,
+  kJ/g, $W_0$'s unit), not entropy; either can serve, and both desensitize a
+  double shock. The design note's ``entropy production'' is to be settled as
+  one or the other.
+\item \emph{Does $w$ converge under method RS?} With method AV the sum
+  converges to the exact integral along the shock's path. Method RS captures
+  a shock in one or two cells and a few steps whatever the mesh, so a sum
+  with $P^n\Delta v$ is off by a fixed fraction there. A trapezoidal $P$, and
+  the planned test of $w$ across a shock against the exact jump, with both
+  methods on several meshes, come before ``$w$ converges with the mesh'' is
+  claimed.
+\item \emph{Per initial or per current volume.} $N_{\max}$ and the moments:
+  per unit initial volume (the Lagrangian cell's mass) or current volume? A
+  cell compressed 1.4 to 2 times needs the factor $\rho/\rhoz$ one way or
+  the other. Also, centers added at the end of a step make nucleation's
+  timing first order in $\Delta t$ (growth's update is exact).
+\end{enumerate}
+
+\paragraph{Planned tests.} Every center lit at once with $G$ constant gives
+Hill and Zimmermann's $\lam = 1 - \exp(-(\pi/6)\hat t^{\,3})$ exactly, with
+$\hat t$ the time over that for a center's diameter to reach the spacing
+$N_{\max}^{-1/3}$ \cite{hill2009}; the moment update against direct
+quadrature of Avrami's integral at 50 digits for a varying history; and $w$
+across a shock against the exact jump.
+
+% ---------------------------------------------------------------------
+\section{The six together}
+\label{sec:six-together}
+
+Once built, each model will be calibrated to approximate HVRB's Material~X
+for a single shock (run distance, the PDV record), then compared on double
+shocks, where the models with a shock history (the three gated by the lead
+shock, HALO and CLAUDE) should part from HVRB: shock desensitization. Each
+is held to the same standard as ThermalCascade, without reference data of
+its own: unit tests at 50 digits, closed-form limits in a run, convergence
+with the mesh under both methods (the detonation speed to $D_{CJ}$), and bit
+for bit on threads and in the inert limit.

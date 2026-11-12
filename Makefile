@@ -266,6 +266,29 @@ test: $(EXECS) $(UNIT_TESTS)
 	BIN=$(EXECS) ./tests/run_deck_tests.sh
 	BIN=$(EXECS) ./tests/run_omp_tests.sh
 	BIN=$(EXECS) ./tests/run_hist_tests.sh
+	python3 ./tests/manual_check.py
+
+############################################################
+###  NOTES: 'make manual' builds the manual, doc/manual/
+###  bitwhiz_manual.pdf (pdflatex: its figures first, then
+###  three passes for the contents and the references), with
+###  the version from git describe on every page. The PDF and
+###  LaTeX's own files are not kept in git; the PDF goes with
+###  each release (RELEASING.md). Its trace tags are checked
+###  first (tests/manual_check.py, also in 'make test').
+############################################################
+MANUAL = doc/manual
+manual:
+	python3 ./tests/manual_check.py
+	cd $(MANUAL)/figures && for f in *.tex; do \
+	   pdflatex -interaction=nonstopmode -halt-on-error $$f > /dev/null \
+	   || { echo "manual: figure $$f failed (see its .log)"; exit 1; }; done
+	cd $(MANUAL) && v=$$(git describe --tags --dirty 2>/dev/null || echo development) \
+	   && for i in 1 2 3; do \
+	   pdflatex -interaction=nonstopmode -halt-on-error -jobname=bitwhiz_manual \
+	   "\def\bwversion{bitwhiz $$v}\input{bitwhiz_manual}" > /dev/null \
+	   || { echo "manual: failed (see $(MANUAL)/bitwhiz_manual.log)"; exit 1; }; done
+	@echo "manual: $(MANUAL)/bitwhiz_manual.pdf"
 
 ############################################################
 ###  NOTES: 'make release' builds the optimized executable,
@@ -386,5 +409,5 @@ bmpclean:
 .f95.o:
 	$(FC) $(INCLUDES) -c $(FCFLAGS) $(OMPFLAGS) $< -o $@
 
-.PHONY : bitwhiz test release runs clean tidy bmpclean ls_replay FORCE
+.PHONY : bitwhiz test release runs clean tidy bmpclean ls_replay manual FORCE
 # End of the makefile

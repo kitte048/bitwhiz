@@ -159,3 +159,18 @@ stays.
    At release only (DK)
 5. Authors: D. E. Kittell (with Claude), as the code's headers have it? 
    Yes (DK)
+
+## As built: M1, the skeleton and the burn chapters (Nov 9, 2026)
+
+`doc/manual/` (its `README.md` has the conventions): `bitwhiz_manual.tex`
+and a file per chapter, chapters 6 (the burning cell) and 7 (the six burn
+models) written and the rest outlined (`\tocome`); the figure of HVRB's
+topology as the manual's own copy; `checks/ch6_closure.py` and
+`checks/ch7_models.py`, every closed form of the two chapters derived from
+its definitions (sympy, mpmath). `make manual` builds the PDF (31 pages);
+`tests/manual_check.py` checks its trace tags (26 so far) and runs in
+`make test`. `CONTRIBUTING.md` (done means documented) and `RELEASING.md`
+(the PDF with each release) gained their lines. Read against the code by an
+independent reviewer before release: two errors (the hold's place in the
+cycle, a test described wrongly) and two unsupported statements fixed, the
+rest clarified.

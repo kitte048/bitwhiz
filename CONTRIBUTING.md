@@ -34,6 +34,10 @@ can be agreed before the work. Then, on a branch of your own:
    with a check: a unit test against an independent reference (the
    `tests/*_reference.py` scripts compute theirs at 50 digits), an exact
    solution, or the reference data in `tests/verification/`.
+   **A change to what the code computes is not done until its manual
+   section is** (`doc/manual/`, `doc/manual/README.md`): the equations as
+   built, their trace tags (`tests/manual_check.py`), and the chapter's
+   "checked against" line.
 3. **Results stay bit for bit** with any number of OpenMP threads, and a deck
    that does not use a new feature gives the same bits as before it.
 4. **Follow the code's style:** Fortran 2018 with `implicit none`, the house
@@ -55,7 +59,8 @@ ThermalCascade did (`doc/design/burn_models.md`, steps 3 to 5): an equation
 sheet first; a row in the burn table (`src/modules/btab_mod.f95`: its name,
 its deck keys, one meaning each, and its per-cell slots) and a module of its
 own for its rate; the shared closure, products and, if it needs one, the lead
-shock; and its tests: a unit test against a 50-digit reference, its inert
+shock; its section in the manual's burn-model chapter (`doc/manual/`); and
+its tests: a unit test against a 50-digit reference, its inert
 limit, decks for its errors, and a study of its detonation against mesh, AV
 and RS.
 

@@ -1,0 +1,46 @@
+\chapter{Notation}
+\label{app:notation}
+
+Symbols of \cref{ch:burning-cell,ch:burn-models}; units are \bw's. The
+chapters to come add theirs.
+
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}l Y l@{}}
+\toprule
+Symbol & Meaning & Units \\
+\midrule
+$\rho$, $V = 1/\rho$ & density, specific volume & g/cm$^3$, cm$^3$/g \\
+$\rhoz$, $V_0$ & at rest (deck \key{R0}) & g/cm$^3$, cm$^3$/g \\
+$\eta = 1 - \rhoz/\rho$ & compression & -- \\
+$e$ & specific internal energy & kJ/g \\
+$P$, $q$ & pressure; method AV's artificial viscosity & GPa \\
+$c$, $Z = \rho c$ & sound speed; impedance & km/s; GPa\,\textmu s/mm \\
+$\Gz$, $C_0$ & Gr\"uneisen coefficient at rest; bulk sound speed (deck
+  \key{G0}, \key{C0}) & --, km/s \\
+$\Pi(\rho)$ & the volume-only part of the Mie--Gr\"uneisen pressure & GPa \\
+$e_S$, $T_S$ & the isentrope from rest, and its temperature & kJ/g, K \\
+$e_c$, $\Pc$ & the zero-temperature energy and pressure, \cref{eq:cold} &
+  kJ/g, GPa \\
+$\Cv$, $T_0$ & specific heat (both phases), temperature at rest (deck
+  \key{CV}, \key{T0}) & kJ/(g\,K), K \\
+$T$, $\thv = \Cv T$ & temperature, and its energy & K, kJ/g \\
+$\gamma$, $Q$ & the products' ratio of specific heats, heat of reaction
+  (deck \key{GAMMA}, \key{Q}) & --, kJ/g \\
+$\lam$ & extent of reaction (products' mass fraction) & -- \\
+$\Ps$, $\Pg$ & the solid's and the products' pressures & GPa \\
+$\rho_h$, $e_{S,h}$ & where a pulling solid is held, and $e_S$ there & g/cm$^3$, kJ/g \\
+$\sigma$ & thermicity, $\rho c^2\sigma = (\partial P/\partial\lam)_{\rho,e}$ & -- \\
+$\phi$, $\Phi$, $g(\lam)$ & HVRB's history variable, potential and topology & --, 1/\textmu s, -- \\
+$\Hug$ & the Hugoniot residual, \cref{eq:hugoniot-residual} & kJ/g \\
+$\PS$, $t_s$ & the lead shock's pressure and time & GPa, \textmu s \\
+$r$ & a first-order rate, $\dd\lam/\dd t = r(1 - \lam)$ & 1/\textmu s \\
+$n$, $\Delta t$ & time level; time step & --, \textmu s \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Names in the code.} Module \code{temperature} calls the carried
+isentrope $e_S$ \code{ec}; module \code{mixture} calls $e_c$ \code{ecs} and
+$\thv$ \code{theta}; module \code{burn} keeps $\rho_h$ and $e_{S,h}$ as
+\code{rhold} and \code{eshold}. The equation sheets in \code{doc/} write
+$\mathcal{H}$ for $\Hug$ and $e_c$ as here.
