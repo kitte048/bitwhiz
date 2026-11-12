@@ -6,7 +6,7 @@ authors:
   - family-names: Kittell
     given-names: David E.
     orcid: "https://orcid.org/0000-0002-7065-6780"
-version: 1.5.0
+version: 1.6.0
 doi: 10.5281/zenodo.23999297
 date-released: 2026-11-12
 license: Apache-2.0
@@ -18,8 +18,8 @@ abstract: >-
   (Purdue, Fall 2026). It has two solution methods in one code (artificial
   viscosity, and Godunov's method with an acoustic Riemann solver at first or
   second order), the Mie-Grüneisen equation of state with temperature, the
-  History Variable Reactive Burn (HVRB) and ThermalCascade (gated by a
-  lead-shock detector) with ideal-gas products,
+  History Variable Reactive Burn (HVRB), ThermalCascade and FlashFire (both
+  gated by a lead-shock detector) with ideal-gas products,
   starting-velocity profiles, spall, tracers, a history file of the whole
   mesh, and pictures. The code is checked against 50-digit references, exact
   solutions and independent reference data, and described in its theory and
@@ -33,6 +33,7 @@ keywords:
   - reactive burn
   - HVRB
   - ThermalCascade
+  - FlashFire
   - Mie-Grüneisen
   - Riemann solver
   - artificial viscosity

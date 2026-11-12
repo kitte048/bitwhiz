@@ -59,7 +59,7 @@ Medium term, the reactive physics:
    ramp's foot opens the gate, P_s -> 0: DK's option (a)), Nov 7: 1.4.0.
    1.5.0, the manual (`doc/design/manual.md`), Nov 12; step 6, FlashFire
    (`burn = flashfire`, `study_ffire.py`; RK4 sub-steps, T following lam:
-   DK, Nov 12), on branch `flashfire` for 1.6.0. Next, step 7,
+   DK, Nov 12), released as 1.6.0. Next, step 7,
    StochasticIgnite. Then JWL products, the 25 zones/mm difference
    (section 3). The v1.4.0 review's
    open findings are in section 8 (`audits/README.md` tracks them).
