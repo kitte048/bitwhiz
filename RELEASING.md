@@ -79,6 +79,7 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   | 1.3.4 | 10.5281/zenodo.23999298 | Nov 6, 2026 |
   | 1.4.0 | 10.5281/zenodo.24048196 | Nov 8, 2026 |
   | 1.4.1 | 10.5281/zenodo.24092238 | Nov 9, 2026 |
+  | 1.5.0 | 10.5281/zenodo.24169923 | Nov 12, 2026 |
 
 **nanoHUB's compiler is gfortran 8.3** (Debian 10). Keep the code to what
 gfortran 8 accepts; Fortran 2018 features it lacks, and their replacements
