@@ -860,3 +860,158 @@ whose reaction zone the mesh resolves.
 
 **The manual:** chapter 7's FlashFire section, as built, with its trace
 tags; chapter 1 and the appendices updated. No course equation sheet (DK).
+
+## Step 7, StochasticIgnite: the plan (approved Nov 12, 2026)
+
+StochasticIgnite as designed above ("StochasticIgnite"), with DK's change
+of Nov 12: Z varies in time, as an Ornstein-Uhlenbeck process, instead of
+being frozen. Three prototypes were run first (Python, in 
+`Claude outputs/si_prototypes/`); their numbers are below.
+
+### What the survey proposed, what bitwhiz repairs, and what it extends
+
+The manual's section and the example deck will say this, in three layers
+(DK: "the guide will need to say how we remedied the proposed model"):
+
+| | As proposed (SAND2025-09228 §5.2.2) | In bitwhiz | Why |
+|---|---|---|---|
+| Rate | dlam/dt = g(lam) (mu + sigma Z) (1 + P_s/P_ref)^m | the same, with (mu + sigma Z)+ | |
+| g(lam) | not given | KJMA as a potential: lam = 1 - exp(-phi^a), dphi/dt the rest | **repair**: the model is not defined without it; the potential makes the step exact |
+| mu + sigma Z < 0 | not addressed | floored at 0 | **repair**: a cell can not burn backward |
+| P_S | the lead shock's | gated by the lead shock, P_S frozen there | **repair**, as the other two gated models |
+| Z in time and space | "Z" random; when and where it is drawn not said | an Ornstein-Uhlenbeck process in time, correlation time TAUZ; one value per bin of width LC of the material's initial position | **repair** (some choice is needed) **and extension** (DK, Nov 12): one key spans both natural readings (below) |
+| Z's values | not said | the bin's starting Z from the atmospheric table by SEED; its later steps from a counter-based generator | reproducible bit for bit on any number of threads |
+
+**Both natural readings of the proposal are limits of the OU model.**
+TAUZ -> infinity is a frozen field, one Z per bin for the whole run (the
+design of Nov 6, kept as this limit); TAUZ = 1e30 gives it exactly, since
+exp(-dt/TAUZ) rounds to 1 and the noise term to 0, with no special case.
+The other reading, a fresh Z every cycle, is not a model at all: its
+result depends on the time step, and as dt -> 0 the noise averages away
+(measured below). The OU process gives that reading a meaning: fluctuations
+with a correlation time of their own, which the mesh and time step then
+resolve.
+
+**The white-noise (Langevin-in-phi) limit is not reachable with the floor,
+and so is not part of the model.** As TAUZ -> 0 with sigma^2 TAUZ fixed,
+sigma -> infinity, and the floored rate's mean, E[(mu + sigma Z)+] = mu
+Phi(mu/sigma) + sigma phi(mu/sigma) (Phi, phi the standard normal's
+distribution and density), grows as sigma/sqrt(2 pi) without bound. A
+Langevin equation in phi needs a phi that can decrease: a cell burning
+backward. As TAUZ -> 0 at a fixed sigma, the model goes instead to a
+deterministic burn at that mean rate, the floor's rectification: a closed
+form, and a test.
+
+### The model, as it will be built
+
+    Z:          Z <- Z exp(-h/TAUZ) + sqrt(1 - exp(-2h/TAUZ)) xi,  xi ~ N(0, 1)
+    phi:        phi <- phi + (MU + SIGMA Z)+ (1 + max(P_s, 0)/PR)^NS h
+    lam:        lam = 1 - exp(-phi^AVRAMI)        (1 - exp(-x) as tc_om)
+
+in sub-steps h of the hydro's dt, h <= TAUZ/10 (an algorithm constant; one
+sub-step when TAUZ >= 10 dt). Z evolves from t = 0 in every cell of the
+material, its stationary statistics from the start; phi and lam move only
+once the lead shock is marked (the gate). The OU step is exact in
+distribution for any h; the error is the quadrature of the rate over the
+sub-step (left point, as the prototype measured).
+
+### The random numbers
+
+- **The atmospheric table** (`rand_mod`, 20,000 values from RANDOM.ORG,
+  2025), checked: all distinct, all strictly inside (0, 1) (min 4.2e-6, max
+  0.999955), mean 0.4985 (0.5, sigma 0.002), variance 0.08325 (1/12 =
+  0.08333), Kolmogorov-Smirnov p = 0.51, chi-square (20 bins) p = 0.86,
+  lag-1 correlation 0.0018 (sigma 0.007). Sound. Bin j's starting Z is
+  AS241 of table entry mod(SEED + 7919 j, 20000) + 1 (7919, prime, shares
+  no factor with 20,000 = 2^5 5^4, so 20,000 bins in a row read 20,000
+  different entries). Its header ("Named RGB Color Values") and its own
+  kinds are tidied, the review's F-13.
+- **The steps' draws**, one per bin per sub-step, millions in a run, more
+  than any table: a counter-based generator, u = U(SplitMix64 chained over
+  (SEED, j, n, s)) for bin j, cycle n, sub-step s, mapped to (0, 1) as
+  ((x >> 11) + 0.5) 2^-53. A pure function, so every cell of a bin gets the
+  same draw, and any number of threads the same bits. Prototyped: over
+  200,000 draws, uniform (KS p = 0.75), mean 0.5003, variance 0.08338;
+  correlations between adjacent cycles -0.002, adjacent bins 0.001, two
+  seeds 0.007 (sigma 0.002 to 0.005). In Fortran the 64-bit products are
+  formed from 16-bit pieces, so no signed integer overflows; the unit test
+  checks it against the Python's bits.
+- **AS241** (Wichura 1988), uniform to standard normal: against 50 digits
+  (mpmath), 3.3e-16 or better relative over 2,000 points and the tails, u
+  from 2^-54 (the generator's smallest) to 1 - 2^-53.
+
+### Measured: the OU model in a cell at constant state
+
+One cell after its mark, MU = 2/us, S = 1, phi(0.5 us), 200,000 members (the
+Monte Carlo sigma of a variance is 3e-3 relative):
+
+| | dt = 0.02 | 0.01 | 0.005 | 0.0025 us |
+|---|---|---|---|---|
+| var(phi), TAUZ = 0.01 us, no sub-steps | +33 % | +8.8 % | +1.2 % | +0.09 % |
+| var(phi), TAUZ = 0.1 us | +0.2 % | -0.3 % | +0.2 % | +0.6 % |
+| var(phi), TAUZ = 1 us | +0.3 % | -0.05 % | +0.2 % | -0.5 % |
+
+against the closed form 2 sigma^2 S^2 TAUZ^2 (t/TAUZ - 1 + exp(-t/TAUZ))
+(sigma = 0.25 MU, so the floor is inactive). A step longer than TAUZ/4
+misses the fluctuation within it; with sub-steps of TAUZ/4 and TAUZ/10 the
+variance at TAUZ = 0.01 us and a hydro dt of 0.02 us is within the Monte
+Carlo noise (+0.3, +0.4 %), the mean within 2.4e-4. Hence h <= TAUZ/10. With
+the floor active (sigma = MU), the mean of phi is within the noise of a
+fine-step reference at every dt tried, and the floored mean rate matches
+its closed form (2.0081 against 2.0085 at sigma = 1; 9.013 against 9.019
+at sigma = 20).
+
+### The table, the keys, the state
+
+| Key | Units | Check | Meaning |
+|---|---|---|---|
+| MU | 1/us | >= 0 | mean rate |
+| SIGMA | 1/us | >= 0 | its standard deviation |
+| AVRAMI | - | > 0 | Avrami exponent a |
+| NS | - | >= 0 | exponent on (1 + P_s/PR) (shared) |
+| PR | GPa | > 0 | reference pressure (shared) |
+| LC | mm | > 0 | correlation length of Z (bin width) |
+| SEED | - | an integer, 0 to 19,999 (a new check) | the realization |
+| TAUZ | us | > 0 | correlation time of Z (1e30: frozen) |
+
+npar 8 (= npar_max). **State: the detector's five, phi and Z: 7, so
+nst_max goes from 6 to 7 (DK's decision: the high-water mark).** A cell's
+bin j comes from its initial position, its layer's left face plus (k -
+kfirst + 1/2) cell widths, over LC from x = 0 (the impact plane): one
+realization across layers of the same material. Not stored: a cell keeps
+its initial position's bin, being Lagrangian. Mesh refinement keeps every
+bin's starting Z (the bins are the material's, not the mesh's); the later
+draws, keyed by cycle, differ with the mesh, so a single run's path does
+not converge, only the ensemble's statistics.
+
+### Tests
+
+- `tests/test_sign.f95` against `tests/sign_reference.py` (50 digits): AS241
+  over the range and the tails; the generator's bits against the Python
+  reference (so the 16-bit products are right); the OU step's statistics
+  (mean, variance, lag-1 correlation exp(-h/TAUZ) over 10^5 draws, within
+  their sampling error); SIGMA = 0 against KJMA's closed form, lam = 1 -
+  exp(-(MU S t)^a), exact; TAUZ = 1e30, Z frozen bit for bit; the floored
+  mean rate against mu Phi + sigma phi in the fast-TAUZ limit; the same
+  SEED, the same bits.
+- `test_btab`: StochasticIgnite's row, the SEED check, nst_max = 7.
+- Decks: good (AV, RS; also OpenMP, release, history decks), the inert
+  limit (MU = SIGMA = 0), bad decks (a key left out, SEED out of range or
+  not an integer, TAUZ = 0, LC <= 0, another model's key).
+- `tests/verification/study_sign.py`: E1, the lead shock in the hydro
+  against its replay (SIGMA = 0, a = 1: a clock, so the first lam gives P_s
+  back); E2, **an ensemble**: N seeds of the example deck at 2.00 km/s,
+  25 to 200 zones/mm, AV and RS: the mean and spread of the run distance
+  and of D, converging with the mesh (the mean of D within 1 % of D_CJ);
+  E3, TAUZ = 1e30: each bin's Z the same on every mesh. Outside `make
+  test`; its run time set by N.
+- HVRB, ThermalCascade and FlashFire bit for bit.
+
+### The example deck and the manual
+
+`input/me697_sign_2p00.deck`, method RS, order 2: constants chosen, as the
+others' were, so that 2.00 km/s detonates near HVRB's 3.5 mm on average,
+with SIGMA large enough that the spread of run distance over seeds shows,
+and TAUZ and LC on the reaction's scales (to be set by trial). The manual's
+section, from "under development" to as built, with the three-layer table
+above.
