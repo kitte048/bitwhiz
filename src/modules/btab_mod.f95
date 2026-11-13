@@ -14,6 +14,7 @@ module burn_table
 !       npar_max, nst_max             the most constants and history
 !                                     variables any model has, per cell
 !       nbkey, bkey_name(j), bkey_check(j), bkey_note(j)
+!       bkey_max(j)                   a key's largest value (huge: none)
 !                                     every burn key, each listed once
 !       burn_npar(ib), burn_key(s,ib) model ib's keys, slot s = 1 to
 !                                     burn_npar(ib), as indices j into
@@ -72,14 +73,19 @@ module burn_table
 !                                     TA, LAM0 (NS, PR shared); a
 !                                     new check, chk_open01 (LAM0);
 !                                     its slots ff_*
+!    11/12/26    D. E. Kittell        bkey_max, a key's largest value:
+!                (with Claude)        XR at most 25, where hvrb_lambda's
+!                                     series still keeps lam to
+!                                     round-off (the v1.4.0 review,
+!                                     F-03)
 !
 !**********************************************************************!
-use bits, only: int32
+use bits, only: int32, dp
 implicit none
 private
 
 public :: npar_max, nst_max, nburn, burn_none, burn_hvrb, burn_names, &
-   burn_long, nbkey, bkey_name, bkey_check, bkey_note, chk_any, &
+   burn_long, nbkey, bkey_name, bkey_check, bkey_note, bkey_max, chk_any, &
    chk_positive, chk_nonneg, burn_npar, burn_key, burn_nst, burn_uses_ls, &
    bkey_index, burn_takes
 public :: hv_PR, hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi
@@ -130,6 +136,14 @@ character(len=32), parameter, dimension(nbkey) :: bkey_note = (/ &
    '1/us, rate constant             ', 'exponent on 1 - lam             ', &
    'exponent on lam                 ', 'K, activation temperature       ', &
    'ignition fraction at the shock  ' /)
+!*** And its largest value (huge(1.0_dp): none). XR above 25 is refused:
+!*** hvrb_lambda's series for small phi loses digits there (1e-14 at 30,
+!*** 7e-6 at 80, against 50 digits; input/README.md, the v1.4.0 review's
+!*** F-03), and burns use XR of a few.
+real(kind=dp), parameter, dimension(nbkey) :: bkey_max = (/ &
+   huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), 25.0_dp, huge(1.0_dp), &
+   huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), &
+   huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp) /)
 
 !*** The models' rows: their keys in slot order (indices into the keys
 !*** above, 0 past the last) and their history variables.

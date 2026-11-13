@@ -39,14 +39,14 @@ column says where a fix was made, or where an open finding is to go.
 |---|---|---|---|---|
 | F-01 | Moderate | The frozen AV sheet says the end face carries q/2 "and what bitwhiz does"; since 1.3.2 it does not | fixed, 1.4.1 | recorded in `doc/README.md`, "Where the code has moved past a sheet" (the sheet stays frozen); the manual states what the code does |
 | F-02 | Low | The ThermalCascade sheet has the rate law only (not the exact step, T at the step's start, the gate's timing, P_s < 0 as 0, the parameters) | open | the manual's burn-model chapter, 1.5.0 (`doc/design/manual.md`) |
-| F-03 | Low | `hvrb_lambda`'s series loses precision for X_R above about 40 (6.7e-6 at 80) | fixed, 1.4.1 (documented) | the range stated in `input/README.md` (re-measured: 7e-16 or better to X_R = 25, 1e-14 at 30); a deck guard with F-10 (`TODO.md`, section 8) |
+| F-03 | Low | `hvrb_lambda`'s series loses precision for X_R above about 40 (6.7e-6 at 80) | fixed, 1.4.1 (documented); 1.6.1 (guarded) | the range stated in `input/README.md` (re-measured: 7e-16 or better to X_R = 25, 1e-14 at 30); from 1.6.1 the deck refuses XR above 25 (`bkey_max`, module `burn_table`) |
 | F-04 | Low | ThermalCascade's run distance moves with the mesh (3.30 to 3.00 mm, 25 to 200 zones/mm); first order in dt | open | `TODO.md`, section 8: E2 to 400 zones/mm; a predictor temperature later |
-| F-05 | Low | ThermalCascade's lam never reaches 1: "Cells burnt out" reads ~0; the solid EOS is always evaluated | open | `TODO.md`, section 8: a model-independent burnt-out count; a 1 - lam cutoff on evidence |
+| F-05 | Low | ThermalCascade's lam never reaches 1: "Cells burnt out" reads ~0; the solid EOS is always evaluated | (a) fixed, 1.6.1; (b) open | (a) the count is lam >= 1 - 1e-12 for every model (`maincode`); (b) a 1 - lam cutoff in the closure, on evidence (`TODO.md`, section 8) |
 | F-06 | Low | 23 calls to external procedures through implicit interfaces | open | `TODO.md`, section 8 |
-| F-07 | Info | The audit branch had no history, so "bit for bit against the commit before" could not be rechecked from it | open | give future reviews the full history; golden-output hashes in `make test` (`TODO.md`, section 8) |
+| F-07 | Info | The audit branch had no history, so "bit for bit against the commit before" could not be rechecked from it | open (DK) | give future reviews the full history. Golden-output hashes left outstanding by DK (Nov 12): bits are only guaranteed debug against release on one machine, not across platforms' math libraries, and chasing them is not worth it now (`TODO.md`, section 8) |
 | F-08 | Info | Stale pre-1.3.2 energy-drift numbers in `doc/design/materials.md` | fixed, 1.4.1 | annotated, not rewritten: `doc/design/materials.md`, `TODO.md` (section 3), `tests/verification/inert_gauges/README.md` |
-| F-09 | Info | A local `tk` shadows the temperature array `tk` in two procedures | open | `TODO.md`, section 8 |
-| F-10 | Info | `G0`, `S1` and `X_R` have no deck checks | open | `TODO.md`, section 8 (with F-03) |
+| F-09 | Info | A local `tk` shadows the temperature array `tk` in two procedures | fixed, 1.6.1 | renamed `ticks` (`maincode`) |
+| F-10 | Info | `G0`, `S1` and `X_R` have no deck checks | fixed, 1.6.1 | S1 > 0, G0 >= 0, XR <= 25 (module `deck`; decks `bad_s1_zero`, `bad_g0_neg`, `bad_hvrb_xr_big`) |
 | F-11 | Info | The lead shock's P_s and t_s at a local minimum; AV's P_s ~1 % high | open | accept: documented in `doc/design/burn_models.md`, step 4 |
 | F-12 | Info | Design remarks on the planned CLAUDE model | open | its three questions recorded in `doc/design/burn_models.md` (CLAUDE); settled in the manual's CLAUDE section, 1.5.0 |
 | F-13 | Info | `rand_mod`, `random`, `timestamp` compiled in, unused by a run | open | accept: reserved for StochasticIgnite |
@@ -55,4 +55,6 @@ column says where a fix was made, or where an open finding is to go.
 
 Opened Nov 8, 2026, from the review's finding register (section 3) and
 recommended actions (section 8). F-01, F-03 and F-08 answered in 1.4.1's
-docs (Nov 8); the "accept" proposals (F-11, F-13 to F-15) wait for DK.
+docs (Nov 8); F-05(a), F-09 and F-10 fixed, and F-03 guarded, in 1.6.1
+(Nov 12); F-07 left open by DK; the "accept" proposals (F-11, F-13 to
+F-15) wait for DK.

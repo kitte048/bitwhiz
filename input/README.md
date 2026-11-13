@@ -161,14 +161,14 @@ Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
 | `eos` | `mie_gruneisen` or `mie_gruneisen_t` | `mie_gruneisen` |
 | `R0` | g/cm^3 | required |
 | `C0` | km/s | required |
-| `S1` | - | required |
+| `S1` | - | required; > 0 |
 | `S2` | - | 0.0 |
-| `G0` | - | required |
+| `G0` | - | required; 0 or more |
 | `spall_strength` | GPa | 0.01 |
 | `CV` | J/(g K) | required with `mie_gruneisen_t`; not allowed without it |
 | `T0` | K | required with `mie_gruneisen_t`; not allowed without it |
 | `burn` | `hvrb`, `thermalcascade`, `flashfire` | none (inert) |
-| `PR`, `ZR`, `MR`, `XR`, `PI`, `TAU0` | GPa, -, -, -, GPa, us | each required with `burn = hvrb`; not allowed without it |
+| `PR`, `ZR`, `MR`, `XR`, `PI`, `TAU0` | GPa, -, -, -, GPa, us | each required with `burn = hvrb` (`XR` 25 or less); not allowed without it |
 | `HT`, `TC`, `GT`, `NS`, `PR` | 1/(us K^GT), K, -, -, GPa | each required with `burn = thermalcascade`; not allowed without it |
 | `KFF`, `AFF`, `BFF`, `TA`, `NS`, `PR`, `LAM0` | 1/us, -, -, K, -, GPa, - | each required with `burn = flashfire` (`LAM0` strictly between 0 and 1); not allowed without it |
 | `products` | `ideal_gas` | none: required with `burn` (no default) |
@@ -222,7 +222,7 @@ has no effect; with `MR = 1` it is a d^n law, lam = 1 - (1 - t/t_b)^(3/n) with
 a few in practice; lam is right to round-off (7e-16 relative or better,
 against 50 digits) for `XR` up to 25, and above that the series it uses for
 small phi loses digits: 1e-14 at `XR = 30`, 7e-12 at 40, 7e-6 at 80 (the
-v1.4.0 review's F-03). The deck does not stop a large `XR` yet (`TODO.md`). A
+v1.4.0 review's F-03), so the deck refuses `XR` above 25 (from 1.6.1). A
 cell that has started to burn holds no tension (P >= 0: the gas fills the
 cracks of a reacting solid) and never spalls; a cell at lam = 0 is the inert
 material, bit for bit. Burning changes lam at fixed rho and e, so energy is
@@ -246,7 +246,7 @@ cell and speeds the burn (the cascade); no burn at or below `TC`, for every
 Shaw 2010) from each cell's own history, the same for both methods, and frozen
 there: a later shock acts only through T. The step is exact for the rate at
 its start, so lam nears 1 without ever passing it (the run log's "cells burnt
-out" counts lam = 1 exactly, which only rounding reaches; read `XRN`). `GT =
+out" counts lam within 1e-12 of 1, for every model, from 1.6.1). `GT =
 0` makes the rate above TC a clock, `HT (1 + P_s/PR)^NS`; `HT = 0` never
 burns (the detector still runs, and changes nothing). A smooth ramp's foot is
 marked too, at a P_s that falls toward 0 as the mesh refines: then T alone

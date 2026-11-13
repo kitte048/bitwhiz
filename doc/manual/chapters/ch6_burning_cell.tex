@@ -368,10 +368,9 @@ $n + 1$.
 
 \paragraph{What a run reports.} The tracer file gets each tracer's $\lam$
 (column \key{XRN}), the history file an \key{XRN} variable, and the run log
-the first cell to react and the cells burnt out (those at $\lam = 1$
-exactly; a model whose step only approaches 1, as ThermalCascade's does,
-reaches it only by rounding, so its count is near 0 even behind a
-detonation: 0 of 350 cells in its example deck).
+the first cell to react and the cells burnt out: those with $1 - \lam <
+10^{-12}$, the same for every model (from 1.6.1; before, $\lam = 1$ exactly,
+which ThermalCascade's step, only approaching 1, reached by rounding alone).
 
 \section{Verification}
 \label{sec:burning-cell-verification}

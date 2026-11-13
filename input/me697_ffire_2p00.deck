@@ -173,5 +173,5 @@ Notes (ignored by the parser):
   sharp shock and a smooth burn behind it. Try method = AV to compare.
   KFF = 0 is the inert limit: no seed and no burn (the detector still
   runs, and changes nothing).
-- "Cells burnt out" on the screen counts lam = 1: FlashFire sets lam = 1
-  once 1 - lam < 1e-12, so its detonated cells are counted.
+- "Cells burnt out" on the screen counts the cells with lam within 1e-12
+  of 1, for every model; FlashFire sets lam = 1 there.

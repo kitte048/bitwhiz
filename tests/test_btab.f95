@@ -36,6 +36,8 @@ program test_btab
 !       and PR with both, the detector's five numbers its history, and
 !       its checks (KFF, AFF, BFF, TA >= 0; LAM0 strictly between 0 and
 !       1, the one key with chk_open01).
+!   10. Each key's largest value (bkey_max): XR's 25 (the v1.4.0
+!       review, F-03), every other key's none (huge).
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -48,11 +50,13 @@ program test_btab
 !                (with Claude)
 !    11/12/26    D. E. Kittell        9: FlashFire's row (step 6); 4
 !                (with Claude)        knows chk_open01
+!    11/12/26    D. E. Kittell        10: bkey_max (F-03)
+!                (with Claude)
 !
 !**********************************************************************!
-use bits, only: int32, quit
+use bits, only: int32, dp, quit
 use burn_table, only: npar_max, nst_max, nburn, burn_none, burn_hvrb, &
-   burn_names, burn_long, nbkey, bkey_name, bkey_check, bkey_note, &
+   burn_names, burn_long, nbkey, bkey_name, bkey_check, bkey_note, bkey_max, &
    chk_any, chk_positive, chk_nonneg, chk_open01, burn_npar, burn_key, burn_nst, &
    bkey_index, burn_takes, hv_PR, hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, &
    hv_phi, burn_uses_ls, burn_tcas, tc_HT, tc_TC, tc_GT, tc_NS, tc_PR, &
@@ -229,6 +233,18 @@ ok = ok .and. bkey_check( burn_key(ff_PR,burn_ffire) ) == chk_positive .and. &
    count( bkey_check == chk_open01 ) == 1
 call check( ok, '9. FlashFire: KFF AFF BFF TA NS PR LAM0 in slots 1-7 '// &
    '(NS and PR shared), the detector its history, its checks' )
+
+!*** 10. The largest values: XR 25, the rest none.
+ok = .true.
+do j = 1, nbkey
+   if ( trim(bkey_name(j)) == 'XR' ) then
+      ok = ok .and. abs( bkey_max(j) - 25.0_dp ) <= 0.0_dp
+   else
+      ok = ok .and. bkey_max(j) >= huge(1.0_dp)
+   end if
+end do
+call check( ok, '10. the largest values: XR at most 25 (F-03), no other '// &
+   'key bounded above' )
 
 if ( nfail > 0 ) then
    write(*,'(a,i0,a,i0,a)') ' test_btab: ', nfail, ' of ', ncheck, &

@@ -169,6 +169,6 @@ Notes (ignored by the parser):
   smeared over a few cells, and at 1.50 km/s its shocked solid stays
   nearer TC (about 590 K at 5 mm), so almost nothing burns. Or GT = 0:
   above TC the rate is then HT (1 + P_s/PR)^NS, a clock (input/README.md).
-- "Cells burnt out" on the screen counts lam = 1 exactly, which this
-  model's exact step reaches only when 1 - lam rounds away: a detonated
-  cell is at lam = 1 to round-off whether or not it is counted.
+- "Cells burnt out" on the screen counts the cells with lam within 1e-12
+  of 1 (from 1.6.1, for every model): this model's exact step only nears
+  1, and a detonated cell is that close.

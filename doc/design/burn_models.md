@@ -666,7 +666,8 @@ reacts first at 1.27 us and does not detonate within 10 mm; 1.25 and below
 never pass TC and do not burn. The run log's "cells burnt out" counts lam
 = 1 exactly, which this exact step reaches only by rounding (0 of 350 at
 2.00 km/s, with lam 1 to round-off behind the front); left as it is, since
-changing it would change HVRB's screen output.
+changing it would change HVRB's screen output. (Later, 1.6.1: counted from lam >=
+1 - 1e-12 for every model, the v1.4.0 review's F-05(a); the screen only.)
 
 ## Step 6, FlashFire: the plan (approved Nov 12, 2026)
 

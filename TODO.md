@@ -642,7 +642,7 @@ later:
       `count(lam >= one)`) reads about 0 (1 of 350 in the example, by
       rounding). Count burn-out the same way for every model (lam >= 1 -
       1e-12, or report the cells above 0.999); the screen changes, the
-      results do not. And (b): with lam < 1 the solid's EOS is always
+      results do not. (a) done in 1.6.1: lam >= 1 - 1e-12. Open, (b): with lam < 1 the solid's EOS is always
       evaluated, so a reactant with S2 >= 0 compressed past its Hugoniot's
       reach would stop the run where HVRB would not; a cutoff in 1 - lam,
       made on evidence, when such a reactant burns (`materials.md`).
@@ -655,14 +655,20 @@ later:
       "bit for bit against the commit before" could not be rechecked from
       it), and add golden-output hashes for a few HVRB and ThermalCascade
       decks to `make test`, so bit for bit is checked, not only claimed.
-- [ ] **F-09, a shadowed name:** `heartbeat_line` and `finish_tracers`
+      The hashes are left outstanding (DK, Nov 12): bits are guaranteed
+      debug against release on one machine, not across platforms' math
+      libraries (a Mac and GitHub's Linux runners may round exp and pow
+      differently), so pinned outputs could chase a ghost. Not a
+      priority; the full history for reviewers still stands.
+- [x] **F-09, a shadowed name:** `heartbeat_line` and `finish_tracers`
       (`maincode.f95`) declare a local `tk` (clock ticks) that hides the
-      temperature array `tk`; rename it (`ticks`). No effect on results.
-- [ ] **F-10 with F-03, deck checks:** `G0` and `S1` take any real; check
+      temperature array `tk`; rename it (`ticks`). No effect on results. Done in 1.6.1: `ticks`.
+- [x] **F-10 with F-03, deck checks:** `G0` and `S1` take any real; check
       S1 > 0 (or warn), and stop or warn on `XR` above 25, where
       `hvrb_lambda`'s series loses digits (`input/README.md`).
 
-## 9. Publication: JOSS and SCCM 2027
+## 9. Publication: JOSS and SCCM 2027 Done in 1.6.1: S1 > 0, G0 >= 0,
+      XR <= 25 (`bkey_max`).
 - [x] **Public on GitHub, Nov 5, 2026.** JOSS's six months of public
       history run to May 5, 2027. (Nov 6: JOSS's guides make it a hard
       gate on the repository itself, public for more than six months with

@@ -111,6 +111,13 @@ program bitwhiz
 !                                     changed stops the run
 !    11/06/26    D. E. Kittell        burn_detect, the lead shock, each
 !                (with Claude)        cycle before burn_track (step 4)
+!    11/12/26    D. E. Kittell        The v1.4.0 review (audits/): the
+!                (with Claude)        cells burnt out counted from lam
+!                                     >= 1 - ff_lam_done (1e-12), the
+!                                     same for every model (F-05); the
+!                                     wall clock's local tk renamed
+!                                     ticks, no longer hiding module
+!                                     temperature's tk (F-09)
 !
 !**********************************************************************!
 use bits, only: dp,int32,int64,kpt6,zero,half,one,quit
@@ -133,6 +140,7 @@ use burn, only: alloc_burn,dealloc_burn,burn_step,burn_cell,burn_track, &
    first_time,first_x,lam_max, &
    burnable,src
 use deck, only: read_deck,write_resolved_deck,fmt_real
+use flashfire, only: ff_lam_done                ! burnt out: 1 - lam below it
 use pics, only: make_pictures
 use eos, only: mg_eos,eos_message,eos_ok
 use av, only: face_step,cell_step,cell_state,cell_dt
@@ -1502,7 +1510,8 @@ if ( burning ) then
          trim(layer(ilay(icell(first_k)))%name), first_time, first_x
       do l = 1, nlay
          if ( layer(l)%burn == 0 ) cycle
-         nz = count( lam(layer(l)%kfirst:layer(l)%klast) >= one )
+         nz = count( lam(layer(l)%kfirst:layer(l)%klast) >= &
+            one - ff_lam_done )             ! every model alike (F-05)
          write( kpt6, 203 ) 'Cells burnt out, '//trim(layer(l)%name), nz, &
             'of '//itoa(layer(l)%klast - layer(l)%kfirst + 1)
       end do
@@ -1837,7 +1846,7 @@ contains
    integer(kind=int32), intent(in) :: kdtu ! the cell that set it
    real(kind=dp), intent(in) :: pm        ! GPa, largest pressure
    integer(kind=int32) :: kk, ii
-   integer(kind=int64) :: tk
+   integer(kind=int64) :: ticks
    real(kind=dp) :: ub, ms, et, xm, chk, ek, ei
 
    !*** One pass: the conservation sums, and the running sum chk of
@@ -1883,10 +1892,10 @@ contains
    etot = et                              ! file (EK + EINT = ETOT up
    ekin = ek                              ! to round-off)
    eint = ei
-   call system_clock( tk )
+   call system_clock( ticks )
    write( khb, '(i9,f12.6,es12.4,i9,f14.6,es12.3,es12.3,es13.5,f11.3)' ) &
       ncycle, time, dtu, kdtu, pm, merr, eerr, xmom, &
-      real(tk-tick0,dp)/real(rate,dp)
+      real(ticks-tick0,dp)/real(rate,dp)
    flush( khb )
    end subroutine heartbeat_line
 
@@ -2080,9 +2089,9 @@ contains
    character(len=*), intent(in) :: how
    character(len=1024) :: info(13)
    integer(kind=int32) :: n
-   integer(kind=int64) :: tk
+   integer(kind=int64) :: ticks
    if ( .not. trc_open ) return
-   call system_clock( tk )
+   call system_clock( ticks )
    info    = ' '
    info(1) = 'bitwhiz tracers'
    info(2) = 'deck     : '//trim(deckname)
@@ -2099,7 +2108,7 @@ contains
    if ( running ) then
       write( info(11), '(a,i0,a,f10.6,a,f9.3,a)' ) 'cycles   : ', ncycle, &
          ', final time ', time, ' us, wall ', &
-         real(tk-tick0,dp)/real(rate,dp), ' s'
+         real(ticks-tick0,dp)/real(rate,dp), ' s'
       write( info(12), '(a,es13.5,a,es13.5,a,es13.5)' ) 'errors   : '// &
          'mass', merr, ', energy', eerr, ', x-momentum change', xmom - xmom0
       write( info(13), '(a,i0)' ) 'spall    : cells broken ', nbroken

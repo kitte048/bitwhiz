@@ -62,6 +62,10 @@ module deck
 !                                     constants by key, then by slot
 !    11/12/26    D. E. Kittell        A burn key's check chk_open01,
 !                (with Claude)        0 < x < 1 (FlashFire's LAM0)
+!    11/12/26    D. E. Kittell        The v1.4.0 review (audits/): S1
+!                (with Claude)        > 0 and G0 >= 0 (F-10); a burn
+!                                     key's largest value, bkey_max
+!                                     (XR <= 25, F-03)
 !
 !**********************************************************************!
 !
@@ -126,7 +130,8 @@ module deck
 use bits,  only: dp, int32, int64, zero, one, kpt6, nline
 use shock
 use burn_table, only: nburn, burn_none, burn_names, burn_long, nbkey, &
-   bkey_name, bkey_check, bkey_note, chk_positive, chk_nonneg, chk_open01, &
+   bkey_name, bkey_check, bkey_note, bkey_max, chk_positive, chk_nonneg, &
+   chk_open01, &
    burn_npar, burn_key, burn_takes, bkey_index
 use distributions, only: dist_t, dist_set, dist_nparam, dist_mean, &
    dist_names
@@ -1304,8 +1309,12 @@ contains
    case ('r0', 'c0', 's1', 's2', 'g0')
       call get_real(ln, key, val, x, ok)
       if (.not. ok) return
-      if ((k == 'r0' .or. k == 'c0') .and. x <= zero) then
+      if ((k == 'r0' .or. k == 'c0' .or. k == 's1') .and. x <= zero) then
          call deck_error(ln, trim(key)//' must be greater than zero')
+         return
+      end if
+      if (k == 'g0' .and. x < zero) then   ! (the v1.4.0 review, F-10)
+         call deck_error(ln, trim(key)//' must be 0 or more')
          return
       end if
       associate (m => material(imat_now))
@@ -1432,6 +1441,11 @@ contains
             ok = .false.
          end if
       end select
+      if (ok .and. x > bkey_max(j)) then
+         call deck_error(ln, trim(key)//' must be '//fmt_real(bkey_max(j))// &
+            ' or less (input/README.md, Material block)')
+         ok = .false.
+      end if
       if (.not. ok) return
       material(imat_now)%bkey(j) = x
       line_bk(j) = ln
