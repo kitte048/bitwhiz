@@ -1150,3 +1150,170 @@ threshold (P_s enters only through (1 + P_s/PR)^NS). A first set, NS = 1
 **The manual:** chapter 7's StochasticIgnite section, as built, with the
 three-layer table and its trace tags; chapter 1 and the appendices updated.
 No course equation sheet (DK).
+
+## Step 8, HALO: the plan (DK: approved Nov. 13, 2026)
+
+HALO as designed above ("HALO", DK's revision of Nov 6 of his 2016 ADRB
+model), made precise enough to build. Decisions marked **DK** are open; the
+rest follows from the approved design or from what steps 5 to 7 built.
+Checks below were computed for this plan (Python, 30 digits or scipy).
+
+### What 2016 wrote, what the Nov 6 revision changed, what the build adds
+
+| | ADRB, 2016 | HALO (Nov 6, approved) | The build (this plan) |
+|---|---|---|---|
+| Activation measure | E_D += sqrt(max(De (1 - lam), 0) max(-Dv, 0)) per step | the root over the product, De Dv: E_D -> integral of sqrt(sigma) dv over compression, mesh-independent | De, Dv from the database's old and new rho and e (no extra state; below) |
+| Hot spots | eta += DErf - gamma eta (1-lam)^delta dt (explicit) | dissipation over TAUD; Erf of (E_D/E_D0)^BETAH | the exact step: decay first, then the new activation; 0 <= eta <= Erf(...) <= 1 always |
+| Burn | lam += F eta^(1/d) p^n (eps - ln(1-lam))^((d-1)/d) (1-lam) dt | a potential: ds/dt = eta^(1/d) (max(P,0)/PR)^NH/TAUB, lam = 1 - exp(-s^d); no eps | exact for eta and P constant over the step; lam by tc_om |
+| Constants | alpha, beta, gamma, delta, eps, F, d, n | ED0, BETAH, TAUD, DELTA, DFRAC, NH, TAUB, PR | TAUB replaced by its rate, KB (**DK**, below) |
+
+The potential is the 2016 rate exactly: with lam = 1 - exp(-s^d),
+dlam/dt = d s^(d-1) e^(-s^d) ds/dt = (d/(TAUB PR^NH)) eta^(1/d) P^NH
+(-ln(1-lam))^((d-1)/d) (1-lam), the 2016 form with F = d/(TAUB PR^NH)
+(checked symbolically). In s the rate is eta^(1/d)(P/PR)^NH/TAUB, positive
+from lam = 0, so the starting problem, and eps with it, are gone.
+
+### The model, as it will be built
+
+Every step, in every HALO cell (no gate; DK's order: E_D, then eta, then s):
+
+    E_D:  E_D <- E_D + sqrt( max(De, 0) max(-Dv, 0) ),   v = 1/rho
+    eta:  eta <- eta exp(-(1 - lam)^DELTA dt/TAUD)
+                 + Erf((E_D_new/ED0)^BETAH) - Erf((E_D_old/ED0)^BETAH)
+    s:    s   <- s + KB eta_new^(1/DFRAC) (max(P^n, 0)/PR)^NH dt
+    lam = 1 - exp(-s^DFRAC)
+
+- **eta stays in [0, 1].** Decay only lowers eta and the activation term
+  only adds what Erf gained, so by induction eta <= Erf((E_D/ED0)^BETAH) <= 1:
+  a hot spot, once dissipated, is never re-activated (DK's design), and a
+  weak first shock spends Erf's range that a later shock can not reuse.
+- **The steps are exact** for dissipation alone (the exponential) and for
+  eta and P constant (s linear in t: lam = 1 - exp(-(K t)^d), KJMA; d = 3
+  is Hill and Zimmermann's sphere case). With both at once the split is
+  first order in dt, the rate's own order, as every model's.
+- **TAUD = 1e30** gives exp(...) = 1 exactly: no dissipation, no special case.
+
+### Measured: the activation measure for Material X
+
+E_D along the Rayleigh line of one shock, and of two to the same pressure
+(Material X's Mie-Gruneisen, principal Hugoniot and reshock):
+
+| P (GPa) | one shock | via 2 GPa | via 4 GPa | via 6 GPa |
+|---|---|---|---|---|
+| 8  | 0.296 | 0.254 (0.86) | 0.262 (0.89) | 0.278 (0.94) |
+| 11 | 0.391 | 0.330 (0.84) | 0.331 (0.85) | 0.345 (0.88) |
+| 15 | 0.506 | 0.421 (0.83) | 0.413 (0.82) | 0.424 (0.84) |
+
+(GPa^(1/2) cm^3/g; ratios to one shock.) A double shock earns 12 to 18 %
+less E_D, and through Erf(x^4) roughly half the hot spots: the
+desensitization the model is for, before any dissipation. ED0 near 0.4
+puts the class problem's 11 GPa shock at Erf(1) = 0.84.
+
+Two properties of the measure, to be reported, not changed:
+
+- **A ramp activates too.** E_D counts compression work, not only
+  dissipation: a quasi-isentropic ramp to the same volume earns 71 to 85 %
+  of the shock's E_D (4 to 15 GPa), so 0.26 to 0.52 of its activation at
+  BETAH = 4. A measure of dissipation alone (De + P_mean Dv) is not an
+  option: for a shock crossed in one Godunov step it is exactly 0 (Rankine-
+  Hugoniot). The ramp decks (`input/ramp_*.deck`) will show it.
+- **How many steps a cell takes to cross the shock matters a little.**
+  Each step adds sqrt(mean sigma) Dv, so a shock crossed in one step
+  earns up to 3/(2 sqrt 2) = 1.061 of the converged integral (a linear
+  Rayleigh path from rest). The number of steps per crossing is set by the
+  method and CFL, not by the mesh, so E_D converges with the mesh but
+  differs between AV (a smeared shock, many steps) and RS (one or two): up
+  to 6 %. The study measures it; an ED0 fitted with one method carries to
+  the other only to that.
+
+### Where De and Dv come from (DK: confirmed Nov. 13, 2026)
+
+The database holds each cell's rho and e at the old and new time levels,
+both methods (maincode, loops 2). **AV:** `burn_step` runs after the cell's
+update, so De, Dv are this step's (n to n+1). **RS:** `burn_rate_rs` runs at
+the cycle's start, so they are the last completed step's (n-1 to n): E_D
+lags by one step under RS. On cycle 1 rho_old = R0 and the cell is at R0,
+so Dv = 0 and nothing is added. The alternative, HALO keeping its own last
+rho and e in `bst`, gives the same lag under RS (the burn must run before
+RS's update) and costs two slots: not proposed. **DK** Comment: I prefer
+not to add slots if at all possible. These are experimental models, and
+having some dependencies on the method(s) is probably unavoidable. Still,
+I would expect tracer data from the different methods to at least pass
+the eyeball test as being similar, if not to machine precision levels.
+
+### The table, the keys, the state
+
+| Key | Units | Check | Meaning |
+|---|---|---|---|
+| ED0 | GPa^(1/2) cm^3/g | > 0 | activation scale |
+| BETAH | - | > 0 | sharpness of activation (2016: 4) |
+| TAUD | us | > 0 | dissipation time (1e30: none) |
+| DELTA | - | >= 0 | reaction-deficit exponent of dissipation (2016: 2) |
+| DFRAC | - | > 0 | fractal dimension of the burn, 2 (cylinders) to 3 (spheres) |
+| NH | - | >= 0 | exponent on max(P, 0)/PR (P, not P_s: not NS) |
+| KB | 1/us | >= 0 | burn rate at P = PR, eta = 1; 0 the inert limit |
+| PR | GPa | > 0 | reference pressure (shared) |
+
+npar 8. **State: E_D, eta and s, `bst(1:3)`** (`ha_ed`, `ha_eta`, `ha_s`);
+not gated, so no detector slots; nst 3, nst_max stays 7. `burn_uses_ls`
+false. NH, not NS: NS multiplies (1 + P_s/PR) in the gated models, and NH
+is the power of P/PR itself (one key, one meaning).
+
+### Decisions for DK
+
+1. **The source, cited how?** The 2016 note (`Literature/Burn_Models/
+   adrb_v1.pdf`) carries no release number and names the lab's code. The
+   bitwhiz documents will state HALO in full from the Nov 6 revision and
+   need nothing from the note; cite it as "D. E. Kittell, ADRB (2016),
+   unpublished note", or name only the concepts (hot-spot activation and
+   dissipation; SURF, SHS and Hill-Zimmermann's topology), as you prefer.
+   **DK** Comment: this really was a note in my journal, and a week
+   messing around with the production code. Never adopted, never peer-
+   reviewed. Too bad we can't cite my lab notebook. I would probably
+   cite the concepts as you say, and claim originality on the rest.
+2. **KB for TAUB.** The approved keys have TAUB, a time, > 0. An inert
+   limit that is bit for bit (as KFF = 0 and MU = SIGMA = 0) needs the rate
+   to be exactly 0, which no finite TAUB gives (TAUB = 1e30 still burns
+   ~1e-69). Proposed: KB = 1/TAUB, >= 0, KB = 0 the inert limit.
+   **DK** Comment: this is fine.
+3. **An equation sheet.** Step 8 says "with its equation sheet";
+   FlashFire and StochasticIgnite went without one (DK), the manual's
+   section serving. HALO is your model: a `HALO_Eqns_rev-0` in
+   `Class_Project/LaTeX/` beside the HVRB sheet, drafted by Claude for your
+   edit, or the manual's section alone?
+   **DK** Comment: use the manual's section alone. Since this isn't a
+   ME697 class model anymore, there should not be a separate equation
+   sheet. We are approaching a new design philosophy with the later
+   releases.
+4. **De, Dv from the database** (above), with RS one step behind.
+   **DK** Comment: yes, for the reason given in a prior comment.
+
+### Tests
+
+- `tests/test_halo.f95` against `tests/halo_reference.py` (50 digits): E_D
+  along a Rayleigh path in N steps converging to the integral (and the
+  one-step 1.061); nothing on expansion or at rest; dissipation alone, the
+  exact exponential; activation alone, eta = Erf((E_D/ED0)^BETAH) exactly;
+  eta <= Erf over a random history; eta and P constant, lam = 1 - exp(-(K
+  t)^d) (d = 2, 2.3, 3); the potential against the 2016 rate at random
+  states; TAUD = 1e30, no decay bit for bit; KB = 0, lam = 0 exactly.
+- `test_btab`: HALO's row. Decks: `ok_halo`, `ok_halo_rs` (also OpenMP,
+  release, history), the inert limits `ok_halo_inert`, `_rs` (KB = 0), bad
+  decks.
+- `tests/verification/study_halo.py`: **E1**, E_D in the hydro: with DFRAC
+  = 1, NH = 0, BETAH = 1, TAUD = 1e30 and KB small, s grows at KB
+  Erf(E_D/ED0) once the shock has passed, so a tracer's lam returns its
+  E_D, against a replay of E_D from the same tracer's rho and e (as
+  study_ffire's E1 replays the detector), and against the Rayleigh-line
+  integral (AV, RS: the 6 % above). **E2**, the detonation against mesh,
+  AV and RS, D to D_CJ. **E3**, desensitization: the class stack's own
+  double shock (the Ta-Al flyer's second shock), with and without the Ta,
+  and TAUD from short to 1e30, beside HVRB, which has no shock memory.
+- HVRB, ThermalCascade, FlashFire and StochasticIgnite bit for bit.
+
+### The example deck and the manual
+
+`input/me697_halo_2p00.deck`, RS order 2, constants chosen so that 2.00
+km/s detonates near HVRB's 3.5 mm (an example, not a calibration: the 2016
+PBX 9502 constants do not carry over). The manual's HALO section from
+"under development" to as built, with the three columns above.
