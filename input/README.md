@@ -167,11 +167,12 @@ Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
 | `spall_strength` | GPa | 0.01 |
 | `CV` | J/(g K) | required with `mie_gruneisen_t`; not allowed without it |
 | `T0` | K | required with `mie_gruneisen_t`; not allowed without it |
-| `burn` | `hvrb`, `thermalcascade`, `flashfire`, `stochasticignite` | none (inert) |
+| `burn` | `hvrb`, `thermalcascade`, `flashfire`, `stochasticignite`, `halo` | none (inert) |
 | `PR`, `ZR`, `MR`, `XR`, `PI`, `TAU0` | GPa, -, -, -, GPa, us | each required with `burn = hvrb` (`XR` 25 or less); not allowed without it |
 | `HT`, `TC`, `GT`, `NS`, `PR` | 1/(us K^GT), K, -, -, GPa | each required with `burn = thermalcascade`; not allowed without it |
 | `KFF`, `AFF`, `BFF`, `TA`, `NS`, `PR`, `LAM0` | 1/us, -, -, K, -, GPa, - | each required with `burn = flashfire` (`LAM0` strictly between 0 and 1); not allowed without it |
 | `MU`, `SIGMA`, `AVRAMI`, `NS`, `PR`, `LC`, `SEED`, `TAUZ` | 1/us, 1/us, -, -, GPa, mm, -, us | each required with `burn = stochasticignite` (`SEED` a whole number, 0 to 19999); not allowed without it |
+| `ED0`, `BETAH`, `TAUD`, `DELTA`, `DFRAC`, `NH`, `KB`, `PR` | GPa^(1/2) cm^3/g, -, us, -, -, -, 1/us, GPa | each required with `burn = halo` (`ED0`, `BETAH`, `TAUD`, `DFRAC` more than 0; `DELTA`, `NH`, `KB` 0 or more); not allowed without it |
 | `products` | `ideal_gas` | none: required with `burn` (no default) |
 | `GAMMA`, `Q` | -, kJ/g (= MJ/kg) | each required with `products = ideal_gas`; not allowed without it |
 
@@ -338,6 +339,44 @@ calibration:
     LC     = 0.5             # mm
     SEED   = 108
     TAUZ   = 0.2             # us
+    products = ideal_gas
+    GAMMA = 2.60
+    Q = 4.8828               # kJ/g
+
+**Burning (`burn = halo`).** HALO (Hot-spot Activation, Loss and Overlap),
+D. E. Kittell's model, built from established concepts (hot spots activated
+by the work of compression and lost by dissipation; the burn topology of
+hot spots growing at random), the rest bitwhiz's own
+(`doc/design/burn_models.md`, step 8). It has no shock detector and no switch:
+**a weak first shock activates hot spots that dissipate and are never
+reactivated, so a later shock finds fewer** (shock desensitization). Each
+step, in every HALO cell, in this order:
+
+    E_D   += sqrt( max(De, 0) max(v_min - v, 0) ),   v_min = min(v_min, v)
+    eta    = eta exp(-(1 - lam)^DELTA dt/TAUD) + the step's gain in Erf((E_D/ED0)^BETAH)
+    s     += KB eta^(1/DFRAC) (max(P, 0)/PR)^NH dt,  lam = 1 - exp(-s^DFRAC)
+
+E_D measures the compression work done on the cell (v = 1/rho, e its energy),
+counted only past the smallest volume the cell has had: the ringing behind a
+shock adds nothing, a second shock adds in full, and methods AV and RS agree
+within 0.2 % in E_D. A smooth ramp is compression work too, and activates,
+less than a shock (with `BETAH = 4`, a quarter to a half as much). eta, the
+hot spots, never exceeds Erf(...) and so never exceeds 1. **HALO is not gated
+by the lead shock:** a cell burns wherever it has hot spots and P > 0, inside
+method AV's smeared shock too. `NH` is the power of P/PR itself (the gated
+models' `NS` is on 1 + P_s/PR). `KB = 0` is the inert limit (hot spots, no
+burn); `TAUD = 1.0e30` turns dissipation off. Example: below, and
+`me697_halo_2p00.deck` (section 6), an example set, not a calibration:
+
+    burn  = halo
+    ED0   = 0.35             # GPa^(1/2) cm^3/g
+    BETAH = 4.0
+    TAUD  = 0.25             # us
+    DELTA = 2.0
+    DFRAC = 2.3
+    NH    = 2.0
+    KB    = 2.0              # 1/us
+    PR    = 7.0              # GPa
     products = ideal_gas
     GAMMA = 2.60
     Q = 4.8828               # kJ/g
@@ -523,6 +562,17 @@ Its Pop plot is shallow, the model having no threshold: 1.75 km/s 4.0 mm,
 detonation runs 2 to 4 % below D_CJ (a bin slow when the front reaches it
 burns too late to drive it); without the noise (`SIGMA = 0`) at D_CJ
 (`tests/verification/study_sign.py`). About 2 s (release build).
+
+**The same, by HALO,** `me697_halo_2p00.deck`: Material X burning by `burn =
+halo` (Material block, "Burning"), each cell's hot spots from its own
+compression; RS at order 2. Constants chosen so that its Pop plot follows
+HVRB's: 2.00, 1.75 and 1.50 km/s detonate about 3.3, 4.5 and 7.8 mm in (HVRB
+3.5, 5.0 and 7.5); at 1.25 Material X burns behind the shock without
+detonating within 10 mm. Method AV gives the same within 0.1 mm. Its
+detonation converges with the mesh to within 0.15 % of D_CJ, both methods.
+Its point is shock desensitization: faced with 1 mm of PMMA, a 1.25 km/s
+tantalum flyer's detonation moves 2.6 mm deeper under HALO, 1.35 under HVRB
+(`tests/verification/study_halo.py`). About 2 s (release build).
 
 **Keep the origin near the problem.** Positions are stored as plain numbers, so
 round-off in x grows with the size of x: a cell's width is the difference of
@@ -799,9 +849,9 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
 
   (7 frames a second: 35 frames make 5 s; `yuv420p` so browsers play it).
   The class deck, `pulse_split_normal.deck`, `steepening_hump.deck`,
-  `me697_hvrb_2p00.deck`, `me697_tcas_2p00.deck`, `me697_ffire_2p00.deck`
-  and `me697_sign_2p00.deck` make movies (35, 35, 25, 35, 35, 35 and 35
-  frames).
+  `me697_hvrb_2p00.deck`, `me697_tcas_2p00.deck`, `me697_ffire_2p00.deck`,
+  `me697_sign_2p00.deck` and `me697_halo_2p00.deck` make movies (35, 35,
+  25, 35, 35, 35, 35 and 35 frames).
 
 - **Read from the files, never from memory.** The t-x diagrams come from
   `<title>.hist` and the tracer plots from `<title>.tracers.csv`, so a picture
@@ -950,7 +1000,7 @@ so the heartbeat, tracer and history files it reads are never touched.
 | `xvel_profile`, `xvel_amplitude` | `layer(l)%prof_name`, `prof_np`, `prof_par`; `xamp`, `have_amp` |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
 | `Material` keys `eos`, `CV`, `T0` | `material(m)%eos` (`eos_mie_gruneisen`, `eos_mie_gruneisen_t`), `CV` (J/(g K)), `T0`; copied into `layer(l)%eos`, `cv` (kJ/(g K): `CV`/1000), `T0`, then into module `temperature` (`src/modules/temp_mod.f95`), cell by cell |
-| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `HT` ... `NS`, `KFF` ... `LAM0`, `MU` ... `TAUZ`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `thermalcascade` (`tcas_mod.f95`, with `leadshock`, `lshk_mod.f95`), `flashfire` (`ffire_mod.f95`), `stochignite` (`sign_mod.f95`, with `random`, `rand_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
+| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `HT` ... `NS`, `KFF` ... `LAM0`, `MU` ... `TAUZ`, `ED0` ... `KB`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `thermalcascade` (`tcas_mod.f95`, with `leadshock`, `lshk_mod.f95`), `flashfire` (`ffire_mod.f95`), `stochignite` (`sign_mod.f95`, with `random`, `rand_mod.f95`), `halo` (`halo_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
 | `num_threads` | `nproc` |
 | `Run`, `Output`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `plot_dt`, `colormap`, `CFL`, `stack_resolution`, ...) |
 | `tracer` | `tracer(n)%...`: name, location, `x0`, `kface`, `w`, `kcell` |

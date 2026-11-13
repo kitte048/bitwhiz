@@ -3,7 +3,7 @@ module burn
 !
 !  Purpose:
 !    The cells' burn state, for the materials that burn (deck: burn =
-!    hvrb, thermalcascade, flashfire or stochasticignite, module
+!    hvrb, thermalcascade, flashfire, stochasticignite or halo, module
 !    burn_table's models,
 !    with eos = mie_gruneisen_t and a products EOS): each such
 !    cell's model, constants, history variables and extent of reaction
@@ -100,6 +100,11 @@ module burn
 !                                     and the cycle the step ends,
 !                                     cycle_next (kept here, from
 !                                     burn_track), given to cell_burn
+!    11/13/26    D. E. Kittell        HALO (module halo, step 8): its
+!                (with Claude)        case in cell_burn, not gated;
+!                                     cell_burn given the cell's
+!                                     compression over the latest step,
+!                                     De and Dv (THE COMPRESSION)
 !    11/06/26    D. E. Kittell        The closure from module mixture
 !                (with Claude)        (mix_state, mix_pulls), the rate
 !                                     law from module hvrb
@@ -198,6 +203,17 @@ module burn
 !  0. Cells of two layers in one bin, with one SEED, share the draws;
 !  with other constants (TAUZ, SEED) their Z differ, as they should.
 !
+!  THE COMPRESSION (HALO; doc/design/burn_models.md, step 8)
+!  ==========================================================
+!  HALO's activation measure needs the cell's v = 1/rho and the change of
+!  e and of v over a step (it keeps its smallest v so far itself): the database's new and old levels (je, je_old; jrho,
+!  jrho_old), which both methods keep (maincode, loop 2). Under AV,
+!  burn_step runs after the cell's update: n to n+1. Under RS,
+!  burn_rate_rs runs at the cycle's start: n-1 to n, one step behind (DK,
+!  11/13/26: no extra slots). On cycle 1, under RS, every cell has De =
+!  Dv = 0 (the setup's old levels are its new: rho = R0, e = 0); under AV
+!  cycle 1's is the first step's own. Every other model ignores them.
+!
 !***NOTE: rs_reaction_source turns the source off, for checking its
 ! effect (design note: G2, on and off); a development switch, not a
 ! deck key.
@@ -205,13 +221,16 @@ module burn
 !**********************************************************************!
 use bits,        only: dp, int32, int64, zero, half, one
 use shock,       only: kmax, nlay, layer, database, icell, jx, jp, jrho, &
-   je, jr0, jc0, js1, js2, jg0, products_ideal_gas
+   je, jr0, jc0, js1, js2, jg0, products_ideal_gas, jrho_old, je_old
 use burn_table,  only: npar_max, nst_max, burn_none, burn_hvrb, hv_PR, &
    hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi, burn_uses_ls, burn_tcas, &
    tc_HT, tc_TC, tc_GT, tc_NS, tc_PR, burn_ffire, ff_KFF, ff_AFF, ff_BFF, &
    ff_TA, ff_NS, ff_PR, ff_LAM0, burn_sign, si_MU, si_SIGMA, si_AVRAMI, &
-   si_NS, si_PR, si_LC, si_SEED, si_TAUZ, si_phi, si_z
+   si_NS, si_PR, si_LC, si_SEED, si_TAUZ, si_phi, si_z, burn_halo, ha_ED0, &
+   ha_BETAH, ha_TAUD, ha_DELTA, ha_DFRAC, ha_NH, ha_KB, ha_PR, ha_ed, &
+   ha_eta, ha_s, ha_vmin
 use stochignite, only: si_step
+use halo,        only: ha_step
 use leadshock,   only: ls_step, ls_nst, ls_marked, ls_ps
 use thermalcascade, only: tc_rate, tc_step
 use flashfire,   only: ff_step, ff_tslope
@@ -385,7 +404,8 @@ contains
          cycle
       end if
       call cell_burn( bmod(k), bpar(:,k), bst(:,k), lam(k), tk(k), b, &
-         database(jp,icell(k)), dt, sbin(k), cycle_next, st2, lam2 )
+         database(jp,icell(k)), dt, sbin(k), cycle_next, de_of( k ), &
+         one/database(jrho,icell(k)), dv_of( k ), st2, lam2 )
       bst(:,k) = st2
       lam(k)   = lam2
       call burn_hold( k )
@@ -413,7 +433,8 @@ contains
       k = kb(n)
       i = icell( k )
       call cell_burn( bmod(k), bpar(:,k), bst(:,k), lam(k), tk(k), &
-         ff_slope( k ), database(jp,i), dt, sbin(k), cycle_next, st2, lam2 )
+         ff_slope( k ), database(jp,i), dt, sbin(k), cycle_next, de_of( k ), &
+         one/database(jrho,i), dv_of( k ), st2, lam2 )
       src(k) = zero
       if ( rs_reaction_source .and. lam2 > lam(k) ) then
          call mix_state( database(jrho,i), database(je,i), lam(k), ec(k), &
@@ -433,7 +454,8 @@ contains
    ! history variables st2 and lam2 at the step's end, from its       !
    ! constants, history variables and lam at the start, and its state !
    ! there, P^n, T^n and b (ff_slope), and for StochasticIgnite its   !
-   ! bin and the cycle the step ends on (THE BINS). Writes nothing of !
+   ! bin and the cycle the step ends on (THE BINS), and for HALO the   !
+   ! cell's compression (THE COMPRESSION). Writes nothing of          !
    ! the module's:                                                    !
    ! the caller stores st2 and lam2. Its constants are intent(in),    !
    ! here and in the model's routines (THE CELLS' CONSTANTS). A model !
@@ -443,7 +465,7 @@ contains
    ! through.                                                         !
    !******************************************************************!
    pure subroutine cell_burn( ib, par, st1, lam1, T, b, p, dt, jbin, ncyc, &
-      st2, lam2 )
+      de, v, dv, st2, lam2 )
    implicit none
    integer(kind=int32), intent(in) :: ib            ! the model
    real(kind=dp), intent(in)  :: par(npar_max)      ! its constants
@@ -456,6 +478,9 @@ contains
    real(kind=dp), intent(in)  :: dt                 ! the step, us
    integer(kind=int64), intent(in) :: jbin          ! its bin (THE BINS)
    integer(kind=int64), intent(in) :: ncyc          ! the step's cycle
+   real(kind=dp), intent(in)  :: de, v, dv          ! e's change, v = 1/rho
+                                                    ! and its change (THE
+                                                    ! COMPRESSION)
    real(kind=dp), intent(out) :: st2(nst_max)       ! history, end
    real(kind=dp), intent(out) :: lam2               ! lam, end
    st2  = st1
@@ -481,8 +506,31 @@ contains
          par(si_MU), par(si_SIGMA), par(si_AVRAMI), st1(ls_ps), &
          par(si_NS), par(si_PR), par(si_TAUZ), st2(si_phi), st2(si_z), &
          lam2 )
+   case ( burn_halo )                               ! not gated
+      call ha_step( st1(ha_ed), st1(ha_eta), st1(ha_s), st1(ha_vmin), lam1, &
+         de, v, dv, p, dt, par(ha_ED0), par(ha_BETAH), par(ha_TAUD), &
+         par(ha_DELTA), par(ha_DFRAC), par(ha_NH), par(ha_KB), par(ha_PR), &
+         st2(ha_ed), st2(ha_eta), st2(ha_s), st2(ha_vmin), lam2 )
    end select
    end subroutine cell_burn
+
+   !******************************************************************!
+   ! Cell k's change of e and of v = 1/rho over the latest step: the  !
+   ! database's new level less its old (THE COMPRESSION).             !
+   !******************************************************************!
+   pure function de_of( k ) result( de )
+   implicit none
+   integer(kind=int32), intent(in) :: k
+   real(kind=dp) :: de
+   de = database(je,icell(k)) - database(je_old,icell(k))
+   end function de_of
+
+   pure function dv_of( k ) result( dv )
+   implicit none
+   integer(kind=int32), intent(in) :: k
+   real(kind=dp) :: dv
+   dv = one/database(jrho,icell(k)) - one/database(jrho_old,icell(k))
+   end function dv_of
 
    !******************************************************************!
    ! b = dT/dlam at fixed rho and e, K: (e_c + Q)/C_V, the closure's  !

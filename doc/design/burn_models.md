@@ -1317,3 +1317,131 @@ is the power of P/PR itself (one key, one meaning).
 km/s detonates near HVRB's 3.5 mm (an example, not a calibration: the 2016
 PBX 9502 constants do not carry over). The manual's HALO section from
 "under development" to as built, with the three columns above.
+
+## As built: step 8, HALO (Nov 13, 2026)
+
+**Module `halo`** (`src/modules/halo_mod.f95`; uses `bits` and
+`thermalcascade` for `tc_om`): `ha_ed_step`, the activation measure;
+`ha_act`, Erf((E_D/ED0)^BETAH); `ha_eta_step`, decay then activation;
+`ha_s_step`, the potential; `ha_lam`; and `ha_step`, all four in DK's order.
+Elemental and pure, no state. As the plan, but for:
+
+- **New compression only (DK, Nov 13).** The plan's measure counted every
+  compressive step, sqrt(max(De, 0) max(-Dv, 0)). Built and run, it took in
+  the ringing behind a captured shock: each oscillation's compressive half
+  looks, step by step, like compression (v falls, e rises), so the sign of
+  Dv can not tell them apart. Measured at five tracers of the class deck,
+  E_D after the first shock was 14 to 18 % above the integral along its
+  Rayleigh line under AV (about 6 % from AV's overshoot on the way in, 9 %
+  from the ringing after), 3 to 6 % under RS, and AV's E_D at the end 9 to
+  14 % above RS's. Now
+      E_D += sqrt( max(De, 0) max(v_min - v, 0) ),   v_min = min(v_min, v)
+  with v_min the smallest volume the cell has had: ringing about a volume
+  already passed adds nothing, a second shock to a new v_min adds in full,
+  and a monotone compression is unchanged. Both methods then 2 to 5 % above
+  the Rayleigh integral, and AV's E_D within 0.21 % of RS's at every
+  tracer. The cost, accepted by DK: one more history variable, v_min
+  (`bst(4)`, `ha_vmin`; HALO's nst 4, nst_max stays 7). v_min = 0, as bst
+  starts, is not yet set: the cell's v before the step stands in.
+- **KB for TAUB** (DK, Nov 13): KB = 0 is the inert limit, bit for bit.
+- **The source** (DK, Nov 13): the documents name the concepts (hot-spot
+  activation by compression work and loss by dissipation; the topology of
+  hot spots overlapping at random, Hill, Zimmermann and Nichols 2009) and
+  present the rest as bitwhiz's own; the 2016 note is not cited. No
+  equation sheet (DK): the manual's section serves, as for steps 6 and 7.
+  The list of steps above ("8. HALO, with its equation sheet") is left as
+  approved; this records the change.
+
+**Its row** (module `burn_table`): `burn_halo` = 5, keys ED0, BETAH, TAUD,
+DFRAC (> 0), DELTA, NH, KB (>= 0) and PR (shared); slots `ha_ED0` ...
+`ha_PR`; history E_D, eta, s, v_min (`ha_ed`, `ha_eta`, `ha_s`, `ha_vmin`);
+not gated (`burn_uses_ls` false). **Module `burn`:** `cell_burn` takes v =
+1/rho and the step's De and Dv (`de_of`, `dv_of`, from the database's new and
+old levels: AV the step itself, RS the step before, as DK confirmed); HALO's
+case calls `ha_step`; the other models ignore them.
+
+**HVRB, ThermalCascade, FlashFire and StochasticIgnite bit for bit:** every
+input deck and every `ok_` deck of 1.7.0's code (58), debug builds, against
+`ee7c0e9`: heartbeat rows (the wall clock aside), tracer rows, history
+frames and the screen, identical once the run's stamps are set aside.
+
+**Tests.** `tests/test_halo.f95` (10 checks) against `tests/halo_reference.py`
+(50 digits): the measure along a Rayleigh line in 1 to 1000 steps, to 9e-16
+(one step from rest 1.0607 of the integral, exactly 3/(2 sqrt 2)); no
+measure without new compression; ringing (400 steps about v_min) adding
+under 1 % of the first shock's E_D (0.2 %: its first dip below v_min), a
+second compression counting in full, to 1e-13; Erf((E_D/ED0)^BETAH) to
+1e-16, and 1 with no overflow where it is 1; dissipation alone against its
+exponential, DELTA 0 to 2, to 2e-14, and at lam = 1 (DELTA 2: none; 0:
+the plain exponential); activation alone, telescoping (0 here); eta never
+above its bound through two shocks and a dissipation; the burn at fixed eta
+and P against KJMA, d = 2, 2.3, 3, to 6e-14; KB = 0 never burning, P <= 0
+with NH > 0 not burning; one step's order, bit for bit. `test_btab` gains
+the row (check 12). Decks: `ok_halo`, `ok_halo_rs` (also OpenMP, release
+and history decks), the inert limits `ok_halo_inert`, `_rs` (KB = 0: hot
+spots activated, the inert run bit for bit, XRN aside), six bad decks (ED0
+= 0, DFRAC = 0, KB < 0, KB left out, NS in a HALO material, TAUB, no
+longer a key). Two history-test cases, `halo_burns` and `_rs`, require a
+cell to react and Material X to burn out: the cases above would pass with
+HALO's compression wiring broken (the run merely inert; checked by zeroing
+De, which they then fail). `doc/manual/checks/ch7_models.py` gains the rate
+in lam (the plan's "potential against the 2016 rate at random states",
+moved there: 9 points at 50 digits), the one-step 3/(2 sqrt 2) and eta's
+bound (the plan's "random history" became a fixed two-shock history in
+`test_halo`). `make test`: 236 deck, 18 OpenMP and 46 history tests.
+
+**In runs** (`tests/verification/study_halo.py`, 20 checks, about 5
+minutes):
+
+- **E1, the measure in the hydro is its replay's.** DFRAC = 1, NH = 0,
+  BETAH = 1, ED0 = 1, TAUD = 1e30, KB = 1e-6: s grows at KB Erf(E_D), so a
+  step's lam returns E_D wherever it has stopped growing; at five tracers,
+  AV and RS, the replay of the rule from the tracer's own rho and e rows,
+  to 1e-12. AV's E_D at the end within 0.21 % of RS's (DK: the methods'
+  tracer data alike).
+- **E2, the detonation converges.** The example deck at 2.00 km/s, 25 to
+  200 zones/mm: D 7.5080 (AV) and 7.5085 km/s (RS) at 200, +0.11 % from
+  D_CJ, within 0.03 % of 100 zones/mm; run distance 3.25 to 3.35 mm over the
+  meshes, AV and RS both 3.25 at 200. AV at 25 zones/mm +0.44 % (HALO is not
+  gated, so it burns inside AV's smeared shock: still within 0.5 %).
+- **E3, desensitization.** A Ta flyer, and the same faced with 1 mm of
+  PMMA (a weak shock ahead of the strong), RS, 35 zones/mm; run distance
+  from Material X's face, single / faced (delay):
+
+  | | HALO | HALO, TAUD = 1e30 | HVRB |
+  |---|---|---|---|
+  | 1.25 km/s | 5.75 / 8.35 (2.60) | 4.25 / 6.45 (2.20) | 5.95 / 7.30 (1.35) |
+  | 1.50 km/s | 3.40 / 5.20 (1.80) | 2.90 / 4.65 (1.75) | 3.55 / 5.05 (1.50) |
+  | 1.75 km/s | 2.60 / 4.05 (1.45) | 2.30 / 3.80 (1.50) | 2.30 / 3.85 (1.55) |
+
+  The weaker the first shock, the more HALO's memory of it costs: at 1.25
+  km/s nearly twice HVRB's delay, from the measure (the faced path earns
+  less E_D) and from dissipation (0.4 mm); by 1.75 km/s the three agree.
+  Checked at 1.25 (HALO's delay at least 1.5 times HVRB's; dissipation
+  lengthening the faced run), reported at the others.
+
+**The example deck** (`input/me697_halo_2p00.deck`; ED0 = 0.35, BETAH = 4,
+TAUD = 0.25 us, DELTA = 2, DFRAC = 2.3, NH = 2, KB = 2/us, PR = 7 GPa): at
+its 35 zones/mm, RS order 2, 2.00, 1.75 and 1.50 km/s detonate 3.3, 4.45 and
+7.75 mm in (HVRB 3.5, 5.0 and 7.5); 1.25 burns without detonating within 10
+mm; AV within 0.1 mm of RS at every speed. ED0 sets where the Pop plot
+turns over (Erf of the 4th power acts nearly as a threshold): at ED0 = 0.4,
+1.50 km/s did not detonate; 0.35 brings it to HVRB's.
+
+**An independent review** (a Claude subagent, Nov 13, read-only) found no
+Critical or High defect. It confirmed the time levels of De and Dv under
+both methods in maincode, eta's bounds, lam's monotony, OpenMP safety, and
+that the other models can not change. Fixed from it: no `make test` case
+caught a broken compression wiring (`halo_burns`, above); overflow with
+absurd BETAH or DFRAC (Erf and lam set to 1 where they are 1 in double,
+from the logarithms: the same results, the example deck's D the same to the
+last digit); test_halo's check 3 bound tightened from 10 to 1 %; lam = 1
+tested; the module header's "2016 rate" reworded (DK's decision 1); the
+D_CJ figures made one (+0.11 % at 200 zones/mm, within 0.15 % on every
+mesh); study_halo.py reporting, not crashing, if no row is flat; the
+cycle-1 comment in module burn (under RS every cell has De = Dv = 0).
+
+**The manual:** chapter 7's HALO section, as built, with the change to the
+measure and its two properties (one step's 1.061; a ramp activating 71 to
+85 % of a shock's E_D), and its trace tags; chapter 1 and the appendices
+updated.

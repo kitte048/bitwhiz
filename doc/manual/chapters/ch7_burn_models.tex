@@ -1,8 +1,8 @@
 \chapter{Burn models}
 \label{ch:burn-models}
 
-\checkedagainst{1.7.0}{HVRB, the lead shock,
-ThermalCascade, FlashFire and StochasticIgnite as built; HALO and CLAUDE as
+\checkedagainst{1.8.0}{HVRB, the lead shock,
+ThermalCascade, FlashFire, StochasticIgnite and HALO as built; CLAUDE as
 designed in \code{doc/design/burn_models.md} (approved Nov 6, 2026), not yet
 built. Closed forms are checked in \code{doc/manual/checks/ch7_models.py}.}
 
@@ -29,8 +29,8 @@ burn until its cell's lead shock is marked (\cref{sec:lead-shock}).}
   built, 1.6.0 & yes \\
 \key{stochasticignite} & StochasticIgnite & SAND2025-09228 \S 5.2.2,
   repaired and extended & built, 1.7.0 & yes \\
-\key{halo} & HALO & Kittell's ADRB (2016), revised & under development
-  & no \\
+\key{halo} & HALO & D.~E.~Kittell, from hot-spot activation and
+  dissipation concepts & built, 1.8.0 & no \\
 \key{claude} & CLAUDE & proposed by Claude (Anthropic), 2026 & under
   development & no \\
 \bottomrule
@@ -726,71 +726,146 @@ it. Without the noise ($\sigma = 0$) the same deck runs at $D_{CJ}$.
 \section{HALO}
 \label{sec:halo}
 
-\begin{underdev}[: planned]
-Designed (\code{doc/design/burn_models.md}), not yet built.
-\end{underdev}
+HALO (Hot-spot Activation, Loss and Overlap) is D.~E.~Kittell's model, built
+here from established concepts: hot spots activated by the work of
+compression and lost by dissipation, as the shock-desensitizing models do
+\cite{menikoff2010}, and the burn topology of hot spots growing and
+overlapping at random \cite{hill2009}, with the dimension $d$ free between 2
+(cylinders) and 3 (spheres). The measure of compression, its rule of new
+compression only, the steps and the keys are \bw's own. It has no shock
+detector and no switch: a weak first shock activates hot spots that
+dissipate, are never reactivated, and so are lost to a later shock (shock
+desensitization).
 
-HALO (Hot-spot Activation, Loss and Overlap) revises D.~E.~Kittell's
-activation and dissipation reactive burn model (ADRB, 2016, unpublished). It
-has no shock detector and no switches: hot spots are activated by
-compression and dissipated, never reactivated, so a weak first shock
-desensitizes. Three variables per cell, updated in this order each step:
+\paragraph{The model, as built.} Every step, in every HALO cell (not
+gated), in this order:
 \begin{enumerate}
-\item \textbf{Activation}, by the measure
+\item \textbf{Activation}, by a measure of compression work, counted only
+  past the smallest volume $v_{\min}$ the cell has had:
   \begin{equation}
-    \Delta E_D = \sqrt{\max(\Delta e, 0)\,\max(-\Delta v, 0)}
+    \Delta E_D = \sqrt{\max(\Delta e, 0)\,\max(v_{\min} - v, 0)},
+    \qquad v_{\min} \leftarrow \min(v_{\min}, v),
     \label{eq:halo-ed}
   \end{equation}
-  per step ($v$ the specific volume), which converges to $E_D = \int
-  \sqrt{\sigma}\,|\dd v|$ over compression, $\sigma = -\dd e/\dd v$ the
-  stress doing the work: independent of the mesh and the time step. (The
-  2016 form put the root over $\max(\Delta e, 0)$ alone, which made each
-  increment of order $\Delta t^{3/2}$ and $E_D$ shrink with the number of
-  steps across a shock.) The 2016 safeguard $(1 - \lam)$ is not needed, since
-  \bw\ burns at fixed $e$ and reaction heat never enters $\Delta e$.
+  $v = 1/\rho$ and $\Delta e$ the step's change of $e$. On a compression,
+  $\sqrt{\Delta e\,|\Delta v|} = \sqrt{\sigma}\,|\Delta v|$ with $\sigma =
+  \Delta e/|\Delta v|$ the step's mean stress doing the work, so the sum
+  converges to $E_D = \int\sqrt{\sigma}\,|\dd v|$, independent of the mesh.
+  Units: kJ/g = GPa\,cm$^3$/g, so $E_D$ is in GPa$^{1/2}$\,cm$^3$/g.
+\trace{modules/halo_mod.f95}{ha_ed_step}{test_halo, study_halo.py}
 \item \textbf{Hot spots}, a fraction $\eta \in [0, 1]$:
   \begin{equation}
-    \frac{\dd\eta}{\dd t} = \frac{\dd}{\dd t}\,
-      \mathrm{erf}\Bigl[\Bigl(\frac{E_D}{E_{D0}}\Bigr)^{\beta_H}\Bigr]
-      - \frac{\eta\,(1 - \lam)^{\delta}}{\tau_d},
+    \eta \leftarrow \eta\,e^{-(1 - \lam)^{\delta}\Delta t/\tau_d}
+    + \mathrm{erf}\bigl[(E_D^{n+1}/E_{D0})^{\beta_H}\bigr]
+    - \mathrm{erf}\bigl[(E_D^{n}/E_{D0})^{\beta_H}\bigr],
     \label{eq:halo-eta}
   \end{equation}
-  stepped exactly: $\eta \leftarrow \eta\exp\bigl(-(1 - \lam)^\delta\Delta
-  t/\tau_d\bigr) + \Delta\,\mathrm{erf}$.
+  the decay first (exact at a fixed $\lam$), then the step's new
+  activation. By induction $\eta \le \mathrm{erf}[(E_D/E_{D0})^{\beta_H}]
+  \le 1$: a hot spot once dissipated is never reactivated.
+\trace{modules/halo_mod.f95}{ha_eta_step, ha_act}{test_halo}
 \item \textbf{Burn}, through a potential:
   \begin{equation}
-    \frac{\dd s}{\dd t} = \frac{\eta^{1/d}}{\tau_b}
-      \Bigl(\frac{\max(P, 0)}{P_R}\Bigr)^{n_H},
-    \qquad \lam = 1 - e^{-s^{d}},
+    s \leftarrow s + K_B\,\eta^{1/d}
+      \Bigl(\frac{\max(P^n, 0)}{P_R}\Bigr)^{n_H}\Delta t,
+    \qquad \lam = 1 - e^{-s^{d}}.
     \label{eq:halo-burn}
   \end{equation}
-  which is the 2016 rate exactly (by the chain rule), without its small
-  regularizing constant. $d$ is a fractal dimension of the burn, from 2
-  (cylinders) to 3 (spheres).
+  By the chain rule $\dd\lam/\dd t = d\,K_B\,\eta^{1/d}(P/P_R)^{n_H}
+  (-\ln(1 - \lam))^{(d-1)/d}(1 - \lam)$, the hot-spot topology of
+  \cite{hill2009}; in $s$ the rate is positive from $\lam = 0$, so the burn
+  starts without a regularizing constant, and the step is exact for $\eta$
+  and $P$ constant (KJMA, $\lam = 1 - e^{-(Kt)^d}$).
+\trace{modules/halo_mod.f95}{ha_s_step, ha_lam, ha_step}{test_halo}
 \end{enumerate}
+$K_B = 0$ is the inert limit (hot spots, but nothing burns); $\tau_d =
+10^{30}$ turns dissipation off exactly.
 
-\begin{center}\small
-\begin{tabular}{@{}l l l l@{}}
+\paragraph{New compression only (DK).} As first designed, the measure
+counted every compressive step, $\max(-\Delta v, 0)$. In the hydro that took
+in the ringing behind a captured shock: each oscillation's compressive half
+looks, step by step, like compression. Under method AV $E_D$ came out 14 to
+18~\% above the integral along the shock's Rayleigh line, under RS 3 to
+6~\%. No rule that sees one step at a time can tell ringing from new
+compression; a memory of the smallest volume can. With $v_{\min}$ both
+methods give 2 to 5~\% above the Rayleigh integral, and each tracer's
+$E_D$ agrees between AV and RS within 0.2~\%. A second shock drives the cell
+to a new $v_{\min}$ and counts in full; for a monotone compression the two
+rules are the same. The cost is one history variable.
+\trace{modules/burn_mod.f95}{cell_burn, de_of, dv_of}{study_halo.py}
+
+\paragraph{Two properties of the measure.} (1) A shock crossed in one step
+earns up to $3/(2\sqrt2) = 1.061$ of the Rayleigh integral, the square root
+of a mean rather than the mean of a square root; the number of steps a
+shock takes is set by the method and CFL, not the mesh, so $E_D$ converges
+with the mesh. (2) A smooth ramp is compression work too: for Material~X a
+quasi-isentropic ramp to the same volume earns 71 to 85~\% of a shock's
+$E_D$, so with $\beta_H = 4$ about a quarter to a half of its activation. A
+measure of dissipation alone ($\Delta e + \bar P\,\Delta v$) is no
+alternative: for a shock crossed in one step of method RS it is exactly 0,
+by the Rankine--Hugoniot energy jump. $\Delta e$ and $\Delta v$ come from the
+database's old and new levels: the step itself under AV, the step before
+under RS (DK: no extra storage).
+
+\begin{table}[h]
+\centering\small
+\caption{HALO's keys, and the example deck's values
+(\code{input/me697_halo_2p00.deck}: an example, not a calibration). Its
+history: $E_D$, $\eta$, $s$ and $v_{\min}$.}
+\label{tab:halo-keys}
+\begin{tabular}{@{}l l l l r@{}}
 \toprule
-Key & Symbol & Units & Meaning \\
+Key & Symbol & Units & Deck check & Example \\
 \midrule
-\key{ED0}   & $E_{D0}$  & GPa$^{1/2}$\,cm$^3$/g & activation scale \\
-\key{BETAH} & $\beta_H$ & -- & sharpness of activation \\
-\key{TAUD}  & $\tau_d$  & \textmu s & hot-spot dissipation time \\
-\key{DELTA} & $\delta$  & -- & reaction-deficit exponent of dissipation \\
-\key{DFRAC} & $d$       & -- & fractal dimension of the burn, 2 to 3 \\
-\key{NH}    & $n_H$     & -- & burn-rate pressure exponent \\
-\key{TAUB}  & $\tau_b$  & \textmu s & burn time at $P = P_R$, $\eta = 1$ \\
-\key{PR}    & $P_R$     & GPa & pressure unit (only $\tau_b P_R^{n_H}$ matters) \\
+\key{ED0}   & $E_{D0}$  & GPa$^{1/2}$\,cm$^3$/g & $> 0$ & 0.35 \\
+\key{BETAH} & $\beta_H$ & --  & $> 0$ & 4 \\
+\key{TAUD}  & $\tau_d$  & \textmu s & $> 0$ & 0.25 \\
+\key{DELTA} & $\delta$  & --  & $\ge 0$ & 2 \\
+\key{DFRAC} & $d$       & --  & $> 0$ & 2.3 \\
+\key{NH}    & $n_H$     & --  & $\ge 0$ & 2 \\
+\key{KB}    & $K_B$     & 1/\textmu s & $\ge 0$ & 2 \\
+\key{PR}    & $P_R$     & GPa & $> 0$ & 7 \\
 \bottomrule
 \end{tabular}
-\end{center}
-HALO is not gated: it burns wherever $\eta > 0$, inside method AV's smeared
-shock too.
+\end{table}
 
-\paragraph{Planned tests.} $\eta$ and $P$ constant against $\lam = 1 -
-\exp(-(t/\tau)^d)$; no compression, no burn; dissipation alone against its
-exponential; $E_D$ for a double shock below a single shock to the same state.
+$n_H$ is the power of $P/P_R$ itself, not the gated models' $N_S$ on $1 +
+\PS/P_R$, so it is a key of its own. An 11~GPa shock in Material~X earns
+$E_D \approx 0.39$; reaching 11~GPa through a first shock of 2 to 6~GPa earns
+12 to 18~\% less, and through $\mathrm{erf}(x^4)$ roughly half the hot
+spots: the desensitization the model is for, before any dissipation.
+
+With the example's constants (35 zones/mm, method RS, order 2) HALO's Pop
+plot follows HVRB's: 2.00, 1.75 and 1.50~km/s detonate about 3.3, 4.5 and
+7.8~mm into Material~X (HVRB: 3.5, 5.0 and 7.5); at 1.25~km/s Material~X burns
+behind the shock without detonating within 10~mm. Method AV gives the same
+within 0.1~mm. Faced with 1~mm of PMMA, so that a weak shock runs ahead of
+the strong one, a 1.25~km/s tantalum flyer's detonation moves 2.6~mm deeper
+into Material~X under HALO, against 1.35~mm under HVRB, which has no memory
+of the weak shock (2.2~mm with HALO's dissipation turned off).
+
+\paragraph{Verification.}
+\begin{itemize}
+\item \code{test_halo}, against 50-digit values (\code{tests/halo_reference.py}):
+  the measure along a Rayleigh line in 1 to 1000 steps, to $9\times10^{-16}$
+  (one step from rest exactly $3/(2\sqrt2)$ of the integral); no measure
+  without new compression (ringing adds nothing, a second compression
+  counts in full); $\mathrm{erf}[(E_D/E_{D0})^{\beta_H}]$; dissipation alone
+  against its exponential; activation alone, telescoping exactly; $\eta$
+  never above its bound through two shocks; the burn at fixed $\eta$ and $P$
+  against KJMA ($d$ = 2, 2.3, 3); $K_B = 0$ never burning; the order of a
+  step, bit for bit.
+\item In the hydro (\code{tests/verification/study_halo.py}): with $d = 1$,
+  $n_H = 0$, $\beta_H = 1$ and no dissipation, a cell's $s$ grows at $K_B
+  \mathrm{erf}(E_D)$, so its $\lam$ returns its $E_D$: at five tracers, both
+  methods, the replay of \cref{eq:halo-ed} from the same tracer's $\rho$ and
+  $e$, to $10^{-12}$; and AV's $E_D$ within 0.2~\% of RS's.
+\item The detonation converges with the mesh to within 0.15~\% of
+  $D_{CJ}$ (+0.11~\% at 200 zones/mm), both methods, their run distances
+  within 0.1~mm of each other.
+\item The inert limit ($K_B = 0$, hot spots activated) is the inert run bit
+  for bit, both methods; the other four models are unchanged bit for bit.
+\end{itemize}
 
 % ---------------------------------------------------------------------
 \section{CLAUDE}

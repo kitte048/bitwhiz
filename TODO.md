@@ -62,7 +62,9 @@ Medium term, the reactive physics:
    DK, Nov 12), released as 1.6.0; step 7, StochasticIgnite (`burn =
    stochasticignite`, `study_sign.py`; Z an Ornstein-Uhlenbeck process in
    time, DK, Nov 12; bins of LC; the atmospheric table and a counter-based
-   generator), Nov 12, for 1.7.0. Next, step 8, HALO. Then JWL products, the 25 zones/mm difference
+   generator), Nov 12, for 1.7.0; step 8, HALO (`burn = halo`,
+   `study_halo.py`; new compression only, KB for TAUB, no equation sheet:
+   DK, Nov 13), for 1.8.0. Next, step 9, CLAUDE. Then JWL products, the 25 zones/mm difference
    (section 3). The v1.4.0 review's
    open findings are in section 8 (`audits/README.md` tracks them).
 10. With it or after: a broken cell's temperature (section 5; a burning
@@ -466,7 +468,8 @@ decks.
       6), the detector (step 4, done Nov 6; a smooth ramp's foot is
       marked, P_s -> 0 with the mesh: accepted, DK, Nov 7), then one model
       per release (ThermalCascade, step 5, done Nov 7; FlashFire, step
-      6, Nov 12; StochasticIgnite, step 7, Nov 12), CLAUDE last;
+      6, Nov 12; StochasticIgnite, step 7, Nov 12; HALO, step 8, Nov 13),
+      CLAUDE last;
       then the study (each model tailored to Material X's HVRB for a
       single shock, then double shocks). Sources
       in the course folder's `Class_Project/Literature/Burn_Models/`.

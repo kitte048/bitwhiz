@@ -45,6 +45,11 @@ program test_btab
 !       and 7, nst_max), and its checks (MU, SIGMA >= 0, so MU = SIGMA
 !       = 0 is the inert limit; AVRAMI, LC, TAUZ > 0; SEED a whole
 !       number, the one key with chk_count).
+!   12. HALO's row is the plan's: ED0, BETAH, TAUD, DELTA, DFRAC, NH, KB,
+!       PR in slots ha_ED0 to ha_PR, PR shared with HVRB, not gated, E_D,
+!       eta, s and v_min its history (bst 1 to 4), and its checks (ED0, BETAH,
+!       TAUD, DFRAC > 0; DELTA, NH, KB >= 0, so KB = 0 is the inert
+!       limit).
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -61,6 +66,8 @@ program test_btab
 !                (with Claude)
 !    11/12/26    D. E. Kittell        11: StochasticIgnite's row (step
 !                (with Claude)        7); 4 knows chk_count; 10 SEED
+!    11/13/26    D. E. Kittell        12: HALO's row (step 8)
+!                (with Claude)
 !
 !**********************************************************************!
 use bits, only: int32, dp, quit
@@ -71,7 +78,8 @@ use burn_table, only: npar_max, nst_max, nburn, burn_none, burn_hvrb, &
    hv_phi, burn_uses_ls, burn_tcas, tc_HT, tc_TC, tc_GT, tc_NS, tc_PR, &
    burn_ffire, ff_KFF, ff_AFF, ff_BFF, ff_TA, ff_NS, ff_PR, ff_LAM0, &
    chk_count, burn_sign, si_MU, si_SIGMA, si_AVRAMI, si_NS, si_PR, si_LC, &
-   si_SEED, si_TAUZ, si_phi, si_z
+   si_SEED, si_TAUZ, si_phi, si_z, burn_halo, ha_ED0, ha_BETAH, ha_TAUD, &
+   ha_DELTA, ha_DFRAC, ha_NH, ha_KB, ha_PR, ha_ed, ha_eta, ha_s, ha_vmin
 use leadshock, only: ls_nst
 implicit none
 
@@ -94,6 +102,9 @@ character(len=8), parameter, dimension(7) :: ffire_keys = (/ &
 character(len=8), parameter, dimension(8) :: sign_keys = (/ &
    'MU      ', 'SIGMA   ', 'AVRAMI  ', 'NS      ', 'PR      ', &
    'LC      ', 'SEED    ', 'TAUZ    ' /)
+character(len=8), parameter, dimension(8) :: halo_keys = (/ &
+   'ED0     ', 'BETAH   ', 'TAUD    ', 'DELTA   ', 'DFRAC   ', &
+   'NH      ', 'KB      ', 'PR      ' /)
 integer(kind=int32) :: ncheck, nfail, i, j, ib, s, n
 logical :: ok
 
@@ -287,6 +298,29 @@ ok = ok .and. bkey_check( burn_key(si_MU,burn_sign) ) == chk_nonneg .and. &
 call check( ok, '11. StochasticIgnite: MU SIGMA AVRAMI NS PR LC SEED '// &
    'TAUZ in slots 1-8 (NS and PR shared), the detector, phi and Z its '// &
    'history, its checks' )
+
+!*** 12. HALO, as the plan has it.
+ok = trim(burn_names(burn_halo)) == 'halo' .and. &
+   burn_npar(burn_halo) == 8 .and. burn_nst(burn_halo) == 4 .and. &
+   .not. burn_uses_ls(burn_halo) .and. ha_ed == 1 .and. ha_eta == 2 .and. &
+   ha_s == 3 .and. ha_vmin == 4
+do s = 1, 8
+   if ( trim(bkey_name( burn_key(s,burn_halo) )) /= trim(halo_keys(s)) ) &
+      ok = .false.
+end do
+ok = ok .and. ha_ED0 == 1 .and. ha_BETAH == 2 .and. ha_TAUD == 3 .and. &
+   ha_DELTA == 4 .and. ha_DFRAC == 5 .and. ha_NH == 6 .and. ha_KB == 7 &
+   .and. ha_PR == 8 .and. &
+   burn_key(ha_PR,burn_halo) == burn_key(hv_PR,burn_hvrb)
+ok = ok .and. bkey_check( burn_key(ha_ED0,burn_halo) ) == chk_positive .and. &
+   bkey_check( burn_key(ha_BETAH,burn_halo) ) == chk_positive .and. &
+   bkey_check( burn_key(ha_TAUD,burn_halo) ) == chk_positive .and. &
+   bkey_check( burn_key(ha_DFRAC,burn_halo) ) == chk_positive .and. &
+   bkey_check( burn_key(ha_DELTA,burn_halo) ) == chk_nonneg .and. &
+   bkey_check( burn_key(ha_NH,burn_halo) ) == chk_nonneg .and. &
+   bkey_check( burn_key(ha_KB,burn_halo) ) == chk_nonneg
+call check( ok, '12. HALO: ED0 BETAH TAUD DELTA DFRAC NH KB PR in slots '// &
+   '1-8 (PR shared), not gated, E_D eta s v_min its history, its checks' )
 
 if ( nfail > 0 ) then
    write(*,'(a,i0,a,i0,a)') ' test_btab: ', nfail, ' of ', ncheck, &

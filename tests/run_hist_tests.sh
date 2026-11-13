@@ -92,7 +92,7 @@ CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 . "$(dirname "$0")/report.sh"
-plan 40 "history tests"
+plan 46 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -561,6 +561,11 @@ inert_limit ffire_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_ffi
 # phi stays 0 (doc/design/burn_models.md, step 7): nothing may change.
 inert_limit sign_inert    tests/decks/ok_temperature.deck    tests/decks/ok_sign_inert.deck
 inert_limit sign_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_sign_inert_rs.deck
+# HALO at KB = 0 (tests/decks/ok_halo_inert.deck, and _rs): every MatX cell
+# measures its compression and activates hot spots, and nothing burns
+# (doc/design/burn_models.md, step 8): nothing may change.
+inert_limit halo_inert    tests/decks/ok_temperature.deck    tests/decks/ok_halo_inert.deck
+inert_limit halo_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_halo_inert_rs.deck
 
 # Case: a burn with method RS (tests/decks/ok_hvrb_rs.deck, order 2: the
 # closure in its state and the reaction's source in its predictor), as
@@ -583,6 +588,33 @@ against_tracer ffire_rs tests/decks/ok_ffire_rs.deck 0.05 pdv
 # marked).
 against_tracer sign    tests/decks/ok_sign.deck    0.05 pdv
 against_tracer sign_rs tests/decks/ok_sign_rs.deck 0.05 pdv
+
+# Case: HALO (tests/decks/ok_halo.deck, and _rs: not gated, each MatX
+# cell's hot spots from its own compression).
+against_tracer halo    tests/decks/ok_halo.deck    0.05 pdv
+against_tracer halo_rs tests/decks/ok_halo_rs.deck 0.05 pdv
+
+# Case: HALO burns (tests/decks/ok_halo.deck, and _rs). Its hot spots come
+# from the compression module burn hands it (De, Dv from the database's
+# old and new levels); were that wiring broken (De or Dv 0, a sign or a
+# time level wrong), the cases above would still pass, the run merely
+# inert. So: a cell reacts, and Material X burns out (lam = 1 in every
+# one of its cells by the run's end, 3 us: the detonation has crossed it).
+halo_burns() {   # $1 case name, $2 deck
+   begin
+   local c=$1 d="$TMP/$1"
+   if ! run "$1" "$2"; then
+      fail $c "the run did not finish"
+   elif ! grep -q 'First cell to react *: [0-9]' "$d/screen.out"; then
+      fail $c "no cell reacted: HALO's compression (De, Dv) not reaching it?"
+   elif ! grep -q 'Cells burnt out, MatX *: *\([0-9][0-9]*\) *of \1 *$' "$d/screen.out"; then
+      fail $c "Material X did not burn out: $(grep 'Cells burnt out' "$d/screen.out")"
+   else
+      pass $c
+   fi
+}
+halo_burns halo_burns    tests/decks/ok_halo.deck
+halo_burns halo_burns_rs tests/decks/ok_halo_rs.deck
 
 # Case: velocity profiles (xvel_profile, xvel_amplitude). Frame 1 is
 # t = 0, so its face velocities (KMPS, real32) must be what the deck

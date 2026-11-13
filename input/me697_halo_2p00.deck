@@ -1,0 +1,174 @@
+#**********************************************************************#
+#  ME 697 class project with a reactive Material X: HALO               #
+#                                                                      #
+#  The class problem (me697_double_shock_2p00.deck), with Material X   #
+#  burning by HALO (Hot-spot Activation, Loss and Overlap), the fifth  #
+#  of bitwhiz's burn models (doc/design/burn_models.md): hot spots are #
+#  activated by the work of compression and dissipated, never          #
+#  reactivated, so a weak first shock spends hot spots a later one can #
+#  not use (shock desensitization, with no switch). Per cell:          #
+#                                                                      #
+#   E_D  grows by sqrt(De Dv) on compression past the smallest volume  #
+#        the cell has had                                              #
+#   eta  = hot spots, from Erf((E_D/ED0)^BETAH), dissipated at the     #
+#        rate (1 - lam)^DELTA/TAUD                                     #
+#   ds/dt = KB eta^(1/DFRAC) (max(P,0)/PR)^NH,  lam = 1 - exp(-s^DFRAC)#
+#                                                                      #
+#  HALO is not gated by the lead shock: a cell's hot spots come from   #
+#  its own compression.                                                #
+#                                                                      #
+#      | Ta 3.0 | Al 4.0 |=> Material X 10.0 | PMMA 10.0 |  PDV ->     #
+#     x=-7.0           x=0 (impact plane)    x=10.0      x=20.0        #
+#                                                                      #
+#  ED0, BETAH, TAUD, DELTA, DFRAC, NH and KB here are an example, not  #
+#  a calibration (that is the design note's step 10): chosen so that   #
+#  its Pop plot follows HVRB's (me697_hvrb_2p00.deck). The products    #
+#  are the HVRB deck's ideal gas. The burn's keys, and what each does: #
+#  input/README.md, Material block; every other key is the class       #
+#  deck's (its key reference, at its end). Units: mm, us, g/cc, km/s,  #
+#  GPa, K.                                                             #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00            # km/s, flyer velocity
+
+ Begin Run
+  plots_only = no    # yes or no
+  title       = halo_2p00
+  t_end       = 3.0             # us: the detonation reaches the PDV
+                                # interface near 1.5 us at 2.00 km/s
+  num_threads = 1
+ End Run
+
+ Begin Output                   # nothing listed here = nothing written
+  plot_dt     = 0.005           # us between snapshots: under a
+                                # pixel row of the t-x diagrams
+  movie_frames = 35             # the pressure movie, 0 to 3.0 us
+  tracer_dt   = 0.005           # us between tracer rows (the
+                                # reference's spacing); 0 = every cycle
+  colormap    = viridis         # for bitmap pictures
+
+  tracer = pdv     MatX:PMMA    # the PDV signal
+  tracer = impact  Al:MatX      # impact plane
+  tracer = ta_al   Ta:Al        # where the second shock is born
+  tracer = mid_x   MatX@0.5     # mid-sample, past the run distance
+ End Output
+
+ Begin Solver
+  method = RS                   # the Riemann solver: a shock 1-2 cells
+  order  = 2                    # sharp, and a smooth burn behind it
+                                # (second order, MUSCL-Hancock)
+  BL     = 0.1                  # method = AV's linear and quadratic
+  BQ     = 2.0                  # viscosity coefficients (the equation
+                                # sheet's defaults); RS ignores them
+  CFL    = 0.6
+ End Solver
+
+ # Mie-Gruneisen on the principal Hugoniot (rev-0, Eqs. 4 and 6):
+ #   Us = C0 + S1*up + (S2/C0)*up^2,   rho*Gamma = R0*G0
+ Begin Material Ta              # tantalum, backing plate
+  R0 = 16.65                    # g/cm^3, initial density
+  C0 = 3.40                     # km/s, Hugoniot intercept
+  S1 = 1.20                     # -,    Us-up slope
+  S2 = 0.0                      # -,    Us-up curvature (default 0)
+  G0 = 1.60                     # -,    Gruneisen coefficient
+  spall_strength = 5.0          # GPa, dynamic. Tantalum is strong in
+                                # tension (spall strengths of several
+                                # GPa are reported); at 5.0 the Ta here
+                                # holds its ~2 GPa tension, as in the
+                                # reference data. Other materials take
+                                # the default, 0.01 GPa (input/README.md)
+ End Material
+
+ Begin Material Al              # aluminum, flyer face
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  S2 = 0.0
+  G0 = 2.00
+ End Material
+
+ Begin Material MatX            # notional HE surrogate, reactive
+  eos  = mie_gruneisen_t        # the unreacted solid, plus T: the burn's
+  R0   = 1.60                   # closure mixes it with the products at
+  C0   = 2.50                   # one density and one temperature
+  S1   = 1.80
+  S2   = -0.10
+  G0   = 1.20
+  CV   = 1.1633418              # J/(g K), both phases
+  T0   = 298.0                  # K
+
+  burn  = halo                  # HALO: hot spots from compression
+  ED0   = 0.35                  # GPa^(1/2) cm^3/g, the activation scale:
+                                # Erf(1) = 0.84 of the hot spots
+  BETAH = 4.0                   # sharpness of activation
+  TAUD  = 0.25                  # us, hot-spot dissipation time
+  DELTA = 2.0                   # exponent on (1 - lam) in the dissipation
+  DFRAC = 2.3                   # fractal dimension of the burn, 2 to 3
+  NH    = 2.0                   # exponent on P/PR
+  KB    = 2.0                   # 1/us, burn rate at P = PR, eta = 1
+  PR    = 7.0                   # GPa, reference pressure
+
+  products = ideal_gas          # P = (GAMMA - 1) rho CV T, as the HVRB
+                                # deck's
+  GAMMA    = 2.60
+  Q        = 4.8828             # kJ/g (= MJ/kg), heat of reaction
+ End Material
+
+ Begin Material PMMA            # window; Lacina et al. (2018) linear fit
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  S2 = 0.0
+  G0 = 0.90                     # estimated from Plexiglass (rev-0 Table 1)
+ End Material
+
+ Begin Stack
+  resolution = 35               # zones/mm: 105 + 140 + 350 + 350 = 945
+  origin     = Al:MatX          # x = 0 at the impact plane
+
+  Begin Layer
+   material = Ta
+   width    = 3.0               # mm
+   xvel     = u_fly             # km/s, + is to the right
+  End Layer
+
+  Begin Layer
+   material = Al
+   width    = 4.0
+   xvel     = u_fly
+  End Layer
+
+  Begin Layer
+   material = MatX
+   width    = 10.0
+  End Layer
+
+  Begin Layer
+   material = PMMA
+   width    = 10.0
+  End Layer
+ End Stack
+End bitwhiz
+
+Notes (ignored by the parser):
+- Velocity sweep: change "define u_fly" only. Measured at this deck's 35
+  zones/mm, RS order 2: 2.00 km/s detonates about 3.3 mm in, 1.75 about
+  4.5 mm and 1.50 about 7.8 mm (HVRB, this deck's twin: 3.5, 5.0 and 7.5
+  mm); at 1.25 km/s Material X burns behind the shock without detonating
+  within 10 mm. Method AV gives the same within 0.1 mm.
+- Each tracer's XRN column (the tracer file) is its cell's extent of
+  reaction, lam, 0 to 1. HALO is not gated: a cell burns wherever it has
+  hot spots and P > 0, inside AV's smeared shock too.
+- The activation measure counts compression only past the smallest
+  volume the cell has had (DK): the ringing behind a captured shock adds
+  nothing, a second shock adds in full. A smooth ramp is compression work
+  too, and activates (about 70 to 85 % of a shock's E_D to the same
+  volume), less sharply for BETAH = 4.
+- The double shock: this stack's Ta backing sends a second shock into
+  Material X behind the first. Hot spots the first shock activated and
+  that dissipated before the second arrives are not reactivated by it.
+- KB = 0 is the inert limit (hot spots, but nothing burns); TAUD = 1.0e30
+  turns dissipation off.
+- "Cells burnt out" on the screen counts the cells with lam within 1e-12
+  of 1, for every model.

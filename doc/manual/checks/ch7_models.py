@@ -94,6 +94,23 @@ ok(sp.limit((mu*(1 + sp.erf(mu/(sg*sp.sqrt(2))))/2
 s, d, R = sp.symbols('s d R', positive=True)
 lh = 1 - sp.exp(-s**d)
 ok(sp.simplify(sp.diff(lh, s)*R - d*s**(d - 1)*(1 - lh)*R), 'HALO: chain rule')
+# ... and in lam: d s^(d-1) = d (-ln(1-lam))^((d-1)/d), the hot-spot topology
+lmh = sp.symbols('lambda_h', positive=True)
+fr = sp.lambdify((d, lmh), (d*s**(d - 1)).subs(s, (-sp.log(1 - lmh))**(1/d))
+                 - d*(-sp.log(1 - lmh))**((d - 1)/d), 'mpmath')
+w = max(abs(fr(mp.mpf(dd), mp.mpf(ll))) for dd in ('2', '2.3', '3')
+        for ll in ('1e-6', '0.3', '0.99'))
+ok(w < 1e-25, 'HALO: the rate in lam, d (-ln(1-lam))^((d-1)/d) (9 points)')
+# One step across a Rayleigh line from rest: sqrt(mean P) |Dv| over the
+# integral of sqrt(P) |dv| is 3/(2 sqrt 2)
+P1, Dv = sp.symbols('P_1 Delta_v', positive=True)
+x = sp.symbols('x', positive=True)
+I = sp.integrate(sp.sqrt(P1*x), (x, 0, 1))*Dv
+ok(sp.simplify(sp.sqrt(P1/2)*Dv/I - 3/(2*sp.sqrt(2))), 'HALO: one step from rest, 3/(2 sqrt 2)')
+# eta's bound: decay then add Delta erf keeps eta <= erf (eta1 <= A1, 0 < f <= 1)
+eta1, A1, A2, f = sp.symbols('eta_1 A_1 A_2 f', positive=True)
+ok(sp.simplify((A2 - (eta1*f + A2 - A1)).subs(eta1, A1 - x) - (A1*(1 - f) + x*f)),
+   'HALO: A2 - eta2 = A1 (1 - f) + (A1 - eta1) f >= 0')
 
 #*** CLAUDE: moments' exact update; Hill-Zimmermann's limit
 dR = sp.symbols('Delta_R', positive=True)
