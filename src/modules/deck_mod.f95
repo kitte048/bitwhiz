@@ -66,6 +66,9 @@ module deck
 !                (with Claude)        > 0 and G0 >= 0 (F-10); a burn
 !                                     key's largest value, bkey_max
 !                                     (XR <= 25, F-03)
+!    11/12/26    D. E. Kittell        A burn key's check chk_count, a
+!                (with Claude)        whole number, 0 or more
+!                                     (StochasticIgnite's SEED)
 !
 !**********************************************************************!
 !
@@ -131,7 +134,7 @@ use bits,  only: dp, int32, int64, zero, one, kpt6, nline
 use shock
 use burn_table, only: nburn, burn_none, burn_names, burn_long, nbkey, &
    bkey_name, bkey_check, bkey_note, bkey_max, chk_positive, chk_nonneg, &
-   chk_open01, &
+   chk_open01, chk_count, &
    burn_npar, burn_key, burn_takes, bkey_index
 use distributions, only: dist_t, dist_set, dist_nparam, dist_mean, &
    dist_names
@@ -1438,6 +1441,11 @@ contains
          if (.not. (x > zero .and. x < one)) then
             call deck_error(ln, trim(key)// &
                ' must be between 0 and 1 (not 0 or 1)')
+            ok = .false.
+         end if
+      case (chk_count)
+         if (.not. (x >= zero .and. abs(x - aint(x)) <= zero)) then
+            call deck_error(ln, trim(key)//' must be a whole number, 0 or more')
             ok = .false.
          end if
       end select

@@ -167,16 +167,17 @@ Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
 | `spall_strength` | GPa | 0.01 |
 | `CV` | J/(g K) | required with `mie_gruneisen_t`; not allowed without it |
 | `T0` | K | required with `mie_gruneisen_t`; not allowed without it |
-| `burn` | `hvrb`, `thermalcascade`, `flashfire` | none (inert) |
+| `burn` | `hvrb`, `thermalcascade`, `flashfire`, `stochasticignite` | none (inert) |
 | `PR`, `ZR`, `MR`, `XR`, `PI`, `TAU0` | GPa, -, -, -, GPa, us | each required with `burn = hvrb` (`XR` 25 or less); not allowed without it |
 | `HT`, `TC`, `GT`, `NS`, `PR` | 1/(us K^GT), K, -, -, GPa | each required with `burn = thermalcascade`; not allowed without it |
 | `KFF`, `AFF`, `BFF`, `TA`, `NS`, `PR`, `LAM0` | 1/us, -, -, K, -, GPa, - | each required with `burn = flashfire` (`LAM0` strictly between 0 and 1); not allowed without it |
+| `MU`, `SIGMA`, `AVRAMI`, `NS`, `PR`, `LC`, `SEED`, `TAUZ` | 1/us, 1/us, -, -, GPa, mm, -, us | each required with `burn = stochasticignite` (`SEED` a whole number, 0 to 19999); not allowed without it |
 | `products` | `ideal_gas` | none: required with `burn` (no default) |
 | `GAMMA`, `Q` | -, kJ/g (= MJ/kg) | each required with `products = ideal_gas`; not allowed without it |
 
 A material that no layer uses gets a warning, not an error. A burn key means
 the same thing in every model that takes it (`PR`, the reference pressure, is
-every model's, and `NS` ThermalCascade's and FlashFire's), and a model takes only its own: a key of another
+every model's, and `NS` ThermalCascade's, FlashFire's and StochasticIgnite's), and a model takes only its own: a key of another
 model is an error ("ZR is not a key of burn = thermalcascade (it is for burn =
 hvrb ...)"), as is any burn key without a burn.
 
@@ -293,6 +294,50 @@ the Arrhenius factor. `LAM0` must be between 0 and 1 (not 0 or 1); `KFF`,
     NS   = 1.0
     PR   = 7.0               # GPa
     LAM0 = 1.0e-4
+    products = ideal_gas
+    GAMMA = 2.60
+    Q = 4.8828               # kJ/g
+
+**Burning (`burn = stochasticignite`).** StochasticIgnite, proposed by
+ChatGPT 4o-mini in SAND2025-09228 (§5.2.2), repaired where it can not run as
+written, and extended (`doc/design/burn_models.md`, step 7): the same solid,
+products and closure, with a rate that is random,
+
+    dphi/dt = max(MU + SIGMA Z, 0) (1 + max(P_s, 0)/PR)^NS,    lam = 1 - exp(-phi^AVRAMI)
+
+**once the cell's lead shock is marked** (before it, phi and lam stay 0). phi
+is an Avrami clock: with SIGMA = 0 it runs at MU (1 + P_s/PR)^NS, and lam =
+1 - exp(-(MU S t)^AVRAMI), S that factor and t the time since the mark. Z is
+standard normal noise, the same in every cell of a bin j of initial position,
+`LC` wide, counted from x = 0 (the bins belong to the material, not the mesh),
+and wandering in time with correlation time `TAUZ` (an Ornstein-Uhlenbeck
+process, stepped exactly, in sub-steps of at most TAUZ/10). Each bin's Z
+starts from the atmospheric-noise table (`src/modules/rand_mod.f95`), entry
+modulo(SEED + 7919 j, 20000) + 1; its later steps come from a counter-based generator keyed by
+SEED, the bin, the cycle and the sub-step, so **the same SEED gives the same
+run, bit for bit, on any number of threads**, and another SEED another sample
+of the same material. The rate is floored at 0 (a cell never burns backward);
+so with `TAUZ = 1.0e30` (Z frozen at its table value) a bin whose MU + SIGMA
+Z is 0 or less never burns. (Frozen, two SEEDs can give one field shifted by
+whole bins: SEED + 7919 starts bin j where SEED starts bin j + 1. With TAUZ
+finite the later draws, keyed by SEED itself, differ.) `TAUZ` must be more than 0: the white-noise limit,
+TAUZ to 0, is outside the model (the floor makes it diverge). There is no
+threshold: every marked cell with a positive rate burns in the end, and P_s
+enters only through (1 + P_s/PR)^NS. `MU = SIGMA = 0` is the inert limit (the
+detector and Z still run, and change nothing). `MU`, `SIGMA` are 0 or more;
+`AVRAMI`, `LC`, `TAUZ` more than 0; `SEED` a whole number from 0 to 19999.
+Example: below, and `me697_sign_2p00.deck` (section 6), an example set, not a
+calibration:
+
+    burn   = stochasticignite
+    MU     = 1.35            # 1/us
+    SIGMA  = 0.7             # 1/us
+    AVRAMI = 3.0
+    NS     = 2.0
+    PR     = 7.0             # GPa
+    LC     = 0.5             # mm
+    SEED   = 108
+    TAUZ   = 0.2             # us
     products = ideal_gas
     GAMMA = 2.60
     Q = 4.8828               # kJ/g
@@ -466,6 +511,18 @@ HVRB's: 1.75 km/s detonates about 4.9 mm in and 1.50 about 7.2 mm (HVRB 5.0 and
 within 10 mm, and at 1.00 slowly. Its detonation speed converges with the mesh
 to within 0.2 % of D_CJ (`tests/verification/study_ffire.py`). About 3 s
 (release build).
+
+**The same, by StochasticIgnite,** `me697_sign_2p00.deck`: Material X burning
+by `burn = stochasticignite` (Material block, "Burning"), each cell's Avrami
+clock running at its bin's noisy rate once its lead shock is marked; RS at
+order 2. Constants chosen so that at 2.00 km/s it detonates about 3.4 mm in
+on average over seeds, with a spread (standard deviation 0.5 mm over 16
+seeds; this deck's `SEED = 108`, 3.45 mm). Change `SEED` for another sample.
+Its Pop plot is shallow, the model having no threshold: 1.75 km/s 4.0 mm,
+1.50 4.4 and 1.25 4.8 (means over 8 seeds), all detonating within 10 mm. Its
+detonation runs 2 to 4 % below D_CJ (a bin slow when the front reaches it
+burns too late to drive it); without the noise (`SIGMA = 0`) at D_CJ
+(`tests/verification/study_sign.py`). About 2 s (release build).
 
 **Keep the origin near the problem.** Positions are stored as plain numbers, so
 round-off in x grows with the size of x: a cell's width is the difference of
@@ -742,8 +799,9 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
 
   (7 frames a second: 35 frames make 5 s; `yuv420p` so browsers play it).
   The class deck, `pulse_split_normal.deck`, `steepening_hump.deck`,
-  `me697_hvrb_2p00.deck`, `me697_tcas_2p00.deck` and `me697_ffire_2p00.deck`
-  make movies (35, 35, 25, 35, 35 and 35 frames).
+  `me697_hvrb_2p00.deck`, `me697_tcas_2p00.deck`, `me697_ffire_2p00.deck`
+  and `me697_sign_2p00.deck` make movies (35, 35, 25, 35, 35, 35 and 35
+  frames).
 
 - **Read from the files, never from memory.** The t-x diagrams come from
   `<title>.hist` and the tracer plots from `<title>.tracers.csv`, so a picture
@@ -892,7 +950,7 @@ so the heartbeat, tracer and history files it reads are never touched.
 | `xvel_profile`, `xvel_amplitude` | `layer(l)%prof_name`, `prof_np`, `prof_par`; `xamp`, `have_amp` |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
 | `Material` keys `eos`, `CV`, `T0` | `material(m)%eos` (`eos_mie_gruneisen`, `eos_mie_gruneisen_t`), `CV` (J/(g K)), `T0`; copied into `layer(l)%eos`, `cv` (kJ/(g K): `CV`/1000), `T0`, then into module `temperature` (`src/modules/temp_mod.f95`), cell by cell |
-| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `HT` ... `NS`, `KFF` ... `LAM0`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `thermalcascade` (`tcas_mod.f95`, with `leadshock`, `lshk_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
+| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `HT` ... `NS`, `KFF` ... `LAM0`, `MU` ... `TAUZ`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `thermalcascade` (`tcas_mod.f95`, with `leadshock`, `lshk_mod.f95`), `flashfire` (`ffire_mod.f95`), `stochignite` (`sign_mod.f95`, with `random`, `rand_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
 | `num_threads` | `nproc` |
 | `Run`, `Output`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `plot_dt`, `colormap`, `CFL`, `stack_resolution`, ...) |
 | `tracer` | `tracer(n)%...`: name, location, `x0`, `kface`, `w`, `kcell` |

@@ -64,6 +64,31 @@ ok(sp.simplify(sp.diff(cf, lam) - integrand) == 0 and cf.subs(lam, 0) == 0,
 a = sp.symbols('a', positive=True)
 ok(sp.simplify(sp.diff(1 - sp.exp(-phi**a), phi)
                - a*phi**(a - 1)*sp.exp(-phi**a)), 'SI: dlam/dphi of KJMA')
+# SIGMA = 0, a clock: phi = MU S t, lam = 1 - exp(-(MU S t)^a) (test_sign 5)
+mu, S = sp.symbols('mu S', positive=True)
+ls = 1 - sp.exp(-(mu*S*t)**a)
+ok(sp.simplify(sp.diff(ls, t) - a*(mu*S*t)**(a - 1)*(1 - ls)*mu*S),
+   'SI: SIGMA = 0, lam = 1 - exp(-(MU S t)^a) solves eq. (si)')
+# The OU step: Z' = A Z + sqrt(1 - A^2) xi keeps variance 1, correlation A
+Aou = sp.symbols('A', positive=True)
+ok(sp.simplify(Aou**2 + (1 - Aou**2) - 1), 'SI: OU step keeps var(Z) = 1')
+# var(phi) with no floor: sigma^2 S^2 int int exp(-|t1 - t2|/tau) dt1 dt2
+sg, tau, t1, t2 = sp.symbols('sigma tau t_1 t_2', positive=True)
+inner = sp.integrate(sp.exp(-(t1 - t2)/tau), (t2, 0, t1))
+v = 2*sg**2*S**2*sp.integrate(inner, (t1, 0, t))
+ok(sp.simplify(v - 2*sg**2*S**2*tau**2*(t/tau - 1 + sp.exp(-t/tau))),
+   'SI: var(phi) = 2 sigma^2 S^2 tau^2 (t/tau - 1 + exp(-t/tau)), no floor')
+# The floored mean rate, E[(mu + sigma Z)+] = mu Phi(mu/sigma) + sigma phi(mu/sigma)
+def fm(m, g):
+    m, g = mp.mpf(m), mp.mpf(g)
+    return m*mp.ncdf(m/g) + g*mp.npdf(m/g)
+w = max(abs(mp.quad(lambda z: max(m + g*z, 0)*mp.npdf(z), [-mp.inf, -m/g, mp.inf])
+            - fm(m, g)) for m, g in [(2, 1), (2, 6), (1.35, 0.7), (0.5, 3)])
+ok(w < 1e-20, 'SI: E[(mu + sigma Z)+] = mu Phi + sigma phi (4 points)')
+# ... grows as sigma/sqrt(2 pi): the white-noise limit diverges
+ok(sp.limit((mu*(1 + sp.erf(mu/(sg*sp.sqrt(2))))/2
+             + sg*sp.exp(-mu**2/(2*sg**2))/sp.sqrt(2*sp.pi))/sg, sg, sp.oo)
+   - 1/sp.sqrt(2*sp.pi), 'SI: the floored mean over sigma -> 1/sqrt(2 pi)')
 
 #*** HALO: lam = 1 - exp(-s^d), ds/dt = R  =>  dlam/dt = d s^(d-1) (1-lam) R
 s, d, R = sp.symbols('s d R', positive=True)

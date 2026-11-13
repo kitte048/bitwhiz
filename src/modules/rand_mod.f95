@@ -2,7 +2,13 @@ module random
 !**********************************************************************!
 !
 !  Purpose:
-!    List of random numbers generated from atmospheric noise.
+!    20,000 random numbers, uniform in (0, 1), generated from
+!    atmospheric noise (RANDOM.ORG), for the burn model StochasticIgnite
+!    (module stochignite: each bin's Z at t = 0). Checked Nov 12, 2026
+!    (doc/design/burn_models.md, "Step 7"): all distinct, all strictly
+!    inside (0, 1), mean 0.4985, variance 0.08325 (1/12 = 0.08333),
+!    Kolmogorov-Smirnov p = 0.51, chi-square (20 bins) p = 0.86, lag-1
+!    correlation 0.0018.
 !
 !     RANDOM.ORG // Timestamp: 2025-03-30 04:00:57 UTC +10k
 !     RANDOM.ORG // Timestamp: 2025-04-02 02:52:40 UTC +10k
@@ -11,6 +17,9 @@ module random
 !      Date       Programmer          Description of change
 !      ====       ==========          =====================
 !    03/29/25    D. E. Kittell        Original code
+!    11/12/26    D. E. Kittell        Its header (it said "Named RGB
+!                (with Claude)        Color Values"), now that it is
+!                                     used (the v1.4.0 review, F-13)
 !
 !**********************************************************************!
 implicit none
@@ -26,7 +35,7 @@ integer, parameter :: z = selected_real_kind(15, 307)  !  64-bit (8 byte)
 integer, parameter :: i32 = selected_int_kind(9)       ! 4 byte signed int
 
 !**********************************************************************!
-! Data dictionary: Named RGB Color Values.
+! Data dictionary: the table, randlist(1:nbig).
 !**********************************************************************!
 integer(kind=i32), parameter :: nbig=20000
 !

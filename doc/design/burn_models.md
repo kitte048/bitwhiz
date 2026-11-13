@@ -1015,3 +1015,138 @@ with SIGMA large enough that the spread of run distance over seeds shows,
 and TAUZ and LC on the reaction's scales (to be set by trial). The manual's
 section, from "under development" to as built, with the three-layer table
 above.
+
+## As built: step 7, StochasticIgnite (Nov 12, 2026)
+
+**Module `stochignite`** (`src/modules/sign_mod.f95`; uses `bits`,
+`thermalcascade` for `tc_om`, and `random` for the table): `si_step`, a
+cell's phi and Z over the hydro's dt, the plan's three lines in `si_nsub`
+sub-steps (h <= TAUZ/10, at most `si_ns_max` = 1000), Z moving in every cell
+and phi only once marked; `si_z0`, bin j's starting Z, AS241 of table entry
+modulo(SEED + 7919 j, 20000) + 1; `si_uniform`, the counter-based draw,
+SplitMix64 chained over (SEED, j, n, s) in 16-bit pieces; `si_normal`,
+AS241 (PPND16). Pure, no state. As the plan, but for:
+
+- **The uniform is 52 bits, ((x >> 12) + 1/2) 2^-52, not the plan's 53**
+  ((x >> 11) + 1/2) 2^-53: the largest 53-bit value, 2^53 - 1/2, is not a
+  double and rounds to 2^53, so u could be exactly 1 and AS241 infinite.
+  With 52 bits every u is a double strictly inside (0, 1), from 2^-53 to 1
+  - 2^-53.
+- **The cycle is module `burn`'s own**, `cycle_next` (1 on the first step;
+  `burn_track` sets it to ncycle + 1 after each), not an argument from
+  `maincode`: the same number, and `maincode` and its OpenMP clauses
+  unchanged. Each cell's bin, `sbin(k)`, is set in `alloc_burn` from its
+  layer's left face plus (k - kfirst + 1/2) cell widths, floor(x0/LC),
+  counted from x = 0 (after the origin shift) and kept within +-2^62. Two
+  layers of StochasticIgnite materials in one bin with one SEED share its
+  draws; with another TAUZ their Z differ, as they should.
+- On cycle 1 Z starts from the table (`first`, cycle_next = 1), since `bst`
+  starts at 0 (maincode's setup check (8) requires it).
+- **The OU step's noise factor is sqrt(1 - A^2), as written, not the plan's
+  sqrt(1 - exp(-2h/TAUZ)):** the same number, but at TAUZ = 1e30 A rounds
+  to 1 and this gives exactly 0, so Z is frozen bit for bit with no
+  special case. The cancellation costs at most 3e-9 of the noise's
+  amplitude for h/TAUZ >= 1e-8 (measured by the review); between that and
+  1e-16 the amplitude's relative error is large but the amplitude itself
+  negligible.
+- `si_z0` reduces j modulo 20,000 before multiplying by 7919, so the entry,
+  modulo(SEED + 7919 j, 20000) + 1, is exact for any bin (an LC below
+  about 1e-14 mm would otherwise overflow 7919 j; found by the review).
+- **Seeds, frozen:** 7919 is invertible modulo 20,000, so every SEED's
+  sequence of starting Z over the bins is SEED 0's, shifted: SEED + 7919
+  starts bin j where SEED starts bin j + 1. With TAUZ = 1e30 two such seeds
+  are one field moved by whole bins, not two samples (about 0.4 % of seed
+  pairs within 40 bins of each other; none among the study's). With TAUZ
+  finite the later draws, keyed by SEED itself, differ. Documented (the
+  example deck, `input/README.md`, the manual), not changed.
+
+**Its row** (module `burn_table`): `burn_sign` = 4, keys MU, SIGMA (>= 0),
+AVRAMI, LC, TAUZ (> 0), NS and PR (shared), SEED with the new check
+`chk_count` (a whole number, 0 or more; module `deck`: "SEED must be a whole
+number, 0 or more") and `bkey_max` 19999; slots `si_MU` ... `si_TAUZ`; its
+history the detector's five, phi (`si_phi` = 6) and Z (`si_z` = 7), so
+`nst_max` = 7. **Module `burn`:** `cell_burn` takes the bin and the cycle;
+StochasticIgnite's case calls `si_step` with the gate as its `marked`.
+
+**HVRB, ThermalCascade and FlashFire bit for bit:** every input deck and
+every `ok_` deck of 1.6.1 (53), debug builds, against `898a473`: heartbeat
+rows (the wall clock column aside), tracer rows, history frames and the
+screen, identical once the run's time and version stamps are set aside.
+
+**Tests.** `tests/test_sign.f95` (8 checks) against `tests/sign_reference.py`
+(50 digits): AS241 at 18 points from 2^-54 to 1 - 2^-53, to 4.4e-16 (2
+ulp; the reference takes each u as the double the Fortran reads, exactly:
+near u = 1/2 and 1 the deviate depends on u's last bit, not on AS241); the
+generator's u exactly the Python's, 8 cases (negative and 2^40-sized bins,
+large cycles); 7 bins' starting Z to 6.7e-16 (two at +-2^62); the OU step over 200,000
+cycles, at dt = TAUZ/20 (one sub-step) and 2 TAUZ (20): mean, variance and
+lag-1 correlation within 4 of their AR(1) standard errors (all within 1);
+SIGMA = 0 against the clock's closed form over 1000 steps, phi = MU S t and
+lam both to 1.3e-15, with phi ending near 0.33 (the first version ended at
+phi = 13, where lam rounds to 1 and the check could not fail: found by the
+review); TAUZ = 1e30 freezes Z at the table's value, bit for bit, 5000 steps;
+the floored mean rate, 4 cases, 400 bins over 200 TAUZ, within 4 standard
+errors of mu Phi(mu/sigma) + sigma phi(mu/sigma) (all within 1; the bound
+has 1e-3 of the rate added, the left-point quadrature's share, about 0.4
+standard errors); the same SEED the same bits. `test_btab` gains the row (check 11; 4 knows
+`chk_count`, 10 SEED's 19999). Decks: `ok_sign`, `ok_sign_rs` (also OpenMP,
+release and history decks), the inert limits `ok_sign_inert`, `_rs` (MU =
+SIGMA = 0: Z steps, nothing burns; the inert run bit for bit, XRN aside),
+seven bad decks (SEED 12.5, -1, 20000; LC = 0; TAUZ = 0; SEED left out; a
+FlashFire key). `make test`: 224 deck, 16 OpenMP and 40 history tests.
+
+**In runs** (`tests/verification/study_sign.py`, 32 checks, about 5
+minutes):
+
+- **E1, the lead shock in the hydro is its replay's.** SIGMA = 0, AVRAMI =
+  1, NS = 1, PR = 1 GPa, MU = 1e-6: at five tracers, AV and RS, each cell
+  burns from the row after `ls_replay`'s mark, its P_s (from -ln(1 -
+  lam_1)) the replay's to 3e-16.
+- **E2, the detonation as an ensemble** (RS order 2, 12 seeds; the plan's
+  AV and 200 zones/mm left out for time): every run detonates; mean run
+  distance 3.31, 3.26 and 3.13 mm at 25, 50 and 100 zones/mm (standard
+  errors 0.13 to 0.19; standard deviation 0.4 to 0.65 mm), 50 and 100
+  agreeing: their paired difference, seed by seed, -0.13 +- 0.21 mm, 0.6
+  standard errors (paired, since a seed starts from the same Z on both
+  meshes: the review's suggestion; the pairs turn out only weakly
+  correlated). **Its D is not within 1 % of D_CJ, as
+  the plan expected, but 2 to 4 % below** (7.20 to 7.34 km/s over 6 to 9.5
+  mm): a bin whose rate is low or floored when the front reaches it burns
+  behind the front, too late to drive it. Without the noise (SIGMA = 0) the
+  same deck runs at +0.13 % of D_CJ, converged (50 to 100 zones/mm,
+  -0.007 %): so the deficit is the noise's, a result of the model, not of
+  the hydro. Reported, not checked.
+- **E3, frozen noise** (TAUZ = 1e30, SIGMA = 1.4, so about one bin in six
+  has MU + SIGMA Z0 <= 0), 4 seeds, 25 and 50 zones/mm, AV and RS: the
+  Material X cells with lam = 0 at the end are exactly the cells of the bins
+  the table predicts dead (Z0 at 50 digits, the bins by the Fortran's
+  arithmetic), 1 to 5 dead bins of 20 per seed, on every run; every other
+  cell burns. A test of the bins, the table, AS241 and the freeze together,
+  in the hydro. (The run distance of one frozen seed is also nearly
+  mesh-converged, but the 0.9 D_CJ criterion jumps when a seed's front sits
+  near it: not used.)
+
+**An independent review** (a Claude subagent, Nov 12, read-only) found no
+Critical or High defect: it re-derived the 64-bit arithmetic against
+Python's integers (72 cases, including j = -2^62 and n = 2^31), AS241's 45
+coefficients against CPython's PPND16, the cycle counter on both methods'
+paths, OpenMP safety and the bins. Fixed from it: test_sign's check 5 could
+not fail (above); `si_z0`'s overflow for tiny LC; E2's comparison made
+paired; the frozen seeds' shift documented; doc inconsistencies (the table
+entry written in full, max(P_s, 0) in `input/README.md`, 3.4 mm in the
+deck's header).
+
+**The example deck** (`input/me697_sign_2p00.deck`; MU = 1.35/us, SIGMA =
+0.7/us, AVRAMI = 3, NS = 2, PR = 7 GPa, LC = 0.5 mm, SEED = 108, TAUZ = 0.2
+us): at its 35 zones/mm, RS order 2, 2.00 km/s: mean run distance 3.4 mm
+over 16 seeds (standard deviation 0.5, 2.75 to 4.65 mm), SEED 108 3.45 mm;
+1.75, 1.50 and 1.25 km/s 4.0, 4.4 and 4.8 mm (8 seeds each): **a shallow
+Pop plot, every speed detonating**, the model as proposed having no
+threshold (P_s enters only through (1 + P_s/PR)^NS). A first set, NS = 1
+(MU = 3.8, SIGMA = 2), was flatter still (1.25 km/s 5.2 mm, 2.00 4.2): NS =
+2 chosen for some pressure sensitivity. About 3 % of bins have MU + SIGMA Z
+< 0 at any moment; with TAUZ = 0.2 us they recover within about TAUZ.
+
+**The manual:** chapter 7's StochasticIgnite section, as built, with the
+three-layer table and its trace tags; chapter 1 and the appendices updated.
+No course equation sheet (DK).

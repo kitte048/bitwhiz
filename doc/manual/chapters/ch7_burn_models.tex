@@ -1,8 +1,8 @@
 \chapter{Burn models}
 \label{ch:burn-models}
 
-\checkedagainst{1.6.0}{HVRB, the lead shock,
-ThermalCascade and FlashFire as built; StochasticIgnite, HALO and CLAUDE as
+\checkedagainst{1.7.0}{HVRB, the lead shock,
+ThermalCascade, FlashFire and StochasticIgnite as built; HALO and CLAUDE as
 designed in \code{doc/design/burn_models.md} (approved Nov 6, 2026), not yet
 built. Closed forms are checked in \code{doc/manual/checks/ch7_models.py}.}
 
@@ -28,7 +28,7 @@ burn until its cell's lead shock is marked (\cref{sec:lead-shock}).}
 \key{flashfire} & FlashFire & SAND2025-09228 \S 5.2.1, repaired &
   built, 1.6.0 & yes \\
 \key{stochasticignite} & StochasticIgnite & SAND2025-09228 \S 5.2.2,
-  repaired & under development & yes \\
+  repaired and extended & built, 1.7.0 & yes \\
 \key{halo} & HALO & Kittell's ADRB (2016), revised & under development
   & no \\
 \key{claude} & CLAUDE & proposed by Claude (Anthropic), 2026 & under
@@ -50,13 +50,16 @@ burn until its cell's lead shock is marked (\cref{sec:lead-shock}).}
   first order in $1 - \lam$. Such a step is exact in $\lam$ for the rate it
   is given, starts cleanly from $\lam = 0$, has no singularity at $\lam = 1$,
   and stays in $[0, 1]$ however large the step; its only error is the
-  rate's, first order in $\Delta t$. Only FlashFire, whose topology has no
-  closed form, is sub-cycled (\cref{sec:flashfire}).
+  rate's, first order in $\Delta t$. FlashFire, whose topology has no
+  closed form, is sub-cycled (\cref{sec:flashfire}); StochasticIgnite's
+  potential is exact, but its noise is sub-cycled to resolve its correlation
+  time (\cref{sec:stochasticignite}).
 \item \textbf{Repaired, not verbatim.} Three models were proposed by a
   language model (ChatGPT 4o-mini) in a 2025 survey of reactive burn models
   \cite{kittell2025sand}. None can run exactly as proposed, so each goes in
   with the fewest repairs that make it well-posed, and each repair is named
-  in its section.
+  in its section. StochasticIgnite is also extended, and its section says
+  where (\cref{tab:si-layers}).
 \item \textbf{One key, one meaning.} \key{PR} (GPa), the reference
   pressure, serves every model that has one; \key{NS} is the exponent on
   $1 + \PS/P_R$ in all three gated models (\cref{app:deck-keys}).
@@ -535,62 +538,189 @@ above resolves its reaction zone.
 \section{StochasticIgnite}
 \label{sec:stochasticignite}
 
-\begin{underdev}[: planned]
-Designed (\code{doc/design/burn_models.md}), not yet built.
-\end{underdev}
+StochasticIgnite was proposed in the same survey (\cite{kittell2025sand},
+\S 5.2.2) as a rate with a random factor,
+\begin{equation*}
+  \frac{\dd\lam}{\dd t} = g(\lam)\,(\mu + \sigma Z)\,
+  \Bigl(1 + \frac{\PS}{P_{\mathrm{ref}}}\Bigr)^{m},
+\end{equation*}
+$Z$ a standard normal deviate. As written it can not be run: $g$ is not
+given, $\mu + \sigma Z$ can be negative, and nothing says when or where $Z$
+is drawn. \Cref{tab:si-layers} shows what was proposed, what \bw\ repairs so
+that the model is defined, and what it extends.
 
-Proposed in the same survey (\cite{kittell2025sand}, \S 5.2.2) as a rate
-with a random factor, $\dd\lam/\dd t = g(\lam)\,(\mu + \sigma Z)\,(1 +
-\PS/P_R)^m$, $Z$ a standard normal deviate. As designed for \bw:
-\begin{itemize}
-\item \textbf{The topology} is the Kolmogorov--Johnson--Mehl--Avrami (KJMA)
-  form, written as a potential so the step is exact:
-  \begin{equation}
-    \lam = 1 - e^{-\phi^{a}}, \qquad
-    \frac{\dd\phi}{\dd t} = \max(\mu + \sigma Z, 0)\,
-    \Bigl(1 + \frac{\PS}{P_R}\Bigr)^{m},
-    \label{eq:si}
-  \end{equation}
-  with $a$ the Avrami exponent (3 for random points growing in three
-  dimensions). After the lead shock the rate is constant but for $\lam$: a
-  burn on a clock, as HVRB's with $Z_R = 0$.
-\item \textbf{$Z$ is a frozen field}, one value per bin of the material's
-  initial position, in bins of a correlation length $\ell_c$. The values
-  come from a fixed table of 20,000 uniform deviates drawn from atmospheric
-  noise (RANDOM.ORG, 2025) and carried in the code: a deck's \key{SEED} sets
-  the starting index, and bin $j$ reads entry $\mathrm{mod}(\mathrm{SEED} +
-  j s, 20000) + 1$, with $s$ a fixed prime coprime with 20,000. Each uniform
-  becomes a standard normal by Wichura's algorithm AS~241 \cite{wichura1988}.
-  So refining the mesh keeps the same realization, a new \key{SEED} is a new
-  member of an ensemble, and every draw is a function of (\key{SEED}, initial
-  position) alone: results stay bit for bit on any number of threads.
-  (Per-step noise was considered and set aside: it needs $\sqrt{\Delta t}$
-  scaling and would exhaust and correlate the table.)
-\item \textbf{Repairs:} $\mu + \sigma Z$ is floored at 0 (a cell cannot
-  burn backward), and the model is gated by the lead shock.
-\end{itemize}
-
-\begin{center}\small
-\begin{tabular}{@{}l l l l@{}}
+\begin{table}[h]
+\centering\small
+\caption{StochasticIgnite: as proposed, repaired, and extended.}
+\label{tab:si-layers}
+\begin{tabularx}{\textwidth}{@{}l Y Y Y@{}}
 \toprule
-Key & Symbol & Units & Meaning \\
+ & As proposed & In \bw & Why \\
 \midrule
-\key{MU}     & $\mu$    & 1/\textmu s & mean rate \\
-\key{SIGMA}  & $\sigma$ & 1/\textmu s & its standard deviation \\
-\key{AVRAMI} & $a$      & -- & Avrami exponent \\
-\key{NS}     & $m$      & -- & exponent on $1 + \PS/P_R$ \\
-\key{PR}     & $P_R$    & GPa & reference pressure \\
-\key{LC}     & $\ell_c$ & mm & correlation length of $Z$ \\
-\key{SEED}   & --       & integer & the realization \\
+$g(\lam)$ & not given & the Kolmogorov--Johnson--Mehl--Avrami (KJMA) form, as
+  a potential: $\lam = 1 - e^{-\phi^a}$ & \textbf{repair}: the model is
+  not defined without it; the potential makes the step exact \\
+$\mu + \sigma Z < 0$ & not addressed & floored at 0 & \textbf{repair}: a
+  cell can not burn backward \\
+$\PS$ & the lead shock's & gated by the lead shock, $\PS$ frozen there &
+  \textbf{repair}, as the other gated models \\
+$Z$ in space & not said & one value per bin of the material's initial
+  position, $\ell_c$ wide & \textbf{repair}: some choice is needed; the
+  bins belong to the material, not the mesh \\
+$Z$ in time & not said & an Ornstein--Uhlenbeck process, correlation time
+  $\tau_Z$ & \textbf{extension} (DK): both readings of the proposal, $Z$
+  frozen and $Z$ fresh each step, are its limits \\
+$Z$'s values & not said & the bin's first $Z$ from an atmospheric-noise
+  table by \key{SEED}; later steps from a counter-based generator &
+  \textbf{extension}: reproducible bit for bit on any number of threads \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{The model, as built.} Once the cell's lead shock is marked,
+\begin{equation}
+  \lam = 1 - e^{-\phi^{a}}, \qquad
+  \frac{\dd\phi}{\dd t} = \max(\mu + \sigma Z, 0)\,
+  \Bigl(1 + \frac{\max(\PS, 0)}{P_R}\Bigr)^{N_S},
+  \label{eq:si}
+\end{equation}
+with $a$ the Avrami exponent (3 for random points growing in three
+dimensions); before the mark $\phi = \lam = 0$. With $\sigma = 0$ the rate
+is constant after the mark, $\phi = \mu S t$ with $S = (1 + \PS/P_R)^{N_S}$
+and $t$ the time since the mark: a burn on a clock, $\lam = 1 - e^{-(\mu S
+t)^a}$, as HVRB's with $Z_R = 0$. $\mu = \sigma = 0$ is the inert limit.
+There is no threshold: every marked cell with a positive rate burns in the
+end, and $\PS$ enters only through $S$.
+\trace{modules/sign_mod.f95}{si_step}{test_sign}
+\trace{modules/burn_mod.f95}{cell_burn}{study_sign.py}
+
+\paragraph{The noise in time.} $Z$ is an Ornstein--Uhlenbeck process
+\cite{uhlenbeck1930}, stationary with mean 0, variance 1 and correlation
+$e^{-|t_1 - t_2|/\tau_Z}$. Its step over $h$ is exact in distribution for
+any $h$ \cite{gillespie1996}:
+\begin{equation}
+  Z \leftarrow A Z + \sqrt{1 - A^2}\,\xi, \qquad A = e^{-h/\tau_Z},
+  \qquad \xi \sim N(0, 1).
+  \label{eq:si-ou}
+\end{equation}
+The hydro's step is cut into sub-steps $h \le \tau_Z/10$ (at most 1000; one
+when $\tau_Z \ge 10\,\Delta t$), each adding the rate at its start to $\phi$
+and then moving $Z$. $Z$ moves from $t = 0$ in every cell of the material,
+marked or not, so a bin's $Z$ is the same in all its cells. Without the
+floor the variance of $\phi$ would be $2\sigma^2S^2\tau_Z^2(t/\tau_Z - 1 +
+e^{-t/\tau_Z})$: a sub-step longer than about $\tau_Z/4$ misses the
+fluctuation within it (measured, \code{doc/design/burn_models.md}, step 7),
+hence $\tau_Z/10$. $\sqrt{1 - A^2}$ is computed as written, so at $\tau_Z =
+10^{30}$, $A$ rounds to 1 and the noise to 0: $Z$ frozen at its first value,
+exactly, with no special case.
+\trace{modules/sign_mod.f95}{si_step, si_nsub}{test_sign}
+
+\paragraph{Its two limits.} $\tau_Z \to \infty$ is a frozen field, one $Z$
+per bin for the whole run; there a bin with $\mu + \sigma Z \le 0$ never
+burns. The other reading of the proposal, a fresh $Z$ every step, is no
+model at all (its result depends on $\Delta t$, and as $\Delta t \to 0$ the
+noise averages away); the process gives it a meaning, with a correlation
+time of its own. As $\tau_Z \to 0$ at fixed $\sigma$ the burn becomes
+deterministic at the floored mean rate,
+\begin{equation}
+  \mathrm{E}\bigl[\max(\mu + \sigma Z, 0)\bigr]
+  = \mu\,\Phi(\mu/\sigma) + \sigma\,\varphi(\mu/\sigma),
+  \label{eq:si-floor}
+\end{equation}
+($\Phi$, $\varphi$ the standard normal's distribution and density). The
+white-noise limit ($\tau_Z \to 0$ with $\sigma^2\tau_Z$ fixed, a Langevin
+equation in $\phi$) is \emph{outside} the model: there $\sigma \to \infty$,
+and \cref{eq:si-floor} grows as $\sigma/\sqrt{2\pi}$ without bound. A
+Langevin equation needs a $\phi$ that can decrease, a cell burning backward,
+which the floor forbids. So the deck requires $\tau_Z > 0$.
+
+\paragraph{The noise in space.} A cell's bin is $j = \lfloor x_0/\ell_c
+\rfloor$, $x_0$ its center at $t = 0$ measured from $x = 0$ (after the
+origin shift); a cell keeps its bin, being Lagrangian. So refining the mesh
+keeps every bin, and with a frozen $Z$ the same realization.
+
+\paragraph{The random numbers.} Bin $j$'s first $Z$ is AS~241
+\cite{wichura1988} of entry $\mathrm{mod}(\mathrm{SEED} + 7919\,j, 20000) +
+1$ of a table of 20,000 uniform deviates from atmospheric noise
+(RANDOM.ORG, 2025), carried in the code (7919, prime, shares no factor with
+20,000, so 20,000 bins in a row read 20,000 different entries). The table
+was checked: all distinct, all inside $(0, 1)$, a Kolmogorov--Smirnov $p$
+of 0.51, lag-1 correlation 0.002. The steps' draws, one per bin per
+sub-step, outnumber any table, so they come from a counter-based generator
+\cite{salmon2011}: the 64-bit SplitMix64 mixer \cite{steele2014}, chained
+over (\key{SEED}, $j$, the cycle, the sub-step), its top 52 bits $x$ mapped
+to $u = (x + \tfrac12)\,2^{-52}$, strictly inside $(0, 1)$, and to $\xi$ by
+AS~241. Each draw is a pure function of those four integers, so every cell
+of a bin gets the same draw and any number of threads the same bits; the
+same \key{SEED} gives the same run, another \key{SEED} another sample of
+the same material. (With $Z$ frozen, two seeds can give one field shifted by
+whole bins: 7919 has an inverse modulo 20,000, so \key{SEED} + 7919 starts
+bin $j$ where \key{SEED} starts bin $j + 1$. With $\tau_Z$ finite the later
+draws, keyed by \key{SEED} itself, differ.) The 64-bit products are formed from 16-bit pieces, so
+no signed integer overflows.
+\trace{modules/sign_mod.f95}{si_z0, si_uniform, si_normal}{test_sign}
+\trace{modules/burn_mod.f95}{bin_of}{study_sign.py}
+
+\begin{table}[h]
+\centering\small
+\caption{StochasticIgnite's keys, and the example deck's values
+(\code{input/me697_sign_2p00.deck}: an example, not a calibration). Its
+history: the detector's five numbers, $\phi$ and $Z$.}
+\label{tab:si-keys}
+\begin{tabular}{@{}l l l l r@{}}
+\toprule
+Key & Symbol & Units & Deck check & Example \\
+\midrule
+\key{MU}     & $\mu$    & 1/\textmu s & $\ge 0$ & 1.35 \\
+\key{SIGMA}  & $\sigma$ & 1/\textmu s & $\ge 0$ & 0.7 \\
+\key{AVRAMI} & $a$      & --  & $> 0$ & 3 \\
+\key{NS}     & $N_S$    & --  & $\ge 0$ & 2 \\
+\key{PR}     & $P_R$    & GPa & $> 0$ & 7 \\
+\key{LC}     & $\ell_c$ & mm  & $> 0$ & 0.5 \\
+\key{SEED}   & --       & --  & a whole number, 0 to 19999 & 108 \\
+\key{TAUZ}   & $\tau_Z$ & \textmu s & $> 0$ & 0.2 \\
 \bottomrule
 \end{tabular}
-\end{center}
-Its history: the detector's five numbers and $\phi$; $Z$ is a per-cell
-constant, computed once at setup.
+\end{table}
 
-\paragraph{Planned tests.} $\sigma = 0$ against KJMA's closed form; AS~241
-against 50 digits; the field's mean and variance over the table; the same
-\key{SEED}, the same bits; mesh refinement keeps the realization.
+With the example's constants (35 zones/mm, method RS, order 2), at 2.00~km/s
+the detonation runs 3.4~mm into Material~X on average over 16 seeds
+(standard deviation 0.5~mm; the deck's \key{SEED}, 3.45~mm), and at 1.75,
+1.50 and 1.25~km/s 4.0, 4.4 and 4.8~mm (8 seeds each). The Pop plot is
+shallow and every speed detonates: the model as proposed has no threshold.
+Its detonation runs 2 to 4~\% below $D_{CJ}$: a bin whose rate is low or
+floored when the front reaches it burns behind the front, too late to drive
+it. Without the noise ($\sigma = 0$) the same deck runs at $D_{CJ}$.
+
+\paragraph{Verification.}
+\begin{itemize}
+\item \code{test_sign}, against 50-digit values (\code{tests/sign_reference.py}):
+  AS~241, for $u$ from $2^{-54}$ to $1 - 2^{-53}$, within $4.4\times10^{-16}$; the
+  generator's $u$ exactly the reference's, bit for bit, for negative and
+  very large bins; each bin's first $Z$ from the table to round-off; the
+  step's $Z$ over 200,000 cycles, with one sub-step a cycle and with 20:
+  mean, variance and lag-1 correlation $e^{-\Delta t/\tau_Z}$ within their
+  sampling errors; $\sigma = 0$ against the clock's closed form; $\tau_Z =
+  10^{30}$ freezing $Z$ bit for bit; and \cref{eq:si-floor} in the fast
+  limit, within its sampling error.
+\item In the hydro (\code{tests/verification/study_sign.py}): with $\sigma =
+  0$, $a = 1$, $N_S = 1$, the rate after the mark is $\mu(1 + \PS)$, so the
+  first step's $\lam$ returns $\PS$: at five tracers, both methods, each cell
+  burns from the step after an independent replay of the detector marks it,
+  with the replay's $\PS$ to $3\times10^{-16}$.
+\item With $Z$ frozen ($\tau_Z = 10^{30}$, $\sigma = 1.4$), the cells that
+  never burn are exactly the bins with $\mu + \sigma Z_0 \le 0$, $Z_0$ from
+  the table at 50 digits: four seeds, two meshes, both methods.
+\item The detonation as an ensemble (12 seeds, method RS): every run
+  detonates, and the mean run distance at 50 and 100 zones/mm agree, their
+  paired difference within three of its standard errors (a seed's path
+  differs with the mesh, since its draws are keyed by the cycle; only the
+  ensemble converges). Without the
+  noise, the detonation speed converges to within 0.2~\% of $D_{CJ}$.
+\item The inert limit ($\mu = \sigma = 0$, the detector and $Z$ running) is
+  the inert run bit for bit, both methods; HVRB, ThermalCascade and FlashFire
+  are unchanged bit for bit.
+\end{itemize}
 
 % ---------------------------------------------------------------------
 \section{HALO}

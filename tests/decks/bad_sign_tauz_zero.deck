@@ -1,0 +1,69 @@
+# expect: TAUZ must be greater than zero
+# TAUZ = 0: the white-noise limit is outside the model (design note, step 7)
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00
+ Begin Run
+  t_end = 3.0
+ End Run
+ Begin Output
+  tracer_dt = 0.05
+  plot_dt   = 0.25
+  tracer = mid  MatX@0.5
+  tracer = pdv  MatX:PMMA
+  tracer = flyer Al@0.5
+ End Output
+ Begin Material Al
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  G0 = 2.00
+ End Material
+ Begin Material MatX
+  cv = 1.1633418          # J/(g K)
+  eos = mie_gruneisen_t
+  R0 = 1.60
+  C0 = 2.50
+  S1 = 1.80
+  S2 = -0.10
+  G0 = 1.20
+  t0 = 298.0
+  burn = stochasticignite # the example deck's set
+  MU     = 1.35
+  SIGMA  = 0.7
+  AVRAMI = 3.0
+  NS     = 2.0
+  PR     = 7.0
+  LC     = 0.5
+  SEED   = 108
+  TAUZ   = 0.0
+  products = ideal_gas
+  GAMMA = 2.60
+  Q = 4.8828
+ End Material
+ Begin Material PMMA
+  eos = mie_gruneisen_t
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  G0 = 0.90
+  CV = 1.1633418
+  T0 = 298
+ End Material
+ Begin Stack
+  resolution = 10
+  Begin Layer
+   material = Al
+   width = 4.0
+   xvel = u_fly
+  End Layer
+  Begin Layer
+   material = MatX
+   width = 10.0
+  End Layer
+  Begin Layer
+   material = PMMA
+   width = 10.0
+  End Layer
+ End Stack
+End bitwhiz

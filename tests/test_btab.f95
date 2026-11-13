@@ -37,7 +37,14 @@ program test_btab
 !       its checks (KFF, AFF, BFF, TA >= 0; LAM0 strictly between 0 and
 !       1, the one key with chk_open01).
 !   10. Each key's largest value (bkey_max): XR's 25 (the v1.4.0
-!       review, F-03), every other key's none (huge).
+!       review, F-03), SEED's 19999 (module random's table), every
+!       other key's none (huge).
+!   11. StochasticIgnite's row is the plan's: MU, SIGMA, AVRAMI, NS,
+!       PR, LC, SEED, TAUZ in slots si_MU to si_TAUZ, NS and PR shared,
+!       the detector's five numbers then phi and Z its history (bst 6
+!       and 7, nst_max), and its checks (MU, SIGMA >= 0, so MU = SIGMA
+!       = 0 is the inert limit; AVRAMI, LC, TAUZ > 0; SEED a whole
+!       number, the one key with chk_count).
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -52,6 +59,8 @@ program test_btab
 !                (with Claude)        knows chk_open01
 !    11/12/26    D. E. Kittell        10: bkey_max (F-03)
 !                (with Claude)
+!    11/12/26    D. E. Kittell        11: StochasticIgnite's row (step
+!                (with Claude)        7); 4 knows chk_count; 10 SEED
 !
 !**********************************************************************!
 use bits, only: int32, dp, quit
@@ -60,7 +69,9 @@ use burn_table, only: npar_max, nst_max, nburn, burn_none, burn_hvrb, &
    chk_any, chk_positive, chk_nonneg, chk_open01, burn_npar, burn_key, burn_nst, &
    bkey_index, burn_takes, hv_PR, hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, &
    hv_phi, burn_uses_ls, burn_tcas, tc_HT, tc_TC, tc_GT, tc_NS, tc_PR, &
-   burn_ffire, ff_KFF, ff_AFF, ff_BFF, ff_TA, ff_NS, ff_PR, ff_LAM0
+   burn_ffire, ff_KFF, ff_AFF, ff_BFF, ff_TA, ff_NS, ff_PR, ff_LAM0, &
+   chk_count, burn_sign, si_MU, si_SIGMA, si_AVRAMI, si_NS, si_PR, si_LC, &
+   si_SEED, si_TAUZ, si_phi, si_z
 use leadshock, only: ls_nst
 implicit none
 
@@ -80,6 +91,9 @@ character(len=8), parameter, dimension(5) :: tcas_keys = (/ &
 character(len=8), parameter, dimension(7) :: ffire_keys = (/ &
    'KFF     ', 'AFF     ', 'BFF     ', 'TA      ', 'NS      ', &
    'PR      ', 'LAM0    ' /)
+character(len=8), parameter, dimension(8) :: sign_keys = (/ &
+   'MU      ', 'SIGMA   ', 'AVRAMI  ', 'NS      ', 'PR      ', &
+   'LC      ', 'SEED    ', 'TAUZ    ' /)
 integer(kind=int32) :: ncheck, nfail, i, j, ib, s, n
 logical :: ok
 
@@ -146,7 +160,8 @@ do j = 1, nbkey
    if ( .not. any( (/ ( burn_takes( ib, j ), ib = 1, nburn ) /) ) ) &
       ok = .false.
    if ( bkey_check(j) /= chk_any .and. bkey_check(j) /= chk_positive &
-      .and. bkey_check(j) /= chk_nonneg .and. bkey_check(j) /= chk_open01 ) &
+      .and. bkey_check(j) /= chk_nonneg .and. bkey_check(j) /= chk_open01 &
+      .and. bkey_check(j) /= chk_count ) &
       ok = .false.
    if ( len_trim(bkey_note(j)) == 0 ) ok = .false.
 end do
@@ -239,12 +254,39 @@ ok = .true.
 do j = 1, nbkey
    if ( trim(bkey_name(j)) == 'XR' ) then
       ok = ok .and. abs( bkey_max(j) - 25.0_dp ) <= 0.0_dp
+   else if ( trim(bkey_name(j)) == 'SEED' ) then
+      ok = ok .and. abs( bkey_max(j) - 19999.0_dp ) <= 0.0_dp
    else
       ok = ok .and. bkey_max(j) >= huge(1.0_dp)
    end if
 end do
-call check( ok, '10. the largest values: XR at most 25 (F-03), no other '// &
-   'key bounded above' )
+call check( ok, '10. the largest values: XR at most 25 (F-03), SEED '// &
+   '19999, no other key bounded above' )
+
+!*** 11. StochasticIgnite, as the plan has it.
+ok = trim(burn_names(burn_sign)) == 'stochasticignite' .and. &
+   burn_npar(burn_sign) == 8 .and. burn_nst(burn_sign) == ls_nst + 2 .and. &
+   burn_uses_ls(burn_sign) .and. nst_max == ls_nst + 2 .and. &
+   si_phi == ls_nst + 1 .and. si_z == ls_nst + 2
+do s = 1, 8
+   if ( trim(bkey_name( burn_key(s,burn_sign) )) /= trim(sign_keys(s)) ) &
+      ok = .false.
+end do
+ok = ok .and. si_MU == 1 .and. si_SIGMA == 2 .and. si_AVRAMI == 3 .and. &
+   si_NS == 4 .and. si_PR == 5 .and. si_LC == 6 .and. si_SEED == 7 .and. &
+   si_TAUZ == 8 .and. &
+   burn_key(si_NS,burn_sign) == burn_key(tc_NS,burn_tcas) .and. &
+   burn_key(si_PR,burn_sign) == burn_key(hv_PR,burn_hvrb)
+ok = ok .and. bkey_check( burn_key(si_MU,burn_sign) ) == chk_nonneg .and. &
+   bkey_check( burn_key(si_SIGMA,burn_sign) ) == chk_nonneg .and. &
+   bkey_check( burn_key(si_AVRAMI,burn_sign) ) == chk_positive .and. &
+   bkey_check( burn_key(si_LC,burn_sign) ) == chk_positive .and. &
+   bkey_check( burn_key(si_TAUZ,burn_sign) ) == chk_positive .and. &
+   bkey_check( burn_key(si_SEED,burn_sign) ) == chk_count .and. &
+   count( bkey_check == chk_count ) == 1
+call check( ok, '11. StochasticIgnite: MU SIGMA AVRAMI NS PR LC SEED '// &
+   'TAUZ in slots 1-8 (NS and PR shared), the detector, phi and Z its '// &
+   'history, its checks' )
 
 if ( nfail > 0 ) then
    write(*,'(a,i0,a,i0,a)') ' test_btab: ', nfail, ' of ', ncheck, &

@@ -12,22 +12,27 @@ key without a burn.
 \toprule
 Key & Symbol & Units in the deck & Used by \\
 \midrule
-\key{burn} & -- & \key{hvrb}, \key{thermalcascade}, \key{flashfire} & a material that burns \\
+\key{burn} & -- & \key{hvrb}, \key{thermalcascade}, \key{flashfire},
+  \key{stochasticignite} & a material that burns \\
 \key{eos} & -- & \key{mie_gruneisen_t} & required with a burn \\
 \key{CV}, \key{T0} & $\Cv$, $T_0$ & J/(g\,K), K & the reactant \\
 \key{products} & -- & \key{ideal_gas} & required with a burn \\
 \key{GAMMA}, \key{Q} & $\gamma$, $Q$ & --, kJ/g & the products \\
 \midrule
-\key{PR} & $P_R$ & GPa & HVRB, ThermalCascade (and every planned model) \\
+\key{PR} & $P_R$ & GPa & HVRB, ThermalCascade, FlashFire, StochasticIgnite (and every planned model) \\
 \key{ZR}, \key{MR}, \key{XR} & $Z_R$, $M_R$, $X_R$ & -- & HVRB \\
 \key{PI}, \key{TAU0} & $P_I$, $\tau_0$ & GPa, \textmu s & HVRB \\
 \key{HT} & $H_T$ & 1/(\textmu s\,K$^{G_T}$) & ThermalCascade \\
 \key{TC}, \key{GT} & $T_c$, $G_T$ & K, -- & ThermalCascade \\
-\key{NS} & $N_S$ & -- & ThermalCascade, FlashFire (and StochasticIgnite) \\
+\key{NS} & $N_S$ & -- & ThermalCascade, FlashFire, StochasticIgnite \\
 \key{KFF} & $K_F$ & 1/\textmu s & FlashFire \\
 \key{AFF}, \key{BFF} & $A_F$, $B_F$ & -- & FlashFire \\
 \key{TA} & $T_a$ & K & FlashFire \\
 \key{LAM0} & $\lam_0$ & -- (between 0 and 1) & FlashFire \\
+\key{MU}, \key{SIGMA} & $\mu$, $\sigma$ & 1/\textmu s & StochasticIgnite \\
+\key{AVRAMI} & $a$ & -- & StochasticIgnite \\
+\key{LC}, \key{TAUZ} & $\ell_c$, $\tau_Z$ & mm, \textmu s & StochasticIgnite \\
+\key{SEED} & -- & a whole number, 0 to 19999 & StochasticIgnite \\
 \bottomrule
 \end{tabularx}
 \end{center}

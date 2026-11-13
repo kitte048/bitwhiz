@@ -59,8 +59,10 @@ Medium term, the reactive physics:
    ramp's foot opens the gate, P_s -> 0: DK's option (a)), Nov 7: 1.4.0.
    1.5.0, the manual (`doc/design/manual.md`), Nov 12; step 6, FlashFire
    (`burn = flashfire`, `study_ffire.py`; RK4 sub-steps, T following lam:
-   DK, Nov 12), released as 1.6.0. Next, step 7,
-   StochasticIgnite. Then JWL products, the 25 zones/mm difference
+   DK, Nov 12), released as 1.6.0; step 7, StochasticIgnite (`burn =
+   stochasticignite`, `study_sign.py`; Z an Ornstein-Uhlenbeck process in
+   time, DK, Nov 12; bins of LC; the atmospheric table and a counter-based
+   generator), Nov 12, for 1.7.0. Next, step 8, HALO. Then JWL products, the 25 zones/mm difference
    (section 3). The v1.4.0 review's
    open findings are in section 8 (`audits/README.md` tracks them).
 10. With it or after: a broken cell's temperature (section 5; a burning
@@ -463,7 +465,8 @@ decks.
       per-cell layout and the deck keys from one table (step 3, done Nov
       6), the detector (step 4, done Nov 6; a smooth ramp's foot is
       marked, P_s -> 0 with the mesh: accepted, DK, Nov 7), then one model
-      per release (ThermalCascade, step 5, done Nov 7), CLAUDE last;
+      per release (ThermalCascade, step 5, done Nov 7; FlashFire, step
+      6, Nov 12; StochasticIgnite, step 7, Nov 12), CLAUDE last;
       then the study (each model tailored to Material X's HVRB for a
       single shock, then double shocks). Sources
       in the course folder's `Class_Project/Literature/Burn_Models/`.

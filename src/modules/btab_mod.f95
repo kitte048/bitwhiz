@@ -28,6 +28,8 @@ module burn_table
 !       hv_PR ... hv_TAU0, hv_phi     HVRB's slots, in bpar and bst
 !       tc_HT ... tc_PR               ThermalCascade's, in bpar
 !       ff_KFF ... ff_LAM0            FlashFire's, in bpar
+!       si_MU ... si_TAUZ, si_phi, si_z
+!                                     StochasticIgnite's, in bpar and bst
 !
 !  Three arrays, three lifetimes (module burn keeps the last two):
 !    this table   what a model is: compiled in, never written;
@@ -78,6 +80,12 @@ module burn_table
 !                                     series still keeps lam to
 !                                     round-off (the v1.4.0 review,
 !                                     F-03)
+!    11/12/26    D. E. Kittell        StochasticIgnite's row (step 7):
+!                (with Claude)        burn_sign; keys MU, SIGMA,
+!                                     AVRAMI, LC, SEED, TAUZ (NS, PR
+!                                     shared); a new check, chk_count
+!                                     (SEED, a whole number); nst_max
+!                                     7; its slots si_*
 !
 !**********************************************************************!
 use bits, only: int32, dp
@@ -91,25 +99,31 @@ public :: npar_max, nst_max, nburn, burn_none, burn_hvrb, burn_names, &
 public :: hv_PR, hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi
 public :: burn_tcas, tc_HT, tc_TC, tc_GT, tc_NS, tc_PR
 public :: burn_ffire, ff_KFF, ff_AFF, ff_BFF, ff_TA, ff_NS, ff_PR, ff_LAM0
-public :: chk_open01
+public :: chk_open01, chk_count
+public :: burn_sign, si_MU, si_SIGMA, si_AVRAMI, si_NS, si_PR, si_LC, &
+   si_SEED, si_TAUZ, si_phi, si_z
 
 !*** Per cell, at most (the slot table: StochasticIgnite and HALO take 8
-!*** constants, StochasticIgnite keeps 6 numbers).
+!*** constants; StochasticIgnite keeps 7 numbers, the detector's five,
+!*** its phi and its Z: doc/design/burn_models.md, step 7).
 integer(kind=int32), parameter :: npar_max = 8
-integer(kind=int32), parameter :: nst_max  = 6
+integer(kind=int32), parameter :: nst_max  = 7
 
 !*** The models (deck: burn = <name>). burn_none is the default.
-integer(kind=int32), parameter :: nburn      = 3
+integer(kind=int32), parameter :: nburn      = 4
 integer(kind=int32), parameter :: burn_none  = 0
 integer(kind=int32), parameter :: burn_hvrb  = 1
 integer(kind=int32), parameter :: burn_tcas  = 2
 integer(kind=int32), parameter :: burn_ffire = 3
+integer(kind=int32), parameter :: burn_sign  = 4
 character(len=16), parameter, dimension(nburn) :: burn_names = (/ &
-   'hvrb            ', 'thermalcascade  ', 'flashfire       ' /)
+   'hvrb            ', 'thermalcascade  ', 'flashfire       ', &
+   'stochasticignite' /)
 character(len=40), parameter, dimension(nburn) :: burn_long = (/ &
    'History Variable Reactive Burn          ', &
    'ThermalCascade, SAND2025-09228, repaired', &
-   'FlashFire, SAND2025-09228, repaired     ' /)
+   'FlashFire, SAND2025-09228, repaired     ', &
+   'StochasticIgnite, SAND2025-09228, ext.  ' /)
 
 !*** Every burn key, each once (rule 1): its name as the resolved deck
 !*** writes it, the check its value must pass, and the resolved deck's
@@ -118,15 +132,20 @@ integer(kind=int32), parameter :: chk_any      = 0   ! any real
 integer(kind=int32), parameter :: chk_positive = 1   ! > 0
 integer(kind=int32), parameter :: chk_nonneg   = 2   ! >= 0
 integer(kind=int32), parameter :: chk_open01   = 3   ! > 0 and < 1
-integer(kind=int32), parameter :: nbkey = 15
+integer(kind=int32), parameter :: chk_count    = 4   ! a whole number, >= 0
+integer(kind=int32), parameter :: nbkey = 21
 character(len=8), parameter, dimension(nbkey) :: bkey_name = (/ &
    'PR      ', 'ZR      ', 'MR      ', 'XR      ', 'PI      ', &
    'TAU0    ', 'HT      ', 'TC      ', 'GT      ', 'NS      ', &
-   'KFF     ', 'AFF     ', 'BFF     ', 'TA      ', 'LAM0    ' /)
+   'KFF     ', 'AFF     ', 'BFF     ', 'TA      ', 'LAM0    ', &
+   'MU      ', 'SIGMA   ', 'AVRAMI  ', 'LC      ', 'SEED    ', &
+   'TAUZ    ' /)
 integer(kind=int32), parameter, dimension(nbkey) :: bkey_check = (/ &
    chk_positive, chk_nonneg, chk_positive, chk_positive, chk_nonneg, &
    chk_positive, chk_nonneg, chk_nonneg, chk_nonneg, chk_nonneg, &
-   chk_nonneg, chk_nonneg, chk_nonneg, chk_nonneg, chk_open01 /)
+   chk_nonneg, chk_nonneg, chk_nonneg, chk_nonneg, chk_open01, &
+   chk_nonneg, chk_nonneg, chk_positive, chk_positive, chk_count, &
+   chk_positive /)
 character(len=32), parameter, dimension(nbkey) :: bkey_note = (/ &
    'GPa, reference pressure         ', 'pressure exponent               ', &
    'delay exponent                  ', 'completion exponent             ', &
@@ -135,31 +154,40 @@ character(len=32), parameter, dimension(nbkey) :: bkey_note = (/ &
    'temperature exponent            ', 'exponent on 1 + P_s/PR          ', &
    '1/us, rate constant             ', 'exponent on 1 - lam             ', &
    'exponent on lam                 ', 'K, activation temperature       ', &
-   'ignition fraction at the shock  ' /)
+   'ignition fraction at the shock  ', '1/us, mean ignition rate        ', &
+   '1/us, noise amplitude           ', 'Avrami exponent                 ', &
+   'mm, correlation length          ', 'table seed, a whole number      ', &
+   'us, correlation time            ' /)
 !*** And its largest value (huge(1.0_dp): none). XR above 25 is refused:
 !*** hvrb_lambda's series for small phi loses digits there (1e-14 at 30,
 !*** 7e-6 at 80, against 50 digits; input/README.md, the v1.4.0 review's
-!*** F-03), and burns use XR of a few.
+!*** F-03), and burns use XR of a few. SEED picks an entry of module
+!*** random's table, nbig = 20000 of them: 0 to 19999.
 real(kind=dp), parameter, dimension(nbkey) :: bkey_max = (/ &
    huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), 25.0_dp, huge(1.0_dp), &
    huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), &
-   huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp) /)
+   huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), &
+   huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), 19999.0_dp, &
+   huge(1.0_dp) /)
 
 !*** The models' rows: their keys in slot order (indices into the keys
 !*** above, 0 past the last) and their history variables.
-integer(kind=int32), parameter, dimension(nburn) :: burn_npar = (/ 6, 5, 7 /)
+integer(kind=int32), parameter, dimension(nburn) :: burn_npar = &
+   (/ 6, 5, 7, 8 /)
 integer(kind=int32), parameter, dimension(npar_max,nburn) :: burn_key = &
    reshape( (/ 1, 2, 3, 4, 5, 6, 0, 0, &          ! hvrb
                7, 8, 9, 10, 1, 0, 0, 0, &         ! thermalcascade
-               11, 12, 13, 14, 10, 1, 15, 0 /), & ! flashfire
+               11, 12, 13, 14, 10, 1, 15, 0, &    ! flashfire
+               16, 17, 18, 10, 1, 19, 20, 21 /), & ! stochasticignite
             (/ npar_max, nburn /) )
-integer(kind=int32), parameter, dimension(nburn) :: burn_nst = (/ 1, 5, 5 /)
+integer(kind=int32), parameter, dimension(nburn) :: burn_nst = &
+   (/ 1, 5, 5, 7 /)
 !*** Which models need the lead shock's pressure, P_s (doc/design/
 !*** burn_models.md, "The lead shock"): their history variables start
 !*** with the detector's five (module leadshock, ls_nst), their own
 !*** after them. HVRB does not.
 logical, parameter, dimension(nburn) :: burn_uses_ls = &
-   (/ .false., .true., .true. /)
+   (/ .false., .true., .true., .true. /)
 
 !*** HVRB's slots: its constants in bpar, its phi in bst.
 integer(kind=int32), parameter :: hv_PR = 1, hv_ZR = 2, hv_MR = 3, &
@@ -177,6 +205,14 @@ integer(kind=int32), parameter :: tc_HT = 1, tc_TC = 2, tc_GT = 3, &
 !*** lam is the model's own variable, as ThermalCascade's.
 integer(kind=int32), parameter :: ff_KFF = 1, ff_AFF = 2, ff_BFF = 3, &
    ff_TA = 4, ff_NS = 5, ff_PR = 6, ff_LAM0 = 7
+
+!*** StochasticIgnite's slots: its constants in bpar (MU, SIGMA, AVRAMI,
+!*** NS, PR, LC, SEED, TAUZ, the plan's order); its bst is the
+!*** detector's five, then its phi (the Avrami clock) and its Z (the
+!*** bin's noise, module stochignite); lam is the model's own variable.
+integer(kind=int32), parameter :: si_MU = 1, si_SIGMA = 2, si_AVRAMI = 3, &
+   si_NS = 4, si_PR = 5, si_LC = 6, si_SEED = 7, si_TAUZ = 8
+integer(kind=int32), parameter :: si_phi = 6, si_z = 7
 
 contains
 

@@ -3,7 +3,8 @@ module burn
 !
 !  Purpose:
 !    The cells' burn state, for the materials that burn (deck: burn =
-!    hvrb, thermalcascade or flashfire, module burn_table's models,
+!    hvrb, thermalcascade, flashfire or stochasticignite, module
+!    burn_table's models,
 !    with eos = mie_gruneisen_t and a products EOS): each such
 !    cell's model, constants, history variables and extent of reaction
 !    lam, by cell, and the burn's step in the time loop. The
@@ -92,6 +93,13 @@ module burn
 !                                     and e (ff_slope, from the state
 !                                     at the step's start), which only
 !                                     FlashFire uses
+!    11/12/26    D. E. Kittell        StochasticIgnite (module
+!                (with Claude)        stochignite, step 7): its case in
+!                                     cell_burn, gated as the others;
+!                                     each cell's bin, sbin (THE BINS),
+!                                     and the cycle the step ends,
+!                                     cycle_next (kept here, from
+!                                     burn_track), given to cell_burn
 !    11/06/26    D. E. Kittell        The closure from module mixture
 !                (with Claude)        (mix_state, mix_pulls), the rate
 !                                     law from module hvrb
@@ -175,6 +183,21 @@ module burn
 !  did, and counts the cells whose bits differ (maincode stops with
 !  an error if any do). One pass over the cells, no copy kept.
 !
+!  THE BINS, AND THE CYCLE (StochasticIgnite; doc/design/burn_models.md,
+!  step 7)
+!  ====================================================================
+!  StochasticIgnite's noise Z is one value per bin of initial position,
+!  bin j = floor(x0/LC), x0 the cell's center at t = 0 measured from
+!  x = 0 (after the origin shift), so every cell of a bin draws the same
+!  numbers and holds the same Z (each cell keeps its own copy, in
+!  bst(si_z), and steps it itself: no cell reads another's). Its draws
+!  are keyed by (SEED, j, the cycle, the sub-step): sbin(k), set in
+!  alloc_burn, and cycle_next, the cycle the step ends on (1 on the
+!  first; burn_track sets it to ncycle + 1 after each). On cycle 1 Z
+!  starts from the table (module stochignite, si_z0), as bst starts at
+!  0. Cells of two layers in one bin, with one SEED, share the draws;
+!  with other constants (TAUZ, SEED) their Z differ, as they should.
+!
 !***NOTE: rs_reaction_source turns the source off, for checking its
 ! effect (design note: G2, on and off); a development switch, not a
 ! deck key.
@@ -186,7 +209,9 @@ use shock,       only: kmax, nlay, layer, database, icell, jx, jp, jrho, &
 use burn_table,  only: npar_max, nst_max, burn_none, burn_hvrb, hv_PR, &
    hv_ZR, hv_MR, hv_XR, hv_PI, hv_TAU0, hv_phi, burn_uses_ls, burn_tcas, &
    tc_HT, tc_TC, tc_GT, tc_NS, tc_PR, burn_ffire, ff_KFF, ff_AFF, ff_BFF, &
-   ff_TA, ff_NS, ff_PR, ff_LAM0
+   ff_TA, ff_NS, ff_PR, ff_LAM0, burn_sign, si_MU, si_SIGMA, si_AVRAMI, &
+   si_NS, si_PR, si_LC, si_SEED, si_TAUZ, si_phi, si_z
+use stochignite, only: si_step
 use leadshock,   only: ls_step, ls_nst, ls_marked, ls_ps
 use thermalcascade, only: tc_rate, tc_step
 use flashfire,   only: ff_step, ff_tslope
@@ -229,6 +254,11 @@ logical, protected :: any_ls = .false.            ! some cell's model needs
 real(kind=dp), allocatable, protected :: src(:)   ! by cell: RS's reaction
                                                   ! source, GPa/us (0: none)
 logical, parameter :: rs_reaction_source = .true. ! (NOTE above)
+integer(kind=int64), allocatable :: sbin(:)       ! by cell: its bin
+                                                  ! (THE BINS; 0 for a
+                                                  ! model without one)
+integer(kind=int64) :: cycle_next = 1_int64       ! the cycle the next
+                                                  ! step ends on
 
 !*** The run's burn, so far: the first cell to react (lam > 0: the first
 !*** cycle, and on it the lowest cell) and the largest lam anywhere.
@@ -271,7 +301,7 @@ contains
    end do
    allocate( bmod(kmax), bpar(npar_max,kmax), bst(nst_max,kmax), &
       lam(kmax), qk(kmax), gamk(kmax), kb(nb), burnable(kmax), src(kmax), &
-      rhold(kmax), eshold(kmax), stat=status )
+      rhold(kmax), eshold(kmax), sbin(kmax), stat=status )
    if ( status /= 0 ) then
       kerr = kerr + 1
       nb   = 0
@@ -280,6 +310,17 @@ contains
    bst = zero
    lam = zero
    call fill_constants( bmod, bpar, qk, gamk )
+   cycle_next = 1_int64
+   sbin = 0_int64
+   do l = 1, nlay
+      if ( layer(l)%burn /= burn_sign ) cycle
+      do k = layer(l)%kfirst, layer(l)%klast
+         sbin(k) = bin_of( layer(l)%xleft + layer(l)%width* &
+            ( ( real( k - layer(l)%kfirst, dp ) + half )/ &
+            real( layer(l)%klast - layer(l)%kfirst + 1, dp ) ), &
+            bpar(si_LC,k) )
+      end do
+   end do
 
    src  = zero
    rhold  = zero
@@ -311,7 +352,7 @@ contains
    integer(kind=int32) :: status
    if ( .not. allocated(lam) ) return
    deallocate( bmod, bpar, bst, lam, qk, gamk, kb, burnable, src, rhold, &
-      eshold, stat=status )
+      eshold, sbin, stat=status )
    if ( status /= 0 ) kerr = kerr + 1
    nb = 0
    end subroutine dealloc_burn
@@ -344,7 +385,7 @@ contains
          cycle
       end if
       call cell_burn( bmod(k), bpar(:,k), bst(:,k), lam(k), tk(k), b, &
-         database(jp,icell(k)), dt, st2, lam2 )
+         database(jp,icell(k)), dt, sbin(k), cycle_next, st2, lam2 )
       bst(:,k) = st2
       lam(k)   = lam2
       call burn_hold( k )
@@ -372,7 +413,7 @@ contains
       k = kb(n)
       i = icell( k )
       call cell_burn( bmod(k), bpar(:,k), bst(:,k), lam(k), tk(k), &
-         ff_slope( k ), database(jp,i), dt, st2, lam2 )
+         ff_slope( k ), database(jp,i), dt, sbin(k), cycle_next, st2, lam2 )
       src(k) = zero
       if ( rs_reaction_source .and. lam2 > lam(k) ) then
          call mix_state( database(jrho,i), database(je,i), lam(k), ec(k), &
@@ -391,7 +432,9 @@ contains
    ! One cell's burn over dt, by its model (module burn_table): its   !
    ! history variables st2 and lam2 at the step's end, from its       !
    ! constants, history variables and lam at the start, and its state !
-   ! there, P^n, T^n and b (ff_slope). Writes nothing of the module's:!
+   ! there, P^n, T^n and b (ff_slope), and for StochasticIgnite its   !
+   ! bin and the cycle the step ends on (THE BINS). Writes nothing of !
+   ! the module's:                                                    !
    ! the caller stores st2 and lam2. Its constants are intent(in),    !
    ! here and in the model's routines (THE CELLS' CONSTANTS). A model !
    ! that uses the lead shock (burn_uses_ls) burns only once it is    !
@@ -399,7 +442,8 @@ contains
    ! numbers, the first ls_nst of st1, are burn_detect's, and pass    !
    ! through.                                                         !
    !******************************************************************!
-   pure subroutine cell_burn( ib, par, st1, lam1, T, b, p, dt, st2, lam2 )
+   pure subroutine cell_burn( ib, par, st1, lam1, T, b, p, dt, jbin, ncyc, &
+      st2, lam2 )
    implicit none
    integer(kind=int32), intent(in) :: ib            ! the model
    real(kind=dp), intent(in)  :: par(npar_max)      ! its constants
@@ -410,6 +454,8 @@ contains
                                                     ! rho, e (FlashFire)
    real(kind=dp), intent(in)  :: p                  ! P^n, GPa
    real(kind=dp), intent(in)  :: dt                 ! the step, us
+   integer(kind=int64), intent(in) :: jbin          ! its bin (THE BINS)
+   integer(kind=int64), intent(in) :: ncyc          ! the step's cycle
    real(kind=dp), intent(out) :: st2(nst_max)       ! history, end
    real(kind=dp), intent(out) :: lam2               ! lam, end
    st2  = st1
@@ -429,6 +475,12 @@ contains
       if ( ls_marked( st1(1:ls_nst) ) ) lam2 = ff_step( lam1, T, b, &
          st1(ls_ps), par(ff_KFF), par(ff_AFF), par(ff_BFF), par(ff_TA), &
          par(ff_NS), par(ff_PR), par(ff_LAM0), dt )
+   case ( burn_sign )                               ! Z steps, marked or not
+      call si_step( st1(si_phi), st1(si_z), ls_marked( st1(1:ls_nst) ), &
+         ncyc == 1_int64, int( par(si_SEED), int64 ), jbin, ncyc, dt, &
+         par(si_MU), par(si_SIGMA), par(si_AVRAMI), st1(ls_ps), &
+         par(si_NS), par(si_PR), par(si_TAUZ), st2(si_phi), st2(si_z), &
+         lam2 )
    end select
    end subroutine cell_burn
 
@@ -585,7 +637,8 @@ contains
 
    !******************************************************************!
    ! Bring the run's burn record up to date with this cycle: the      !
-   ! first cell to react and the largest lam. Serial, after the       !
+   ! first cell to react and the largest lam; and the cycle the next  !
+   ! step ends on (THE BINS). Serial, after the                       !
    ! cycle, so it is the same on any number of threads (the lowest    !
    ! cell wins, on the first cycle any cell reacts).                  !
    !******************************************************************!
@@ -594,6 +647,7 @@ contains
    real(kind=dp), intent(in) :: time              ! us, after the step
    integer(kind=int32), intent(in) :: ncycle      ! cycle, after the step
    integer(kind=int32) :: n, k, i
+   cycle_next = int( ncycle, int64 ) + 1_int64    ! THE BINS
    do n = 1, nb
       k = kb(n)
       lam_max = max( lam_max, lam(k) )
@@ -606,5 +660,17 @@ contains
       end if
    end do
    end subroutine burn_track
+
+   !******************************************************************!
+   ! The bin of a cell centered at x0, mm, for bins of width LC, mm   !
+   ! (THE BINS): floor(x0/LC), kept within +-2**62.                   !
+   !******************************************************************!
+   pure function bin_of( x0, LC ) result( j )
+   implicit none
+   real(kind=dp), intent(in) :: x0, LC
+   integer(kind=int64) :: j
+   real(kind=dp), parameter :: big = 4.0e18_dp   ! < 2**62
+   j = floor( min( max( x0/LC, -big ), big ), int64 )
+   end function bin_of
 
 end module burn

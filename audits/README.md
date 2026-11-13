@@ -49,12 +49,13 @@ column says where a fix was made, or where an open finding is to go.
 | F-10 | Info | `G0`, `S1` and `X_R` have no deck checks | fixed, 1.6.1 | S1 > 0, G0 >= 0, XR <= 25 (module `deck`; decks `bad_s1_zero`, `bad_g0_neg`, `bad_hvrb_xr_big`) |
 | F-11 | Info | The lead shock's P_s and t_s at a local minimum; AV's P_s ~1 % high | open | accept: documented in `doc/design/burn_models.md`, step 4 |
 | F-12 | Info | Design remarks on the planned CLAUDE model | open | its three questions recorded in `doc/design/burn_models.md` (CLAUDE); settled in the manual's CLAUDE section, 1.5.0 |
-| F-13 | Info | `rand_mod`, `random`, `timestamp` compiled in, unused by a run | open | accept: reserved for StochasticIgnite |
+| F-13 | Info | `rand_mod`, `random`, `timestamp` compiled in, unused by a run | fixed, 1.7.0 (`rand_mod`); `random`, `timestamp` open | from 1.7.0 StochasticIgnite starts each bin's noise from `rand_mod`'s table (module `stochignite`, `si_z0`); `src/utils/random.f95` (`r8_uniform_01`) and `timestamp.f95` stay unused by a run, small; for DK to keep or drop |
 | F-14 | Info | ThreadSanitizer inconclusive (false positives); determinism rests on the bit-for-bit thread tests | open | accept: no action |
 | F-15 | Info | dP/dlam at lam = 1 is the gas-only form, not the limit from below; never used by the hydro | open | accept: no action |
 
 Opened Nov 8, 2026, from the review's finding register (section 3) and
 recommended actions (section 8). F-01, F-03 and F-08 answered in 1.4.1's
 docs (Nov 8); F-05(a), F-09 and F-10 fixed, and F-03 guarded, in 1.6.1
-(Nov 12); F-07 left open by DK; the "accept" proposals (F-11, F-13 to
-F-15) wait for DK.
+(Nov 12); F-07 left open by DK; the "accept" proposals (F-11, F-14,
+F-15) wait for DK. F-13's `rand_mod` used by StochasticIgnite, 1.7.0 (Nov
+12).
