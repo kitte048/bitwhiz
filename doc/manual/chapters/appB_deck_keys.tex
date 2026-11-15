@@ -18,7 +18,7 @@ Key & Symbol & Units in the deck & Used by \\
 \key{products} & -- & \key{ideal_gas} & required with a burn \\
 \key{GAMMA}, \key{Q} & $\gamma$, $Q$ & --, kJ/g & the products \\
 \midrule
-\key{PR} & $P_R$ & GPa & HVRB, ThermalCascade, FlashFire, StochasticIgnite, HALO (and CLAUDE, planned) \\
+\key{PR} & $P_R$ & GPa & all six models \\
 \key{ZR}, \key{MR}, \key{XR} & $Z_R$, $M_R$, $X_R$ & -- & HVRB \\
 \key{PI}, \key{TAU0} & $P_I$, $\tau_0$ & GPa, \textmu s & HVRB \\
 \key{HT} & $H_T$ & 1/(\textmu s\,K$^{G_T}$) & ThermalCascade \\
@@ -37,10 +37,13 @@ Key & Symbol & Units in the deck & Used by \\
 \key{TAUD} & $\tau_d$ & \textmu s & HALO \\
 \key{DFRAC}, \key{NH} & $d$, $n_H$ & -- & HALO \\
 \key{KB} & $K_B$ & 1/\textmu s & HALO \\
+\key{NMAX} & $N_{\max}$ & 1/mm$^3$ & CLAUDE \\
+\key{W0}, \key{KW} & $W_0$, $k_w$ & J/(g\,K), -- & CLAUDE \\
+\key{D0}, \key{NG} & $D_0$, $n_g$ & mm/\textmu s, -- & CLAUDE \\
+\key{TQ} & $\tau_q$ & \textmu s & CLAUDE \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
 The deck's \key{CV} is in J/(g\,K); the code divides it by 1000, to
-kJ/(g\,K), so that $\Cv T$ is in kJ/g. The planned model's keys are in its
-sections of \cref{ch:burn-models}.
+kJ/(g\,K), so that $\Cv T$ is in kJ/g.

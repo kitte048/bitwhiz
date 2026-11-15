@@ -3,8 +3,8 @@ module burn
 !
 !  Purpose:
 !    The cells' burn state, for the materials that burn (deck: burn =
-!    hvrb, thermalcascade, flashfire, stochasticignite or halo, module
-!    burn_table's models,
+!    hvrb, thermalcascade, flashfire, stochasticignite, halo or claude,
+!    module burn_table's models,
 !    with eos = mie_gruneisen_t and a products EOS): each such
 !    cell's model, constants, history variables and extent of reaction
 !    lam, by cell, and the burn's step in the time loop. The
@@ -105,6 +105,12 @@ module burn
 !                                     cell_burn given the cell's
 !                                     compression over the latest step,
 !                                     De and Dv (THE COMPRESSION)
+!    11/14/26    D. E. Kittell        CLAUDE (module claude, step 9): its
+!                (with Claude)        case in cell_burn, not gated;
+!                                     cell_burn given the cell's entropy
+!                                     (cl_s: after its cold energy moves
+!                                     under AV, at the cycle's start
+!                                     under RS) and its R0
 !    11/06/26    D. E. Kittell        The closure from module mixture
 !                (with Claude)        (mix_state, mix_pulls), the rate
 !                                     law from module hvrb
@@ -228,9 +234,11 @@ use burn_table,  only: npar_max, nst_max, burn_none, burn_hvrb, hv_PR, &
    ff_TA, ff_NS, ff_PR, ff_LAM0, burn_sign, si_MU, si_SIGMA, si_AVRAMI, &
    si_NS, si_PR, si_LC, si_SEED, si_TAUZ, si_phi, si_z, burn_halo, ha_ED0, &
    ha_BETAH, ha_TAUD, ha_DELTA, ha_DFRAC, ha_NH, ha_KB, ha_PR, ha_ed, &
-   ha_eta, ha_s, ha_vmin
+   ha_eta, ha_s, ha_vmin, burn_claude, cl_NMAX, cl_W0, cl_KW, cl_D0, cl_NG, &
+   cl_PR, cl_TQ, cl_w, cl_m0, cl_m3, cl_vq
 use stochignite, only: si_step
 use halo,        only: ha_step
+use claude,      only: cl_step, cl_entropy
 use leadshock,   only: ls_step, ls_nst, ls_marked, ls_ps
 use thermalcascade, only: tc_rate, tc_step
 use flashfire,   only: ff_step, ff_tslope
@@ -405,7 +413,8 @@ contains
       end if
       call cell_burn( bmod(k), bpar(:,k), bst(:,k), lam(k), tk(k), b, &
          database(jp,icell(k)), dt, sbin(k), cycle_next, de_of( k ), &
-         one/database(jrho,icell(k)), dv_of( k ), st2, lam2 )
+         one/database(jrho,icell(k)), dv_of( k ), cl_s( k ), &
+         database(jr0,icell(k)), st2, lam2 )
       bst(:,k) = st2
       lam(k)   = lam2
       call burn_hold( k )
@@ -434,7 +443,8 @@ contains
       i = icell( k )
       call cell_burn( bmod(k), bpar(:,k), bst(:,k), lam(k), tk(k), &
          ff_slope( k ), database(jp,i), dt, sbin(k), cycle_next, de_of( k ), &
-         one/database(jrho,i), dv_of( k ), st2, lam2 )
+         one/database(jrho,i), dv_of( k ), cl_s( k ), database(jr0,i), st2, &
+         lam2 )
       src(k) = zero
       if ( rs_reaction_source .and. lam2 > lam(k) ) then
          call mix_state( database(jrho,i), database(je,i), lam(k), ec(k), &
@@ -465,7 +475,7 @@ contains
    ! through.                                                         !
    !******************************************************************!
    pure subroutine cell_burn( ib, par, st1, lam1, T, b, p, dt, jbin, ncyc, &
-      de, v, dv, st2, lam2 )
+      de, v, dv, sn, r0, st2, lam2 )
    implicit none
    integer(kind=int32), intent(in) :: ib            ! the model
    real(kind=dp), intent(in)  :: par(npar_max)      ! its constants
@@ -481,6 +491,9 @@ contains
    real(kind=dp), intent(in)  :: de, v, dv          ! e's change, v = 1/rho
                                                     ! and its change (THE
                                                     ! COMPRESSION)
+   real(kind=dp), intent(in)  :: sn                 ! entropy now, J/(g K)
+                                                    ! (CLAUDE: cl_s)
+   real(kind=dp), intent(in)  :: r0                 ! the cell's R0, g/cm^3
    real(kind=dp), intent(out) :: st2(nst_max)       ! history, end
    real(kind=dp), intent(out) :: lam2               ! lam, end
    st2  = st1
@@ -511,8 +524,28 @@ contains
          de, v, dv, p, dt, par(ha_ED0), par(ha_BETAH), par(ha_TAUD), &
          par(ha_DELTA), par(ha_DFRAC), par(ha_NH), par(ha_KB), par(ha_PR), &
          st2(ha_ed), st2(ha_eta), st2(ha_s), st2(ha_vmin), lam2 )
+   case ( burn_claude )                             ! not gated
+      call cl_step( st1(cl_w), st1(cl_m0:cl_m3), st1(cl_vq), sn, p, one/v, &
+         dt, r0, par(cl_NMAX), par(cl_W0), par(cl_KW), par(cl_D0), &
+         par(cl_NG), par(cl_PR), par(cl_TQ), st2(cl_w), st2(cl_m0:cl_m3), &
+         st2(cl_vq), lam2 )
    end select
    end subroutine cell_burn
+
+   !******************************************************************!
+   ! CLAUDE's entropy for cell k, J/(g K): the cell's e and its       !
+   ! carried e_c at etac, as if unreacted (module claude, cl_entropy; !
+   ! module temperature's state). 0 for any other model.              !
+   !******************************************************************!
+   pure function cl_s( k ) result( s )
+   implicit none
+   integer(kind=int32), intent(in) :: k
+   real(kind=dp) :: s
+   s = zero
+   if ( bmod(k) /= burn_claude ) return
+   s = cl_entropy( database(je,icell(k)), ec(k), etac(k), cv(k), t0(k), &
+      database(jg0,icell(k)) )
+   end function cl_s
 
    !******************************************************************!
    ! Cell k's change of e and of v = 1/rho over the latest step: the  !

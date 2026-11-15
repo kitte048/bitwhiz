@@ -1,0 +1,179 @@
+#**********************************************************************#
+#  ME 697 class project with a reactive Material X: CLAUDE             #
+#                                                                      #
+#  The class problem (me697_double_shock_2p00.deck), with Material X   #
+#  burning by CLAUDE (Centers Lit by Accumulated Unrecoverable         #
+#  Dissipated Energy), the sixth of bitwhiz's burn models, proposed by #
+#  Claude (Anthropic) at D. E. Kittell's invitation                    #
+#  (doc/design/burn_models.md). Burn centers are lit by the entropy    #
+#  the cell has taken on, from a finite pool, grow at a deflagration   #
+#  speed, overlap exactly, and may go out:                             #
+#                                                                      #
+#   w     = the largest entropy the cell has had, as if unreacted      #
+#   n(w)  = NMAX (1 - exp(-(w/W0)^KW)) centers lit per initial mm^3    #
+#   G     = D0 (max(P,0)/PR)^NG, each center's radius' growth          #
+#   lam   = 1 - exp(-(4 pi/3) V), V the centers' extended volume, the  #
+#           quenched ones' (rate 1/TQ) included                        #
+#                                                                      #
+#  Not gated by the lead shock. A weak first shock makes far less      #
+#  entropy than one strong shock to the same pressure, so it lights    #
+#  fewer centers: shock desensitization, with no switch.               #
+#                                                                      #
+#      | Ta 3.0 | Al 4.0 |=> Material X 10.0 | PMMA 10.0 |  PDV ->     #
+#     x=-7.0           x=0 (impact plane)    x=10.0      x=20.0        #
+#                                                                      #
+#  NMAX, W0, KW, D0, NG and TQ here are an example, not a calibration  #
+#  (the design note's step 10): NMAX for a 0.1 mm grain spacing, W0    #
+#  the entropy of this deck's own 2.00 km/s shock, D0 and NG a         #
+#  plausible burning rate, chosen so that its Pop plot follows HVRB's  #
+#  (me697_hvrb_2p00.deck). The products are the HVRB deck's ideal gas. #
+#  The burn's keys: input/README.md, Material block. Units: mm, us,    #
+#  g/cc, km/s, GPa, K.                                                 #
+#**********************************************************************#
+Begin bitwhiz
+ deck_version = 1
+ define u_fly = 2.00            # km/s, flyer velocity
+
+ Begin Run
+  plots_only = no    # yes or no
+  title       = claude_2p00
+  t_end       = 3.0             # us: the detonation reaches the PDV
+                                # interface near 1.5 us at 2.00 km/s
+  num_threads = 1
+ End Run
+
+ Begin Output                   # nothing listed here = nothing written
+  plot_dt     = 0.005           # us between snapshots: under a
+                                # pixel row of the t-x diagrams
+  movie_frames = 35             # the pressure movie, 0 to 3.0 us
+  tracer_dt   = 0.005           # us between tracer rows (the
+                                # reference's spacing); 0 = every cycle
+  colormap    = viridis         # for bitmap pictures
+
+  tracer = pdv     MatX:PMMA    # the PDV signal
+  tracer = impact  Al:MatX      # impact plane
+  tracer = ta_al   Ta:Al        # where the second shock is born
+  tracer = mid_x   MatX@0.5     # mid-sample, past the run distance
+ End Output
+
+ Begin Solver
+  method = RS                   # the Riemann solver: a shock 1-2 cells
+  order  = 2                    # sharp, and a smooth burn behind it
+                                # (second order, MUSCL-Hancock)
+  BL     = 0.1                  # method = AV's linear and quadratic
+  BQ     = 2.0                  # viscosity coefficients (the equation
+                                # sheet's defaults); RS ignores them
+  CFL    = 0.6
+ End Solver
+
+ # Mie-Gruneisen on the principal Hugoniot (rev-0, Eqs. 4 and 6):
+ #   Us = C0 + S1*up + (S2/C0)*up^2,   rho*Gamma = R0*G0
+ Begin Material Ta              # tantalum, backing plate
+  R0 = 16.65                    # g/cm^3, initial density
+  C0 = 3.40                     # km/s, Hugoniot intercept
+  S1 = 1.20                     # -,    Us-up slope
+  S2 = 0.0                      # -,    Us-up curvature (default 0)
+  G0 = 1.60                     # -,    Gruneisen coefficient
+  spall_strength = 5.0          # GPa, dynamic. Tantalum is strong in
+                                # tension (spall strengths of several
+                                # GPa are reported); at 5.0 the Ta here
+                                # holds its ~2 GPa tension, as in the
+                                # reference data. Other materials take
+                                # the default, 0.01 GPa (input/README.md)
+ End Material
+
+ Begin Material Al              # aluminum, flyer face
+  R0 = 2.78
+  C0 = 5.30
+  S1 = 1.34
+  S2 = 0.0
+  G0 = 2.00
+ End Material
+
+ Begin Material MatX            # notional HE surrogate, reactive
+  eos  = mie_gruneisen_t        # the unreacted solid, plus T: the burn's
+  R0   = 1.60                   # closure mixes it with the products at
+  C0   = 2.50                   # one density and one temperature
+  S1   = 1.80
+  S2   = -0.10
+  G0   = 1.20
+  CV   = 1.1633418              # J/(g K), both phases
+  T0   = 298.0                  # K
+
+  burn  = claude                # CLAUDE: centers lit by entropy
+  NMAX  = 1000.0                # 1/mm^3, centers available: 0.1 mm apart
+  W0    = 0.66                  # J/(g K), entropy lighting 63 % of them:
+                                # this deck's 2.00 km/s shock's own
+  KW    = 4.0                   # sharpness of lighting
+  D0    = 0.25                  # mm/us, deflagration speed at P = PR
+  NG    = 1.0                   # exponent on P/PR
+  PR    = 7.0                   # GPa, reference pressure
+  TQ    = 0.25                  # us, quench time of a growing center
+                                # (1.0e30: none)
+
+  products = ideal_gas          # P = (GAMMA - 1) rho CV T, as the HVRB
+                                # deck's
+  GAMMA    = 2.60
+  Q        = 4.8828             # kJ/g (= MJ/kg), heat of reaction
+ End Material
+
+ Begin Material PMMA            # window; Lacina et al. (2018) linear fit
+  R0 = 1.187
+  C0 = 2.55
+  S1 = 1.54
+  S2 = 0.0
+  G0 = 0.90                     # estimated from Plexiglass (rev-0 Table 1)
+ End Material
+
+ Begin Stack
+  resolution = 35               # zones/mm: 105 + 140 + 350 + 350 = 945
+  origin     = Al:MatX          # x = 0 at the impact plane
+
+  Begin Layer
+   material = Ta
+   width    = 3.0               # mm
+   xvel     = u_fly             # km/s, + is to the right
+  End Layer
+
+  Begin Layer
+   material = Al
+   width    = 4.0
+   xvel     = u_fly
+  End Layer
+
+  Begin Layer
+   material = MatX
+   width    = 10.0
+  End Layer
+
+  Begin Layer
+   material = PMMA
+   width    = 10.0
+  End Layer
+ End Stack
+End bitwhiz
+
+Notes (ignored by the parser):
+- Velocity sweep: change "define u_fly" only. Measured at this deck's 35
+  zones/mm, RS order 2: 2.00 km/s detonates about 3.5 mm in, 1.75 about
+  4.7 mm and 1.50 about 7.9 mm (HVRB, this deck's twin: 3.5, 5.0 and 7.5
+  mm); method AV within 0.25 mm. At 1.25 km/s the centers it lights grow
+  slowly at the low pressure and are quenched first: Material X stops
+  about a third burnt (lam 0.09 to 0.83 by 3 us), a failed initiation,
+  where HVRB and HALO go on burning behind the shock.
+- Each tracer's XRN column (the tracer file) is its cell's extent of
+  reaction, lam, 0 to 1. CLAUDE is not gated: a cell burns wherever it
+  has lit centers and P > 0, inside AV's smeared shock too.
+- The entropy: for this solid (Mie-Gruneisen, rho Gamma constant, one
+  C_V) it is exact, C_V ln(T/(T0 exp(G0 eta))), from the cell's own state:
+  no sum over steps, so the same under AV and RS and on any mesh. Taken
+  as if the cell were unreacted (the reaction does not raise it; only
+  compression does), and kept at its largest. CLAUDE refuses any other
+  solid or products EOS for that reason.
+- The quench: a growing center stops at the rate 1/TQ and keeps what it
+  has burnt. So a cell whose centers all stop keeps a bounded burnt
+  volume: the cell at the impact face, under AV, ends near lam = 0.997.
+- D0 = 0 is the inert limit (centers lit, nothing burns); TQ = 1.0e30
+  turns the quench off.
+- "Cells burnt out" on the screen counts the cells with lam within 1e-12
+  of 1, for every model.

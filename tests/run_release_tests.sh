@@ -48,7 +48,9 @@ tests/decks/ok_ffire_rs.deck
 tests/decks/ok_sign.deck
 tests/decks/ok_sign_rs.deck
 tests/decks/ok_halo.deck
-tests/decks/ok_halo_rs.deck"
+tests/decks/ok_halo_rs.deck
+tests/decks/ok_claude.deck
+tests/decks/ok_claude_rs.deck"
 
 plan $(echo "$DECKS" | wc -w | tr -d ' ') "release tests"
 

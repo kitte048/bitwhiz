@@ -1690,3 +1690,132 @@ NMAX from a plausible grain spacing, D0 and NG from a plausible burning
 rate, W0 and KW then set: the calibration route the design proposed). The
 manual's CLAUDE section from "under development" to as built, F-12's
 questions answered in it.
+
+## As built: step 9, CLAUDE (Nov 14, 2026)
+
+**Module `claude`** (`src/modules/claude_mod.f95`; uses `bits` and
+`thermalcascade` for `tc_om`): `cl_entropy`, the entropy above the reference
+isentrope as if unreacted; `cl_dn`, the centers lit; `cl_growth`, G in
+reference lengths; `cl_jk`, J_0 to J_4; `cl_moments`, the moments and V_q
+over a step; `cl_lam`; and `cl_step`, all of them in order. Elemental and
+pure, no state. As the plan (with DK's five decisions and TQ), but for:
+
+- **n(w2) - n(w1) without cancellation, or overflow.** As a difference
+  of two exponentials it loses all its digits where w is small (both round
+  to 1 at w ~ 1e-15, the foot of a shock, where the code lights its first
+  centers), and 1e-10 of them for a rise of 1e-7 in w ~ 0.6. Formed as
+  NMAX exp(-x1) (1 - exp(-(x2 - x1))), with x2 - x1 = x2 (1 - (w1/w2)^KW)
+  = -x2 expm1(-KW log1p(Dw/w1)) by accurate log1p and expm1 (Goldberg's and
+  Kahan's, there being no Fortran intrinsics): to 4.4e-16, a jump from
+  1e-16 to 0.66 at KW = 30 included (found by test_claude's check 6; the
+  first form, x1 expm1(KW log1p(Dw/w1)), overflowed for KW above about 19
+  where w jumps in one step, as under RS at a shock: found by the review;
+  the replay in study_claude.py's E2 needs the same form to agree).
+- **J_k** by its series below q dt = 2 and its upward recursion above (to
+  1.6e-15 against 50 digits, q dt from 5e-8 to 12 and about the switch;
+  the recursion just above 1 lost a digit, hence 2: the review). The old
+  centers' quenched share q J_0 M_3 formed as (1 - f) M_3 (tc_om), so that
+  with no growth M_3 + V_q is kept to round-off.
+- **Module `burn`:** `cl_s(k)`, the entropy from the cell's e and module
+  temperature's e_c and etac, after `temp_cold_cell` under AV (the step's
+  end), at the cycle's start under RS; `cell_burn` takes it and the cell's
+  R0. **Module `burn_table`:** `burn_claude` = 6, keys NMAX, W0, KW, TQ (>
+  0), D0, NG (>= 0) and PR (shared); slots `cl_NMAX` ... `cl_TQ`; history
+  w, M_0 to M_3, V_q (`cl_w`, `cl_m0` ... `cl_m3`, `cl_vq`): nst 6; not
+  gated; and **`burn_needs_s`, CLAUDE's own deck check** (DK 1): module
+  deck refuses `burn = claude` without `eos = mie_gruneisen_t` and
+  `products = ideal_gas` in its own words, beside every burn's check.
+
+**The other five models bit for bit:** every input deck and every `ok_`
+deck of 1.8.0's code (63), debug builds, against `3857111`: heartbeat rows
+(the wall clock aside), tracer rows, history frames and the screen,
+identical once the run's stamps are set aside.
+
+**Tests.** `tests/test_claude.f95` (8 checks) against
+`tests/claude_reference.py` (50 digits): a history of 8 steps of lighting
+(0 to 50 centers), growth (0 to 1 mm/us) and quenching (none, and TQ =
+0.25 us) against Avrami's extended volume by nested quadrature, to 4.4e-16;
+every center lit at once against 1 - exp(-(pi/6) that^3), 100 steps, to
+8.9e-16; TQ = 1e30 the unquenched step (and TQ = 1e8 within 1e-8 of it);
+J_k to 1.6e-15; the entropy against de/T integrated at fixed volume, to
+4.4e-16 (0 on the isentrope, 0 where T would not be positive); n(w2) -
+n(w1), a rise of 1e-7 and a jump from 1e-16 at KW = 30 too, to 4.4e-16 (the
+reference takes each w as the double the Fortran reads, as test_sign's
+AS241 rows do); one step's order,
+bit for bit, and w a running maximum; D0 = 0 never burning, P <= 0 with NG >
+0 not growing, NG = 0, and G's (rho/R0)^(1/3). `test_btab` gains the row
+(check 13, and burn_needs_s for CLAUDE alone). `doc/manual/checks/
+ch7_models.py` gains the entropy constant on an isentrope, s as the
+integral of de/T, births through a step, and the quench's births tending to
+the unquenched. Decks: `ok_claude`, `ok_claude_rs` (also OpenMP, release and
+history decks), the inert limits `ok_claude_inert`, `_rs` (D0 = 0: centers
+lit, the inert run bit for bit, XRN aside), six bad decks (W0 = 0, D0 < 0, TQ
+= 0, TQ left out, a HALO key, eos without temperature: its own message).
+History cases `claude_burns`, `_rs`: a cell reacts and at least 90 % of
+Material X burns out (not all: with the quench, AV's impact-face cell ends
+at lam = 0.997; checked to fail with the entropy zeroed). `make test`: 247
+deck, 20 OpenMP and 52 history tests; `make release` 20, bit for bit.
+
+**In runs** (`tests/verification/study_claude.py`, 27 checks, about 6
+minutes):
+
+- **E1, the entropy behind a shock** (CLAUDE's inert test deck, two
+  tracers, the first shock's plateau, against the exact entropy on the
+  Hugoniot at the same P): within 0.31 % (AV, 25 zones/mm) and 0.08 % or
+  better on every other mesh, both methods, 25 to 200 zones/mm. F-12's
+  question 2, answered.
+- **E2, the model in the hydro is its replay.** D0 = 1e-5, NG = 1 (lam
+  near 1e-12): at five tracers, AV and RS, the whole step redone from the
+  tracer's TK, RHO, P and time (the state at the step's end under AV, its
+  start under RS; the growth at P^n) gives the same first reacting row and
+  lam to 5e-11 or better. With D0 = 1e-3 and NG = 0, as first written, it
+  agreed only to 6e-6, and P was not exercised: the tracer's TK is the
+  mixture's T, which the reaction heats (by about 4000 K per unit lam), so
+  at lam ~ 3e-7 the replay's entropy was 8e-6 J/(g K) high (found by the
+  review; it is not TK's 17 digits, as first written here).
+- **E3, the detonation converges.** The example deck at 2.00 km/s, 25 to
+  200 zones/mm: D 7.4407 (AV) and 7.4395 km/s (RS) at 200, -0.79 and -0.81 %
+  from D_CJ, within 0.05 % of 100 zones/mm; run distance 3.50 to 3.65 mm, AV
+  and RS both 3.55 at 200. **D below D_CJ** (HALO's +0.11 %): with the
+  quench off -0.60 %, so mostly the Avrami burn's slow tail, the front
+  still nearing D_CJ over the fit's 6 to 9.5 mm, and the quench 0.15 %
+  more. Reported; within the 1 % check.
+- **E4, desensitization** (study_halo.py's flyers; run distance single /
+  faced, the delay):
+
+  | | CLAUDE | CLAUDE, TQ = 1e30 | HALO | HVRB |
+  |---|---|---|---|---|
+  | 1.25 km/s | 6.05 / none in 9 mm | 4.25 / 8.75 (4.50) | 5.75 / 8.35 (2.60) | 5.95 / 7.30 (1.35) |
+  | 1.50 km/s | 3.65 / 7.55 (3.90) | 3.10 / 6.80 (3.70) | 3.40 / 5.20 (1.80) | 3.55 / 5.05 (1.50) |
+  | 1.75 km/s | 2.95 / 6.35 (3.40) | 2.55 / 5.85 (3.30) | 2.60 / 4.05 (1.45) | 2.30 / 3.85 (1.55) |
+
+  CLAUDE's delay more than twice HALO's at 1.50 and 1.75 km/s (checked: at
+  least 1.5 times), and mostly the entropy's (the quench off, nearly the
+  same): the order HVRB, HALO, CLAUDE the models' memories predict.
+
+**The example deck** (`input/me697_claude_2p00.deck`; NMAX = 1000/mm^3,
+W0 = 0.66 J/(g K), KW = 4, D0 = 0.25 mm/us, NG = 1, PR = 7 GPa, TQ = 0.25
+us): at its 35 zones/mm, RS order 2, 2.00, 1.75 and 1.50 km/s detonate 3.5,
+4.7 and 7.9 mm in (HVRB 3.5, 5.0 and 7.5), AV within 0.25 mm. W0 is the
+entropy of the deck's own 2.00 km/s shock (0.66 J/(g K) at 10.7 GPa), NMAX a
+0.1 mm spacing; D0 then set the run distance and W0's 0.66 the Pop plot's
+slope (0.6 was too sensitive at 1.50 km/s, 0.72 too little). At 1.25 km/s
+the centers lit grow slowly at the low pressure and are quenched first:
+Material X stops about a third burnt (lam 0.09 to 0.83 by 3 us, median
+0.34), a failed initiation; HVRB and HALO burn on behind the shock.
+
+**An independent review** (a Claude subagent, Nov 14, read-only) found one
+real defect, fixed: `cl_dn`'s overflow (above). It re-derived the moments
+and V_q (step-size invariance to 1e-13 over TQ from 0.05 to 1e30), the
+states' timing under both methods, OpenMP safety, the deck check and the
+other models' independence. Also fixed from it: J_k's switch; the E2
+replay (above); E1's window, now required flat (P within 5 % over it); doc
+figures made one (0.3 % at 25 zones/mm, 0.1 % from 50); the header's "0
+floor" (s is negative below the isentrope; w, a running maximum from 0,
+never takes it); a comment out of place in module burn; lam's one-ulp
+falls with the quench and no growth (the quenched share as 1 - f).
+
+**The manual:** chapter 7's CLAUDE section, as built, F-12's three
+questions answered in it, with its trace tags; "The six together" with the
+desensitization order; chapter 1 and the appendices updated. `audits/
+README.md`: F-12 fixed.

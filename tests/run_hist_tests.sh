@@ -92,7 +92,7 @@ CHK=$(pwd)/bin/test_hist
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 . "$(dirname "$0")/report.sh"
-plan 46 "history tests"
+plan 52 "history tests"
 
 # A copy of a deck with "key = value" lines put first in a block (any
 # lines of the same keys anywhere in the deck are dropped). The block
@@ -566,6 +566,11 @@ inert_limit sign_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_sign
 # (doc/design/burn_models.md, step 8): nothing may change.
 inert_limit halo_inert    tests/decks/ok_temperature.deck    tests/decks/ok_halo_inert.deck
 inert_limit halo_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_halo_inert_rs.deck
+# CLAUDE at D0 = 0 (tests/decks/ok_claude_inert.deck, and _rs): every MatX
+# cell takes its entropy and lights centers, and nothing grows
+# (doc/design/burn_models.md, step 9): nothing may change.
+inert_limit claude_inert    tests/decks/ok_temperature.deck    tests/decks/ok_claude_inert.deck
+inert_limit claude_inert_rs tests/decks/ok_temperature_rs.deck tests/decks/ok_claude_inert_rs.deck
 
 # Case: a burn with method RS (tests/decks/ok_hvrb_rs.deck, order 2: the
 # closure in its state and the reaction's source in its predictor), as
@@ -606,7 +611,7 @@ halo_burns() {   # $1 case name, $2 deck
    if ! run "$1" "$2"; then
       fail $c "the run did not finish"
    elif ! grep -q 'First cell to react *: [0-9]' "$d/screen.out"; then
-      fail $c "no cell reacted: HALO's compression (De, Dv) not reaching it?"
+      fail $c "no cell reacted: the model's input (HALO's De, Dv; CLAUDE's entropy) not reaching it?"
    elif ! grep -q 'Cells burnt out, MatX *: *\([0-9][0-9]*\) *of \1 *$' "$d/screen.out"; then
       fail $c "Material X did not burn out: $(grep 'Cells burnt out' "$d/screen.out")"
    else
@@ -615,6 +620,35 @@ halo_burns() {   # $1 case name, $2 deck
 }
 halo_burns halo_burns    tests/decks/ok_halo.deck
 halo_burns halo_burns_rs tests/decks/ok_halo_rs.deck
+
+# Case: CLAUDE (tests/decks/ok_claude.deck, and _rs), as the other runs;
+# and it burns: its entropy (module burn, cl_s) reaching it, as HALO's
+# compression must (the cases above would pass with that wiring broken).
+# Not every cell need burn out: with the quench (TQ) a cell whose centers
+# stopped keeps a bounded burnt volume, and lam stays below 1 - 1e-12
+# (the impact face's cell under AV: 0.997 at 3 us). So: a cell reacts,
+# and at least 90 % of Material X burns out.
+claude_burns() {   # $1 case name, $2 deck
+   begin
+   local c=$1 d="$TMP/$1" nb nt
+   if ! run "$1" "$2"; then
+      fail $c "the run did not finish"
+   elif ! grep -q 'First cell to react *: [0-9]' "$d/screen.out"; then
+      fail $c "no cell reacted: CLAUDE's entropy (cl_s) not reaching it?"
+   else
+      nb=$(sed -n 's/.*Cells burnt out, MatX *: *\([0-9][0-9]*\) *of.*/\1/p' "$d/screen.out")
+      nt=$(sed -n 's/.*Cells burnt out, MatX *: *[0-9][0-9]* *of *\([0-9][0-9]*\).*/\1/p' "$d/screen.out")
+      if [ -z "$nb" ] || [ $((10*nb)) -lt $((9*nt)) ]; then
+         fail $c "under 90 % of Material X burnt out ($nb of $nt)"
+      else
+         pass $c
+      fi
+   fi
+}
+against_tracer claude    tests/decks/ok_claude.deck    0.05 pdv
+against_tracer claude_rs tests/decks/ok_claude_rs.deck 0.05 pdv
+claude_burns claude_burns    tests/decks/ok_claude.deck
+claude_burns claude_burns_rs tests/decks/ok_claude_rs.deck
 
 # Case: velocity profiles (xvel_profile, xvel_amplitude). Frame 1 is
 # t = 0, so its face velocities (KMPS, real32) must be what the deck

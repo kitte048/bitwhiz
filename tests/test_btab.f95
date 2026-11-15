@@ -50,6 +50,11 @@ program test_btab
 !       eta, s and v_min its history (bst 1 to 4), and its checks (ED0, BETAH,
 !       TAUD, DFRAC > 0; DELTA, NH, KB >= 0, so KB = 0 is the inert
 !       limit).
+!   13. CLAUDE's row is the plan's: NMAX, W0, KW, D0, NG, PR, TQ in slots
+!       cl_NMAX to cl_TQ, PR shared, not gated, w, M_0 to M_3 and V_q its
+!       history (bst 1 to 6), its checks (NMAX, W0, KW, TQ > 0; D0, NG
+!       >= 0, so D0 = 0 is the inert limit), and burn_needs_s for it
+!       alone.
 !
 !  Record of revisions:
 !      Date       Programmer          Description of change
@@ -68,6 +73,8 @@ program test_btab
 !                (with Claude)        7); 4 knows chk_count; 10 SEED
 !    11/13/26    D. E. Kittell        12: HALO's row (step 8)
 !                (with Claude)
+!    11/14/26    D. E. Kittell        13: CLAUDE's row (step 9)
+!                (with Claude)
 !
 !**********************************************************************!
 use bits, only: int32, dp, quit
@@ -79,7 +86,9 @@ use burn_table, only: npar_max, nst_max, nburn, burn_none, burn_hvrb, &
    burn_ffire, ff_KFF, ff_AFF, ff_BFF, ff_TA, ff_NS, ff_PR, ff_LAM0, &
    chk_count, burn_sign, si_MU, si_SIGMA, si_AVRAMI, si_NS, si_PR, si_LC, &
    si_SEED, si_TAUZ, si_phi, si_z, burn_halo, ha_ED0, ha_BETAH, ha_TAUD, &
-   ha_DELTA, ha_DFRAC, ha_NH, ha_KB, ha_PR, ha_ed, ha_eta, ha_s, ha_vmin
+   ha_DELTA, ha_DFRAC, ha_NH, ha_KB, ha_PR, ha_ed, ha_eta, ha_s, ha_vmin, &
+   burn_claude, burn_needs_s, cl_NMAX, cl_W0, cl_KW, cl_D0, cl_NG, cl_PR, &
+   cl_TQ, cl_w, cl_m0, cl_m1, cl_m2, cl_m3, cl_vq
 use leadshock, only: ls_nst
 implicit none
 
@@ -105,6 +114,9 @@ character(len=8), parameter, dimension(8) :: sign_keys = (/ &
 character(len=8), parameter, dimension(8) :: halo_keys = (/ &
    'ED0     ', 'BETAH   ', 'TAUD    ', 'DELTA   ', 'DFRAC   ', &
    'NH      ', 'KB      ', 'PR      ' /)
+character(len=8), parameter, dimension(7) :: claude_keys = (/ &
+   'NMAX    ', 'W0      ', 'KW      ', 'D0      ', 'NG      ', &
+   'PR      ', 'TQ      ' /)
 integer(kind=int32) :: ncheck, nfail, i, j, ib, s, n
 logical :: ok
 
@@ -321,6 +333,30 @@ ok = ok .and. bkey_check( burn_key(ha_ED0,burn_halo) ) == chk_positive .and. &
    bkey_check( burn_key(ha_KB,burn_halo) ) == chk_nonneg
 call check( ok, '12. HALO: ED0 BETAH TAUD DELTA DFRAC NH KB PR in slots '// &
    '1-8 (PR shared), not gated, E_D eta s v_min its history, its checks' )
+
+!*** 13. CLAUDE, as the plan has it.
+ok = trim(burn_names(burn_claude)) == 'claude' .and. &
+   burn_npar(burn_claude) == 7 .and. burn_nst(burn_claude) == 6 .and. &
+   .not. burn_uses_ls(burn_claude) .and. cl_w == 1 .and. cl_m0 == 2 .and. &
+   cl_m1 == 3 .and. cl_m2 == 4 .and. cl_m3 == 5 .and. cl_vq == 6 .and. &
+   burn_key(8,burn_claude) == 0
+do s = 1, 7
+   if ( trim(bkey_name( burn_key(s,burn_claude) )) /= trim(claude_keys(s)) ) &
+      ok = .false.
+end do
+ok = ok .and. cl_NMAX == 1 .and. cl_W0 == 2 .and. cl_KW == 3 .and. &
+   cl_D0 == 4 .and. cl_NG == 5 .and. cl_PR == 6 .and. cl_TQ == 7 .and. &
+   burn_key(cl_PR,burn_claude) == burn_key(hv_PR,burn_hvrb)
+ok = ok .and. bkey_check( burn_key(cl_NMAX,burn_claude) ) == chk_positive &
+   .and. bkey_check( burn_key(cl_W0,burn_claude) ) == chk_positive .and. &
+   bkey_check( burn_key(cl_KW,burn_claude) ) == chk_positive .and. &
+   bkey_check( burn_key(cl_TQ,burn_claude) ) == chk_positive .and. &
+   bkey_check( burn_key(cl_D0,burn_claude) ) == chk_nonneg .and. &
+   bkey_check( burn_key(cl_NG,burn_claude) ) == chk_nonneg
+ok = ok .and. count( burn_needs_s ) == 1 .and. burn_needs_s(burn_claude)
+call check( ok, '13. CLAUDE: NMAX W0 KW D0 NG PR TQ in slots 1-7 (PR '// &
+   'shared), not gated, w M_0..M_3 V_q its history, its checks, and '// &
+   'burn_needs_s its alone' )
 
 if ( nfail > 0 ) then
    write(*,'(a,i0,a,i0,a)') ' test_btab: ', nfail, ' of ', ncheck, &

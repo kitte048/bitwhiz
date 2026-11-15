@@ -32,6 +32,10 @@ module burn_table
 !                                     StochasticIgnite's, in bpar and bst
 !       ha_ED0 ... ha_PR, ha_ed, ha_eta, ha_s
 !                                     HALO's, in bpar and bst
+!       cl_NMAX ... cl_TQ, cl_w, cl_m0 ... cl_m3, cl_vq
+!                                     CLAUDE's, in bpar and bst
+!       burn_needs_s(ib)              does it need the closed-form
+!                                     entropy (constant C_V, rho Gamma)
 !
 !  Three arrays, three lifetimes (module burn keeps the last two):
 !    this table   what a model is: compiled in, never written;
@@ -94,6 +98,11 @@ module burn_table
 !                                     gated; its history E_D, eta, s
 !                                     and v_min (new compression only,
 !                                     DK); its slots ha_*
+!    11/14/26    D. E. Kittell        CLAUDE's row (step 9): burn_claude;
+!                (with Claude)        keys NMAX, W0, KW, D0, NG, TQ (PR
+!                                     shared); not gated; burn_needs_s,
+!                                     its own check of the EOS it pairs
+!                                     with; its slots cl_*
 !
 !**********************************************************************!
 use bits, only: int32, dp
@@ -112,6 +121,8 @@ public :: burn_sign, si_MU, si_SIGMA, si_AVRAMI, si_NS, si_PR, si_LC, &
    si_SEED, si_TAUZ, si_phi, si_z
 public :: burn_halo, ha_ED0, ha_BETAH, ha_TAUD, ha_DELTA, ha_DFRAC, ha_NH, &
    ha_KB, ha_PR, ha_ed, ha_eta, ha_s, ha_vmin
+public :: burn_claude, burn_needs_s, cl_NMAX, cl_W0, cl_KW, cl_D0, cl_NG, &
+   cl_PR, cl_TQ, cl_w, cl_m0, cl_m1, cl_m2, cl_m3, cl_vq
 
 !*** Per cell, at most (the slot table: StochasticIgnite and HALO take 8
 !*** constants; StochasticIgnite keeps 7 numbers, the detector's five,
@@ -120,22 +131,24 @@ integer(kind=int32), parameter :: npar_max = 8
 integer(kind=int32), parameter :: nst_max  = 7
 
 !*** The models (deck: burn = <name>). burn_none is the default.
-integer(kind=int32), parameter :: nburn      = 5
+integer(kind=int32), parameter :: nburn      = 6
 integer(kind=int32), parameter :: burn_none  = 0
 integer(kind=int32), parameter :: burn_hvrb  = 1
 integer(kind=int32), parameter :: burn_tcas  = 2
 integer(kind=int32), parameter :: burn_ffire = 3
 integer(kind=int32), parameter :: burn_sign  = 4
 integer(kind=int32), parameter :: burn_halo  = 5
+integer(kind=int32), parameter :: burn_claude = 6
 character(len=16), parameter, dimension(nburn) :: burn_names = (/ &
    'hvrb            ', 'thermalcascade  ', 'flashfire       ', &
-   'stochasticignite', 'halo            ' /)
+   'stochasticignite', 'halo            ', 'claude          ' /)
 character(len=40), parameter, dimension(nburn) :: burn_long = (/ &
    'History Variable Reactive Burn          ', &
    'ThermalCascade, SAND2025-09228, repaired', &
    'FlashFire, SAND2025-09228, repaired     ', &
    'StochasticIgnite, SAND2025-09228, ext.  ', &
-   'HALO, hot-spot activation and loss      ' /)
+   'HALO, hot-spot activation and loss      ', &
+   'CLAUDE, centers lit by entropy (Claude) ' /)
 
 !*** Every burn key, each once (rule 1): its name as the resolved deck
 !*** writes it, the check its value must pass, and the resolved deck's
@@ -145,21 +158,23 @@ integer(kind=int32), parameter :: chk_positive = 1   ! > 0
 integer(kind=int32), parameter :: chk_nonneg   = 2   ! >= 0
 integer(kind=int32), parameter :: chk_open01   = 3   ! > 0 and < 1
 integer(kind=int32), parameter :: chk_count    = 4   ! a whole number, >= 0
-integer(kind=int32), parameter :: nbkey = 28
+integer(kind=int32), parameter :: nbkey = 34
 character(len=8), parameter, dimension(nbkey) :: bkey_name = (/ &
    'PR      ', 'ZR      ', 'MR      ', 'XR      ', 'PI      ', &
    'TAU0    ', 'HT      ', 'TC      ', 'GT      ', 'NS      ', &
    'KFF     ', 'AFF     ', 'BFF     ', 'TA      ', 'LAM0    ', &
    'MU      ', 'SIGMA   ', 'AVRAMI  ', 'LC      ', 'SEED    ', &
    'TAUZ    ', 'ED0     ', 'BETAH   ', 'TAUD    ', 'DELTA   ', &
-   'DFRAC   ', 'NH      ', 'KB      ' /)
+   'DFRAC   ', 'NH      ', 'KB      ', 'NMAX    ', 'W0      ', &
+   'KW      ', 'D0      ', 'NG      ', 'TQ      ' /)
 integer(kind=int32), parameter, dimension(nbkey) :: bkey_check = (/ &
    chk_positive, chk_nonneg, chk_positive, chk_positive, chk_nonneg, &
    chk_positive, chk_nonneg, chk_nonneg, chk_nonneg, chk_nonneg, &
    chk_nonneg, chk_nonneg, chk_nonneg, chk_nonneg, chk_open01, &
    chk_nonneg, chk_nonneg, chk_positive, chk_positive, chk_count, &
    chk_positive, chk_positive, chk_positive, chk_positive, chk_nonneg, &
-   chk_positive, chk_nonneg, chk_nonneg /)
+   chk_positive, chk_nonneg, chk_nonneg, chk_positive, chk_positive, &
+   chk_positive, chk_nonneg, chk_nonneg, chk_positive /)
 character(len=32), parameter, dimension(nbkey) :: bkey_note = (/ &
    'GPa, reference pressure         ', 'pressure exponent               ', &
    'delay exponent                  ', 'completion exponent             ', &
@@ -174,7 +189,10 @@ character(len=32), parameter, dimension(nbkey) :: bkey_note = (/ &
    'us, correlation time            ', 'GPa**(1/2) cm^3/g, activation   ', &
    'sharpness of activation         ', 'us, hot-spot dissipation time   ', &
    'exponent on 1 - lam, dissipation', 'fractal dimension of the burn   ', &
-   'exponent on P/PR                ', '1/us, burn rate at P = PR       ' /)
+   'exponent on P/PR                ', '1/us, burn rate at P = PR       ', &
+   '1/mm^3, burn centers available  ', 'J/(g K), entropy lighting 63 %  ', &
+   'sharpness of lighting           ', 'mm/us, deflagration speed at PR ', &
+   'exponent on P/PR, growth        ', 'us, quench time (1e30: none)    ' /)
 !*** And its largest value (huge(1.0_dp): none). XR above 25 is refused:
 !*** hvrb_lambda's series for small phi loses digits there (1e-14 at 30,
 !*** 7e-6 at 80, against 50 digits; input/README.md, the v1.4.0 review's
@@ -186,27 +204,36 @@ real(kind=dp), parameter, dimension(nbkey) :: bkey_max = (/ &
    huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), &
    huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), 19999.0_dp, &
    huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), &
-   huge(1.0_dp), huge(1.0_dp), huge(1.0_dp) /)
+   huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), &
+   huge(1.0_dp), huge(1.0_dp), huge(1.0_dp), huge(1.0_dp) /)
 
 !*** The models' rows: their keys in slot order (indices into the keys
 !*** above, 0 past the last) and their history variables.
 integer(kind=int32), parameter, dimension(nburn) :: burn_npar = &
-   (/ 6, 5, 7, 8, 8 /)
+   (/ 6, 5, 7, 8, 8, 7 /)
 integer(kind=int32), parameter, dimension(npar_max,nburn) :: burn_key = &
    reshape( (/ 1, 2, 3, 4, 5, 6, 0, 0, &          ! hvrb
                7, 8, 9, 10, 1, 0, 0, 0, &         ! thermalcascade
                11, 12, 13, 14, 10, 1, 15, 0, &    ! flashfire
                16, 17, 18, 10, 1, 19, 20, 21, &   ! stochasticignite
-               22, 23, 24, 25, 26, 27, 28, 1 /), & ! halo
+               22, 23, 24, 25, 26, 27, 28, 1, &    ! halo
+               29, 30, 31, 32, 33, 1, 34, 0 /), &  ! claude
             (/ npar_max, nburn /) )
 integer(kind=int32), parameter, dimension(nburn) :: burn_nst = &
-   (/ 1, 5, 5, 7, 4 /)
+   (/ 1, 5, 5, 7, 4, 6 /)
 !*** Which models need the lead shock's pressure, P_s (doc/design/
 !*** burn_models.md, "The lead shock"): their history variables start
 !*** with the detector's five (module leadshock, ls_nst), their own
 !*** after them. HVRB does not.
 logical, parameter, dimension(nburn) :: burn_uses_ls = &
-   (/ .false., .true., .true., .true., .false. /)
+   (/ .false., .true., .true., .true., .false., .false. /)
+!*** Which models need the closed-form entropy of module claude: exact
+!*** only for a constant C_V and rho Gamma = R0 G0, so only with eos =
+!*** mie_gruneisen_t and products = ideal_gas (module deck checks it for
+!*** these models on their own, so that a solid or products EOS added
+!*** later can not pair with them unnoticed; DK, 11/14/26).
+logical, parameter, dimension(nburn) :: burn_needs_s = &
+   (/ .false., .false., .false., .false., .false., .true. /)
 
 !*** HVRB's slots: its constants in bpar, its phi in bst.
 integer(kind=int32), parameter :: hv_PR = 1, hv_ZR = 2, hv_MR = 3, &
@@ -240,6 +267,14 @@ integer(kind=int32), parameter :: si_phi = 6, si_z = 7
 integer(kind=int32), parameter :: ha_ED0 = 1, ha_BETAH = 2, ha_TAUD = 3, &
    ha_DELTA = 4, ha_DFRAC = 5, ha_NH = 6, ha_KB = 7, ha_PR = 8
 integer(kind=int32), parameter :: ha_ed = 1, ha_eta = 2, ha_s = 3, ha_vmin = 4
+
+!*** CLAUDE's slots: its constants in bpar (NMAX, W0, KW, D0, NG, PR, TQ,
+!*** the plan's order); its bst is w, the moments M_0 to M_3 and V_q
+!*** (module claude), not gated; lam is the model's own.
+integer(kind=int32), parameter :: cl_NMAX = 1, cl_W0 = 2, cl_KW = 3, &
+   cl_D0 = 4, cl_NG = 5, cl_PR = 6, cl_TQ = 7
+integer(kind=int32), parameter :: cl_w = 1, cl_m0 = 2, cl_m1 = 3, cl_m2 = 4, &
+   cl_m3 = 5, cl_vq = 6
 
 contains
 

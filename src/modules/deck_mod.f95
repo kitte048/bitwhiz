@@ -69,6 +69,10 @@ module deck
 !    11/12/26    D. E. Kittell        A burn key's check chk_count, a
 !                (with Claude)        whole number, 0 or more
 !                                     (StochasticIgnite's SEED)
+!    11/14/26    D. E. Kittell        burn_needs_s: a model's own check
+!                (with Claude)        that it pairs only with eos =
+!                                     mie_gruneisen_t and products =
+!                                     ideal_gas (CLAUDE)
 !
 !**********************************************************************!
 !
@@ -134,7 +138,7 @@ use bits,  only: dp, int32, int64, zero, one, kpt6, nline
 use shock
 use burn_table, only: nburn, burn_none, burn_names, burn_long, nbkey, &
    bkey_name, bkey_check, bkey_note, bkey_max, chk_positive, chk_nonneg, &
-   chk_open01, chk_count, &
+   chk_open01, chk_count, burn_needs_s, &
    burn_npar, burn_key, burn_takes, bkey_index
 use distributions, only: dist_t, dist_set, dist_nparam, dist_mean, &
    dist_names
@@ -858,6 +862,15 @@ contains
          if (m%products == products_none .and. .not. bad_prod) &
             call missing(lb, 'products', trim(who)//' with '//bname// &
             ' (the products'' EOS has no default: products = ideal_gas)')
+         ! Its own check, for a model whose entropy is exact only for a
+         ! constant C_V and rho Gamma (module burn_table, burn_needs_s):
+         ! it stays when another solid or products EOS joins bitwhiz.
+         if (burn_needs_s(ib) .and. .not. bad_eos .and. .not. bad_prod .and. &
+            .not. (m%eos == eos_mie_gruneisen_t .and. &
+            m%products == products_ideal_gas)) &
+            call deck_error(line_burn, bname//' needs eos = '// &
+            'mie_gruneisen_t and products = ideal_gas: its entropy is '// &
+            'exact only for a constant C_V and rho Gamma ('//trim(who)//')')
          do s = 1, burn_npar(ib)
             j = burn_key(s,ib)
             if (line_bk(j) == 0 .and. .not. seen(lower(trim(bkey_name(j))))) &

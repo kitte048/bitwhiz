@@ -127,6 +127,26 @@ tc = 1/(2*G*N**sp.Rational(1, 3))                       # t_c: a center's diamet
 ok(sp.simplify(sp.Rational(4, 3)*sp.pi*M3.subs(t, th*tc)
                - sp.pi/6*th**3), 'CLAUDE: all lit at once, G constant: (pi/6) that^3')
 
+#*** CLAUDE: the entropy C_V ln(T/(T0 e^(G0 eta))) is constant on every
+#*** isentrope of this solid (d ln T = G0 d eta there, rho Gamma = R0 G0);
+#*** and so T ds = de + P dv with T = T_S + (e - e_c)/C_V reproduces it
+et, Cv0, Tz, Gz, ec_, e_ = sp.symbols('eta C_V T_0 G_0 e_c e', positive=True)
+T_iso = sp.Function('T')(et)
+ok(sp.simplify(sp.diff(Cv0*sp.log(T_iso/(Tz*sp.exp(Gz*et))), et)
+               .subs(sp.Derivative(T_iso, et), Gz*T_iso)), 'CLAUDE: s constant on an isentrope')
+Ts = Tz*sp.exp(Gz*et)
+ok(sp.simplify(sp.integrate(1/(Ts + (x - ec_)/Cv0), (x, ec_, e_))
+               - Cv0*sp.log((Ts + (e_ - ec_)/Cv0)/Ts)), 'CLAUDE: s = int de/T at fixed volume')
+# New centers lit evenly through a step: their radii at its end are uniform
+# on [0, DR], so their mean radius^j is DR^j/(j+1)
+DRs = sp.symbols('DR', positive=True)
+ok(all(sp.simplify(sp.integrate(x**j, (x, 0, DRs))/DRs - DRs**j/(j + 1)) == 0
+       for j in range(4)), 'CLAUDE: births through a step, DR^j/(j+1)')
+# ... and with the quench, (dn/dt) G^j J_j -> dn DR^j/(j+1) as q -> 0
+qq, dtt, Gg, uu = sp.symbols('q dt G u', positive=True)
+ok(all(sp.simplify(sp.limit(Gg**j*sp.integrate(uu**j*sp.exp(-qq*uu), (uu, 0, dtt))/dtt, qq, 0)
+                   - (Gg*dtt)**j/(j + 1)) == 0 for j in range(4)), 'CLAUDE: the quench\'s births tend to the unquenched')
+
 #*** FlashFire: at a fixed T with B_F = 0, dlam/dt = c (1 - lam)^A_F has the
 #*** closed forms test_ffire uses; and h of eq. (ff-h) is RK4-exact for a
 #*** constant rate (A_F = B_F = T_a = 0): lam1 + r dt.

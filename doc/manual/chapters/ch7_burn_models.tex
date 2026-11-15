@@ -1,9 +1,8 @@
 \chapter{Burn models}
 \label{ch:burn-models}
 
-\checkedagainst{1.8.0}{HVRB, the lead shock,
-ThermalCascade, FlashFire, StochasticIgnite and HALO as built; CLAUDE as
-designed in \code{doc/design/burn_models.md} (approved Nov 6, 2026), not yet
+\checkedagainst{1.9.0}{HVRB, the lead shock,
+ThermalCascade, FlashFire, StochasticIgnite, HALO and CLAUDE, all six as
 built. Closed forms are checked in \code{doc/manual/checks/ch7_models.py}.}
 
 \bw\ carries a family of reactive burn models on one footing: the same
@@ -31,8 +30,8 @@ burn until its cell's lead shock is marked (\cref{sec:lead-shock}).}
   repaired and extended & built, 1.7.0 & yes \\
 \key{halo} & HALO & D.~E.~Kittell, from hot-spot activation and
   dissipation concepts & built, 1.8.0 & no \\
-\key{claude} & CLAUDE & proposed by Claude (Anthropic), 2026 & under
-  development & no \\
+\key{claude} & CLAUDE & proposed by Claude (Anthropic), 2026 & built,
+  1.9.0 & no \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -871,101 +870,170 @@ of the weak shock (2.2~mm with HALO's dissipation turned off).
 \section{CLAUDE}
 \label{sec:claude}
 
-\begin{underdev}[: planned, the last of the six]
-Designed (\code{doc/design/burn_models.md}), not yet built; three questions
-on its formulation are open (below).
-\end{underdev}
-
 CLAUDE (Centers Lit by Accumulated Unrecoverable Dissipated Energy) was
 proposed by Claude (Anthropic) in 2026, at D.~E.~Kittell's invitation. It is
-built from the key areas of the 2025 survey (\cite{kittell2025sand}, \S 2.4):
-burn centers lit by the shock, growth by deflagration and overlap (a
-fourth, quenching, is held back; below), each written so it can be tested
-exactly.
+built from the key areas of the 2025 survey (\cite{kittell2025sand}, \S 2.4),
+each written so that it can be tested exactly: burn centers lit by the
+entropy a shock leaves behind, from a finite pool; growth by deflagration;
+exact overlap, with the history of every center; and quenching. Its
+constants are meant to be measurable: $N_{\max}$ from the microstructure,
+$D_0$ and $n_g$ from burning-rate data, leaving $W_0$ and $k_w$ to fit to
+shock data, and $\tau_q$ to the double shocks.
+
+\paragraph{The model, as built.} Every step, in every CLAUDE cell (not
+gated), in this order:
 \begin{enumerate}
-\item \textbf{Activation:} $w \mathrel{+}= \max(\Delta e + P\Delta v, 0)$
-  each step, a measure of the irreversible work done on the cell (whether
-  it is to be read as dissipated energy or as entropy is open, below). A
-  double shock does less of it than a single shock to the same state, so
-  desensitization comes without a switch or a detector.
-\item \textbf{Burn centers from a finite pool:} $n(w) = N_{\max}\bigl(1 -
-  \exp[-(w/W_0)^{k_w}]\bigr)$ per unit volume, new centers born whenever $w$
-  rises (at a reshock too).
-\item \textbf{Growth at a deflagration speed:} each center's radius grows at
-  $G = D_0\,(\max(P, 0)/P_R)^{n_g}$.
-\item \textbf{Exact overlap, with history} (Avrami's extended volume; Farjas
-  and Roura \cite{farjas2006}): with the moments $M_j$, the sum over
-  centers of their radius to the power $j$ per unit volume,
+\item \textbf{Activation, by entropy.} For \bw's Mie--Gr\"uneisen ($\rho\Gamma
+  = \rhoz\Gz$) with a constant $\Cv$, every isentrope has $T \propto
+  e^{\Gz\eta}$, so the specific entropy above the reference isentrope is
+  exactly
   \begin{equation}
-    \lam = 1 - \exp\Bigl(-\frac{4\pi}{3}M_3\Bigr), \qquad
-    M_0' = \dot n, \quad M_1' = G M_0, \quad M_2' = 2 G M_1, \quad
-    M_3' = 3 G M_2,
+    s = \Cv\ln\frac{T}{T_0\,e^{\Gz\eta}}, \qquad
+    T = T_0\,e^{\Gz\eta} + \frac{e - e_c(\eta)}{\Cv},
+    \label{eq:claude-s}
+  \end{equation}
+  from the cell's $e$ and its carried cold energy $e_c$
+  (\cref{ch:burning-cell}). $w$ is the largest $s$ the cell has had. As a
+  function of state it needs no sum over steps: a captured shock's state is
+  right whatever its width, so $w$ is the same under methods AV and RS and
+  converges with the mesh, and round-off can not accumulate in it. $T$ is
+  taken as if the cell were unreacted (the reaction, at fixed $e$, does not
+  move it, and a burning cell's expansion lowers it, so only compression
+  raises $w$): the idea of an isentropically expanding solid, within
+  \bw's density--temperature closure. The closed form needs a constant
+  $\Cv$ and $\rho\Gamma$: the deck refuses \key{burn = claude} with any
+  other equation of state.
+\trace{modules/claude_mod.f95}{cl_entropy}{test_claude, study_claude.py}
+\trace{modules/burn_mod.f95}{cl_s, cell_burn}{study_claude.py}
+\item \textbf{Burn centers from a finite pool,} per initial volume:
+  \begin{equation}
+    n(w) = N_{\max}\bigl(1 - e^{-(w/W_0)^{k_w}}\bigr),
+    \label{eq:claude-n}
+  \end{equation}
+  the step's $\Delta n = n(w^{n+1}) - n(w^n) \ge 0$ formed as $x_2(1 -
+  (w^n/w^{n+1})^{k_w})$, $x = (w/W_0)^{k_w}$: without cancellation (it
+  matters at the foot of a shock, where $w$ is $10^{-15}$) and without
+  overflow (where $w$ jumps from there to a shock's in one step).
+\trace{modules/claude_mod.f95}{cl_dn}{test_claude}
+\item \textbf{Growth at a deflagration speed,} in reference lengths:
+  $G = D_0\,(\max(P^n, 0)/P_R)^{n_g}\,(\rho/\rhoz)^{1/3}$.
+\trace{modules/claude_mod.f95}{cl_growth}{test_claude}
+\item \textbf{Exact overlap, with history and quenching} (Avrami's extended
+  volume; \cite{farjas2006}): with $M_j$ the growing centers' sum of
+  radius$^j$ per initial volume and $V_q$ the volume burnt by centers since
+  quenched (each stops growing at the rate $q = 1/\tau_q$ and keeps what it
+  has burnt),
+  \begin{equation}
+    \lam = 1 - \exp\Bigl(-\frac{4\pi}{3}(M_3 + V_q)\Bigr).
     \label{eq:claude}
   \end{equation}
-  exact for any history of nucleation and growth. Centers born at a reshock
-  start small and grow on their own clock. For $G$ constant over a step every
-  radius grows by $\Delta R = G\Delta t$, and the moments' update is exact:
-  $M_j \leftarrow \sum_{i \le j}\binom{j}{i}\Delta R^{\,j - i} M_i$, then
-  $M_0 \mathrel{+}= \Delta n$.
+  Over a step, with $G$ constant, every radius grows by $\Delta R = G\Delta
+  t$ and survives with probability $f = e^{-q\Delta t}$, and the new
+  centers are lit evenly through the step. With $J_k = \int_0^{\Delta t}
+  u^k e^{-qu}\,\dd u$, exactly:
+  \begin{align}
+    M_j &\leftarrow f\sum_{i \le j}\binom{j}{i}\Delta R^{\,j-i} M_i
+          + \frac{\Delta n}{\Delta t}\,G^j J_j, \\
+    V_q &\leftarrow V_q + q\sum_{i \le 3}\binom{3}{i} G^{3-i} M_i\,J_{3-i}
+          + \frac{\Delta n}{\Delta t}\,q\,G^3(\Delta t\,J_3 - J_4).
+  \end{align}
+  Where $f$ rounds to 1 ($\tau_q = 10^{30}$) the quench is skipped and the
+  new centers add $\Delta n\,\Delta R^j/(j+1)$: the unquenched step, bit for
+  bit. Adding the new centers at the step's end with radius 0 instead would
+  make nucleation first order in $\Delta t$.
+\trace{modules/claude_mod.f95}{cl_moments, cl_jk, cl_lam, cl_step}{test_claude}
 \end{enumerate}
-Its history: $w$, $M_0$ to $M_3$.
+$D_0 = 0$ is the inert limit (centers lit, nothing burns).
 
-\begin{center}\small
-\begin{tabular}{@{}l l l l@{}}
+\paragraph{The review's questions, answered.} The v1.4.0 review (F-12)
+asked what $w$ is, whether it converges under method RS, and whether its
+centers are counted per initial or current volume. As first designed, $w$
+was a sum, $\max(\Delta e + P\Delta v, 0)$ per step. It can not converge
+under RS: across a shock crossed in one step $\Delta e = \frac12(P_0 +
+P_1)|\Delta v|$ exactly (Rankine--Hugoniot), so the sum reports $\pm\frac12(P_1
+- P_0)|\Delta v|$ or 0, depending on which $P$ it takes, whatever the shock's
+real dissipation. Entropy, \cref{eq:claude-s}, replaces it (question 1: $w$
+is entropy, J/(g\,K), and so $W_0$); measured behind Material~X's shock
+against the exact entropy on its Hugoniot, both methods, 25 to 200
+zones/mm, it agrees within 0.3~\% at the coarsest and 0.1~\% elsewhere
+(question 2). Everything is per initial volume (question 3), and new
+centers are born through the step, so nucleation's timing is exact.
+
+\paragraph{Desensitization.} Entropy grows as the cube of a weak shock's
+strength, so reaching a pressure through a weaker first shock makes far
+less of it: for Material~X, 32 to 65~\% of one shock's entropy to the same
+pressure (8 to 15~GPa, first shocks of 2 to 6~GPa), where HALO's compression
+work keeps 82 to 94~\%.
+
+\begin{table}[h]
+\centering\small
+\caption{CLAUDE's keys, and the example deck's values
+(\code{input/me697_claude_2p00.deck}: an example, not a calibration). Its
+history: $w$, $M_0$ to $M_3$, $V_q$.}
+\label{tab:claude-keys}
+\begin{tabular}{@{}l l l l r@{}}
 \toprule
-Key & Symbol & Units & Meaning \\
+Key & Symbol & Units & Deck check & Example \\
 \midrule
-\key{NMAX} & $N_{\max}$ & 1/mm$^3$ & burn centers available ($N_{\max}^{-1/3}$ their spacing) \\
-\key{W0}   & $W_0$      & kJ/g     & dissipated energy that lights 63~\% of them \\
-\key{KW}   & $k_w$      & --       & sharpness of lighting \\
-\key{D0}   & $D_0$      & mm/\textmu s & deflagration speed at $P_R$ \\
-\key{NG}   & $n_g$      & --       & its pressure exponent \\
-\key{PR}   & $P_R$      & GPa      & reference pressure \\
+\key{NMAX} & $N_{\max}$ & 1/mm$^3$ & $> 0$ & 1000 \\
+\key{W0}   & $W_0$      & J/(g\,K) & $> 0$ & 0.66 \\
+\key{KW}   & $k_w$      & --       & $> 0$ & 4 \\
+\key{D0}   & $D_0$      & mm/\textmu s & $\ge 0$ & 0.25 \\
+\key{NG}   & $n_g$      & --       & $\ge 0$ & 1 \\
+\key{PR}   & $P_R$      & GPa      & $> 0$ & 7 \\
+\key{TQ}   & $\tau_q$   & \textmu s & $> 0$ & 0.25 \\
 \bottomrule
 \end{tabular}
-\end{center}
-Every constant is meant to be measurable: $N_{\max}$ from the
-microstructure, $D_0$ and $n_g$ from deflagration data, before any shock
-data, leaving only $W_0$ and $k_w$ to fit to a single-shock run distance. A
-quench time is held back as a seventh constant, to be added only if the
-double-shock study needs it.
+\end{table}
 
-\paragraph{Open questions} (from the review of v1.4.0, finding F-12;
-\code{audits/README.md}):
-\begin{enumerate}
-\item \emph{What $w$ is.} The sum is dissipated energy ($\int T\,\dd s$,
-  kJ/g, $W_0$'s unit), not entropy; either can serve, and both desensitize a
-  double shock. The design note's ``entropy production'' is to be settled as
-  one or the other.
-\item \emph{Does $w$ converge under method RS?} With method AV the sum
-  converges to the exact integral along the shock's path. Method RS captures
-  a shock in one or two cells and a few steps whatever the mesh, so a sum
-  with $P^n\Delta v$ is off by a fixed fraction there. A trapezoidal $P$, and
-  the planned test of $w$ across a shock against the exact jump, with both
-  methods on several meshes, come before ``$w$ converges with the mesh'' is
-  claimed.
-\item \emph{Per initial or per current volume.} $N_{\max}$ and the moments:
-  per unit initial volume (the Lagrangian cell's mass) or current volume? A
-  cell compressed 1.4 to 2 times needs the factor $\rho/\rhoz$ one way or
-  the other. Also, centers added at the end of a step make nucleation's
-  timing first order in $\Delta t$ (growth's update is exact).
-\end{enumerate}
+The example's $N_{\max}$ is a 0.1~mm spacing of centers, and its $W_0$ the
+entropy of the deck's own 2.00~km/s shock (0.66~J/(g\,K) at 10.7~GPa). With
+its constants (35 zones/mm, method RS, order 2) CLAUDE's Pop plot follows
+HVRB's: 2.00, 1.75 and 1.50~km/s detonate about 3.5, 4.7 and 7.9~mm into
+Material~X (HVRB: 3.5, 5.0 and 7.5), method AV within 0.25~mm. At 1.25~km/s
+the centers it lights grow slowly at the low pressure and are quenched
+first: Material~X stops about a third burnt, a failed initiation, where
+HVRB and HALO go on burning behind the shock. Faced with 1~mm of PMMA, so
+that a weak shock runs ahead of the strong one, a 1.50~km/s tantalum
+flyer's detonation moves 3.9~mm deeper into Material~X, against 1.8 under
+HALO and 1.5 under HVRB (3.7 with the quench off: the entropy does most of
+it); at 1.25~km/s the faced flyer does not detonate it within 9~mm.
 
-\paragraph{Planned tests.} Every center lit at once with $G$ constant gives
-Hill and Zimmermann's $\lam = 1 - \exp(-(\pi/6)\hat t^{\,3})$ exactly, with
-$\hat t$ the time over that for a center's diameter to reach the spacing
-$N_{\max}^{-1/3}$ \cite{hill2009}; the moment update against direct
-quadrature of Avrami's integral at 50 digits for a varying history; and $w$
-across a shock against the exact jump.
+\paragraph{Verification.}
+\begin{itemize}
+\item \code{test_claude}, against 50-digit values (\code{tests/claude_reference.py}):
+  a history of lighting, growth and quenching against Avrami's extended
+  volume by direct quadrature, to $4\times10^{-16}$; every center lit at
+  once against $\lam = 1 - \exp(-(\pi/6)\hat t^{\,3})$ \cite{hill2009}; the
+  entropy against $\int\dd e/T$ at fixed volume; $\Delta n$, a rise of
+  $10^{-7}$ and a jump from $10^{-16}$ at $k_w = 30$ too, to $5\times10^{-16}$;
+  $J_k$; $\tau_q = 10^{30}$ the unquenched step;
+  $D_0 = 0$ never burning; the order of a step, bit for bit.
+\item In the hydro (\code{tests/verification/study_claude.py}): the entropy
+  behind a shock as above; and the whole model replayed from a tracer's own
+  rows (its $T$, $\rho$, $P$ and time), at five tracers, both methods: the
+  same first reacting step, and $\lam$ within $10^{-10}$ ($D_0$ small enough
+  that the reaction does not heat the tracer's $T$, the mixture's).
+\item The detonation converges with the mesh, both methods, within 0.1~mm
+  of each other in run distance; its speed is 0.8~\% below $D_{CJ}$ (0.6
+  with the quench off: the Avrami burn's slow tail, the front still
+  nearing $D_{CJ}$ over the fit's window).
+\item The inert limit ($D_0 = 0$, centers lit) is the inert run bit for bit,
+  both methods; the other five models are unchanged bit for bit.
+\end{itemize}
 
 % ---------------------------------------------------------------------
 \section{The six together}
 \label{sec:six-together}
 
-Once built, each model will be calibrated to approximate HVRB's Material~X
-for a single shock (run distance, the PDV record), then compared on double
-shocks, where the models with a shock history (the three gated by the lead
-shock, HALO and CLAUDE) should part from HVRB: shock desensitization. Each
+With all six built, each model is next to be calibrated to approximate
+HVRB's Material~X for a single shock (run distance, the PDV record), then
+compared on double shocks, where the models with a shock history (the three
+gated by the lead shock, HALO and CLAUDE) should part from HVRB: shock
+desensitization. The example decks already show the order, with the Pop
+plots of HALO and CLAUDE following HVRB's: a weak shock ahead of the strong
+one delays the detonation of a 1.50~km/s flyer by 1.5~mm under HVRB, 1.8
+under HALO and 3.9 under CLAUDE. Each
 is held to the same standard as ThermalCascade, without reference data of
 its own: unit tests at 50 digits, closed-form limits in a run, convergence
 with the mesh under both methods (the detonation speed to $D_{CJ}$), and bit

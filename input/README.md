@@ -167,12 +167,13 @@ Mie-Gruneisen, referenced to the principal Hugoniot (project rev-0, Eq. 4).
 | `spall_strength` | GPa | 0.01 |
 | `CV` | J/(g K) | required with `mie_gruneisen_t`; not allowed without it |
 | `T0` | K | required with `mie_gruneisen_t`; not allowed without it |
-| `burn` | `hvrb`, `thermalcascade`, `flashfire`, `stochasticignite`, `halo` | none (inert) |
+| `burn` | `hvrb`, `thermalcascade`, `flashfire`, `stochasticignite`, `halo`, `claude` | none (inert) |
 | `PR`, `ZR`, `MR`, `XR`, `PI`, `TAU0` | GPa, -, -, -, GPa, us | each required with `burn = hvrb` (`XR` 25 or less); not allowed without it |
 | `HT`, `TC`, `GT`, `NS`, `PR` | 1/(us K^GT), K, -, -, GPa | each required with `burn = thermalcascade`; not allowed without it |
 | `KFF`, `AFF`, `BFF`, `TA`, `NS`, `PR`, `LAM0` | 1/us, -, -, K, -, GPa, - | each required with `burn = flashfire` (`LAM0` strictly between 0 and 1); not allowed without it |
 | `MU`, `SIGMA`, `AVRAMI`, `NS`, `PR`, `LC`, `SEED`, `TAUZ` | 1/us, 1/us, -, -, GPa, mm, -, us | each required with `burn = stochasticignite` (`SEED` a whole number, 0 to 19999); not allowed without it |
 | `ED0`, `BETAH`, `TAUD`, `DELTA`, `DFRAC`, `NH`, `KB`, `PR` | GPa^(1/2) cm^3/g, -, us, -, -, -, 1/us, GPa | each required with `burn = halo` (`ED0`, `BETAH`, `TAUD`, `DFRAC` more than 0; `DELTA`, `NH`, `KB` 0 or more); not allowed without it |
+| `NMAX`, `W0`, `KW`, `D0`, `NG`, `PR`, `TQ` | 1/mm^3, J/(g K), -, mm/us, -, GPa, us | each required with `burn = claude` (`NMAX`, `W0`, `KW`, `TQ` more than 0; `D0`, `NG` 0 or more); not allowed without it |
 | `products` | `ideal_gas` | none: required with `burn` (no default) |
 | `GAMMA`, `Q` | -, kJ/g (= MJ/kg) | each required with `products = ideal_gas`; not allowed without it |
 
@@ -381,6 +382,49 @@ burn); `TAUD = 1.0e30` turns dissipation off. Example: below, and
     GAMMA = 2.60
     Q = 4.8828               # kJ/g
 
+**Burning (`burn = claude`).** CLAUDE (Centers Lit by Accumulated
+Unrecoverable Dissipated Energy), proposed by Claude (Anthropic) at D. E.
+Kittell's invitation (`doc/design/burn_models.md`, step 9): burn centers lit
+by the entropy a shock leaves in the cell, from a finite pool, growing at a
+deflagration speed, overlapping exactly, and going out at a rate. Each step,
+in every CLAUDE cell (not gated):
+
+    w     = the largest entropy the cell has had, C_V ln(T/(T0 exp(G0 eta)))
+    n(w)  = NMAX (1 - exp(-(w/W0)^KW))          centers lit per initial mm^3
+    G     = D0 (max(P, 0)/PR)^NG (rho/R0)^(1/3)  each center's radius' growth
+    lam   = 1 - exp(-(4 pi/3) V)                 V: the centers' extended volume
+
+The entropy is exact for this solid (its Mie-Gruneisen with one C_V), from the
+cell's own state, **with no sum over steps**: so the same under AV and RS and
+on any mesh (within 0.3 % of the exact entropy behind Material X's shock at
+25 zones/mm, 0.1 % from 50). It
+is taken as if the cell were unreacted: the reaction does not raise it, only
+compression does. **CLAUDE needs `eos = mie_gruneisen_t` and `products =
+ideal_gas`** and says so if not ("its entropy is exact only for a constant C_V
+and rho Gamma"), even should another EOS join bitwhiz. The moments of the
+centers' radii are stepped exactly, centers lit evenly through each step. A
+growing center stops at the rate 1/`TQ` and keeps what it has burnt, so a
+cell whose centers have all stopped keeps lam below 1 (`TQ = 1.0e30`: no
+quench). A weak first shock makes far less entropy than one strong shock to
+the same pressure (a third to two thirds as much), so it lights fewer
+centers: **shock desensitization, with no switch**. `D0 = 0` is the inert
+limit (centers lit, nothing burns). `NMAX` is set by the centers' spacing
+(NMAX^(-1/3)), `D0` and `NG` by a burning rate; `W0` and `KW` are then
+fitted. Example: below, and `me697_claude_2p00.deck` (section 6), an example
+set, not a calibration:
+
+    burn  = claude
+    NMAX  = 1000.0           # 1/mm^3: 0.1 mm apart
+    W0    = 0.66             # J/(g K): the 2.00 km/s shock's own
+    KW    = 4.0
+    D0    = 0.25             # mm/us
+    NG    = 1.0
+    PR    = 7.0              # GPa
+    TQ    = 0.25             # us
+    products = ideal_gas
+    GAMMA = 2.60
+    Q = 4.8828               # kJ/g
+
 **Resolution, with AV.** AV burns inside its smeared shock, and on a coarse
 mesh that makes a weak detonation: the front runs fast, and once an overdrive
 has decayed a plateau below P_CJ opens behind the spike and widens. It goes
@@ -573,6 +617,18 @@ detonation converges with the mesh to within 0.15 % of D_CJ, both methods.
 Its point is shock desensitization: faced with 1 mm of PMMA, a 1.25 km/s
 tantalum flyer's detonation moves 2.6 mm deeper under HALO, 1.35 under HVRB
 (`tests/verification/study_halo.py`). About 2 s (release build).
+
+**The same, by CLAUDE,** `me697_claude_2p00.deck`: Material X burning by
+`burn = claude` (Material block, "Burning"), its centers lit by the entropy
+the shock leaves; RS at order 2. Constants chosen so that its Pop plot
+follows HVRB's: 2.00, 1.75 and 1.50 km/s detonate about 3.5, 4.7 and 7.9 mm in
+(HVRB 3.5, 5.0 and 7.5), method AV within 0.25 mm. At 1.25 km/s the centers it
+lights are quenched before they grow: Material X stops about a third burnt, a
+failed initiation. Its detonation converges with the mesh, 0.8 % below D_CJ
+(the Avrami burn's slow tail). It desensitizes most of the models: faced
+with 1 mm of PMMA, a 1.50 km/s tantalum flyer's detonation moves 3.9 mm deeper,
+against 1.8 under HALO and 1.5 under HVRB (`tests/verification/study_claude.py`).
+About 2 s (release build).
 
 **Keep the origin near the problem.** Positions are stored as plain numbers, so
 round-off in x grows with the size of x: a cell's width is the difference of
@@ -850,8 +906,9 @@ by `src/main/bmpmaker.f95`. `make tidy` removes them with the run's other files.
   (7 frames a second: 35 frames make 5 s; `yuv420p` so browsers play it).
   The class deck, `pulse_split_normal.deck`, `steepening_hump.deck`,
   `me697_hvrb_2p00.deck`, `me697_tcas_2p00.deck`, `me697_ffire_2p00.deck`,
-  `me697_sign_2p00.deck` and `me697_halo_2p00.deck` make movies (35, 35,
-  25, 35, 35, 35, 35 and 35 frames).
+  `me697_sign_2p00.deck`, `me697_halo_2p00.deck` and
+  `me697_claude_2p00.deck` make movies (35, 35, 25, 35, 35, 35, 35, 35 and
+  35 frames).
 
 - **Read from the files, never from memory.** The t-x diagrams come from
   `<title>.hist` and the tracer plots from `<title>.tracers.csv`, so a picture
@@ -1000,7 +1057,7 @@ so the heartbeat, tracer and history files it reads are never touched.
 | `xvel_profile`, `xvel_amplitude` | `layer(l)%prof_name`, `prof_np`, `prof_par`; `xamp`, `have_amp` |
 | `Material` keys `R0`, `C0`, `S1`, `S2`, `G0` | copied into `layer(l)%...`, then into each cell's slots `jr0 ... jg0` |
 | `Material` keys `eos`, `CV`, `T0` | `material(m)%eos` (`eos_mie_gruneisen`, `eos_mie_gruneisen_t`), `CV` (J/(g K)), `T0`; copied into `layer(l)%eos`, `cv` (kJ/(g K): `CV`/1000), `T0`, then into module `temperature` (`src/modules/temp_mod.f95`), cell by cell |
-| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `HT` ... `NS`, `KFF` ... `LAM0`, `MU` ... `TAUZ`, `ED0` ... `KB`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `thermalcascade` (`tcas_mod.f95`, with `leadshock`, `lshk_mod.f95`), `flashfire` (`ffire_mod.f95`), `stochignite` (`sign_mod.f95`, with `random`, `rand_mod.f95`), `halo` (`halo_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
+| `Material` keys `burn`, `products`, `PR` ... `TAU0`, `HT` ... `NS`, `KFF` ... `LAM0`, `MU` ... `TAUZ`, `ED0` ... `KB`, `NMAX` ... `TQ`, `GAMMA`, `Q` | `material(m)%burn` (`burn_hvrb`), `products` (`products_ideal_gas`); the burn's constants in `material(m)%bkey(j)` by key, as module `burn_table` (`src/modules/btab_mod.f95`) lists the keys, then into `layer(l)%bpar(s)` in the model's slot order, then into module `burn` (`src/modules/burn_mod.f95`), cell by cell (`bpar(s,k)`; its history variables `bst(s,k)`); `GAMMA` and `Q` by their names; the physics in modules `hvrb` (`hvrb_mod.f95`), `thermalcascade` (`tcas_mod.f95`, with `leadshock`, `lshk_mod.f95`), `flashfire` (`ffire_mod.f95`), `stochignite` (`sign_mod.f95`, with `random`, `rand_mod.f95`), `halo` (`halo_mod.f95`), `claude` (`claude_mod.f95`), `mixture` (`mix_mod.f95`) and `products` (`prod_mod.f95`) |
 | `num_threads` | `nproc` |
 | `Run`, `Output`, `Solver`, `Stack` keys | module variables of the same name (`t_end`, `plot_dt`, `colormap`, `CFL`, `stack_resolution`, ...) |
 | `tracer` | `tracer(n)%...`: name, location, `x0`, `kface`, `w`, `kcell` |
