@@ -1445,3 +1445,248 @@ cycle-1 comment in module burn (under RS every cell has De = Dv = 0).
 measure and its two properties (one step's 1.061; a ramp activating 71 to
 85 % of a shock's E_D), and its trace tags; chapter 1 and the appendices
 updated.
+
+## Step 9, CLAUDE: the plan (DK: approved, Nov. 14, 2026)
+
+CLAUDE as designed above ("CLAUDE", Nov 6): burn centers lit by
+dissipation from a finite pool, growing at a deflagration speed, overlapping
+exactly through Avrami's moments. What is new here answers the v1.4.0
+review's three questions (F-12) and one the build of HALO raised. Decisions
+marked **DK** will contain comments nearby. The checks below were 
+computed for this plan.
+
+### What the design said, what F-12 asked, what the build proposes
+
+| | Design (Nov 6) | F-12 (Nov 8) | Proposed |
+|---|---|---|---|
+| Activation | w += max(De + P Dv, 0), a sum | is w entropy or energy? does it converge under RS? | w = the cell's entropy above its reference isentrope, a state function: no sum (**DK** Comments: entropy is the better choice by far. However, in production codes, it is usually too difficult to calculate and therefore never exposed. In my professional role, I have programmed non-constant specific heat models and know what it takes to get the entropy of a compressible solid. All that to say, why not put a conditional check on this burn option? I.e., it has to be paired with the Mie-Gruneisen with temperature and IDG products, otherwise shut down. The constant CV approximation is what holds this all together. 1) |
+| In a burning cell | not said | - | entropy of the cell as if unreacted (**DK** Comments: I know you said that the solid entropy is no way out, but the CREST model uses solid entropy. That said, the mixture model is completely different. That particular mixture model is called 'ISE' for Cowperthwaite's ISentropic Expansion for the solid. But if that really isn't feasible for a code like ours, make the best compromise for simplicity's sake that still respects the spirit of the proposed model. 2) |
+| Volume | not said | per initial or current volume? | per initial volume (per mass), radii in reference lengths (**DK** Comments: approved as written. 3) |
+| New centers | added at the step's end, radius 0 | first order in dt: say so | born uniformly through the step: exact (**DK** Comments: not sure I follow, but exact solutions are always preferable for a code like this. 4) |
+| Quench time | held back | - | TQ, built now; 1e30: none (**DK** Comments: please explain your concept of a quench time in greater details, and I will approve it. 5) |
+
+### 1. Activation: entropy, from the state, not a sum (DK 1)
+
+**The sum can not converge under RS.** Building HALO showed it: across a
+shock crossed in one Godunov step, De = (P_0 + P_1)/2 |Dv| exactly
+(Rankine-Hugoniot), so the design's De + P Dv is (P_1 - P_0)/2 |Dv| with P
+at the step's start, 0 with the trapezoid, -(P_1 - P_0)/2 |Dv| at the end:
+whatever the shock's true dissipation, the sum reports a fixed share of
+its work, set by how many steps the shock takes (the method and CFL), not
+by the physics. F-12's question 2 has that answer.
+
+**Entropy needs no sum.** For bitwhiz's Mie-Gruneisen with rho Gamma =
+R0 G0 and a constant C_V, every isentrope has T proportional to
+exp(G0 eta) (eta = 1 - R0/rho; module temperature's cold curve is the one
+through V0 and T0), so the specific entropy is exactly
+
+    s - s_0 = C_V ln( T / (T0 exp(G0 eta)) ),   T = T0 exp(G0 eta) + (e - e_c(eta))/C_V
+
+from the cell's e and rho and its carried e_c: what module temperature
+already computes, every step. **w = the largest s - s_0 the cell has had**
+(it never falls, as HALO's v_min). A conservative scheme gets the state
+behind a captured shock right whatever its width, so w converges with the
+mesh and is the same under AV and RS; isentropic ringing and release add
+nothing; no round-off accumulates (the design's listed risk, gone).
+
+**Measured** (HALO's inert test deck, KB = 0, two tracers, every cycle,
+against the exact entropy on Material X's Hugoniot at the plateau's P):
+
+| zones/mm | AV | RS order 2 |
+|---|---|---|
+| 25 | +0.18, +0.31 % | +0.01, -0.05 % |
+| 50 | +0.01, +0.03 % | +0.01, +0.03 % |
+| 100 | 0.00, +0.01 % | +0.08, +0.01 % |
+| 200 | 0.00, +0.03 % | -0.04, +0.03 % |
+
+(w = 0.660 J/(g K) at 10.74 GPa.) **Desensitization is strong:** the
+entropy grows as the cube of a weak shock's strength, so reaching a
+pressure through a first, weaker shock makes far less:
+
+| P (GPa) | one shock (J/(g K)) | via 2 GPa | via 4 GPa | via 6 GPa |
+|---|---|---|---|---|
+| 8  | 0.445 | 0.33 | 0.37 | 0.65 |
+| 11 | 0.680 | 0.40 | 0.32 | 0.45 |
+| 15 | 0.967 | 0.49 | 0.35 | 0.38 |
+
+(ratios to one shock; HALO's compression work, the same paths: 0.82 to
+0.94). So F-12's question 1 is answered by choosing entropy, J/(g K), and W0
+takes its unit. The name stands: T ds is the unrecoverable dissipated
+energy.
+
+**Claude's reply to DK 1 (Nov 14): agreed, and made explicit.** The
+closed form rests on two things: rho Gamma constant (bitwhiz's Mie-
+Gruneisen) and C_V constant (the solid's, which the ideal-gas products
+share). Every burn already requires `eos = mie_gruneisen_t` and `products =
+ideal_gas` (module deck, close_burn), so today the condition holds for any
+CLAUDE material. It is not left to that: CLAUDE gets its own check, a
+property of its row in the burn table (`burn_needs_s`), so that when another
+solid EOS or products EOS (JWL, TODO.md) or a non-constant C_V joins
+bitwhiz, `burn = claude` with it is a deck error ("burn = claude needs eos
+= mie_gruneisen_t and products = ideal_gas: its entropy is exact only for
+a constant C_V and rho Gamma"), not a silently wrong entropy. A bad deck
+tests it as far as today's keys allow.
+
+### 2. Entropy in a burning cell (DK 2)
+
+bitwhiz's closure gives solid and products one T, which the reaction heats
+(vartheta = e - (1 - lam) e_c + lam Q), so a burning cell's entropy rises
+from its own burning, and would light more centers: a thermal runaway, not
+hot-spot ignition. "The solid's entropy" is no way out, since the solid
+shares that T. Options:
+
+- (a) freeze w once lam > 0: a reshock of a burning cell lights nothing;
+- (b) **proposed:** w from the cell's state as if unreacted, T_i = T0
+  exp(G0 eta) + (e - e_c)/C_V, the inert formula with the cell's e. At
+  fixed e the reaction does not move it; compression (by the mixture's
+  pressure) does. It is what module temperature computes for an inert
+  cell, so no new physics;
+- (c) accept the feedback, and study it.
+
+**Claude's reply to DK 2 (Nov 14): (b) is ISE's idea, inside bitwhiz's
+closure.** bitwhiz's closure is density-temperature equilibrium (module
+mixture: one rho, one T, the HVRB sheet's), so its solid has no
+temperature of its own to carry an entropy apart from the products'; that
+is why "the solid's entropy" can not be read off it directly. CREST can,
+because its mixture rule (Cowperthwaite's isentropic expansion, ISE) gives
+the solid its own state, and in ISE the solid's entropy is fixed once
+shocked: the reaction does not raise it, only another shock does. Option
+(b) has that property here without changing the closure (which every model
+shares): the entropy is taken from the cell's e and rho as if it were all
+solid, so the reaction, at fixed e, does not move it; a burning cell that
+expands loses e faster than the solid's isentrope does, so its value falls
+and the running maximum holds w; a reshock raises it. So: w moves only by
+compression, as an ISE solid's entropy does, and the reaction heat never
+lights a center. A full ISE closure would be a change to every model's
+physics: not in this step (a TODO.md item, if the study wants it).
+Proposed: (b).
+
+### 3. Per initial volume (DK 3)
+
+Everything in the cell's reference (initial) volume, so per mass, as
+bitwhiz's Lagrangian cells are: NMAX centers per initial mm^3, the moments
+M_j per initial volume, radii in reference lengths. The burned volume
+fraction is then lam = 1 - exp(-(4 pi/3) M_3) whatever the compression (one
+density for both phases: volume fraction = mass fraction). A deflagration
+speed D (current lengths) moves a reference radius at G = D (rho/R0)^(1/3).
+
+### 4. New centers born through the step (DK 4)
+
+With G constant over the step (P^n), every radius grows by DR = G dt, and
+the step is exact: M_j <- sum over i of C(j, i) DR^(j-i) M_i. New centers,
+Dn = n(w_new) - n(w_old) >= 0: added at the step's end with radius 0 is
+first order in dt (F-12); born uniformly through the step, they add Dn
+DR^j/(j + 1) to M_j (M_0 by Dn), exact for a constant birth rate. Proposed.
+
+**Claude's reply to DK 4 (Nov 14), in pictures.** Within one step of
+length dt, w rises and Dn new centers are lit; they are lit throughout the
+step, not all at its end. A center lit at the step's start has grown by
+DR = G dt by its end; one lit at the end, by 0; one lit halfway, by DR/2.
+Adding them all at the end with radius 0 makes every new center too small
+by up to DR, a first-order error in dt. If they are lit evenly through the
+step, their radii at its end are spread evenly from 0 to DR, so their sum
+of radius^j is Dn times the average of x^j from 0 to DR: Dn DR^j/(j+1). So
+M_1 gains Dn DR/2, M_2 Dn DR^2/3, M_3 Dn DR^3/4. Exact when the lighting
+rate and G are constant over the step, which is the step's own assumption
+(w from the state at its end, P^n at its start).
+
+### 5. The quench time (DK 5)
+
+Held back as the design said: six keys, a seventh only if the double-shock
+study needs it.
+
+**Claude's reply to DK 5 (Nov 14): the concept, and a proposal to build it
+now.** A lit center is a hot spot that has started to burn outward. Not
+every one survives: one too small, or under too little pressure to grow
+fast, loses its heat to the cold solid around it and goes out (the
+critical hot-spot size of thermal-explosion theory). The quench time
+models that as a rate: every growing center stops growing at the rate
+1/TQ, whatever its size. A stopped center keeps the material it has burnt
+(products do not unburn); it only stops adding to it.
+
+Why it matters for desensitization: the entropy already lights fewer
+centers after a weak first shock. Without a quench, the centers it does
+light grow slowly at the low pressure and are still there, growing, when
+the second shock arrives, which then speeds them up. With a quench, those
+early centers die off over TQ, as HALO's hot spots dissipate over TAUD, so
+a long enough gap between the shocks leaves the material less sensitive
+than its entropy alone says.
+
+In the moments it stays exact. Split the centers into growing ones (the
+moments M_0 to M_3) and the volume already burnt by stopped ones, V_q.
+Over a step at constant G and q = 1/TQ, every growing center's radius
+shifts by DR and survives with probability exp(-q dt), so
+
+    M_j <- exp(-q dt) sum_i C(j,i) DR^(j-i) M_i   (+ the step's births, each
+           weighted by its own survival)
+    V_q <- V_q + q times the integral over the step of M_3(t) dt   (a
+           polynomial in t times exp(-q t): closed form)
+    lam  = 1 - exp(-(4 pi/3)(M_3 + V_q))
+
+One more key (TQ, us, > 0; TQ = 1e30 is no quench, exactly, as TAUD =
+1e30 was HALO's) and one more state (V_q): npar 7, nst 6, within npar_max
+8 and nst_max 7. **Proposed: build it now, not later.** Added after release
+it would be a new required key, breaking every CLAUDE deck written in
+between; built now, TQ = 1e30 reproduces the six-key model bit for bit, and
+the study decides whether it matters. If you would rather not, it stays
+held back and the model has six keys.
+
+### The model, as it would be built
+
+Every step, every CLAUDE cell (not gated, as HALO):
+
+    w   <- max( w, C_V ln(T_i/(T0 exp(G0 eta))) )
+    Dn   = NMAX (exp(-(w_old/W0)^KW) - exp(-(w_new/W0)^KW))
+    DR   = D0 (max(P^n, 0)/PR)^NG (rho/R0)^(1/3) dt
+    M_j <- sum_i C(j,i) DR^(j-i) M_i + Dn DR^j/(j+1),   j = 0..3
+    lam  = 1 - exp(-(4 pi/3) M_3)
+
+and the quench (DK 5, approved Nov 14): M_j and the births each times
+their survival exp(-dt/TQ), V_q gaining what the stopped centers had burnt
+(closed form), and lam = 1 - exp(-(4 pi/3)(M_3 + V_q)); where exp(-dt/TQ)
+rounds to 1 (TQ = 1e30) the quench is skipped, V_q and all: the lines
+above, bit for bit.
+
+| Key | Units | Check | Meaning |
+|---|---|---|---|
+| NMAX | 1/mm^3 | > 0 | burn centers available (their spacing NMAX^(-1/3)) |
+| W0 | J/(g K) | > 0 | entropy that lights 63 % of them |
+| KW | - | > 0 | sharpness of lighting |
+| D0 | mm/us | >= 0 | deflagration speed at PR; 0 the inert limit |
+| NG | - | >= 0 | its pressure exponent |
+| PR | GPa | > 0 | reference pressure (shared) |
+| TQ | us | > 0 | quench time of a growing center; 1e30: none (DK 5) |
+
+npar 7. **State: w, M_0 to M_3 and V_q, nst 6** (nst_max stays 7). TQ
+approved by DK, Nov 14. Not gated.
+`eos = mie_gruneisen_t` is already required of a burn, so T0 and C_V are
+there. W0 sets the threshold: 0.66 J/(g K) is a 10.7 GPa single shock.
+
+### Tests
+
+- `tests/test_claude.f95` against `tests/claude_reference.py` (50 digits):
+  the moment update against direct quadrature of Avrami's extended volume
+  for a varying birth and growth history; every center lit at once, G
+  constant: Hill and Zimmermann's lam = 1 - exp(-(pi/6) that^3) exactly;
+  uniform births against their closed form; the quench, the survival
+  update and V_q's closed form against direct quadrature, and TQ = 1e30
+  the unquenched step bit for bit; w against the exact entropy
+  on the Hugoniot, and invariant along an isentrope; Dn >= 0 and n <=
+  NMAX; D0 = 0, lam = 0 exactly.
+- `test_btab`: the row. Decks: good (AV, RS), the inert limits (D0 = 0),
+  bad decks, and the `burns` history cases (as HALO's: a cell reacts,
+  Material X burns out).
+- `tests/verification/study_claude.py`: E1, w in the hydro against the
+  exact Hugoniot entropy, AV and RS, 25 to 200 zones/mm (the table above,
+  as checks); E2, the detonation against mesh, D to D_CJ; E3, HALO's
+  desensitization flyers, CLAUDE beside HALO and HVRB.
+- The other five models bit for bit.
+
+### The example deck and the manual
+
+`input/me697_claude_2p00.deck`, RS order 2, constants chosen, as HALO's
+were, so that its Pop plot follows HVRB's (an example, not a calibration;
+NMAX from a plausible grain spacing, D0 and NG from a plausible burning
+rate, W0 and KW then set: the calibration route the design proposed). The
+manual's CLAUDE section from "under development" to as built, F-12's
+questions answered in it.
