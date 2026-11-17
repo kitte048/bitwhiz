@@ -6,7 +6,7 @@ authors:
   - family-names: Kittell
     given-names: David E.
     orcid: "https://orcid.org/0000-0002-7065-6780"
-version: 1.7.0
+version: 1.8.0
 doi: 10.5281/zenodo.23999297
 date-released: 2026-11-16
 license: Apache-2.0
