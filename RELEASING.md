@@ -17,9 +17,9 @@ copy:
 fix on main  ->  make test, make release  ->  tag vX.Y.Z  ->  export to the
 nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
 ```
-- **Branches.** `main` is the release line: every tag, and so every nanoHUB
-  version, is a commit on it (the line was `shock` until Nov 5, 2026, when
-  `main` was brought up to it). New work goes on its own branch (as the
+- **Branches.** `main` is the release line: every tag, and so every version
+  nanoHUB gets, is a commit on it (the line was `shock` until Nov 5, 2026,
+  when `main` was brought up to it). New work goes on its own branch (as the
   velocity profiles did on `distributions`, released in 1.1.0), which takes
   fixes from `main` by `git merge main`, goes back into `main` when it is
   finished, and is then deleted.
@@ -30,8 +30,14 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   install (Oct 23, 2026), never published, and folded into v1.0.2 the same
   day; it is why changes now flow one way. The versions published on
   nanoHUB are 1.0.2, 1.0.3, 1.1.0, 1.2.0, 1.3.0, 1.3.4 (approved Nov 6,
-  2026; 1.3.1 to 1.3.3 reached nanoHUB in it) and 1.4.0 (published Nov 9,
-  2026).
+  2026; 1.3.1 to 1.3.3 reached nanoHUB in it), 1.4.0 (published Nov 9,
+  2026) and 1.6.0 (published Nov 16, 2026; 1.5.0 reached nanoHUB in it).
+- **Which releases go to nanoHUB** (DK, Nov 13, 2026): GitHub and Zenodo get
+  every release; nanoHUB gets selected ones, as its review allows (a rebuild
+  waits for its staff, on weekdays), so a nanoHUB update may jump several
+  versions, its users seeing each step's changes at once. A release that
+  skips nanoHUB skips the export and the nanoHUB steps below; its tag,
+  GitHub release and Zenodo version are made as for any other.
 - **Export** with `sh src/utils/export_nanohub.sh vX.Y.Z
   ~/Documents/Academic/bitwhiz`: it copies exactly that tag into the clone's
   `src/bitwhiz/` (no `doc/`, and none of the gold-standard data in
@@ -81,6 +87,7 @@ nanoHUB clone  ->  one push  ->  nanoHUB installs it  ->  test and approve
   | 1.4.1 | 10.5281/zenodo.24092238 | Nov 9, 2026 |
   | 1.5.0 | 10.5281/zenodo.24169923 | Nov 12, 2026 |
   | 1.6.0 | 10.5281/zenodo.24175839 | Nov 12, 2026 |
+  | 1.6.1 | 10.5281/zenodo.24297475 | Nov 17, 2026 |
 
 **nanoHUB's compiler is gfortran 8.3** (Debian 10). Keep the code to what
 gfortran 8 accepts; Fortran 2018 features it lacks, and their replacements
