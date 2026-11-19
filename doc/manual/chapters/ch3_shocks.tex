@@ -1,13 +1,324 @@
 \chapter{Shock waves}
 \label{ch:shocks}
 
-\tocome{Drawn from the course's Units~3 to~6. The shock of finite thickness,
-steady in its own frame: the Reynolds transport theorem of
-\cref{sec:balance} across it gives the jump conditions whatever its
-structure, and the Rayleigh line and the Hugoniot; the energy split in
-two; the entropy made inside the front, fixed by the end states while its
-mechanism sets only the thickness; the shock speed and the shock impedance
-in place of $c$ and $Z$; impedance matching at a contact. And the step to
-the numerics: a method may choose its own shock thickness, a few cells
-wide, as long as it keeps the jump conditions, which is what method AV's
-viscosity does (\cref{ch:method-av}).}
+\checkedagainst{1.9.0 (\code{63ebbdc})}{The derivations are checked
+symbolically, and every number in the chapter is computed, in
+\code{doc/manual/checks/ch3_shocks.py} (sympy, and mpmath at 30 digits);
+the class materials are those of \code{input/me697_double_shock_2p00.deck},
+and the first shock agrees with the gold-standard data's exact value.}
+
+A shock wave is a thin front across which pressure, density, velocity and
+energy jump. This chapter derives the jump conditions across a shock from
+the balance laws of \cref{ch:continuum}. They depend only on the states on
+either side of the front, not on what happens inside it. The chapter then
+looks inside the front, and finds the idea that both of \bw's numerical
+methods rely on: conservation fixes the size of a shock's jump, but not its
+thickness, so a numerical method may spread a shock over a few cells and
+still get the jump right. The development follows the ME~697 course (its Units~3 to~6).
+
+States are numbered as in the course: 0 ahead of the shock (the material
+at rest), 1 behind it. $U_s$ is the shock's speed and $u_p$ the particle
+velocity behind it, both in the laboratory, into material at rest.
+
+\section{A steady shock of finite thickness}
+\label{sec:steady-shock}
+
+A real shock is not a discontinuity. It has a structure, a few mean free
+paths to a few micrometers wide, inside which viscosity (or, in a
+calculation, artificial viscosity) turns the flow's kinetic energy into
+heat. Suppose the front is \emph{steady}: it moves at a constant speed
+$U_s$ and keeps its shape. In a frame that moves with it, nothing changes
+in time. Material enters from the left at speed $U_s$ in the state 0,
+passes through the front, and leaves at speed $U_s - u_p$ in the state 1
+(\cref{fig:rtt-shock}).
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/rtt_shock.pdf}
+\caption{A steady shock of finite thickness, seen in its own frame, where
+the control volume $a \le x \le b$ is fixed. A quantity $\phi$ goes from
+$\phi_0$ to $\phi_1$ across the front; the viscous stress $q$ is nonzero
+only inside it. Material enters at $U_s$ and leaves at $U_s - u_p$.}
+\label{fig:rtt-shock}
+\end{figure}
+
+Apply the transport theorem, \cref{eq:cm-rtt}, to a control volume $a \le
+x \le b$ fixed in this frame and wide enough to hold the whole front. The
+flow is steady, so the left-hand side vanishes, and the faces do not move,
+so the flux is the plain $u\phi$:
+\begin{equation}
+0 = \bigl[\,u\phi\,\bigr]_{a} - \bigl[\,u\phi\,\bigr]_{b}
+  + \int_a^b S_\phi\,\dd\hat x .
+\label{eq:sh-cv}
+\end{equation}
+Now the decisive step. The sources of mass, momentum and total energy are
+perfect derivatives: zero, $\partial\sigma_{xx}/\partial x$, and
+$\partial(\sigma_{xx}u)/\partial x$ (\cref{eq:cm-sources}). Their integrals
+are differences of end values, and at $a$ and $b$, outside the front, the
+viscous stress is zero, so $\sigma_{xx} = -P$ there. Whatever happens
+inside drops out. Writing $\phi = \rho$, $\rho u$ and $\rho(e +
+\tfrac{1}{2}u^2)$ with the frame velocities $U_s$ and $U_s - u_p$:
+\begin{align}
+\rho_1 (U_s - u_p) &= \rhoz U_s = \dot m'',
+\label{eq:sh-mass}\\
+P_1 + \rho_1 (U_s - u_p)^2 &= P_0 + \rhoz U_s^2,
+\label{eq:sh-mom}\\
+\rho_1 (U_s - u_p)\Bigl[e_1 + \tfrac{1}{2}(U_s - u_p)^2 + \frac{P_1}{\rho_1}\Bigr]
+  &= \rhoz U_s\Bigl[e_0 + \tfrac{1}{2}U_s^2 + \frac{P_0}{\rhoz}\Bigr].
+\label{eq:sh-energy}
+\end{align}
+These are the \emph{jump conditions}, and $\dot m''$ is the mass flux
+through the front, per unit area (the double prime says per unit area, as
+in the course). They hold for any steady front, thick or thin,
+of any structure: the structure has been integrated out.
+
+\section{The jump conditions}
+\label{sec:jumps}
+
+Solving \cref{eq:sh-mass,eq:sh-mom,eq:sh-energy} in turn for $\rho_1$,
+$P_1$ and $e_1$ puts them in the form used in the laboratory:
+\begin{align}
+\eta &= 1 - \frac{\rhoz}{\rho_1} = \frac{u_p}{U_s},
+\label{eq:sh-eta}\\
+P_1 - P_0 &= \rhoz U_s u_p,
+\label{eq:sh-p}\\
+e_1 - e_0 &= \tfrac{1}{2}(P_1 + P_0)(V_0 - V_1),
+\label{eq:sh-hug-energy}
+\end{align}
+with the compression $\eta$ defined by the first line
+(\cref{app:notation}), equal to $u_p/U_s$ by conservation of mass. The last line, the
+energy jump, names no velocity at all: it involves only the two end
+states. Two more forms follow from the first two:
+\begin{equation}
+u_p^2 = (P_1 - P_0)(V_0 - V_1),
+\qquad
+U_s^2 = V_0^2\,\frac{P_1 - P_0}{V_0 - V_1}.
+\label{eq:sh-up-us}
+\end{equation}
+A shock into material moving at $u_i$ is the same shock seen from a frame
+moving with the material: replace $u_p$ by $u_1 - u_i$ and $U_s$ by the
+shock's speed relative to the material, for a shock running to the right,
+and by $u_i - u_1$ for one running to the left.
+
+For \bw's materials, which start at rest at zero pressure and zero
+energy (\cref{sec:boundaries}), $P_0 = e_0 = 0$, and the jumps simplify to
+$P_1 = \rhoz U_s u_p$ and $e_1 = \tfrac{1}{2}P_1(V_0 - V_1) =
+\tfrac{1}{2}u_p^2$: the shock gives its material as much internal energy
+as kinetic energy.
+
+\section{The Rayleigh line and the Hugoniot}
+\label{sec:rayleigh}
+
+Combining the mass and momentum conditions gives the \emph{Rayleigh line},
+\begin{equation}
+P_1 - P_0 = \dot m''^2 (V_0 - V_1),
+\label{eq:sh-rayleigh}
+\end{equation}
+a straight line in the $P$--$V$ plane through the state ahead, with slope
+$-\dot m''^2 = -\rhoz^2 U_s^2$. Its slope is set by
+the shock's speed, so a faster shock has a steeper line
+(\cref{fig:rayleigh}).
+
+Three jump conditions relate five unknowns, $\rho_1$, $P_1$, $e_1$, $u_p$
+and $U_s$. The material's equation of state, $P(\rho, e)$, is a fourth.
+One unknown is left free: the strength of the shock. As it varies, the end
+state traces the \emph{Hugoniot}, the locus of every state that a single
+shock can reach from the state 0. The Hugoniot is a property of the
+material and its initial state; the Rayleigh line, of one shock. A shock
+ends where its Rayleigh line meets the Hugoniot.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/rayleigh.pdf}
+\caption{The Rayleigh line from the state ahead, $(V_0, P_0)$, to a shocked
+state $(V_1, P_1)$ on the Hugoniot, for an aluminum alloy ($\rhoz =
+2.785$~g/cm$^3$, $C_0 = 5.328$~km/s, $S_1 = 1.338$; 60~GPa). The area under
+the line is the internal energy given to the material, $e_1 - e_0$; the
+triangle above it, the kinetic energy, $\tfrac{1}{2}u_p^2$. With $P_0 = 0$
+they are equal.}
+\label{fig:rayleigh}
+\end{figure}
+
+\paragraph{The $U_s$--$u_p$ Hugoniot.} For most solids and liquids,
+measured shock and particle velocities lie close to a straight line,
+$U_s = C_0 + S_1 u_p$, over a wide range of pressures. \bw\ allows a
+small curvature as well,
+\begin{equation}
+U_s = C_0 + S_1 u_p + \frac{S_2}{C_0}\,u_p^2,
+\label{eq:sh-usup}
+\end{equation}
+with $C_0$, $S_1$ and $S_2$ deck keys of each material (\key{C0},
+\key{S1}, \key{S2}; $S_2 = 0$ by default). With the jump conditions, it
+gives the Hugoniot as a function of compression. From $u_p = \eta U_s$,
+\cref{eq:sh-usup} becomes a quadratic in $U_s$, whose root through
+$U_s = C_0$ at $\eta = 0$ is
+\begin{equation}
+U_s(\eta) = \frac{2C_0}{(1 - S_1\eta) + \sqrt{(1 - S_1\eta)^2 - 4S_2\eta^2}},
+\qquad
+P_H(\eta) = \rhoz\,\eta\,U_s(\eta)^2,
+\label{eq:sh-hugoniot}
+\end{equation}
+\trace{modules/eos_mod.f95}{mg_ref}{test_eos}
+which for $S_2 = 0$ is $P_H = \rhoz C_0^2\,\eta/(1 - S_1\eta)^2$. The
+pressure grows without bound as $\eta \to 1/S_1$: a linear Hugoniot has a
+limiting compression, $\rho \to \rhoz S_1/(S_1 - 1)$. \bw\ uses this
+Hugoniot as the reference curve of its Mie--Gr\"uneisen equation of state
+(\cref{ch:materials}), and the deck checks keep $S_1 > 0$.
+
+\section{Entropy inside the front}
+\label{sec:shock-entropy}
+
+The entropy is not conserved, and its source, $\rho\,Ds/Dt = -(q/T)\,
+\partial u/\partial x$ (\cref{sec:entropy}), is \emph{not} a perfect
+derivative: entropy is made inside the front, and how it is made depends on
+the front's structure. Yet the transport theorem still fixes how much:
+with $\phi = \rho s$ in \cref{eq:sh-cv},
+\begin{equation}
+\int_a^b \rho\,\frac{Ds}{Dt}\,\dd\hat x = \dot m''\,(s_1 - s_0) \ge 0 .
+\label{eq:sh-entropy}
+\end{equation}
+The end states, fixed by the jump conditions, fix the entropy jump. The
+mechanism inside (molecular viscosity, a numerical viscosity) sets only
+the front's thickness. This is the fact a numerical method needs, and the
+next sections use it.
+
+Two consequences:
+
+\begin{itemize}
+\item \textbf{Shocks compress.} The second law requires $s_1 \ge s_0$. For
+  the materials of shock physics, whose isentropes curve upward in the
+  $P$--$V$ plane, entropy rises along the Hugoniot with compression, so
+  only compressive shocks exist. A release is a smooth, isentropic wave, not
+  a shock.
+\item \textbf{Weak shocks are nearly isentropic.} The Hugoniot and the
+  isentrope through the state 0 have the same slope and the same curvature
+  there; they part only at third order in the strength, $P_H - P_S \propto
+  \eta^3$. For example, when the class aluminum is shocked to $\eta = 0.1$,
+  about 10.4~GPa, the isentrope lies 0.10~GPa below the Hugoniot, about
+  1\%. This is why a
+  release from a modest shock can be drawn as the reflection of the
+  Hugoniot, as impedance matching does below.
+\end{itemize}
+
+\section{Shock speed and shock impedance}
+\label{sec:shock-impedance}
+
+A shock outruns sound in the material ahead, $U_s > C_0$, and is
+outrun by sound in the material behind, $U_s - u_p < c_1$, with $c_1$ the
+sound speed in the shocked state. The first condition means that the
+material ahead receives no signal before the shock arrives. The second
+means that any disturbance behind the shock catches up with it and joins
+it, which keeps a compressive front sharp and steady. Both hold for every
+Hugoniot in the class deck (aluminum, Material X, PMMA, tantalum) for
+$u_p$ from 0.1 to 3~km/s; $(U_s - u_p)/c_1$ is at most 0.98.
+
+The jump in pressure for a jump in velocity is the \emph{shock
+impedance},
+\begin{equation}
+\frac{P_1 - P_0}{u_p} = \rhoz U_s ,
+\label{eq:sh-impedance}
+\end{equation}
+which for a weak shock tends to the acoustic impedance $\rhoz C_0$ of
+\cref{eq:cm-impedance}. For strong shocks it can be much larger, since
+$U_s$ grows with the strength.
+
+\section{Impedance matching}
+\label{sec:impedance-matching}
+
+When a flyer strikes a target, two shocks leave the contact: one into the
+target, one back into the flyer. At contact, the velocity and pressure
+are continuous (\cref{eq:cm-contact}), so the two shocked states share one
+$u_1$ and one $P_1$. In the $P$--$u$ plane each material offers a curve of
+states it can reach by one shock:
+
+\begin{itemize}
+\item the target B, at rest, by a shock running to the right:
+  $P = \rho_{0,B}\,U_{s,B}(u)\,u$;
+\item the flyer A, at $u_{0,A}$, by a shock running to the left, its
+  Hugoniot mirrored about $u_{0,A}$: $P = \rho_{0,A}\,U_{s,A}(u_{0,A} -
+  u)\,(u_{0,A} - u)$.
+\end{itemize}
+
+The shocked state is where they cross (\cref{fig:pu-class}). The shock
+speeds then follow in the laboratory: $U_{s,B} = P_1/(\rho_{0,B}u_1)$
+into the target, and $u_{0,A} - P_1/(\rho_{0,A}(u_{0,A} - u_1))$ back
+into the flyer.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.62\textwidth]{figures/pu_class.pdf}
+\caption{The class problem's first shock, drawn to scale: the aluminum flyer
+at 2.00~km/s strikes Material X at rest (the class deck's Hugoniots). Solid,
+exact: $u_1 = 1.371$~km/s, $P_1 = 10.74$~GPa. Dashed, acoustic, with $\rhoz
+C_0$ on both sides: $u_1 = 1.573$~km/s and $P_1 = 6.29$~GPa, 41\% low.}
+\label{fig:pu-class}
+\end{figure}
+
+\paragraph{The class problem.} The aluminum flyer at 2.00~km/s strikes
+Material X at rest. With the deck's Hugoniots, the match gives $u_1 =
+1.371$~km/s and $P_1 = 10.74$~GPa, a shock into Material X at
+4.893~km/s, and one back into the aluminum at 4.14~km/s (in the
+laboratory, running left). These are the gold-standard data's exact values
+(\code{tests/verification/inert_gauges/README.md}), and \bw\ reproduces them
+to within 0.001\% (\cref{ch:verification}).
+
+The acoustic estimate, with $\rhoz C_0$ on both sides, gives 6.29~GPa,
+41\% low. Material X's shock impedance at this strength, $\rhoz U_s =
+7.83$~GPa per km/s, is nearly twice its acoustic $\rhoz C_0 = 4.00$; the
+aluminum's shock impedance rises less, from 14.7 to 17.1. Shocks of this strength are not
+sound waves. A numerical method can still use sound waves locally, as
+method RS does, provided it conserves mass, momentum and energy: the jumps
+then come out right regardless (\cref{sec:inside-front}, and
+\cref{ch:method-rs}).
+
+Later interactions are solved the same way: a shock reaching a new
+contact, or a free surface, sends a transmitted and a reflected wave,
+each on its own curve in the $P$--$u$ plane, from the state it starts in.
+The course's Units~6 to~8 work them out; \bw\ computes all of them at once,
+with no analysis, from the balance laws.
+
+\section{Inside the front, and the step to the numerics}
+\label{sec:inside-front}
+
+Return to the steady front, now with a viscous stress $q$ inside it,
+$\sigma_{xx} = -(P + q)$, and apply the momentum and energy balances not
+across the whole front but from the state 0 to any point inside it, at
+specific volume $V$. The same steps that gave the jump conditions give,
+at every point of the structure,
+\begin{equation}
+P + q = P_0 + \dot m''^2 (V_0 - V) = P_R(V),
+\qquad
+e - e_0 = \tfrac{1}{2}\bigl(P_R(V) + P_0\bigr)(V_0 - V).
+\label{eq:sh-inside}
+\end{equation}
+Inside the front the \emph{total} stress, $P + q$, lies on the Rayleigh
+line, and the energy is the Hugoniot energy of \cref{eq:sh-hug-energy}
+taken at the Rayleigh pressure $P_R$. The material's own pressure, $P(V,
+e)$ from its equation of state, lies below the line, and the viscous
+stress makes up the difference:
+\begin{equation}
+q = P_R(V) - P(V, e) .
+\label{eq:sh-q}
+\end{equation}
+At both ends $q = 0$: ahead trivially, and behind because there the
+Rayleigh line meets the Hugoniot. In between, $q > 0$ while the material
+is compressed, and by \cref{eq:cm-entropy} it makes entropy, $T\,\dd s =
+-q\,\dd V$, exactly as much in total as \cref{eq:sh-entropy} requires. This
+is also the quantity \bw's lead-shock detector watches: with $P_0 = e_0 =
+0$, \cref{eq:sh-inside} gives its Hugoniot residual as $\tfrac{1}{2}q(V_0
+- V)$ (\cref{eq:hugoniot-q}).
+
+\paragraph{The step to the numerics.} Nothing above depends on what $q$ is,
+only that it vanishes outside the front and is positive inside it while
+the material compresses. A physical viscosity gives a front a few
+nanometers to micrometers wide. A mesh cannot resolve that, and does not
+need to: any $q$ that obeys those two rules, and is used in equations that
+conserve mass, momentum and energy, carries the shock from the right state
+0 to the right state 1, with the right entropy jump, and the shock's width
+is whatever $q$ makes it. Method AV (\cref{ch:method-av}) chooses a $q$ that
+spreads every shock over a few cells, whatever its strength. Method RS
+(\cref{ch:method-rs}) has no $q$: at each face it solves a small Riemann
+problem, in the acoustic approximation of \cref{sec:acoustics} (Godunov's
+method), and averaging each cell's state over a step supplies the
+dissipation. Both are conservative, so both keep the jumps of this
+chapter.

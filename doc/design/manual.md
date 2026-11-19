@@ -217,3 +217,13 @@ chapter 2 (`TODO.md`, Priorities).
 Round 1 (Nov 19): chapter 2 written (7 pages,
 `checks/ch2_continuum.py`), chapter 1's plan of the book, the stubs of
 chapter 3 and appendix D, the notation of chapter 2 in appendix A.
+Approved by DK with his comments applied (open source burn models defined,
+the diffusion argument by time scales, `% SCOPE:` markers), `63ebbdc`.
+
+Round 2 (Nov 19): chapter 3, shock waves (6 pages,
+`checks/ch3_shocks.py`): the steady front by the transport theorem, the
+jump conditions, the Rayleigh line and the Hugoniot (bitwhiz's
+U_s(eta)), the entropy inside the front, shock impedance, impedance
+matching on the class problem (the gold standard's 10.736 GPa), and the
+front's inside as the step to the numerics. Figures: the course's RTT and
+Rayleigh figures, and a new P-u figure of the class problem.
