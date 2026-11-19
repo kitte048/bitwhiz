@@ -1,0 +1,34 @@
+study_halo.py: /home/claude/man/bin/bitwhiz_release
+  12 runs in /tmp/halo_jcpqvamg, 2 at a time
+
+E1. The activation measure in the hydro, against its replay (new compression only)
+   pass  AV  MatX@0.1 : E_D from lam 0.4987878367, the replay's to 2.3e-13
+   pass  AV  MatX@0.3 : E_D from lam 0.4996333633, the replay's to 9.4e-13
+   pass  AV  MatX@0.5 : E_D from lam 0.4993628728, the replay's to 4.0e-14
+   pass  AV  MatX@0.7 : E_D from lam 0.4990068452, the replay's to 3.1e-14
+   pass  AV  MatX@0.9 : E_D from lam 0.4600243922, the replay's to 1.7e-13
+   pass  RS2 MatX@0.1 : E_D from lam 0.4992478958, the replay's to 4.3e-13
+   pass  RS2 MatX@0.3 : E_D from lam 0.4991577741, the replay's to 6.0e-13
+   pass  RS2 MatX@0.5 : E_D from lam 0.4985732205, the replay's to 4.4e-15
+   pass  RS2 MatX@0.7 : E_D from lam 0.4986866152, the replay's to 1.7e-13
+   pass  RS2 MatX@0.9 : E_D from lam 0.4590392918, the replay's to 5.8e-15
+  E_D at the end, AV and RS: 0.4988/0.4992, 0.4996/0.4992, 0.4994/0.4986, 0.4990/0.4987, 0.4600/0.4590
+   pass  AV's E_D within 1.0 % of RS's at every tracer (0.21 % at worst)
+
+E2. The detonation, 2.00 km/s, against mesh (D_CJ = 7.4999904 km/s)
+  AV   25 zones/mm: D 7.5333 km/s (+0.44 % from D_CJ); run distance 3.35 mm
+  AV  100 zones/mm: D 7.5091 km/s (+0.12 % from D_CJ); run distance 3.30 mm
+   pass  AV: D at 100 zones/mm within 1.0 % of D_CJ
+   pass  AV: run distances within 1.0 mm over the meshes (3.30 to 3.35)
+  RS2  25 zones/mm: D 7.5088 km/s (+0.12 % from D_CJ); run distance 3.30 mm
+  RS2 100 zones/mm: D 7.5107 km/s (+0.14 % from D_CJ); run distance 3.25 mm
+   pass  RS2: D at 100 zones/mm within 1.0 % of D_CJ
+   pass  RS2: run distances within 1.0 mm over the meshes (3.25 to 3.30)
+   pass  AV's run distance within 0.25 mm of RS's at 100 zones/mm (3.30 and 3.25)
+
+E3. Shock desensitization: Ta flyer, and Ta faced with 1 mm of PMMA; run distance from Material X's face (mm)
+  1.25 km/s: halo 5.75 / 8.35 (delay +2.60); nod 4.25 / 6.45 (delay +2.20); hvrb 5.95 / 7.30 (delay +1.35)
+   pass  1.25 km/s: HALO's delay 2.60 mm at least 1.5 times HVRB's 1.35
+   pass  1.25 km/s: dissipation lengthens the faced run (8.35 mm, without dissipation 6.45)
+
+study_halo.py: 18 passed, 0 failed

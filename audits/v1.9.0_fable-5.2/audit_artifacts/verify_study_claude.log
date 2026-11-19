@@ -1,0 +1,37 @@
+study_claude.py: /home/claude/man/bin/bitwhiz_release
+  18 runs in /tmp/claude_mdeb7jew, 2 at a time
+
+E1. The entropy behind a shock, against the Hugoniot's at the same pressure (J/(g K))
+   pass  AV   25 zones/mm: 0.66004 at 10.721 GPa (Hugoniot 0.65888); 0.65991 at 10.708 GPa (Hugoniot 0.65787), to 0.31 %
+   pass  AV  100 zones/mm: 0.66001 at 10.736 GPa (Hugoniot 0.66000); 0.66004 at 10.736 GPa (Hugoniot 0.65999), to 0.01 %
+   pass  RS2  25 zones/mm: 0.66014 at 10.737 GPa (Hugoniot 0.66008); 0.65964 at 10.735 GPa (Hugoniot 0.65998), to 0.05 %
+   pass  RS2 100 zones/mm: 0.66052 at 10.736 GPa (Hugoniot 0.66000); 0.66007 at 10.736 GPa (Hugoniot 0.66001), to 0.08 %
+
+E2. The model in the hydro, against its replay from the tracer rows
+   pass  AV  MatX@0.1 : lam from row 96 (replay 96), the replay's to 5.0e-11 (largest lam 1.5e-12)
+   pass  AV  MatX@0.3 : lam from row 329 (replay 329), the replay's to 3.4e-11 (largest lam 1.6e-12)
+   pass  AV  MatX@0.5 : lam from row 564 (replay 564), the replay's to 2.6e-11 (largest lam 1.7e-12)
+   pass  AV  MatX@0.7 : lam from row 830 (replay 830), the replay's to 1.1e-11 (largest lam 1.5e-12)
+   pass  AV  MatX@0.9 : lam from row 1128 (replay 1128), the replay's to 2.1e-12 (largest lam 7.9e-13)
+   pass  RS2 MatX@0.1 : lam from row 81 (replay 81), the replay's to 3.6e-11 (largest lam 1.6e-12)
+   pass  RS2 MatX@0.3 : lam from row 266 (replay 266), the replay's to 3.0e-11 (largest lam 1.7e-12)
+   pass  RS2 MatX@0.5 : lam from row 454 (replay 454), the replay's to 2.4e-11 (largest lam 1.7e-12)
+   pass  RS2 MatX@0.7 : lam from row 664 (replay 664), the replay's to 1.1e-11 (largest lam 1.5e-12)
+   pass  RS2 MatX@0.9 : lam from row 896 (replay 896), the replay's to 3.2e-12 (largest lam 7.9e-13)
+
+E3. The detonation, 2.00 km/s, against mesh (D_CJ = 7.4999904 km/s)
+  AV   25 zones/mm: D 7.4486 km/s (-0.69 % from D_CJ); run distance 3.60 mm
+  AV  100 zones/mm: D 7.4391 km/s (-0.81 % from D_CJ); run distance 3.55 mm
+   pass  AV: D at 100 zones/mm within 1.0 % of D_CJ (-0.81 %)
+   pass  AV: run distances within 1.0 mm over the meshes (3.55 to 3.60)
+  RS2  25 zones/mm: D 7.4279 km/s (-0.96 % from D_CJ); run distance 3.65 mm
+  RS2 100 zones/mm: D 7.4430 km/s (-0.76 % from D_CJ); run distance 3.50 mm
+   pass  RS2: D at 100 zones/mm within 1.0 % of D_CJ (-0.76 %)
+   pass  RS2: run distances within 1.0 mm over the meshes (3.50 to 3.65)
+   pass  AV's run distance within 0.3 mm of RS's at 100 zones/mm (3.55 and 3.50)
+
+E4. Shock desensitization: Ta flyer, and Ta faced with 1 mm of PMMA; run distance from Material X's face (mm)
+  1.50 km/s: claude 3.65 / 7.55 (+3.90); noq 3.10 / 6.80 (+3.70); halo 3.40 / 5.20 (+1.80); hvrb 3.55 / 5.05 (+1.50)
+   pass  1.50 km/s: CLAUDE's delay 3.90 mm at least 1.5 times HALO's 1.80
+
+study_claude.py: 20 passed, 0 failed

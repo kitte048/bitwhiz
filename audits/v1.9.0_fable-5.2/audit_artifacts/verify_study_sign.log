@@ -1,0 +1,43 @@
+study_sign.py: /home/claude/man/bin/bitwhiz_release
+  36 runs in /tmp/sign_7xstbm21, 2 at a time
+
+E1. The lead shock in the hydro, against its replay (SIGMA = 0: a constant rate after the mark)
+   pass  AV MatX@0.1 : burns from row 120 (replay marks row 119), P_s 10.892843 GPa, the replay's to 3.3e-16
+   pass  AV MatX@0.3 : burns from row 353 (replay marks row 352), P_s 10.862532 GPa, the replay's to 0.0e+00
+   pass  AV MatX@0.5 : burns from row 589 (replay marks row 588), P_s 10.907855 GPa, the replay's to 0.0e+00
+   pass  AV MatX@0.7 : burns from row 861 (replay marks row 860), P_s 10.861552 GPa, the replay's to 0.0e+00
+   pass  AV MatX@0.9 : burns from row 1159 (replay marks row 1158), P_s 10.956785 GPa, the replay's to 2.2e-16
+   pass  RS2 MatX@0.1 : burns from row 96 (replay marks row 95), P_s 10.775604 GPa, the replay's to 1.1e-16
+   pass  RS2 MatX@0.3 : burns from row 282 (replay marks row 281), P_s 10.883697 GPa, the replay's to 2.2e-16
+   pass  RS2 MatX@0.5 : burns from row 470 (replay marks row 469), P_s 10.880487 GPa, the replay's to 2.2e-16
+   pass  RS2 MatX@0.7 : burns from row 684 (replay marks row 683), P_s 10.778495 GPa, the replay's to 1.1e-16
+   pass  RS2 MatX@0.9 : burns from row 916 (replay marks row 915), P_s 10.810080 GPa, the replay's to 0.0e+00
+
+E2. The detonation as an ensemble, 8 seeds, RS order 2, 2.00 km/s (D_CJ = 7.4999904 km/s)
+   25 zones/mm: run distance 3.30 +- 0.16 mm (sd 0.45, 2.75 to 3.95); D 7.305 km/s (-2.6 % from D_CJ)
+   pass  25 zones/mm: every seed detonates within 9 mm
+   50 zones/mm: run distance 3.31 +- 0.23 mm (sd 0.65, 2.60 to 4.70); D 7.188 km/s (-4.2 % from D_CJ)
+   pass  50 zones/mm: every seed detonates within 9 mm
+   pass  the mean run distance at 25 and 50 zones/mm agree: 3.30 and 3.31 mm, paired difference +0.01 +- 0.27 mm, 0.0 standard errors (at most 3.0)
+  SIGMA = 0: D 7.5124 and 7.5106 km/s at 25 and 50 zones/mm; run distance 3.00 and 2.85 mm
+   pass  SIGMA = 0 at 50 zones/mm: D within 1.0 % of D_CJ (+0.14 %)
+
+E3. Frozen noise (TAUZ = 1e30, SIGMA = 1.4): the cells that never burn are the bins with MU + SIGMA Z0 <= 0
+   pass  AV 25 zones/mm, SEED   11: 1 dead bins of 20, 13 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  AV 25 zones/mm, SEED  222: 3 dead bins of 20, 37 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  AV 25 zones/mm, SEED 3333: 5 dead bins of 20, 61 cells unburnt, exactly them; the rest burning (least lam 0.539)
+   pass  AV 25 zones/mm, SEED 4444: 2 dead bins of 20, 25 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  AV 50 zones/mm, SEED   11: 1 dead bins of 20, 25 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  AV 50 zones/mm, SEED  222: 3 dead bins of 20, 75 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  AV 50 zones/mm, SEED 3333: 5 dead bins of 20, 125 cells unburnt, exactly them; the rest burning (least lam 0.508)
+   pass  AV 50 zones/mm, SEED 4444: 2 dead bins of 20, 50 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  RS2 25 zones/mm, SEED   11: 1 dead bins of 20, 13 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  RS2 25 zones/mm, SEED  222: 3 dead bins of 20, 37 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  RS2 25 zones/mm, SEED 3333: 5 dead bins of 20, 61 cells unburnt, exactly them; the rest burning (least lam 0.530)
+   pass  RS2 25 zones/mm, SEED 4444: 2 dead bins of 20, 25 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  RS2 50 zones/mm, SEED   11: 1 dead bins of 20, 25 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  RS2 50 zones/mm, SEED  222: 3 dead bins of 20, 75 cells unburnt, exactly them; the rest burning (least lam 1.000)
+   pass  RS2 50 zones/mm, SEED 3333: 5 dead bins of 20, 125 cells unburnt, exactly them; the rest burning (least lam 0.484)
+   pass  RS2 50 zones/mm, SEED 4444: 2 dead bins of 20, 50 cells unburnt, exactly them; the rest burning (least lam 1.000)
+
+study_sign.py: 30 passed, 0 failed

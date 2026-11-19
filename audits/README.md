@@ -28,6 +28,7 @@ export archives, is not kept: the release's tag is the source.
 | Folder | Release reviewed | Reviewer | Date | Verdict |
 |---|---|---|---|---|
 | `v1.4.0_fable-5.1/` | v1.4.0, `cf0eab0` | Claude Fable 5.1 (Anthropic), independent review | Nov 7-8, 2026 | Approve with conditions (documentation only; no Critical or High finding) |
+| `v1.9.0_fable-5.2/` | v1.9.0, at `f473134` | Claude Fable 5.2 (Anthropic), post-release assessment; not independent (written in the working session, with its context) | Nov 18, 2026 | Consolidate next: no finding calls for a change to the numerics |
 
 ## Findings: v1.4.0 (Fable 5.1)
 
@@ -59,3 +60,20 @@ docs (Nov 8); F-05(a), F-09 and F-10 fixed, and F-03 guarded, in 1.6.1
 (Nov 12); F-07 left open by DK; the "accept" proposals (F-11, F-14,
 F-15) wait for DK. F-13's `rand_mod` used by StochasticIgnite, 1.7.0 (Nov
 12). F-12 answered by CLAUDE as built, 1.9.0 (Nov 14).
+
+## Findings: v1.9.0 (Fable 5.2, post-release assessment)
+
+Opened Nov 18, 2026, from the assessment's sections 2 and 3. A planning
+assessment, so most of these are gaps in the record, not defects in the code.
+Status as above: **open**, **fixed**, **accepted**.
+
+| ID | Severity | In short | Status | Where |
+|---|---|---|---|---|
+| G-01 | Low | README's Test section is stale: 4 unit tests described (11 programs), "about 150 test decks" (227), "nine test decks" under OpenMP (20), "about 4 minutes" (5 min 45 s on 2 cores) | open | `README.md` |
+| G-02 | Info | README's Status table: a doubled column separator in the Pictures row; the heartbeat row's "cycle lines come with the time loop" | open | `README.md` |
+| G-03 | Low | `TODO.md`: Priorities as of Nov 4; HVRB and "Phase 4" unticked though released; a stray line in section 9's heading; SCCM 2027's dates | open | `TODO.md` |
+| G-04 | Info | F-02 is marked open, but the manual's chapter 7 answers it | open | the tracker above |
+| G-05 | Moderate | The ten verification scripts (300 checks in quick mode, about 4 minutes) are outside `make test` and CI | open | a `make verify` target and a CI job |
+| G-06 | Moderate | The manual's chapters 2 to 5 and 8 are placeholders | open | `doc/manual/` (`doc/design/manual.md`, M2) |
+| G-07 | Low | No measured order of accuracy; the acoustic check was done by hand once | open | a test (`TODO.md`, section 8) |
+| G-08 | Info | Both ends are free surfaces: no wall or piston boundary | open | a limitation; a candidate for a later cycle |
