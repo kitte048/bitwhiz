@@ -24,7 +24,7 @@ https://nanohub.org/tools/bitwhiz (nanoHUB).
 ```
 make                                               # bin/bitwhiz
 ./bin/bitwhiz input/me697_double_shock_2p00.deck   # the class problem
-make test                                          # every test, about 4 minutes
+make test                                          # every test, about 6 minutes
 ```
 
 | Where | What |
@@ -33,7 +33,7 @@ make test                                          # every test, about 4 minutes
 | `doc/` | the equation sheets the code follows (frozen copies) |
 | `doc/manual/` | the bitwhiz manual (`make manual`): so far the burning cell and the six burn models; the rest to come |
 | `doc/design/` | design notes and studies: velocity profiles, materials and the burn, five more burn models (all built: ThermalCascade, FlashFire, StochasticIgnite, HALO and CLAUDE), the lead shock, method AV, the manual's plan |
-| `audits/` | independent reviews of releases, archived as delivered, and what became of each finding |
+| `audits/` | reviews of releases (independent reviews, and post-release assessments), archived as delivered, and what became of each finding |
 | `tests/verification/README.md` | the reference data, and the scripts that compare bitwhiz with it |
 | `CONTRIBUTING.md`, `RELEASING.md` | reporting issues and contributing; how a version is released |
 
@@ -67,9 +67,9 @@ they can not be released this way. New open models are welcome: see
 | Part | State |
 |---|---|
 | Build system, strict compiler flags, OpenMP | done |
-| Input deck: syntax spec, reader, about 150 test decks | done (`input/README.md`) |
+| Input deck: syntax spec, reader, about 230 test decks | done (`input/README.md`) |
 | Database layout, material/layer/tracer tables | done (`src/modules/shock_mod.f95`) |
-| Heartbeat file (opened and closed) | done; cycle lines come with the time loop |
+| Heartbeat file: the run's header, a line per cycle, the totals | done |
 | Mesh setup at t = 0, with a setup audit | done (maincode sections 5-6) |
 | Equation of state (Mie-Gruneisen), with unit test | done (`src/modules/eos_mod.f95`) |
 | Artificial viscosity time loop, OpenMP (bit-for-bit with serial) | done (`src/modules/av_mod.f95`, maincode section 7) |
@@ -77,7 +77,7 @@ they can not be released this way. New open models are welcome: see
 | Tracer file (`<title>.tracers.csv`, `tracer_dt`) | done (`src/modules/trace_mod.f95`; see `input/README.md`) |
 | Second method, `method = RS` (Godunov's method, acoustic Riemann solver), in the same code; `order = 2` (MUSCL-Hancock, Van Leer, the default) or `1` | done (`src/modules/rs_mod.f95`, maincode section 7; equation sheet `doc/Hydrocode_RS_Eqns_v4`) |
 | History file `<title>.hist`: x, u, P and damage on the whole mesh, one frame per snapshot (`plot_every`, `plot_dt`) | done (`src/modules/hist_mod.f95`; format in `input/README.md`, section 9) |
-| Pictures: t-x diagrams of u and P, one plot per tracer, a pressure movie, P against x (`movie_frames`, 2 to 50); `plots_only = yes` re-draws them without running || done: both t-x diagrams (lab frame; white outside the material and in open spall, and in P where no wave has reached) and the tracer plots (velocity against time); each framed and titled (BITWHIZ PRESSURE, VELOCITY and SCOPE VIEW), the t-x diagrams with a color bar, all anti-aliased; the axis ends printed as numbers, each axis rounded out to clean ends, and the color bar labeled with its window (1.2.0; axis names and units next) (`src/modules/pics_mod.f95`, `src/drawings/draw_tx.f95`, `draw_trace.f95`, `draw_profile.f95`, `src/modules/strk_mod.f95`; `input/README.md` section 9b) |
+| Pictures: t-x diagrams of u and P, one plot per tracer, a pressure movie, P against x (`movie_frames`, 2 to 50); `plots_only = yes` re-draws them without running | done: both t-x diagrams (lab frame; white outside the material and in open spall, and in P where no wave has reached) and the tracer plots (velocity against time); each framed and titled (BITWHIZ PRESSURE, VELOCITY and SCOPE VIEW), the t-x diagrams with a color bar, all anti-aliased; the axis ends printed as numbers, each axis rounded out to clean ends, and the color bar labeled with its window (1.2.0; axis names and units next) (`src/modules/pics_mod.f95`, `src/drawings/draw_tx.f95`, `draw_trace.f95`, `draw_profile.f95`, `src/modules/strk_mod.f95`; `input/README.md` section 9b) |
 | Velocity profiles: a layer's starting velocity shaped by a probability density (`xvel_profile`, `xvel_amplitude`; uniform, linear, beta, normal, split normal, sinh-arcsinh, Cauchy), momentum exact | done, 1.1.0 (`src/modules/dist_mod.f95`, with unit test; `input/README.md`, Layer block; design `doc/design/distributions.md`; example decks `input/ramp_*.deck`, `input/pulse_split_normal.deck`, checked against exact linear acoustics) |
 | Material models: `eos = mie_gruneisen` (the default) or `mie_gruneisen_t`, the same P and c plus each cell's temperature (`CV`, `T0`; the cold curve carried cell by cell), `TK` in the tracer and history files, the T range and hottest cell (intact cells) in the log | done, 1.2.0 (`src/modules/temp_mod.f95`, with unit test; `input/README.md`, Material block; design `doc/design/materials.md`; checked against G1's temperatures by `compare_g1.py`) |
 | Reactive burn: `burn = hvrb` with `products = ideal_gas` (HVRB, the HVRB equation sheet), each cell's extent of reaction lam, `XRN` in the tracer and history files, the first cell to react and the cells burnt out in the log | done for both methods, RS with the reaction's source in its predictor (`src/modules/burn_mod.f95`, `hvrb_mod.f95`, `mix_mod.f95`, `prod_mod.f95`, with unit test; `input/README.md`, Material block; design `doc/design/materials.md`, phase 3); checked against the gold-standard reactive data G2-G5 by `tests/verification/compare_hvrb.py` (run distances, arrivals within 5 ns, D within 0.5 % of D_CJ, mesh convergence); example deck `input/me697_hvrb_2p00.deck` |
@@ -110,7 +110,7 @@ the class problem, with the run-time checks and floating-point traps left out
 (a NaN still stops the run, through the heartbeat's finite check). It builds
 in `build/release/`, so the debug build is never touched, and then runs the
 deck and OpenMP tests on it, plus `tests/run_release_tests.sh`: the class deck
-and nine test decks must give the debug build's results, heartbeat and
+and 19 test decks must give the debug build's results, heartbeat and
 tracer rows bit for bit. Develop and run `make test` with the debug build;
 run `make release` before handing an executable out.
 
@@ -148,7 +148,7 @@ with its size.
 From the bitwhiz folder, starting cold:
 ```
 make                 # debug build, bin/bitwhiz
-make test            # every test; about 4 minutes on 2 cores
+make test            # every test; about 6 minutes on 2 cores
 make release         # bin/bitwhiz_release, checked against the debug build
 make tidy            # clear the tests' leftover run files
 cd input
@@ -199,17 +199,23 @@ Four kinds of test, all run by `make test`, which stops at the first failure:
   law, the topology, the closure, its sound speed and dP/dlam) against
   values computed at 50 digits from the HVRB equation sheet's definitions
   (`tests/hvrb_reference.py`), plus the D^2 law, the constant-volume burn
-  and the guards.
+  and the guards. `test_btab` checks the burn models' table (module
+  `burn_table`: each model's deck keys, slots and checks), and `test_lshk`
+  the lead-shock detector (module `leadshock`) on paths whose marks are
+  known exactly. `test_tcas`, `test_ffire`, `test_sign`, `test_halo` and
+  `test_claude` check each of the other burn models against values
+  computed at 50 digits from its definition (`tests/*_reference.py`).
 - **Deck tests**, `tests/run_deck_tests.sh` (also runnable on its own): every
   deck in `tests/decks/` is accepted, or rejected with the expected message,
   and every accepted deck round-trips and passes the setup audit; bad command
   lines (no deck, a missing file, a folder, an empty file) stop cleanly.
-- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and nine test
+- **OpenMP tests**, `tests/run_omp_tests.sh`: the class deck and 19 test
   decks (two impact faces; a plate that spalls; method RS at order 2 and at
-  order 1; velocity profiles; temperature, AV and RS; a burn, AV and RS)
-  run on 1 thread and on 2, 3, 4 and 8 threads, as many as the machine has
-  processors for, so the count of these tests depends on the machine: 40
-  with 8 or more processors, 30 with 4 to 7, 20 with 3, 10 with 2.
+  order 1; velocity profiles; temperature, AV and RS; each of the six burn
+  models, AV and RS) run on 1 thread and on 2, 3, 4 and 8 threads, as many
+  as the machine has processors for, so the count of these tests depends on
+  the machine: 80 with 8 or more processors, 60 with 4 to 7, 40 with 3, 20
+  with 2.
   Everything printed from
   t = 0 on, every heartbeat line and every tracer row must be identical to the 1-thread run
   (clock times aside). Any difference means a race condition. A serial build
@@ -234,7 +240,11 @@ Four kinds of test, all run by `make test`, which stops at the first failure:
 a fourth kind, the **release tests** (`tests/run_release_tests.sh`): both builds
 must print the same results, bit for bit (see Build).
 
-Run it before every commit. On GitHub, every push to `main` and every pull
+`make test` also runs `tests/manual_check.py`, which checks that every
+routine and test the manual's trace tags name still exists.
+
+Run it before every commit (about 6 minutes on 2 cores; 7 to 15 on GitHub's
+runners). On GitHub, every push to `main` and every pull
 request runs `make test` and `make release` with gfortran 8 (nanoHUB's
 series) and 13, and with the newest gfortran as a warning only
 (`.github/workflows/tests.yml`).
@@ -259,7 +269,7 @@ the export, nanoHUB's gfortran 8.3) is in `RELEASING.md`.
 | `bin` | the executables: `bitwhiz` (debug), `bitwhiz_release` (optimized) |
 | `build/release` | the release build's objects and module files (made by `make release`, not in git) |
 | `doc` | the equation sheets the code is checked against, frozen copies (`doc/README.md`); `manual/`, the manual (`doc/manual/README.md`) |
-| `audits` | independent reviews of releases and their artifacts (`audits/README.md`) |
+| `audits` | reviews of releases (independent reviews, and post-release assessments) and their artifacts (`audits/README.md`) |
 
 ## Citing
 If you use bitwhiz, cite the version you used: `CITATION.cff` has the

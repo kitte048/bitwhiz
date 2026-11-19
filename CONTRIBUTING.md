@@ -25,7 +25,7 @@ Please open an issue first for anything beyond a small fix, so the approach
 can be agreed before the work. Then, on a branch of your own:
 
 1. **Keep `make test` passing** (unit, deck, OpenMP and history-file tests,
-   about 4 minutes on 2 cores), and `make release` (the optimized build must
+   about 6 minutes on 2 cores), and `make release` (the optimized build must
    give the debug build's results bit for bit). Both builds compile with zero
    warnings under the strict flags in the `Makefile`; keep it that way.
 2. **Physics and numerics follow a written source.** Each method follows a

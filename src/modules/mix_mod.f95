@@ -61,6 +61,9 @@ module mixture
 !                                     hvrb_pulls and hvrb_c_* renamed
 !                                     mix_state, mix_pulls, mix_c_*;
 !                                     the code otherwise unchanged
+!    11/19/26    D. E. Kittell        A comment on dpdlam at lam = 1
+!                (with Claude)        (review finding F-15); no change
+!                                     to the code
 !
 !**********************************************************************!
 !
@@ -236,6 +239,8 @@ contains
    end if
 
    !*** Burnt: the gas alone; the solid is not evaluated.
+   !    dpdlam here is the gas-only form, not its limit as lam -> 1
+   !    from below; no caller uses it (RS needs lam to rise). F-15.
    if ( .not. ( lam < one ) ) then
       p      = pg
       dpdlam = pg + g1*rho*( ecs + Q )

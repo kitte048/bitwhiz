@@ -17,69 +17,50 @@ of next steps out to research. 1.3.0 cut Nov 4, 2026: HVRB (both methods,
 verified against G2-G5) and its example deck. 1.3.1 to 1.3.3 Nov 5, 2026:
 gfortran 8 debug builds, AV's energy conserved at a free surface, and a
 partly burnt cell's solid held where it first pulls; the nanoHUB tool rebuilt
-at 1.3.0 and working that day.
+at 1.3.0 and working that day. Priorities rewritten Nov 19, 2026, after
+1.9.0 (all six burn models released) and the post-release assessment
+(`audits/v1.9.0_fable-5.2/`).
 
 ## Priorities
-Next, an afternoon each, little risk:
-1. Publication (section 9): v1.3.4 to check Zenodo, the note to JOSS's
-   editors, the public trail toward JOSS (May 2027) and SCCM 2027. (The IP
-   blocks, ticket #516409, were fixed by nanoHUB Nov 10: section 2.)
-2. The notebook (section 2), its changes collected into one nanoHUB
-   release while beta testing runs: the Stop button first (testers will
-   feel it), then a movie frame download, the movie step's timing, a
-   scripting cell, `num_threads` notes in the decks; more example decks
-   (wave overtake, spall, AV against RS) and gauges at the gold-standard
-   depths in place of `mid_x`.
-3. The history file size, said at the start of a run (section 8).
-4. The arrival offset (section 3): very likely the reference's 5 ns rows
-   (Nov 5); G1 with bitwhiz's rows at 0.5 ns would settle it. A cheap study.
+Rewritten Nov 19, 2026, from the v1.9.0 assessment's roadmap
+(`audits/v1.9.0_fable-5.2/`, sections 3 and 4). The finished work that the
+old list carried is recorded in the sections below.
 
-Near term, verification and correctness, toward 1.3:
-5. Order of accuracy and the acoustic check as tests (section 8).
-6. Noh wall heating at the impact plane (section 8).
-7. AV at a free surface and a detonation (sections 3 and 8): the energy
-   fixed in 1.3.2; the rest characterized Nov 5 (`doc/design/av_study.md`):
-   it converges, documented, no code change.
-8. Pictures: axis names and units, after lower case and mu in the stroke
-   font (Ideas); a colormap table lookup, maybe (section 8).
+Now, documentation (DK, Nov 19):
+1. **The manual, from start to end,** about 10 pages at a time
+   (`doc/design/manual.md`): the theory chapters drawn from the course
+   (1D continuum mechanics in uniaxial strain, shock waves of finite
+   thickness, the Riemann problem; the course's TikZ figures), the methods
+   derived from them, step by step, and the Hugoniot data for the elements
+   as an appendix, every number from one generated table. Each chapter read
+   against the code by an independent reviewer before DK's read. Then the
+   frozen sheets leave `doc/` (M2), and manual 1.0 (M3) before JOSS.
 
-Medium term, the reactive physics:
-9. HVRB, checked against G2-G5 (sections 3 and 6): the v8 equation sheet
-   frozen in `doc/` and G2-G5's inputs checked against it (Nov 4); the
-   design (`doc/design/materials.md`, phase 3), steps 2 to 5 done Nov 4:
-   both methods, all of G2-G5, an example deck; 1.3.0. Next for the burn
-   (DK, Nov 6): phase 4, five more burn models, FlashFire,
-   StochasticIgnite, ThermalCascade, HALO and CLAUDE, each with ideal-gas
-   products and the common C_V (section 6; `doc/design/burn_models.md`,
-   approved Nov 6), one per release; steps 2 (the closure in module
-   `mixture`), 3 (the burn table, `bmod`, `bpar`, `bst`) and 4 (the
-   lead-shock detector, module `leadshock`, checked by
-   `study_leadshock.py`) done Nov 6, HVRB bit for bit; step 5,
-   ThermalCascade (`burn = thermalcascade`, `study_tcas.py`; a smooth
-   ramp's foot opens the gate, P_s -> 0: DK's option (a)), Nov 7: 1.4.0.
-   1.5.0, the manual (`doc/design/manual.md`), Nov 12; step 6, FlashFire
-   (`burn = flashfire`, `study_ffire.py`; RK4 sub-steps, T following lam:
-   DK, Nov 12), released as 1.6.0; step 7, StochasticIgnite (`burn =
-   stochasticignite`, `study_sign.py`; Z an Ornstein-Uhlenbeck process in
-   time, DK, Nov 12; bins of LC; the atmospheric table and a counter-based
-   generator), Nov 12, for 1.7.0; step 8, HALO (`burn = halo`,
-   `study_halo.py`; new compression only, KB for TAUB, no equation sheet:
-   DK, Nov 13), for 1.8.0; step 9, CLAUDE (`burn = claude`,
-   `study_claude.py`; activation by entropy, a state function, F-12
-   answered; the quench time TQ: DK, Nov 14), for 1.9.0: all six built.
-   Next, step 10, the study (calibration to HVRB's Material X, the double
-   shocks). Then JWL products, the 25 zones/mm difference
-   (section 3). The v1.4.0 review's
-   open findings are in section 8 (`audits/README.md` tracks them).
-10. With it or after: a broken cell's temperature (section 5; a burning
-    cell's done in 1.3.3); strength, the spall "knocking" (section 6).
+Next, consolidation:
+2. **`make verify`,** and a CI job running the verification scripts in
+   their quick modes (finding G-05; section 8).
+3. **Order of accuracy and the acoustic check as a test** (G-07; section
+   8).
+4. **Step 10, the calibration study:** each burn model fitted to HVRB's
+   Material X for a single shock, then the double shocks (section 6); the
+   SCCM 2027 abstract's content (section 9).
+5. **nanoHUB:** the 1.9.0 export and the tool's six-model description;
+   then the notebook's items as one release (section 2).
 
-Far out, research:
-11. Graded materials (section 7), after phase 4 (DK, Nov 6): the path to
-    publishing; the per-cell
-    e_c of 1.2.0 was chosen for it. Sampling and ensembles (section 1),
-    Bayesian calibration and a ramp drive fitted by inverse problem,
-    cylindrical and spherical geometry, 2D, PNG (Ideas).
+Then, the research platform:
+6. **JWL products,** and one open-literature explosive calibrated and
+   compared with its Pop plot (sections 3 and 6).
+7. **Graded materials** (section 7).
+
+Waiting for DK: F-13's remainder (`random.f95`, `timestamp.f95`),
+StochasticIgnite's frozen seed (`audits/README.md`); and whether new work
+goes through pull requests. (F-11 and F-14 accepted, F-15 fixed by a
+comment, Nov 19.)
+
+**Out of scope for good (DK, Nov 19): strength.** No deviatoric stress,
+yield or plasticity will enter bitwhiz: it stays a hydrocode, well defined
+and compact. `spall_strength`, a limit on the pressure in tension, is part
+of the hydro and stays.
 
 Throughout: no bloat. Cost per cycle stays the same or improves, and
 `make test` stays a few minutes: 20 at the most (DK, Nov 12; at 1.6.0,
@@ -426,16 +407,15 @@ decks.
 - [x] **Mie-Grüneisen with temperature** (Nov 3): section 5, phase 2,
       and `doc/design/materials.md`. HVRB needs it: its closure puts
       reactant and products at one density and one temperature.
-- [ ] **Strength:** elastic-perfectly-plastic, von Mises yield, with thermal
-      softening (needs T from the model above): deviatoric stress and
-      plasticity.
+- [x] **Strength:** out of scope for good (DK, Nov 19): bitwhiz stays a
+      hydrocode (Priorities).
 - [ ] **Spall: is the knocking physical?** With spall on, the profile
       decks break the aluminum in many cells, and the broken pieces knock
       against each other: a sawtooth in the tracer velocities (period about
       0.07 us at 25 zones/mm). Find whether it is physical (scabs
       colliding) or numerical (broken cells reopening and closing): mesh
       and method dependence, and a comparison with a damage model.
-- [ ] **History-variable reactive burn (HVRB)**, following the equation
+- [x] **History-variable reactive burn (HVRB)**, following the equation
       sheet (`Equation_Sheets/HVRB_rev-0/HVRB_Eqns_v8.tex`, published as
       `Class_Project/HVRB_Eqns_rev-0.pdf`; frozen as `doc/HVRB_Eqns_v8`,
       Nov 4, 2026): reactant Mie-Grüneisen with the energy shift
@@ -455,7 +435,7 @@ decks.
       `input/me697_hvrb_2p00.deck`, exported to nanoHUB with the others
       (decided Nov 4: the model in action, for students who do not use
       Fortran). Released in 1.3.0.
-- [ ] **Phase 4: five more burn models** (DK, Nov 6; design
+- [x] **Phase 4: five more burn models** (DK, Nov 6; design
       `doc/design/burn_models.md`, approved Nov 6): six in all, each
       with ideal-gas products and the common C_V. FlashFire,
       StochasticIgnite and ThermalCascade, proposed by ChatGPT 4o-mini in
@@ -477,6 +457,8 @@ decks.
       then the study (each model tailored to Material X's HVRB for a
       single shock, then double shocks). Sources
       in the course folder's `Class_Project/Literature/Burn_Models/`.
+      All six released, 1.3.0 to 1.9.0 (Nov 4-16); the study is step 10
+      (Priorities).
 
 ## 7. Graded materials (research)
 After phase 4, the burn models (DK, Nov 6).
@@ -675,10 +657,10 @@ later:
       temperature array `tk`; rename it (`ticks`). No effect on results. Done in 1.6.1: `ticks`.
 - [x] **F-10 with F-03, deck checks:** `G0` and `S1` take any real; check
       S1 > 0 (or warn), and stop or warn on `XR` above 25, where
-      `hvrb_lambda`'s series loses digits (`input/README.md`).
+      `hvrb_lambda`'s series loses digits (`input/README.md`). Done in
+      1.6.1: S1 > 0, G0 >= 0, XR <= 25 (`bkey_max`).
 
-## 9. Publication: JOSS and SCCM 2027 Done in 1.6.1: S1 > 0, G0 >= 0,
-      XR <= 25 (`bkey_max`).
+## 9. Publication: JOSS and SCCM 2027
 - [x] **Public on GitHub, Nov 5, 2026.** JOSS's six months of public
       history run to May 5, 2027. (Nov 6: JOSS's guides make it a hard
       gate on the repository itself, public for more than six months with
@@ -723,8 +705,10 @@ later:
       treated as an ethical breach. A draft by about March 2027, submitted
       after May 5.
 - [ ] **SCCM 2027,** the 25th Biennial Conference of the APS Topical Group
-      on Compression of Condensed Matter: June 28-July 2, 2027, Sheraton
-      Grand Chicago Riverwalk. An abstract on bitwhiz (the course's verified
+      on Compression of Condensed Matter: June 20-25, 2027, Sheraton
+      Grand Chicago Riverwalk (the GCCM meeting page, Nov 17; an earlier,
+      tentative announcement of a joint AIRAPT-SCCM meeting gave June
+      28-July 2). An abstract on bitwhiz (the course's verified
       hydrocode, HVRB reimagined, what AV does at a detonation and a free
       surface, and phase 4's six burn models on the same problems, single
       and double shocks); the abstract deadline is not posted yet, so watch
