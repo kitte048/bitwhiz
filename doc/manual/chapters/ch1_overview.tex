@@ -9,6 +9,23 @@ Shock and Detonation Theory (Purdue University, Fall 2026); from version 1.4
 it is also a home for \emph{open source burn models}: reactive burn models
 written down in full, built into a public code, and checked in the open.
 
+\paragraph{What ``open source burn model'' means here.} Every equation of
+such a model is in this manual and in the code, so anyone can read it, run
+it, check it, or change it. The term also says what is left out: models
+that are not in the open literature are not included, and are not named.
+Of the six models in \bw, one comes from the literature: HVRB, the
+History Variable Reactive Burn model, which is compared with independent
+reference data. The other five are new. ThermalCascade, FlashFire and
+StochasticIgnite were proposed by an AI language model in a 2025 survey
+and repaired where they could not run as written; HALO is the author's;
+CLAUDE was proposed by Claude. These five are mathematical models, not
+yet vetted by others or calibrated to experiments, and their example
+parameters were chosen to make the class material detonate, not fitted to
+data. What \bw\ shows for them is \emph{verification}: that the code
+solves their equations as written, and how they behave. Whether any of
+them describes a real explosive is a question of calibration and
+validation, still to come (\cref{ch:burn-models}).
+
 This manual says what the code computes and why. It is the source of truth
 for the public: where the code and an older document disagree, this manual
 follows the code, and says so. Decisions and the studies behind them are
@@ -16,16 +33,27 @@ recorded in the design notes (\code{doc/design/}), the input deck in
 \code{input/README.md}, and each routine in its module's header; this manual
 points to them rather than repeating them.
 
+\section{How this manual is built}
+
+The manual runs from the physics to the code. \Cref{ch:continuum,ch:shocks}
+set up the equations of one-dimensional continuum mechanics and of shock
+waves, following the ME~697 course; \cref{ch:method-av,ch:method-rs} derive
+\bw's two numerical methods from them, step by step;
+\cref{ch:materials} gives the materials; \cref{ch:burning-cell,ch:burn-models}
+the reactive burn, the closure every burn model shares and the six models
+(HVRB, ThermalCascade, FlashFire, StochasticIgnite, HALO and CLAUDE); and
+\cref{ch:verification} how all of it is checked. The appendices give the
+notation, the deck keys, the history file, and Hugoniot data for the
+elements to write decks from.
+
 \section{This version}
 
-The manual is written in three milestones (\code{doc/design/manual.md}).
-The first, with \bw\ 1.5.0, completed the two chapters on reactive burn:
-\cref{ch:burning-cell}, the burning cell (the closure every burn model
-shares), and \cref{ch:burn-models}, the six burn models. With 1.9.0 all six are
-built (HVRB, ThermalCascade, FlashFire, StochasticIgnite, HALO and
-CLAUDE). The chapters on the hydrodynamics and the
-materials, and the verification chapter, are outlined and come next; until
-then the equation sheets in \code{doc/} describe those parts.
+The manual is written in milestones (\code{doc/design/manual.md}). With
+\bw\ 1.5.0 the chapters on reactive burn were completed, and with 1.9.0
+all six burn models are built and written up. \Cref{ch:continuum} is
+written; the other chapters on the hydrodynamics and the materials, the
+verification chapter and the Hugoniot data come next. Until then the
+equation sheets in \code{doc/} describe those parts.
 
 \section{How to read an equation here}
 

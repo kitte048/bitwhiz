@@ -174,3 +174,46 @@ its definitions (sympy, mpmath). `make manual` builds the PDF (31 pages);
 independent reviewer before release: two errors (the hold's place in the
 cycle, a test described wrongly) and two unsupported statements fixed, the
 rest clarified.
+
+## Revised outline (DK, Nov 19, 2026)
+
+After 1.9.0 and the v1.9.0 assessment (`audits/v1.9.0_fable-5.2/`), DK
+widened the manual (Nov 19): the theory first, drawn from the ME 697 course
+(its units, equation sheets and TikZ figures, DK's own), and the numerical
+methods derived from it, step by step; and the Hugoniot data for the
+elements as an appendix to write decks from. The code is still the truth:
+the theory chapters derive, the method chapters state what the code does,
+with trace tags.
+
+| | Chapter | Drawn from |
+|---|---|---|
+| 1 | Overview | |
+| 2 | One-dimensional continuum mechanics: uniaxial strain, hydrodynamics only, the balance laws, the mass coordinate, entropy, small disturbances, interfaces and boundaries, the mesh at t = 0, units | Units 3 and 4 |
+| 3 | Shock waves: the shock of finite thickness, the jump conditions, Rayleigh line and Hugoniot, the entropy inside the front, impedance matching, and the step to the numerics | Units 3 to 6 |
+| 4 | Method AV, derived from chapters 2 and 3 (absorbs the AV sheet) | the AV sheet, the Lecture 19 addendum |
+| 5 | Method RS, from the Riemann problem (absorbs the RS sheet) | Units 7 and 8, the RS sheet |
+| 6 | Materials, with choosing a material's constants | the Hugoniot data sheet |
+| 7 | The burning cell (chapter 6 until now) | as written |
+| 8 | Burn models (chapter 7 until now) | as written |
+| 9 | Verification | |
+| A-D | Notation; deck keys of the burn; the history of this manual; Hugoniot data for the elements | the course's Hugoniot database |
+
+Chapters 6 and 7 became 7 and 8 (files and check scripts renamed with
+them: `checks/ch7_closure.py`, `checks/ch8_models.py`); labels are by name,
+so cross-references did not move. Where the code, the README and the
+module headers cited "chapter 7", they now cite chapter 8. The records
+above (M1, the design notes' "as built" logs) keep the numbers of their
+day.
+
+**Working rhythm (DK).** About 10 pages of polished text per round, the
+proofreading budget; stubs (`\tocome`) do not count. Each round: the
+chapter drafted, its derivations checked by a script in `checks/`, the PDF
+read page by page, then DK's read. An independent read against the code
+before a release, as M1 had.
+
+**Out of scope for good (DK, Nov 19): strength.** The manual says so in
+chapter 2 (`TODO.md`, Priorities).
+
+Round 1 (Nov 19): chapter 2 written (7 pages,
+`checks/ch2_continuum.py`), chapter 1's plan of the book, the stubs of
+chapter 3 and appendix D, the notation of chapter 2 in appendix A.

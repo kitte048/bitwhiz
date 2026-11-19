@@ -1,0 +1,455 @@
+\chapter{One-dimensional continuum mechanics}
+\label{ch:continuum}
+
+\checkedagainst{1.9.0 (\code{8011ac3})}{The derivations are checked
+symbolically in \code{doc/manual/checks/ch2_continuum.py} (sympy, for any
+smooth flow); the units by arithmetic in the same script; what the code does
+at $t = 0$ against \code{maincode.f95}, section~5.}
+
+This chapter sets up the equations that every later chapter solves. It
+starts from the balance laws of continuum mechanics, narrows them to the
+one case \bw\ computes (planar flow in uniaxial strain, with no material
+strength), and rewrites them in the Lagrangian form the code is built on:
+in a coordinate that moves with the material and counts mass instead of
+distance. It ends with what the equations say about entropy, about small
+disturbances, and about the edges of a problem, and with how \bw\ lays its
+mesh over a stack of layers at $t = 0$.
+
+The development follows the ME~697 course (its Units~3 and~4); the
+notation is this manual's (\cref{app:notation}).
+
+\section{Uniaxial strain}
+\label{sec:uniaxial}
+
+A plate-impact experiment is built so that, for a while, the material at
+its center moves only along one axis. The flyer and the target are wide
+compared with their thickness, so waves from the edges take time to reach
+the center, and until they do the motion there is planar: everything
+depends on one coordinate, $x$, and on time, $t$. This is \emph{uniaxial
+strain}: the material is compressed or stretched along $x$ and not at all
+across it (\cref{fig:prism}).
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{figures/prism_uniaxial.pdf}
+\caption{Uniaxial strain. A prism of material (dashed) is compressed along
+$x$ alone (solid): its length changes, its cross-section does not.}
+\label{fig:prism}
+\end{figure}
+
+In uniaxial strain:
+
+\begin{itemize}
+\item the velocity has one live component, $\langle u, v, w\rangle =
+  \langle u, 0, 0\rangle$, and every field depends only on $(x, t)$:
+  $\partial/\partial y = \partial/\partial z = 0$;
+\item there is no shear and no rotation, so the stress tensor is diagonal,
+  \begin{equation}
+  \bm{\sigma} = \begin{pmatrix}
+    \sigma_{xx} & 0 & 0 \\ 0 & \sigma_{yy} & 0 \\ 0 & 0 & \sigma_{zz}
+  \end{pmatrix},
+  \label{eq:cm-stress}
+  \end{equation}
+  and only $\sigma_{xx}$, the stress on a face normal to $x$, enters the
+  equations of motion. It is positive in tension, as is usual in continuum
+  mechanics; pressure $P$ is positive in compression;
+\item diffusion (heat conduction, and the diffusion of species) is left
+  out, because it is too slow. Heat diffuses across a length $L$ in a time
+  of order $L^2/\alpha$, with $\alpha$ the thermal diffusivity: across a
+  millimeter, about 10~ms in aluminum and about 10~s in a plastic, while a
+  plate-impact run ends within a few microseconds, three to six orders of
+  magnitude sooner. Even at a shock front, where the temperature changes
+  most sharply, conduction acts only over a width of order $\alpha/U_s$,
+  about 15~nm in aluminum and far less in a plastic: far below any cell
+  of a mesh.
+\end{itemize}
+
+\section{Stress, and why \bw\ is hydrodynamic}
+\label{sec:hydro-only}
+
+The balance laws below hold for any material; what distinguishes one
+material from another is how $\sigma_{xx}$ depends on its state. The
+simplest choices are:
+
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}l l Y@{}}
+\toprule
+Material & $\sigma_{xx}$ & \\
+\midrule
+ideal gas or fluid & $-P$ & no resistance to shear \\
+Newtonian fluid & $-P + \tfrac{4}{3}\mu\,\partial u/\partial x$ & viscosity
+  $\mu$; the bulk viscosity taken as zero (Stokes' hypothesis) \\
+yielding solid & $-P - \tfrac{2}{3}Y$ & von Mises yield, strength $Y$ \\
+\bw & $-(P + q)$ & no strength; $q$ is method AV's artificial viscosity
+  (\cref{ch:method-av}), zero in method RS \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\bw\ is \emph{hydrodynamic}: its materials carry pressure but no
+strength, $Y = 0$. This is a choice, not a missing piece. Above a few GPa,
+the pressures of shock and detonation physics, a solid's strength is a
+small part of its stress, and a hydrocode with a good equation of state
+captures the waves; leaving strength out keeps the code compact and every
+equation in it checkable.
+% SCOPE: strength (out of scope for good, DK, Nov 19, 2026).
+\bw\ will not gain a strength model.\footnote{A
+decision of the project (\code{TODO.md}, Priorities, Nov 19, 2026). The
+deck key \key{spall_strength} is not a strength model: it limits how much
+tension the pressure may hold before a cell breaks (\cref{ch:materials}).}
+So throughout this manual
+\begin{equation}
+\sigma_{xx} = -(P + q).
+\label{eq:cm-sigma}
+\end{equation}
+
+\section{The balance laws}
+\label{sec:balance}
+
+\paragraph{A scalar carried by the flow.} Let $\phi$ be an amount of
+something per unit volume (mass, momentum, energy), and $\tilde\phi =
+\phi/\rho$ the same amount per unit mass. In one dimension its balance is
+\begin{equation}
+\frac{\partial \phi}{\partial t} + \frac{\partial}{\partial x}(u\phi)
+  = S_\phi,
+\label{eq:cm-transport}
+\end{equation}
+the \emph{conservative} form. The amount of $\phi$ in a fixed slab changes
+in two ways: the flow carries it in or out across the slab's faces, at the
+rate $u\phi$, and it is produced or consumed within the slab, at the rate
+$S_\phi$ per unit volume (the \emph{source}). Writing $\phi = \rho\tilde\phi$ and
+subtracting $\tilde\phi$ times the balance of mass (below, with $S = 0$)
+gives the \emph{intensive} form,
+\begin{equation}
+\rho\,\frac{D\tilde\phi}{Dt} = S_\phi,
+\qquad
+\frac{D}{Dt} = \frac{\partial}{\partial t} + u\,\frac{\partial}{\partial x},
+\label{eq:cm-intensive}
+\end{equation}
+in which $D/Dt$ is the \emph{material derivative}: the rate of change seen
+by an observer riding with the material.
+
+\paragraph{A slab that moves.} The same balance can be written for a slab
+whose faces move. Integrate \cref{eq:cm-transport} from a left face at
+$x_a(t)$ to a right face at $x_b(t)$; Leibniz's rule for an integral with
+moving limits gives
+\begin{equation}
+\frac{\dd}{\dd t}\int_{x_a(t)}^{x_b(t)} \phi\,\dd\hat x
+  = -\Bigl[\,\phi\,\Bigl(u - \frac{\dd x}{\dd t}\Bigr)\Bigr]_{x_a}^{x_b}
+    + \int_{x_a(t)}^{x_b(t)} S_\phi\,\dd\hat x .
+\label{eq:cm-rtt}
+\end{equation}
+This is the Reynolds transport theorem in one dimension. The bracket is the
+flux \emph{relative to the faces}. If the faces move with the material,
+$\dd x/\dd t = u$, nothing crosses them: the slab keeps the same matter for
+all time. That is a Lagrangian cell, and it is why \bw\ moves its mesh with
+the material: the advection terms vanish, and only the sources remain.
+(\Cref{ch:shocks} uses the same theorem the other way, with faces fixed
+to a moving shock.)
+
+\paragraph{The sources.} A slab of material between $x$ and $x + \Delta x$
+(\cref{fig:fbd}) feels the stress $\sigma_{xx}$ on its left face and
+$\sigma_{xx} + \Delta\sigma_{xx}$ on its right. Per unit volume, the net
+force is the momentum source, and the work those stresses do at the face
+velocities $u$ and $u + \Delta u$ is the energy source:
+\begin{equation}
+S_{\mathrm{mom}} = \frac{\partial \sigma_{xx}}{\partial x},
+\qquad
+S_{\mathrm{tot}} = \frac{\partial}{\partial x}(\sigma_{xx} u)
+  = \underbrace{u\,\frac{\partial \sigma_{xx}}{\partial x}}_{\text{kinetic}}
+  + \underbrace{\sigma_{xx}\frac{\partial u}{\partial x}}_{\text{internal}}.
+\label{eq:cm-sources}
+\end{equation}
+The total work splits in two. The first part accelerates the slab: it is
+the momentum source times $u$, the source of kinetic energy. The second,
+the \emph{stress power}, deforms it: the source of internal energy.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.55\textwidth]{figures/fbd_uniaxial.pdf}
+\caption{A small element of material in uniaxial strain (solid, liquid or
+gas). The stress on its two faces normal to $x$ differs by
+$\Delta\sigma_{xx}$, and the velocity by $\Delta u$. $\sigma_{yy}$ acts on
+the other faces but does no work, since nothing moves along $y$ or $z$.}
+\label{fig:fbd}
+\end{figure}
+
+\paragraph{Mass, momentum and energy.} With $\phi = \rho$, $\rho u$ and
+$\rho e$ in turn, and the sources above, the balance laws in intensive
+form are
+\begin{align}
+\frac{D\rho}{Dt} &= -\rho\,\frac{\partial u}{\partial x},
+\label{eq:cm-mass}\\
+\rho\,\frac{Du}{Dt} &= \frac{\partial \sigma_{xx}}{\partial x},
+\label{eq:cm-mom}\\
+\rho\,\frac{De}{Dt} &= \sigma_{xx}\,\frac{\partial u}{\partial x},
+\label{eq:cm-energy}
+\end{align}
+with $e$ the specific internal energy. Their sum (\cref{eq:cm-mom} times
+$u$, plus \cref{eq:cm-energy}) is the balance of total energy, $E = e +
+\tfrac{1}{2}u^2$:
+\begin{equation}
+\rho\,\frac{DE}{Dt} = \frac{\partial}{\partial x}(\sigma_{xx} u).
+\label{eq:cm-total}
+\end{equation}
+For a fluid with $\sigma_{xx} = -P$ these are the compressible Euler
+equations in one dimension. A reaction adds nothing to them in \bw: a
+reacting cell's chemistry is inside its equation of state, through the
+closure of \cref{ch:burning-cell}. There $e$ is the whole internal energy,
+chemical energy included, and a reaction turns part of it into heat
+without changing it.\footnote{The course's sheets carry the heat of reaction as an
+explicit source, $\sum_k Q_k\rho\dot\Omega_k$, with $e$ thermal only. The
+two bookkeepings describe the same physics; \bw\ uses the second, so its
+total energy is conserved as written in \cref{eq:cm-total}.}
+
+\section{The mass coordinate}
+\label{sec:mass-coordinate}
+
+A Lagrangian code labels each piece of material once and follows it. The
+natural label in one dimension is the mass to its left: the \emph{areal
+mass coordinate}
+\begin{equation}
+h(x, t) = \int_{x_L(t)}^{x} \rho(\hat x, t)\,\dd\hat x,
+\label{eq:cm-h}
+\end{equation}
+mass per unit area, measured from the left edge of the material,
+$x_L(t)$. (It is written $h$ as in the course; it is not an enthalpy, and
+no enthalpy appears in this manual.) Its derivatives are
+\begin{equation}
+\frac{\partial h}{\partial x} = \rho,
+\qquad
+\frac{\partial h}{\partial t}\Big|_x = -\rho u,
+\label{eq:cm-hderiv}
+\end{equation}
+the second because the mass to the left of a fixed point changes only by
+the flux $\rho u$ across it (the two are compatible exactly when mass is
+conserved, \cref{eq:cm-mass}). A material point keeps its $h$ for all
+time, so in the coordinates $(h, t)$:
+\begin{equation}
+\frac{\partial}{\partial t}\Big|_h = \frac{D}{Dt},
+\qquad
+\frac{\partial}{\partial h} = \frac{1}{\rho}\frac{\partial}{\partial x}
+  = V\frac{\partial}{\partial x},
+\label{eq:cm-hrules}
+\end{equation}
+with $V = 1/\rho$ the specific volume. The time derivative at fixed $h$
+is the material derivative, and the space derivative is per unit of mass
+rather than of length.
+
+\paragraph{The equations in $h$.} Substituting \cref{eq:cm-hrules} into
+\cref{eq:cm-mass,eq:cm-mom,eq:cm-energy,eq:cm-total}, and using
+$D\rho/Dt = -\rho^2\,DV/Dt$ in the first, gives the form \bw\ is built on:
+\begin{align}
+\frac{\partial V}{\partial t} &= \frac{\partial u}{\partial h},
+\label{eq:lag-mass}\\
+\frac{\partial u}{\partial t} &= \frac{\partial \sigma_{xx}}{\partial h},
+\label{eq:lag-mom}\\
+\frac{\partial e}{\partial t} &= \sigma_{xx}\,\frac{\partial V}{\partial t}
+  = -(P + q)\,\frac{\partial V}{\partial t},
+\label{eq:lag-energy}\\
+\frac{\partial}{\partial t}\Bigl(e + \tfrac{1}{2}u^2\Bigr)
+  &= \frac{\partial}{\partial h}(\sigma_{xx} u),
+\label{eq:lag-total}
+\end{align}
+every time derivative at fixed $h$. The density never needs an equation of
+its own: it follows from where the material is,
+$\partial x/\partial h = V$. And the energy equation has become the first
+law for a piece of material, $\dd e = -P\,\dd V - q\,\dd V$: its energy
+changes by the work of the pressure and of the viscosity as its volume
+changes, and by nothing else.
+
+\paragraph{A cell.} Integrate \cref{eq:lag-mass,eq:lag-mom,eq:lag-total}
+over a slab between two material points $h_a$ and $h_b$. The slab's mass
+per unit area, $M = h_b - h_a$, is fixed for all time; its length, its
+momentum and its total energy change only through its faces:
+\begin{equation}
+\frac{\dd}{\dd t}(x_b - x_a) = u_b - u_a,
+\quad
+M\,\frac{\dd \bar u}{\dd t} = \sigma_b - \sigma_a,
+\quad
+M\,\frac{\dd \bar E}{\dd t} = \sigma_b u_b - \sigma_a u_a,
+\label{eq:cm-cell}
+\end{equation}
+with $\bar u$ and $\bar E$ the slab's mean velocity and total energy per
+unit mass, and $\sigma_a$, $u_a$ ($\sigma_b$, $u_b$) the stress and
+velocity at its left (right) face. These are exact. A face shared by two
+cells appears in both with opposite signs, so in a sum over every cell all
+the inner faces cancel: the whole stack's momentum and energy change only
+through its two ends. \Cref{ch:method-av,ch:method-rs} are two ways of
+deciding what $u$ and $\sigma$ are at a face, between time levels; both
+keep this cancellation, which is why both conserve momentum and total
+energy to round-off.
+
+\section{Entropy and the second law}
+\label{sec:entropy}
+
+For a material whose state is set by two variables, the Gibbs relation
+$T\,\dd s = \dd e + P\,\dd V$ defines the specific entropy $s$. Following a
+piece of material, and using \cref{eq:lag-energy}:
+\begin{equation}
+T\,\frac{\partial s}{\partial t}
+  = \frac{\partial e}{\partial t} + P\,\frac{\partial V}{\partial t}
+  = (\sigma_{xx} + P)\,\frac{\partial V}{\partial t}
+  = -\,q\,\frac{\partial V}{\partial t},
+\label{eq:cm-entropy}
+\end{equation}
+or, in the Eulerian variables of the course, $\rho\,Ds/Dt = \bigl((\sigma_{xx}
++ P)/T\bigr)\,\partial u/\partial x$. Three consequences:
+
+\begin{itemize}
+\item \textbf{A fluid with $\sigma_{xx} = -P$ is isentropic wherever it is
+  smooth.} Only the part of the stress that is not pressure can make
+  entropy. A shock does make entropy, so the smooth equations alone cannot
+  describe one; \cref{ch:shocks} shows how a shock of finite thickness does.
+\item \textbf{The second law constrains $q$.} Entropy must not fall,
+  $\partial s/\partial t \ge 0$, so $q\,\partial V/\partial t \le 0$:
+  wherever $q \ne 0$ the material must be compressed ($\partial
+  V/\partial t < 0$) and $q > 0$. Method AV's viscosity is built to obey
+  this: it is switched on only in a cell that is being compressed
+  (\cref{ch:method-av}).
+\item \textbf{A Newtonian fluid obeys it automatically.} With $\sigma_{xx}
+  + P = \tfrac{4}{3}\mu\,\partial u/\partial x$, the right-hand side is
+  $\tfrac{4}{3}(\mu/T)(\partial u/\partial x)^2 \ge 0$. Artificial
+  viscosity borrows this structure (\cref{ch:shocks}).
+\end{itemize}
+
+\section{Small disturbances}
+\label{sec:acoustics}
+
+Disturb material at rest, $(\rhoz, P = 0, u = 0)$, a little, so that the
+changes are small and isentropic. The pressure then follows the volume
+through the isentropic sound speed $c$,
+\begin{equation}
+\dd P = -\rhoz^2 c^2\,\dd V,
+\qquad
+c^2 = -V^2\Bigl(\frac{\partial P}{\partial V}\Bigr)_s ,
+\label{eq:cm-c}
+\end{equation}
+and \cref{eq:lag-mass,eq:lag-mom} (with $q = 0$) combine to the wave
+equation in $h$,
+\begin{equation}
+\frac{\partial^2 u}{\partial t^2} = (\rhoz c)^2\,\frac{\partial^2 u}{\partial h^2},
+\qquad
+u = f(h - \rhoz c\,t) + g(h + \rhoz c\,t).
+\label{eq:cm-wave}
+\end{equation}
+A disturbance travels through the material's mass at $\rhoz c$, which in
+distance is the sound speed $c$, in either direction. The product
+\begin{equation}
+Z = \rhoz c
+\label{eq:cm-impedance}
+\end{equation}
+is the \emph{acoustic impedance}, and it is also the ratio of the two
+fields in a single wave: a right-running wave carries $P = Z u$, a
+left-running one $P = -Z u$. Both facts reappear in the numerics. The
+speed $c$ sets how long a step may be (no wave may cross more than one
+cell in one step, \cref{ch:method-av,ch:method-rs}), and the impedance is
+the weight method RS gives each side of a face (\cref{ch:method-rs}).
+Strong shocks travel faster than $c$ and carry more pressure per unit of
+velocity than $Z$; \cref{ch:shocks} replaces both with their shock
+counterparts.
+
+\section{Interfaces and boundaries}
+\label{sec:boundaries}
+
+\paragraph{Contacts.} \bw\ computes a stack of layers in contact: a
+flyer, a target, a window. At a contact between two materials, the
+balance of momentum across a slab of vanishing mass makes the stress
+continuous, and the material on the two sides never separates or
+interpenetrates while the contact holds, so the velocity is continuous
+too:
+\begin{equation}
+u^- = u^+, \qquad \sigma_{xx}^- = \sigma_{xx}^+ .
+\label{eq:cm-contact}
+\end{equation}
+Density, internal energy and temperature jump across a contact. \bw\
+places every contact on a face of its mesh (below), so no cell ever holds
+two materials.
+
+\paragraph{Free surfaces.} The two ends of the stack face a void, which
+carries no stress:
+\begin{equation}
+\sigma_{xx} = 0 \quad\text{at both ends.}
+\label{eq:cm-free}
+\end{equation}
+These are the only boundaries \bw\ has: no rigid wall, no piston, no
+inflow. A layer at rest is at zero pressure, so its free surface is in
+equilibrium at $t = 0$. That is why every material in \bw\ starts at
+$P = 0$: the solids and liquids of shock physics, whose ambient pressure
+is negligible next to the pressures of interest.
+% SCOPE: gases. Update this paragraph (and the boundary list above) when
+% bitwhiz gains a gas EOS or new boundaries (doc/manual/README.md, Scope).
+A gas at ambient pressure, whose ambient state is the scale of its shocks,
+is outside the present scope.
+
+\paragraph{Breaking.} A contact can also open. When the material near it
+is pulled harder than it can hold, it breaks (spalls), and the two sides
+then behave as free surfaces until they collide again. How much tension a
+material holds, and what a broken cell does, is part of its material model
+(\cref{ch:materials}).
+
+\section{The mesh at the start of a run}
+\label{sec:mesh}
+
+A deck describes a stack of layers, left to right, each with a material,
+a thickness and a number of cells (or a resolution, in cells per mm), and
+a starting velocity. At $t = 0$ \bw\ builds the mesh from them
+(\code{maincode.f95}, section~5):
+
+\begin{enumerate}
+\item \textbf{Faces.} Each layer's faces are evenly spaced, face $j$ of a
+  layer of $n$ cells at $x_{\mathrm{left}} + j\,w/n$, with $w$ the layer's
+  thickness. Each position is computed from the layer's edge, not by
+  adding up cell widths, so round-off cannot accumulate across a layer, and
+  each layer's left edge, a contact, lands exactly on a face.
+\item \textbf{Cells.} Cell $k$, between faces $k - \tfrac{1}{2}$ and
+  $k + \tfrac{1}{2}$, takes its layer's material constants and the
+  reference state
+  \begin{equation}
+  \rho_k = \rhoz, \quad e_k = 0, \quad P_k = 0, \quad q_k = 0,
+  \quad c_k = C_0,
+  \label{eq:cm-start}
+  \end{equation}
+  in which the equation of state must return $P = 0$ and $c = C_0$; the
+  setup checks that it does. Its mass per unit area,
+  \begin{equation}
+  M_k = \rhoz\,\bigl(x_{k+1/2} - x_{k-1/2}\bigr),
+  \label{eq:cm-mass-cell}
+  \end{equation}
+  is fixed from then on. Units: g/cm$^3$ times mm.
+\item \textbf{Velocities.} Each cell starts at its layer's velocity, or,
+  with a velocity profile (deck \key{xvel_profile}), at the profile's mean
+  over the cell, chosen so that the layer's momentum is exactly its
+  thickness times $\rhoz$ times its mean velocity. A face between cells
+  of equal velocity takes that velocity. A face between cells of different
+  velocities (an \emph{impact face}, where a flyer meets its target, or a
+  face inside a profile) takes their momentum-weighted mean,
+  \begin{equation}
+  u_{k+1/2} = \frac{M_k u_k + M_{k+1} u_{k+1}}{M_k + M_{k+1}},
+  \label{eq:cm-impact}
+  \end{equation}
+  so the face carries exactly the momentum of the two half cells it
+  stands for, and the stack's momentum at $t = 0$ is the deck's.
+  \trace{modules/dist_mod.f95}{dist_cdf, dist_sf}{test_dist}
+\item \textbf{The ends.} Beyond each end of the stack sits a ghost cell
+  of zero mass and zero pressure: the void of \cref{eq:cm-free}.
+\end{enumerate}
+
+\paragraph{Units.} \bw's units are millimeters, microseconds, g/cm$^3$,
+km/s (= mm/\textmu s), GPa, kJ/g (= (km/s)$^2$) and kelvin. They form a
+consistent set, so no equation in the code carries a conversion factor:
+\begin{center}\small
+\begin{tabular}{@{}l l@{}}
+\toprule
+Product & Units \\
+\midrule
+$\rho u^2$ & (g/cm$^3$)(km/s)$^2$ = GPa \\
+$P V$ & GPa\,/\,(g/cm$^3$) = kJ/g \\
+$\Delta t\,\Delta P / M$ & \textmu s\,GPa\,/\,(g/cm$^3$\,mm) = km/s \\
+$\rho c$ & (g/cm$^3$)(km/s) = GPa per km/s \\
+\bottomrule
+\end{tabular}
+\end{center}
+The third line is the momentum update of a cell, \cref{eq:cm-cell}: a
+pressure difference acting over a step, divided by a cell's mass, is a
+change of velocity, with nothing to convert.

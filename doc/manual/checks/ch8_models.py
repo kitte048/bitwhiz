@@ -1,5 +1,5 @@
-"""Chapter 7's closed forms, from the definitions (sympy, and mpmath for
-numbers). Run: python3 doc/manual/checks/ch7_models.py  ('ok' per check)."""
+"""Chapter 8's closed forms, from the definitions (sympy, and mpmath for
+numbers). Run: python3 doc/manual/checks/ch8_models.py  ('ok' per check)."""
 import sympy as sp
 import mpmath as mp
 mp.mp.dps = 30

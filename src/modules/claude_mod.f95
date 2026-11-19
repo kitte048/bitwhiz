@@ -90,7 +90,7 @@ module claude
 !
 !  References:
 !    doc/design/burn_models.md, "CLAUDE" (approved 11/06/26), and "Step
-!    9, CLAUDE: the plan" (approved 11/14/26); doc/manual, chapter 7,
+!    9, CLAUDE: the plan" (approved 11/14/26); doc/manual, chapter 8,
 !    CLAUDE; checked against 50-digit values (tests/test_claude.f95,
 !    tests/claude_reference.py).
 !    J. Farjas and P. Roura, Acta Mater. 54, 5573 (2006): Avrami's

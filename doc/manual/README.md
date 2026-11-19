@@ -23,7 +23,7 @@ them). The PDF is not kept in git; it is attached to each release
 | `bitwhiz_manual.tex` | the preamble, the macros below, the title page, the chapter list |
 | `chapters/ch*.tex`, `chapters/app*.tex` | one file per chapter and appendix; `references.tex` the bibliography |
 | `figures/*.tex` | each figure's source (standalone TikZ/pgfplots), built to PDF by `make manual` |
-| `checks/*.py` | the manual's closed forms derived from their definitions (sympy, mpmath): `python3 doc/manual/checks/ch6_closure.py` prints `ok` per check |
+| `checks/*.py` | the manual's closed forms derived from their definitions (sympy, mpmath): `python3 doc/manual/checks/ch7_closure.py` prints `ok` per check |
 
 ## Writing here
 
@@ -42,6 +42,10 @@ them). The PDF is not kept in git; it is attached to each release
 - **Not yet built.** A planned model or feature goes in its section with
   the `underdev` box at the top, and no trace tags (there is no code to
   point at). A chapter still to be written is a `\tocome{...}` box.
+- **Scope.** A sentence that says what \bw\ does not do (no gases, no
+  walls, no strength) carries a LaTeX comment starting `% SCOPE:` beside
+  it, so it can be found and updated when the code changes:
+  `grep -rn 'SCOPE:' doc/manual/`.
 - **Owners.** The manual does not copy the deck reference
   (`input/README.md`) or the design notes' records; it points to them.
 - **Style.** Student-facing and complete: full sentences, derivations where

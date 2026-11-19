@@ -90,7 +90,7 @@ module halo
 !
 !  References:
 !    doc/design/burn_models.md, "HALO" (approved 11/06/26) and "Step 8,
-!    HALO: the plan" (approved 11/13/26); doc/manual, chapter 7, HALO;
+!    HALO: the plan" (approved 11/13/26); doc/manual, chapter 8, HALO;
 !    checked against 50-digit values (tests/test_halo.f95, tests/
 !    halo_reference.py).
 !    L. G. Hill, B. Zimmermann and A. L. Nichols III, "On the burn

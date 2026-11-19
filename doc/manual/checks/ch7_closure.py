@@ -1,6 +1,6 @@
-"""Chapter 6's closure, symbolically (sympy): every closed form in
-ch6_burning_cell.tex derived from the definitions, for a generic Pi(rho).
-Run: python3 doc/manual/checks/ch6_closure.py  (prints 'ok' per check)."""
+"""Chapter 7's closure, symbolically (sympy): every closed form in
+ch7_burning_cell.tex derived from the definitions, for a generic Pi(rho).
+Run: python3 doc/manual/checks/ch7_closure.py  (prints 'ok' per check)."""
 import sympy as sp
 rho, e, lam, R0, G0, Cv, T0, gam, Q = sp.symbols(
     'rho e lambda rho_0 Gamma_0 C_V T_0 gamma Q', positive=True)

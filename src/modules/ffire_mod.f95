@@ -87,7 +87,7 @@ module flashfire
 !    R. Menikoff and M. S. Shaw, EPJ Web Conf. 10, 00003 (2010), §4.
 !    doc/design/burn_models.md (approved 11/06/26), "FlashFire", and
 !    "Step 6, FlashFire: the plan" (approved 11/12/26); doc/manual,
-!    chapter 7, FlashFire; checked against 50-digit values (tests/
+!    chapter 8, FlashFire; checked against 50-digit values (tests/
 !    test_ffire.f95, tests/ffire_reference.py).
 !
 !  Record of revisions:
