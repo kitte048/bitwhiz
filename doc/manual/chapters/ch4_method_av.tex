@@ -1,12 +1,329 @@
 \chapter{Method AV: artificial viscosity}
 \label{ch:method-av}
 
-\tocome{The von Neumann--Richtmyer scheme as \bw\ builds it, derived from
-\cref{ch:continuum,ch:shocks}: the staggered mesh and the leapfrog, the
-viscosity as a numerical shock thickness and what the second law asks of
-it, the energy update and why it conserves, the free surface (including
-the end face's energy update since 1.3.2), tension and spall, the time
-step, and what AV does at a free surface and a detonation, measured
-(\code{doc/design/av_study.md}). Until then:
-\code{doc/Hydrocode_Eqns_v4}, and \code{doc/README.md}, ``Where the code has
-moved past a sheet''.}
+\checkedagainst{1.9.0 (\code{11ecf43})}{Each update against
+\code{src/modules/av_mod.f95} and the cycle in \code{maincode.f95},
+section~7. Conservation is checked exactly (rational arithmetic) and the
+energy update's split symbolically in \code{doc/manual/checks/ch4_av.py},
+which also measures the shock width quoted here.}
+
+Method AV is \bw's default (deck: \key{method = AV}), and the ME~697
+class project's. It is the scheme of von Neumann and Richtmyer: velocity
+and position on the faces of the cells, the thermodynamic state at their
+centers, a leapfrog in time, and an artificial viscosity $q$ that spreads
+each shock over a few cells. This chapter derives each update from the
+Lagrangian equations of \cref{ch:continuum} and the shock structure of
+\cref{ch:shocks}, and says what the code does where it goes beyond the
+course's sheet (\code{doc/Hydrocode_Eqns_v4}). Its material models (the
+pressure, tension and spall, the sound speed) are shared with method RS
+and are in \cref{ch:materials}.
+
+\section{The staggered mesh and the leapfrog}
+\label{sec:av-mesh}
+
+Cell $k$ holds the state that belongs to a piece of material: its density
+$\rho_k$, internal energy $e_k$, pressure $P_k$, viscosity $q_k$ and sound
+speed $c_k$, and its fixed mass $M_k$ (\cref{eq:cm-mass-cell}). Its faces,
+$k - \tfrac{1}{2}$ and $k + \tfrac{1}{2}$, hold positions $x$ and
+velocities $u$ (\cref{fig:av-grid}). A face moves as the material on its
+two sides pushes it, so it carries the mass of half of each neighbor, the
+\emph{node mass}
+\begin{equation}
+m_{k+1/2} = \tfrac{1}{2}\bigl(M_k + M_{k+1}\bigr).
+\label{eq:av-node-mass}
+\end{equation}
+This is the staggering: each update reads quantities that sit where it
+needs them, so every difference in it is centered in space.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.7\textwidth]{figures/hc_grid.pdf}
+\caption{The staggered mesh. Velocity and position live on the faces; the
+thermodynamic state at the cell centers. A face's momentum update divides
+by its node mass, half of each neighbor cell.}
+\label{fig:av-grid}
+\end{figure}
+
+The time levels are staggered too (\cref{fig:av-leapfrog}). The state of a
+cell is known at the whole steps $n$, $n + 1$; the face velocities at the
+half steps $n - \tfrac{1}{2}$, $n + \tfrac{1}{2}$. Each update is centered
+on the level of what drives it: the velocity jumps from $n - \tfrac{1}{2}$
+to $n + \tfrac{1}{2}$ under the stresses at $n$, and the positions and the
+state go from $n$ to $n + 1$ with the velocity at $n + \tfrac{1}{2}$.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.6\textwidth]{figures/hc_leapfrog.pdf}
+\caption{The leapfrog. Velocity is advanced on half steps by the state at
+the whole step between them; everything else is advanced on whole steps
+by the new velocity.}
+\label{fig:av-leapfrog}
+\end{figure}
+
+\paragraph{The steps.} $\Delta t^n$ is the step from $n$ to $n + 1$. The
+velocity's step, from $n - \tfrac{1}{2}$ to $n + \tfrac{1}{2}$, is the
+mean of the previous step and the current one,
+\begin{equation}
+\Delta t^{n-1/2} = \tfrac{1}{2}\bigl(\Delta t^{n-1} + \Delta t^n\bigr),
+\label{eq:av-dth}
+\end{equation}
+which is also the time between the two half steps, since each half step
+lies midway through its whole step. This keeps the velocity update centered when the step changes from cycle
+to cycle (\code{dth} in the code). At the start, the velocity at
+$t = 0$ stands in for the one at $-\tfrac{1}{2}$, and $\Delta t^{-1} =
+\Delta t^0$: the first step is first order, every later one centered.
+
+\section{Momentum and the moving mesh}
+\label{sec:av-momentum}
+
+Apply the momentum balance of a slab, \cref{eq:cm-cell}, to the slab
+between the centers of cells $k$ and $k + 1$: its mass is the node mass,
+its velocity the face's, and the stresses on it are those at the two
+centers, $\sigma = -(P + q)$. Over the velocity's step,
+\begin{equation}
+u^{n+1/2}_{k+1/2} = u^{n-1/2}_{k+1/2}
+  + \frac{\Delta t^{n-1/2}}{m_{k+1/2}}
+    \Bigl[\bigl(P^n_k - P^n_{k+1}\bigr) + \bigl(q^n_k - q^n_{k+1}\bigr)\Bigr].
+\label{eq:av-momentum}
+\end{equation}
+\trace{modules/av_mod.f95}{face_step}{compare_g1.py, study_av.py}
+The face then moves with the material, and the cell's density follows from
+its fixed mass:
+\begin{equation}
+x^{n+1}_{k+1/2} = x^n_{k+1/2} + u^{n+1/2}_{k+1/2}\,\Delta t^n,
+\qquad
+\rho^{n+1}_k = \frac{M_k}{x^{n+1}_{k+1/2} - x^{n+1}_{k-1/2}} .
+\label{eq:av-position}
+\end{equation}
+\trace{modules/av_mod.f95}{face_step, cell_step}{compare_g1.py}
+These are the Lagrangian equations of momentum and mass,
+\cref{eq:lag-mom,eq:lag-mass}, in difference form. In the mass coordinate
+the centers of cells $k$ and $k + 1$ are $m_{k+1/2}$ apart, so
+\cref{eq:av-momentum} is $\partial u/\partial t = \partial\sigma_{xx}/\partial
+h$ with $\sigma_{xx} = -(P + q)$, differenced across a face. A cell's faces
+are $M_k$ apart, and its specific volume is its width over its mass, so
+\cref{eq:av-position} gives $(V^{n+1}_k - V^n_k)/\Delta t^n = (u^{n+1/2}_{k+1/2}
+- u^{n+1/2}_{k-1/2})/M_k$, which is $\partial V/\partial t = \partial
+u/\partial h$ differenced across a cell. Each cell's $P + q$ pushes its two
+faces equally in opposite directions, so the sum of $m_{k+1/2}u_{k+1/2}$
+over all faces, the stack's momentum, changes only through the two ends,
+where the void pushes with zero stress.
+
+\section{Energy}
+\label{sec:av-energy}
+
+The energy update is where the scheme is easiest to get wrong. \bw's is
+built to conserve \emph{total} energy exactly, from the cell form of
+\cref{eq:cm-cell}: a cell's total energy changes only by the work done on
+its two faces,
+\begin{multline}
+e^{n+1}_k = e^n_k + \frac{\Delta t^n}{M_k}\Bigl[\,\bar\sigma_{k-1/2}\,
+  u^{n+1/2}_{k-1/2} - \bar\sigma_{k+1/2}\,u^{n+1/2}_{k+1/2}\Bigr] \\
+  + \tfrac{1}{8}\Bigl[\bigl(u^{n-1/2}_{k-1/2} + u^{n-1/2}_{k+1/2}\bigr)^2
+  - \bigl(u^{n+1/2}_{k-1/2} + u^{n+1/2}_{k+1/2}\bigr)^2\Bigr].
+\label{eq:av-energy}
+\end{multline}
+\trace{modules/av_mod.f95}{cell_step}{compare_g1.py, study_av.py}
+The first bracket is the work of the face stresses over the step. The
+second takes away the change in the cell's kinetic energy,
+$\tfrac{1}{2}\bar u^2$, with $\bar u$ the mean of its two face velocities.
+The stress on a face, positive in compression, is the pressure interpolated
+linearly in mass between the two cell centers, plus their average
+viscosity:
+\begin{equation}
+\bar\sigma_{k+1/2} = \frac{M_{k+1}P^n_k + M_k P^n_{k+1}}{M_k + M_{k+1}}
+  + \tfrac{1}{2}\bigl(q^n_k + q^n_{k+1}\bigr).
+\label{eq:av-face-stress}
+\end{equation}
+Both cells on a face use the same $\bar\sigma$, so a face's work leaves
+one and enters the other: summed over the stack, the work telescopes to
+the two ends, and
+\begin{equation}
+\sum_k M_k\Bigl(e^{n+1}_k + \tfrac{1}{2}\bigl(\bar u^{n+1/2}_k\bigr)^2\Bigr)
+= \sum_k M_k\Bigl(e^n_k + \tfrac{1}{2}\bigl(\bar u^{n-1/2}_k\bigr)^2\Bigr)
+\label{eq:av-conserve}
+\end{equation}
+exactly, whatever the momentum update did. This total is the one the
+heartbeat reports. The check script confirms it in exact rational
+arithmetic.
+
+\paragraph{The end faces.} Beyond each end of the stack sits a ghost cell
+of zero mass and zero pressure (\cref{fig:av-void}). Its zero mass makes
+the mass-weighted pressure on an end face zero by itself; its viscosity is
+not averaged in. An end face carries no $q$ in \cref{eq:av-energy}: the
+void does no work.\footnote{The course's sheet averages $q$ with the
+ghost's zero, which puts half the end cell's $q$ on the end face. Total
+energy was then lost each time a shock reached a free surface; \bw\ has
+given the end face no $q$ since 1.3.2 (\code{doc/README.md}, ``Where the
+code has moved past a sheet'').} The momentum update needs no special case:
+the end face's node mass is half a cell, and the void pushes with zero
+stress.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/hc_void.pdf}
+\caption{The ends of the stack: a ghost cell of zero mass, pressure and
+viscosity beyond each end, so the end faces are free surfaces.}
+\label{fig:av-void}
+\end{figure}
+
+\paragraph{What the update does to one cell.} Write $a$ and $b$ for a
+cell's left and right face velocities, $\bar\sigma_l$ and $\bar\sigma_r$
+for its face stresses, and $\Delta V = (b^{n+1/2} - a^{n+1/2})\,\Delta
+t^n/M_k$ for its change of volume. Then \cref{eq:av-energy} is exactly
+\begin{equation}
+e^{n+1}_k - e^n_k = -\tfrac{1}{2}\bigl(\bar\sigma_l + \bar\sigma_r\bigr)\,\Delta V
+  + R_k,
+\qquad
+R_k = -\bar u^{n+1/2}\Bigl[\frac{\Delta t^n}{M_k}\bigl(\bar\sigma_r -
+  \bar\sigma_l\bigr) + \Delta\bar u\Bigr] + \tfrac{1}{2}\Delta\bar u^2,
+\label{eq:av-energy-split}
+\end{equation}
+with $\Delta\bar u = \bar u^{n+1/2} - \bar u^{n-1/2}$. The first term is the
+first law of \cref{eq:lag-energy}, $\dd e = -(P + q)\,\dd V$. The
+remainder $R_k$ is the price of exact conservation. The mesh moves a cell's
+faces with their own node momenta, not with the cell's mean, so the bracket
+is not exactly zero; if it were, $R_k$ would be $\tfrac{1}{2}\Delta\bar u^2$,
+second order in the step. In smooth flow $R_k$ is small. It is not small in
+one place: the cell at a free surface, when a release blows it off, where
+$\bar u$ grows fast and its own $-P\,\dd V$ is near zero. There the growth of
+$\tfrac{1}{2}\bar u^2$ is taken from $e$, and $e$ can fall well below what
+the cell's compression history would give it. A cell's temperature is
+computed from its internal energy (\cref{ch:materials}), so this is where
+the error shows. In the one measured case, a barely burnt end cell of
+Material X blown off a free surface, the computed temperature reaches about
+$-1000$~K on every mesh, in that one cell of vanishing mass, while total
+energy stays exact
+(\code{doc/design/av_study.md}, set C). A ``compatible'' energy update, in
+which each cell is charged exactly $-(P + q)\,\dd V$, would remove it, at the
+cost of the course's scheme (Caramana et~al.\ \cite{caramana1998}).
+
+\paragraph{Time levels.} The stresses in \cref{eq:av-energy} are those at
+$n$, the start of the step, with the velocities at $n + \tfrac{1}{2}$.
+Total energy is conserved exactly, but the pressure work is taken at the
+step's start: first order in time. The order of accuracy of the whole
+scheme on smooth flow has not yet been measured in a test (\code{TODO.md},
+section~8).
+
+\paragraph{Pressure.} With $\rho^{n+1}_k$ and $e^{n+1}_k$ known, the
+equation of state gives $P^{n+1}_k$, then the spall rule decides whether
+the cell holds that pressure or breaks, and the sound speed $c^{n+1}_k$ is
+taken at the pressure kept (\cref{ch:materials}). A cell that has started to
+burn takes them from the closure of \cref{ch:burning-cell} instead.
+
+\section{The artificial viscosity}
+\label{sec:av-q}
+
+\Cref{sec:inside-front} showed that any viscous stress that vanishes
+outside a shock, and is positive inside it while the material compresses,
+carries the shock between the right end states, with the right entropy
+jump, in equations that conserve mass, momentum and energy. Method AV's
+is
+\begin{equation}
+q^{n+1}_k =
+\begin{cases}
+B_L\,\rho^{n+1}_k c^{n+1}_k\,|\Delta u_k| + B_Q\,\rho^{n+1}_k\,(\Delta u_k)^2
+  & \text{if } \Delta u_k > 0 \text{ and } \rho^{n+1}_k > \rho^n_k, \\
+0 & \text{otherwise,}
+\end{cases}
+\label{eq:av-q}
+\end{equation}
+\trace{modules/av_mod.f95}{cell_state}{compare_g1.py, study_av.py}
+with $\Delta u_k = u^{n+1/2}_{k-1/2} - u^{n+1/2}_{k+1/2}$ the cell's
+velocity jump, positive while it is squeezed, and $B_L$ and $B_Q$ deck keys
+(\key{BL}, \key{BQ}; 0.1 and 2.0 by default).
+
+\begin{itemize}
+\item \textbf{The quadratic term} is von Neumann and Richtmyer's
+  \cite{vonneumann1950}. Within a
+  smeared shock $\Delta u \approx \Delta x\,|\partial u/\partial x|$, so it
+  acts as a viscosity $B_Q\,\rho\,\Delta x^2|\partial u/\partial x|$ that
+  grows with the velocity gradient and scales with the cell: it spreads
+  every shock over a few cells, whatever its strength, and vanishes as the
+  mesh refines. Measured in \bw\ (aluminum, $u_p$ from 0.5 to 2~km/s, 25 and
+  100 cells per mm), a shock's velocity rises from 10\% to 90\% of its jump
+  across 2.1 to 3.2 cells with the default $B_Q = 2$; 1.6 to 2.8 with $B_Q =
+  1$; 2.8 to 3.7 with $B_Q = 4$ (\code{checks/ch4_av.py}).
+\item \textbf{The linear term} damps the ringing a quadratic viscosity
+  alone leaves behind a shock, where $\Delta u$ is small.
+\item \textbf{The switch} is the second law of \cref{sec:entropy}: $q$ is
+  nonzero only while the cell is being compressed, so $-q\,\dd V \ge 0$
+  and it only ever makes entropy. In one dimension the two tests in
+  \cref{eq:av-q} agree (a cell's width changes by $-\Delta u_k\,\Delta t^n$);
+  the code checks both, as the course's sheet does.
+\end{itemize}
+
+The $q$ of \cref{eq:av-q} is at $n + 1$, ready for the next cycle's
+momentum and energy updates, in which it acts at $n$.
+
+\section{The time step}
+\label{sec:av-dt}
+
+An explicit scheme is stable only if no wave crosses more than one cell in
+a step. Each cell's limit is the time for a weak mechanical disturbance (a
+sound wave), carried with the flow, to cross it,
+\begin{equation}
+\Delta t_k = \frac{x^{n+1}_{k+1/2} - x^{n+1}_{k-1/2}}{|\bar u^{n+1/2}_k| + c^{n+1}_k},
+\qquad
+\Delta t^{n+1} = \mathrm{CFL}\,\min_k \Delta t_k ,
+\label{eq:av-cfl}
+\end{equation}
+\trace{modules/av_mod.f95}{cell_dt}{compare_g1.py}
+with CFL a deck key (\key{CFL}, 0.6 by default). In a Lagrangian mesh the
+flow does not cross cells, so $|\bar u|$ only shortens the step. The
+limit does not include $q$; the default safety factor has been enough for
+every deck tested.
+A void cell, stretched past the point where its sound speed vanishes
+(\cref{ch:materials}), limits the step by its own speed alone,
+$\Delta x/|\bar u|$.
+
+\section{One cycle}
+\label{sec:av-cycle}
+
+\bw\ runs a cycle of method AV as three loops over the mesh
+(\code{maincode.f95}, section~7). Each loop finishes before the next one
+begins. A deck with a burn or a temperature adds steps between and after
+the loops, in the order listed:
+
+\begin{enumerate}
+\item \textbf{Faces:} $u^{n+1/2}$ and $x^{n+1}$, \cref{eq:av-momentum,eq:av-position}.
+\item \textbf{Cells:} $\rho^{n+1}$ and $e^{n+1}$, \cref{eq:av-position,eq:av-energy}.
+\item \textbf{The burn,} for cells that can react: each model's step,
+  from the pressure still at $n$ (\cref{sec:one-cycle}).
+\item \textbf{Cells:} $P^{n+1}$ with the spall rule, $c^{n+1}$, $q^{n+1}$
+  and $\Delta t_k$, \cref{eq:av-q,eq:av-cfl}.
+\item \textbf{Then,} after the loops: the clock advances, the next step
+  is set by \cref{eq:av-cfl}, each cell that carries a temperature updates
+  it (\cref{ch:materials}), and the burn's lead-shock detector looks at the
+  new state (\cref{sec:lead-shock}).
+\end{enumerate}
+
+Each loop reads only what the loop before it wrote, and each place's update
+reads only its neighbors, so the loops run in parallel with OpenMP and give
+the serial answer bit for bit, on any number of threads
+(\cref{ch:verification}).
+
+\section{What method AV does, measured}
+\label{sec:av-measured}
+
+Method AV converges, but on a coarse mesh it has two known errors, both
+measured against exact answers and method RS in
+\code{doc/design/av_study.md} (\code{tests/verification/study_av.py}):
+
+\begin{itemize}
+\item \textbf{At a free surface,} the velocity overshoots by about 6\% when
+  a shock arrives, for about 2.5 cells' transit of the shock (16~ns at 25
+  cells per mm, 1~ns at 400), then settles on the right value. The end face
+  has half a cell's mass and takes the end cell's full $P + q$, so it rings
+  once. Read the plateau, not the peak. (Method RS at order 2: 0.4\%.)
+\item \textbf{At a detonation,} AV burns inside its smeared shock, and on a
+  coarse mesh the front runs as a weak detonation whose speed is too high:
+  $D$ is 3\%
+  above $D_{\mathrm{CJ}}$ with 3.5 cells across the reaction zone (25 per mm
+  in Material X), 0.4\% with 7, 0.2\% with 14, and within 0.03\% from 28.
+  Method RS at order 2 is within 0.02\% at every mesh. The deck reference
+  gives the resolution to use (\code{input/README.md}, Material block).
+\end{itemize}
+
+Neither is engineered away: each converges as the mesh refines, and each is
+documented where a user will look.

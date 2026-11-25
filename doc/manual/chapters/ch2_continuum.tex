@@ -8,12 +8,12 @@ at $t = 0$ against \code{maincode.f95}, section~5.}
 
 This chapter sets up the equations that every later chapter solves. It
 starts from the balance laws of continuum mechanics, narrows them to the
-one case \bw\ computes (planar flow in uniaxial strain, with no material
+one regime \bw\ computes (planar flow in uniaxial strain, with no material
 strength), and rewrites them in the Lagrangian form the code is built on:
 in a coordinate that moves with the material and counts mass instead of
-distance. It ends with what the equations say about entropy, about small
-disturbances, and about the edges of a problem, and with how \bw\ lays its
-mesh over a stack of layers at $t = 0$.
+distance. It ends with what the equations say about entropy, small
+disturbances, the edges of a problem, and how \bw\ lays its mesh over a
+stack of layers at $t = 0$.
 
 The development follows the ME~697 course (its Units~3 and~4); the
 notation is this manual's (\cref{app:notation}).
@@ -40,8 +40,8 @@ $x$ alone (solid): its length changes, its cross-section does not.}
 In uniaxial strain:
 
 \begin{itemize}
-\item the velocity has one live component, $\langle u, v, w\rangle =
-  \langle u, 0, 0\rangle$, and every field depends only on $(x, t)$:
+\item the velocity has one nonzero component, $\langle u, v, w\rangle =
+  \langle u, 0, 0\rangle$, and every field depends on $(x, t)$ alone:
   $\partial/\partial y = \partial/\partial z = 0$;
 \item there is no shear and no rotation, so the stress tensor is diagonal,
   \begin{equation}
@@ -54,14 +54,15 @@ In uniaxial strain:
   equations of motion. It is positive in tension, as is usual in continuum
   mechanics; pressure $P$ is positive in compression;
 \item diffusion (heat conduction, and the diffusion of species) is left
-  out, because it is too slow. Heat diffuses across a length $L$ in a time
-  of order $L^2/\alpha$, with $\alpha$ the thermal diffusivity: across a
-  millimeter, about 10~ms in aluminum and about 10~s in a plastic, while a
+  out, because it is too slow to matter. Heat diffuses across a length $L$
+  in a time of order $L^2/\alpha$, where $\alpha$ is the thermal
+  diffusivity. For example, it takes about 10~ms to cross one millimeter of
+  aluminum and about 10~s to cross one millimeter of a plastic, whereas a
   plate-impact run ends within a few microseconds, three to six orders of
   magnitude sooner. Even at a shock front, where the temperature changes
-  most sharply, conduction acts only over a width of order $\alpha/U_s$,
-  about 15~nm in aluminum and far less in a plastic: far below any cell
-  of a mesh.
+  most sharply, conduction acts only over a width of order $\alpha/U_s$;
+  this is about 15~nm in aluminum and far less in a plastic, which is far
+  below the size of any cell in a mesh.
 \end{itemize}
 
 \section{Stress, and why \bw\ is hydrodynamic}
@@ -108,17 +109,18 @@ So throughout this manual
 
 \paragraph{A scalar carried by the flow.} Let $\phi$ be an amount of
 something per unit volume (mass, momentum, energy), and $\tilde\phi =
-\phi/\rho$ the same amount per unit mass. In one dimension its balance is
+\phi/\rho$ the same amount per unit mass. In one dimension, the
+\emph{conservative} form of the balance law is given by
 \begin{equation}
 \frac{\partial \phi}{\partial t} + \frac{\partial}{\partial x}(u\phi)
   = S_\phi,
 \label{eq:cm-transport}
 \end{equation}
-the \emph{conservative} form. The amount of $\phi$ in a fixed slab changes
-in two ways: the flow carries it in or out across the slab's faces, at the
+The amount of $\phi$ in a fixed slab changes in two ways: the flow carries it in or out across the slab's faces, at the
 rate $u\phi$, and it is produced or consumed within the slab, at the rate
-$S_\phi$ per unit volume (the \emph{source}). Writing $\phi = \rho\tilde\phi$ and
-subtracting $\tilde\phi$ times the balance of mass (below, with $S = 0$)
+$S_\phi$ per unit volume (the \emph{source}). Writing $\phi =
+\rho\tilde\phi$, and using conservation of mass (the same balance with
+$\phi = \rho$ and no source, below) to remove the derivatives of $\rho$,
 gives the \emph{intensive} form,
 \begin{equation}
 \rho\,\frac{D\tilde\phi}{Dt} = S_\phi,
@@ -205,7 +207,8 @@ total energy is conserved as written in \cref{eq:cm-total}.}
 \section{The mass coordinate}
 \label{sec:mass-coordinate}
 
-A Lagrangian code labels each piece of material once and follows it. The
+A Lagrangian code labels each piece of material once and then follows it
+for all time. The
 natural label in one dimension is the mass to its left: the \emph{areal
 mass coordinate}
 \begin{equation}
@@ -221,7 +224,8 @@ no enthalpy appears in this manual.) Its derivatives are
 \frac{\partial h}{\partial t}\Big|_x = -\rho u,
 \label{eq:cm-hderiv}
 \end{equation}
-the second because the mass to the left of a fixed point changes only by
+where the second expression shows that the mass to the left of a fixed
+point changes only by
 the flux $\rho u$ across it (the two are compatible exactly when mass is
 conserved, \cref{eq:cm-mass}). A material point keeps its $h$ for all
 time, so in the coordinates $(h, t)$:
@@ -251,7 +255,8 @@ $D\rho/Dt = -\rho^2\,DV/Dt$ in the first, gives the form \bw\ is built on:
   &= \frac{\partial}{\partial h}(\sigma_{xx} u),
 \label{eq:lag-total}
 \end{align}
-every time derivative at fixed $h$. The density never needs an equation of
+where every time derivative corresponds to a fixed value of $h$. The
+density never needs an equation of
 its own: it follows from where the material is,
 $\partial x/\partial h = V$. And the energy equation has become the first
 law for a piece of material, $\dd e = -P\,\dd V - q\,\dd V$: its energy
@@ -277,7 +282,7 @@ cells appears in both with opposite signs, so in a sum over every cell all
 the inner faces cancel: the whole stack's momentum and energy change only
 through its two ends. \Cref{ch:method-av,ch:method-rs} are two ways of
 deciding what $u$ and $\sigma$ are at a face, between time levels; both
-keep this cancellation, which is why both conserve momentum and total
+solution methods keep this cancellation, which is why both conserve momentum and total
 energy to round-off.
 
 \section{Entropy and the second law}
@@ -298,9 +303,10 @@ or, in the Eulerian variables of the course, $\rho\,Ds/Dt = \bigl((\sigma_{xx}
 
 \begin{itemize}
 \item \textbf{A fluid with $\sigma_{xx} = -P$ is isentropic wherever it is
-  smooth.} Only the part of the stress that is not pressure can make
-  entropy. A shock does make entropy, so the smooth equations alone cannot
-  describe one; \cref{ch:shocks} shows how a shock of finite thickness does.
+  smooth.} Only the part of the stress that is not pressure can generate
+  entropy. A non-linear shock does produce a rise in entropy, so the smooth
+  equations alone cannot describe entropy production; \cref{ch:shocks}
+  shows how a shock of finite thickness does.
 \item \textbf{The second law constrains $q$.} Entropy must not fall,
   $\partial s/\partial t \ge 0$, so $q\,\partial V/\partial t \le 0$:
   wherever $q \ne 0$ the material must be compressed ($\partial

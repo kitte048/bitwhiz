@@ -171,8 +171,8 @@ Hugoniot as the reference curve of its Mie--Gr\"uneisen equation of state
 The entropy is not conserved, and its source, $\rho\,Ds/Dt = -(q/T)\,
 \partial u/\partial x$ (\cref{sec:entropy}), is \emph{not} a perfect
 derivative: entropy is made inside the front, and how it is made depends on
-the front's structure. Yet the transport theorem still fixes how much:
-with $\phi = \rho s$ in \cref{eq:sh-cv},
+the front's structure. The transport theorem, however, still fixes how
+much; with $\phi = \rho s$ in \cref{eq:sh-cv},
 \begin{equation}
 \int_a^b \rho\,\frac{Ds}{Dt}\,\dd\hat x = \dot m''\,(s_1 - s_0) \ge 0 .
 \label{eq:sh-entropy}
@@ -193,9 +193,9 @@ Two consequences:
 \item \textbf{Weak shocks are nearly isentropic.} The Hugoniot and the
   isentrope through the state 0 have the same slope and the same curvature
   there; they part only at third order in the strength, $P_H - P_S \propto
-  \eta^3$. For example, when the class aluminum is shocked to $\eta = 0.1$,
-  about 10.4~GPa, the isentrope lies 0.10~GPa below the Hugoniot, about
-  1\%. This is why a
+  \eta^3$. For example, when aluminum, as the class deck models it, is
+  shocked to $\eta = 0.1$ (about 10.4~GPa), its isentrope lies 0.10~GPa
+  below its Hugoniot, about 1\%. This is why a
   release from a modest shock can be drawn as the reflection of the
   Hugoniot, as impedance matching does below.
 \end{itemize}
@@ -280,11 +280,11 @@ with no analysis, from the balance laws.
 \section{Inside the front, and the step to the numerics}
 \label{sec:inside-front}
 
-Return to the steady front, now with a viscous stress $q$ inside it,
-$\sigma_{xx} = -(P + q)$, and apply the momentum and energy balances not
-across the whole front but from the state 0 to any point inside it, at
-specific volume $V$. The same steps that gave the jump conditions give,
-at every point of the structure,
+Return to the steady front, now with a viscous stress $q$ inside it, so
+that $\sigma_{xx} = -(P + q)$. Apply the momentum and energy balances from
+the state 0 to a point inside the front, at specific volume $V$, rather
+than across the whole front. The same steps that gave the jump conditions
+then give, at every point of the structure,
 \begin{equation}
 P + q = P_0 + \dot m''^2 (V_0 - V) = P_R(V),
 \qquad

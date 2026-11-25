@@ -15,6 +15,11 @@ $u$ & velocity (the only component, along $x$) & km/s \\
 $h$ & areal mass coordinate, $\partial h/\partial x = \rho$ (not an
   enthalpy) & g/cm$^3$\,mm \\
 $M_k$ & mass per unit area of cell $k$ & g/cm$^3$\,mm \\
+$m_{k+1/2}$ & node mass of face $k + \tfrac{1}{2}$, $\tfrac{1}{2}(M_k + M_{k+1})$ & g/cm$^3$\,mm \\
+$B_L$, $B_Q$ & method AV's linear and quadratic viscosity coefficients (deck
+  \key{BL}, \key{BQ}) & -- \\
+$\bar u$, $\bar\sigma$ & a cell's mean velocity; a face's stress, positive in
+  compression (\cref{ch:method-av}) & km/s; GPa \\
 $\sigma_{xx}$ & axial stress, positive in tension, $-(P + q)$ in \bw &
   GPa \\
 $D/Dt$ & material derivative, $\partial/\partial t + u\,\partial/\partial

@@ -9,15 +9,16 @@ Shock and Detonation Theory (Purdue University, Fall 2026); from version 1.4
 it is also a home for \emph{open source burn models}: reactive burn models
 written down in full, built into a public code, and checked in the open.
 
-\paragraph{What ``open source burn model'' means here.} Every equation of
-such a model is in this manual and in the code, so anyone can read it, run
-it, check it, or change it. The term also says what is left out: models
-that are not in the open literature are not included, and are not named.
+\paragraph{What ``open source burn model'' means here.} Every burn model
+equation is in this manual and in the code, so anyone can read it, run it,
+check it, or change it. The term also says what is left out; models that
+are not in the open literature are not included, and hence they are not
+named.
 Of the six models in \bw, one comes from the literature: HVRB, the
 History Variable Reactive Burn model, which is compared with independent
-reference data. The other five are new. ThermalCascade, FlashFire and
-StochasticIgnite were proposed by an AI language model in a 2025 survey
-and repaired where they could not run as written; HALO is the author's;
+reference data. The other five are new. ThermalCascade, FlashFire, and
+StochasticIgnite are models that were proposed by an AI language model in
+a 2025 survey, and repaired where they could not run as written; HALO is the author's;
 CLAUDE was proposed by Claude. These five are mathematical models, not
 yet vetted by others or calibrated to experiments, and their example
 parameters were chosen to make the class material detonate, not fitted to
@@ -31,7 +32,7 @@ for the public: where the code and an older document disagree, this manual
 follows the code, and says so. Decisions and the studies behind them are
 recorded in the design notes (\code{doc/design/}), the input deck in
 \code{input/README.md}, and each routine in its module's header; this manual
-points to them rather than repeating them.
+points to them rather than repeating them here.
 
 \section{How this manual is built}
 
@@ -51,7 +52,7 @@ elements to write decks from.
 The manual is written in milestones (\code{doc/design/manual.md}). With
 \bw\ 1.5.0 the chapters on reactive burn were completed, and with 1.9.0
 all six burn models are built and written up.
-\Cref{ch:continuum,ch:shocks} are written; the other chapters on the hydrodynamics and the materials, the
+\Cref{ch:continuum,ch:shocks,ch:method-av} are written; the other chapters on the hydrodynamics and the materials, the
 verification chapter and the Hugoniot data come next. Until then the
 equation sheets in \code{doc/} describe those parts.
 

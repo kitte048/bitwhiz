@@ -227,3 +227,18 @@ U_s(eta)), the entropy inside the front, shock impedance, impedance
 matching on the class problem (the gold standard's 10.736 GPa), and the
 front's inside as the step to the numerics. Figures: the course's RTT and
 Rayleigh figures, and a new P-u figure of the class problem.
+Approved by DK with eleven comments applied (the opening, mean free
+paths, mass flux as mdot'' as in the course, no defined-as signs), `11ecf43`.
+
+Round 3 (Nov 19): chapter 4, method AV (6 pages, `checks/ch4_av.py`):
+the staggered mesh and the leapfrog, momentum and the moving mesh, the
+energy update and its exact conservation (checked in rational
+arithmetic), its split into -(P + q) dV and a remainder that explains
+`av_study.md`'s end-cell temperature, the viscosity as a numerical shock
+width (measured: 2.1 to 3.2 cells at BQ = 2), the time step, one cycle,
+and what AV does at a free surface and a detonation. Figures: the Hydrocode
+sheet's three.
+DK's read of chapters 1 to 4 from the start (Nov 24): wording and style
+only, nothing substantive; applied with round 3 (fewer colons, more
+semicolons with a transition, run-on sentences split, the Lagrangian
+equations behind eqs. 4.3 and 4.4 shown).
