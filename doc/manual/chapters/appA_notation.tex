@@ -1,15 +1,16 @@
 \chapter{Notation}
 \label{app:notation}
 
-Symbols of \cref{ch:continuum,ch:burning-cell,ch:burn-models}; units are
+Symbols of \cref{ch:continuum,ch:shocks,ch:method-av,ch:method-rs,ch:burning-cell,ch:burn-models}; units are
 \bw's. The chapters to come add theirs. A few letters mean different
 things in different chapters; the table says where.
 
-\begin{center}\small
-\begin{tabularx}{\textwidth}{@{}l Y l@{}}
+{\small
+\begin{longtable}{@{}l >{\raggedright\arraybackslash}p{0.5\textwidth} l@{}}
 \toprule
 Symbol & Meaning & Units \\
 \midrule
+\endhead
 $x$, $t$ & position, time & mm, \textmu s \\
 $u$ & velocity (the only component, along $x$) & km/s \\
 $h$ & areal mass coordinate, $\partial h/\partial x = \rho$ (not an
@@ -18,6 +19,16 @@ $M_k$ & mass per unit area of cell $k$ & g/cm$^3$\,mm \\
 $m_{k+1/2}$ & node mass of face $k + \tfrac{1}{2}$, $\tfrac{1}{2}(M_k + M_{k+1})$ & g/cm$^3$\,mm \\
 $B_L$, $B_Q$ & method AV's linear and quadratic viscosity coefficients (deck
   \key{BL}, \key{BQ}) & -- \\
+$\mathbf{U}$, $\mathbf{F}$ & method RS's conserved variables $(V, u, E)$
+  and their fluxes $(-u, P, Pu)$ (\cref{ch:method-rs}) & -- \\
+$\mathbf{W}$, $\mathbf{A}$ & the primitive variables $(V, u, P)$, and the
+  matrix of their equations, \cref{eq:rs-quasilinear} & -- \\
+$\lambda_1$, $\lambda_2$, $\lambda_3$ & the eigenvalues of $\mathbf{A}$, the
+  wave speeds in $h$: $-Z$, 0, $+Z$ (not the extent of reaction) & GPa\,\textmu s/mm \\
+$u^*$, $P^*$ & velocity and pressure of a face's Riemann solution (method
+  RS) & km/s, GPa \\
+$s_u$, $s_P$ & method RS's limited slopes of $u$ and $P$ per unit mass
+  (\cref{eq:rs-vanleer}) & km/s, GPa per g/cm$^3$\,mm \\
 $\bar u$, $\bar\sigma$ & a cell's mean velocity; a face's stress, positive in
   compression (\cref{ch:method-av}) & km/s; GPa \\
 $\sigma_{xx}$ & axial stress, positive in tension, $-(P + q)$ in \bw &
@@ -81,8 +92,7 @@ $N_{\max}$, $W_0$, $k_w$, $D_0$, $n_g$, $\tau_q$ & CLAUDE's constants
   (\cref{tab:claude-keys}) & see the table \\
 $n$, $\Delta t$ & time level; time step & --, \textmu s \\
 \bottomrule
-\end{tabularx}
-\end{center}
+\end{longtable}}
 
 \paragraph{Names in the code.} Module \code{temperature} calls the carried
 isentrope $e_S$ \code{ec}; module \code{mixture} calls $e_c$ \code{ecs} and

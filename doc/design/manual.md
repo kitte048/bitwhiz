@@ -242,3 +242,27 @@ DK's read of chapters 1 to 4 from the start (Nov 24): wording and style
 only, nothing substantive; applied with round 3 (fewer colons, more
 semicolons with a transition, run-on sentences split, the Lagrangian
 equations behind eqs. 4.3 and 4.4 shown).
+
+Round 4 (Nov 24): chapter 5, method RS (8 pages, `checks/ch5_rs.py`):
+the equations as fluxes in h and the finite-volume update; the pressure
+equation, the acoustic system's eigenvalues and Riemann invariants; the
+Riemann problem and its acoustic solution (equal impedances as a built-in
+linear viscosity, B_L = 1/2 with no switch; the impact as the acoustic
+impedance match, 6.29 against 10.74 GPa on the class problem's first step;
+why conservation still gives the right jumps); contacts, free surfaces and
+zero impedance; first order (exact conservation in rational arithmetic;
+measured: 3.7 to 8.8 cells, wider for weaker shocks); MUSCL-Hancock with
+Van Leer's limiter (1.5 to 2.6 cells); the time step M/Z; one cycle; what
+RS does, measured. Figures: the Unit 7 sheet's Riemann schematic, and a
+new one of the order-2 reconstruction. References: Godunov (1959), van
+Leer (1979). Written in DK's style from chapter 5 on (semicolons with a
+transition, no run-ons, each word's referent named).
+DK's read (Nov 25): style and one figure; applied. The sheet's path
+dropped from the chapter's opening (the manual supersedes the sheets);
+the flyer's velocity u_0; the reconstruction's sentence on V and the
+cycle's list reworded; Fig. 5.1 redrawn for the manual with W as the
+state and the star states as the text writes them, panel (a) with dashed
+wedges (a wave whose type is not yet known) and panel (b) with the single
+lines of the acoustic problem, and a three-entry legend. The middle
+relation of eq. 5.7, dP + Z^2 dV = 0, checked: dP = -(rho c)^2 dV, or
+dP = c^2 drho (also chapter 2's eq. 2.20).
